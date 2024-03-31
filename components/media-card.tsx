@@ -1,13 +1,14 @@
 // Importing necessary modules and components
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import Image from "next/image";
 
 // Interface for MediaCardProps
 interface MediaCardProps {
-    slug: string;       // Slug for the link
-    imageUrl: string;   // URL of the image
-    title: string;      // Title of the media card
-    onClick?: () => void; // onClick event handler (optional)
+  slug: string; // Slug for the link
+  imageUrl: string; // URL of the image
+  title: string; // Title of the media card
+  onClick?: () => void; // onClick event handler (optional)
 }
 
 // MediaCard functional component
@@ -22,12 +23,13 @@ function MediaCard({ slug, imageUrl, title, onClick }: MediaCardProps) {
       {/* Link wrapping the image */}
       <Link href={"/" + slug}>
         {/* Image */}
-        <img
+        <Image
           // Image properties
-          loading="lazy"
+
+          width={1000}
+          height={1000}
           src={imageUrl} // Image URL
-          alt={title}    // Image alt text
-          // Styling classes for the image
+          alt={title} // Image alt text
           className="object-cover w-full h-full overflow-hidden transition-transform duration-200 group-hover:scale-105"
         />
       </Link>
