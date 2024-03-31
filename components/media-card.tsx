@@ -16,7 +16,7 @@ function MediaCard({ slug, imageUrl, title, onClick }: MediaCardProps) {
     // Container for the media card with fixed aspect ratio
     <div
       // Styling classes for the container
-      className="relative mt-2 w-full cursor-pointer border aspect-w-16 aspect-h-9"
+      className="group relative mt-2 w-auto h-auto cursor-pointer overflow-hidden border"
       onClick={onClick} // onClick event handler
     >
       {/* Link wrapping the image */}
@@ -28,7 +28,7 @@ function MediaCard({ slug, imageUrl, title, onClick }: MediaCardProps) {
           src={imageUrl} // Image URL
           alt={title}    // Image alt text
           // Styling classes for the image
-          className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-110"
+          className="object-cover w-full h-full overflow-hidden transition-transform duration-200 group-hover:scale-105"
         />
       </Link>
       {/* Title container */}

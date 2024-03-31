@@ -15,22 +15,24 @@ export default function Home() {
   const latestPosts = sortPosts(posts).slice(0, 20);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2">
+    <div className="grid grid-cols-1 lg:grid-cols-6  grid-flow-col">
 
       {/* Left column */}
-      <NavigationColumn></NavigationColumn>
+      <div className="col-span-1">
+        <NavigationColumn></NavigationColumn>
+      </div>
     
+
       {/* Right column */}
-      <div>
+      <div className="col-span-3 lg:col-span-4 p-10 pt-60">
         {/* Latest section */}
-        <section className="container max-w-8xl py-10 flex flex-col space-y-6 mt-20">
           {/* Title */}
-          <div className="text-4xl font-black text-start">
+          <div className="text-3xl font-black text-start">
             Latest Project
-            <Icons.downRightArrow className="h-12 w-12" style={{ height: 12, width: 12 }}/>
+            <Icons.downRightArrow className="" style={{height: 12, width: 12}}/>
           </div>
           {/* Grid for displaying latest posts */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
             {/* Mapping over latest posts and rendering MediaCard for each */}
             {latestPosts.map((post) => (
               <div key={post.slug}>
@@ -43,7 +45,6 @@ export default function Home() {
               </div>
             ))}
           </div>
-        </section>
       </div>
     </div>
   );
