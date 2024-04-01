@@ -17,7 +17,6 @@ export function NavigationColumn() {
         <ul className="space-y-2">
           <NavigationItem slug={"/articles"} title={"Articles"} />
           <NavigationItem slug={"/portfolio"} title={"Portfolio"} />
-          <NavigationItem slug={"/blog"} title={"Blog"} />
           <NavigationItem slug={"/about"} title={"About"} />
         </ul>
       </div>

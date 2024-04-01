@@ -45,7 +45,7 @@ export default function Home() {
           </div>
         </div>
 
-        <hr className="size-5 border-gray-600 w-full" />
+        <hr className="size-8 border-gray-600 w-full" />
 
         {/* Grid for displaying latest posts */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
