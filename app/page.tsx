@@ -2,7 +2,7 @@
 import { Button, buttonVariants } from "@/components/ui/button"; // Importing buttonVariants utility function from button module
 import { siteConfig } from "@/config/site"; // Importing siteConfig from site configuration
 import { cn, sortPosts } from "@/lib/utils"; // Importing utility functions from utils module
-import { posts } from "#site/content"; // Importing posts data from content
+import { posts, projects } from "#site/content"; // Importing posts data from content
 import Link from "next/link"; // Importing Link component from Next.js
 import { PostItem } from "@/components/post-item"; // Importing PostItem component
 import MediaCard from "@/components/media-card"; // Importing MediaCard component
@@ -12,38 +12,34 @@ import NavigationColumn from "@/components/site-navigation-column";
 // Home functional component
 export default function Home() {
   // Sorting and selecting latest posts
-  const latestPosts = sortPosts(posts).slice(0, 20);
+  const latestPosts = sortPosts(posts).slice(0,20);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12">
+    <div className="grid grid-cols-1 md:grid-cols-3">
       {/* Left column */}
-      <div className="col-span-2">
-        <NavigationColumn></NavigationColumn>
-      </div>
-
+      <div className=""></div>
       {/* Right column */}
-      <div className="col-span-9 lg:col-span-10 p-10 pt-0">
+      <div className="col-span-2 mt-4 md:mt-0">
         {/* Latest section */}
         {/* Title */}
-
-        <div className="flex justify-center text-3xl font-black text-start lg:h-[250px] sm:pt-12">
-          <div className="absolute z-10">
-            <img
-              src="https://cdn.pixabay.com/photo/2015/04/23/22/00/tree-736885_1280.jpg"
-              alt="Logo"
-              className="bg-auto md:bg-contain w-full h-[200px]"
-            />
-          </div>
-          <div className="z-20">
+        <div className="flex justify-center items-center h-80 p-8 font-mono">
+          <div className="text-nowrap text-2xl">
             Latest Project
-            <div className="flex">
+            <div className="flex items-center">
               <Icons.downRightArrow
-                className=""
-                style={{ height: 12, width: 12 }}
+                className="mr-2"
+                style={{ height: 40, width: 40}}
               />
-              <Link className="mt-12" href={"/"}>
-                asdasd
+              <div className="inline-block">
+              <Link href= {latestPosts[0].slug}
+              className={cn(
+                buttonVariants({ variant: "link" }),
+                "text-2xl font-mono p-0"
+              )}
+              >
+                {latestPosts[0].title}
               </Link>
+              </div>
             </div>
           </div>
         </div>
@@ -51,7 +47,7 @@ export default function Home() {
         <hr className="size-5 border-gray-600 w-full" />
 
         {/* Grid for displaying latest posts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
           {/* Mapping over latest posts and rendering MediaCard for each */}
           {latestPosts.map((post) => (
             <div key={post.slug}>

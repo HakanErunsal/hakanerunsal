@@ -8,9 +8,10 @@ const computedFields = <T extends { slug: string }>(data: T) => ({
   slugAsParams: data.slug.split("/").slice(1).join("/"),
 });
 
+// Define collection for both blog posts and project posts
 const posts = defineCollection({
   name: "Post",
-  pattern: "blog/**/*.mdx",
+  pattern: "blog/**/*.mdx", // Adjust the pattern to collect all MDX files
   schema: s
     .object({
       slug: s.path(),
@@ -21,6 +22,25 @@ const posts = defineCollection({
       published: s.boolean().default(true),
       tags: s.array(s.string()).optional(),
       body: s.mdx(),
+      // Add any other common attributes
+    })
+    .transform(computedFields),
+});
+
+const projects = defineCollection({
+  name: "Project",
+  pattern: "projects/**/*.mdx", // Adjust the pattern to collect all MDX files
+  schema: s
+    .object({
+      slug: s.path(),
+      title: s.string().max(99),
+      description: s.string().max(999).optional(),
+      image: s.string(),
+      date: s.isodate(),
+      published: s.boolean().default(true),
+      tags: s.array(s.string()).optional(),
+      body: s.mdx(),
+      // Add any other common attributes
     })
     .transform(computedFields),
 });
@@ -34,7 +54,7 @@ export default defineConfig({
     name: "[name]-[hash:6].[ext]",
     clean: true,
   },
-  collections: { posts },
+  collections: { posts, projects },
   mdx: {
     rehypePlugins: [
       rehypeSlug,

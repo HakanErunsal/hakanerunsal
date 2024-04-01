@@ -6,6 +6,7 @@ import { SiteHeader } from "@/components/site-header";
 import { Providers } from "@/components/providers";
 import { siteConfig } from "@/config/site";
 import { SiteFooter } from "@/components/site-footer";
+import NavigationColumn from "@/components/site-navigation-column";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -36,9 +37,12 @@ export default function RootLayout({
         )}
       >
         <Providers>
-          <div className="relative flex min-h-dvh flex-col bg-background">
-            {/* <SiteHeader /> */}
-            <main className="flex-1">{children}</main>
+          <div className="bg-background">
+            {/* <SiteHeader/> */}
+            <div className=""> 
+            <NavigationColumn />
+            <main className="">{children}</main>
+            </div>
             <SiteFooter />
           </div>
         </Providers>
