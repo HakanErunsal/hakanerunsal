@@ -5,7 +5,6 @@ import { projects } from "#site/content"; // Importing posts data from content
 import Link from "next/link"; // Importing Link component from Next.js
 import MediaCard from "@/components/media-card"; // Importing MediaCard component
 import { Icons } from "@/components/icons";
-import { AlignCenter } from "lucide-react";
 
 // Home functional component
 export default function Home() {
