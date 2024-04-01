@@ -11,7 +11,7 @@ const computedFields = <T extends { slug: string }>(data: T) => ({
 // Define collection for both blog posts and project posts
 const posts = defineCollection({
   name: "Post",
-  pattern: "blog/**/*.mdx", // Adjust the pattern to collect all MDX files
+  pattern: "./blog/**/*.mdx", // Adjust the pattern to collect all MDX files
   schema: s
     .object({
       slug: s.path(),
@@ -29,7 +29,7 @@ const posts = defineCollection({
 
 const projects = defineCollection({
   name: "Project",
-  pattern: "projects/**/*.mdx", // Adjust the pattern to collect all MDX files
+  pattern: "./projects/**/*.mdx", // Adjust the pattern to collect all MDX files
   schema: s
     .object({
       slug: s.path(),
