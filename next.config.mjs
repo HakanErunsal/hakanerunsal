@@ -6,10 +6,7 @@ const nextConfig = {
   webpack: (config) => {
     config.plugins.push(new VeliteWebpackPlugin());
     return config;
-  },
-  distDir: 'Distribution',
-  output: "export",
-
+  }
 };
 
 class VeliteWebpackPlugin {
