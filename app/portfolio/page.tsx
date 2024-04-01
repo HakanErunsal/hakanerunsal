@@ -1,19 +1,16 @@
 // Importing necessary modules and components
-import { Button, buttonVariants } from "@/components/ui/button"; // Importing buttonVariants utility function from button module
-import { siteConfig } from "@/config/site"; // Importing siteConfig from site configuration
-import { cn, sortPosts, sortProjects } from "@/lib/utils"; // Importing utility functions from utils module
-import { posts, projects } from "#site/content"; // Importing posts data from content
+import { buttonVariants } from "@/components/ui/button"; // Importing buttonVariants utility function from button module
+import { cn, sortProjects } from "@/lib/utils"; // Importing utility functions from utils module
+import { projects } from "#site/content"; // Importing posts data from content
 import Link from "next/link"; // Importing Link component from Next.js
-import { PostItem } from "@/components/post-item"; // Importing PostItem component
 import MediaCard from "@/components/media-card"; // Importing MediaCard component
 import { Icons } from "@/components/icons";
-import NavigationColumn from "@/components/site-navigation-column";
+import { AlignCenter } from "lucide-react";
 
 // Home functional component
 export default function Home() {
   // Sorting and selecting latest posts
-  const latestPosts = sortPosts(posts).slice(0,20);
-  const latestProjects = sortProjects(projects).slice(0,20);
+  const latestProjects = sortProjects(projects).slice(0, 20);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3">
@@ -25,20 +22,20 @@ export default function Home() {
         {/* Title */}
         <div className="flex justify-center items-center h-80 p-8 font-mono">
           <div className="text-nowrap text-2xl">
-            Latest Project
+            Latest Article
             <div className="flex items-center">
               <Icons.downRightArrow
                 className="mr-2"
                 style={{ height: 40, width: 40}}
               />
               <div className="inline-block">
-              <Link href= {latestPosts[0].slug}
+              <Link href= {latestProjects[0].slug}
               className={cn(
                 buttonVariants({ variant: "link" }),
                 "text-2xl font-mono p-0"
               )}
               >
-                {latestPosts[0].title}
+                {latestProjects[0].title}
               </Link>
               </div>
             </div>
@@ -48,15 +45,16 @@ export default function Home() {
         <hr className="size-5 border-gray-600 w-full" />
 
         {/* Grid for displaying latest posts */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+        <div className="flex flex-col items-center justify-center">
           {/* Mapping over latest posts and rendering MediaCard for each */}
-          {latestPosts.map((post) => (
-            <div key={post.slug}>
+          {latestProjects.map((project) => (
+            <div key={project.slug}>
               {/* MediaCard component */}
               <MediaCard
-                slug={post.slug} // Slug of the post
-                imageUrl={post.image} // URL of the post image
-                title={post.title} // Title of the post
+                slug={project.slug} // Slug of the post
+                imageUrl={project.image} // URL of the post image
+                title={project.title} // Title of the post
+                style={{}}
               />
             </div>
           ))}

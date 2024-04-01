@@ -24,6 +24,14 @@ export function sortPosts(posts: Array<Post>) {
   });
 }
 
+export function sortProjects(projects: Array<Project>) {
+  return projects.sort((a, b) => {
+    if (a.date > b.date) return -1;
+    if (a.date < b.date) return 1;
+    return 0;
+  });
+}
+
 export function getAllTags(posts: Array<Post>) {
   const tags: Record<string, number> = {}
   posts.forEach(post => {
