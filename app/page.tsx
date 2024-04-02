@@ -1,19 +1,15 @@
 // Importing necessary modules and components
-import { Button, buttonVariants } from "@/components/ui/button"; // Importing buttonVariants utility function from button module
-import { siteConfig } from "@/config/site"; // Importing siteConfig from site configuration
-import { cn, sortPosts, sortProjects } from "@/lib/utils"; // Importing utility functions from utils module
-import { posts, projects } from "#site/content"; // Importing posts data from content
+import { buttonVariants } from "@/components/ui/button"; // Importing buttonVariants utility function from button module
+import { cn, sortPosts } from "@/lib/utils"; // Importing utility functions from utils module
+import { posts } from "#site/content"; // Importing posts data from content
 import Link from "next/link"; // Importing Link component from Next.js
-import { PostItem } from "@/components/post-item"; // Importing PostItem component
 import MediaCard from "@/components/media-card"; // Importing MediaCard component
 import { Icons } from "@/components/icons";
-import NavigationColumn from "@/components/site-navigation-column";
 
 // Home functional component
 export default function Home() {
   // Sorting and selecting latest posts
   const latestPosts = sortPosts(posts).slice(0,20);
-  const latestProjects = sortProjects(projects).slice(0,20);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3">
@@ -32,6 +28,7 @@ export default function Home() {
                 style={{ height: 40, width: 40}}
               />
               <div className="inline-block">
+                {latestPosts.length > 0 && (
               <Link href= {latestPosts[0].slug}
               className={cn(
                 buttonVariants({ variant: "link" }),
@@ -40,6 +37,7 @@ export default function Home() {
               >
                 {latestPosts[0].title}
               </Link>
+                )}
               </div>
             </div>
           </div>

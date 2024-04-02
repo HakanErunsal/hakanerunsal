@@ -3,18 +3,13 @@ import rehypeSlug from "rehype-slug";
 import rehypePrettyCode from "rehype-pretty-code";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
 
-const computedFields = <T extends { slug: string }>(data: T) => ({
-  ...data,
-  slugAsParams: data.slug.split("/").slice(1).join("/"),
-});
-
 // Define collection for both blog posts and project posts
 const posts = defineCollection({
-  name: "Post",
-  pattern: "./blog/**/*.mdx", // Adjust the pattern to collect all MDX files
+  name: 'Post',
+  pattern: 'blog/**/*.mdx', // Adjust the pattern to collect all MDX files
   schema: s
     .object({
-      slug: s.path(),
+      slug: s.slug('blog'),
       title: s.string().max(99),
       description: s.string().max(999).optional(),
       image: s.string(),
@@ -24,15 +19,15 @@ const posts = defineCollection({
       body: s.mdx(),
       // Add any other common attributes
     })
-    .transform(computedFields),
+    .transform(data => ({...data, permalink: '/blog/${data.slug}'})),
 });
 
 const projects = defineCollection({
-  name: "Project",
-  pattern: "./projects/**/*.mdx", // Adjust the pattern to collect all MDX files
+  name: 'Project',
+  pattern: 'projects/**/*.mdx', // Adjust the pattern to collect all MDX files
   schema: s
     .object({
-      slug: s.path(),
+      slug: s.slug('projects'),
       title: s.string().max(99),
       description: s.string().max(999).optional(),
       image: s.string(),
@@ -43,7 +38,7 @@ const projects = defineCollection({
       links: s.array(s.string()).optional()
       // Add any other common attributes
     })
-    .transform(computedFields),
+    .transform(data => ({...data, permalink: '/projects/${data.slug}'})),
 });
 
 export default defineConfig({
