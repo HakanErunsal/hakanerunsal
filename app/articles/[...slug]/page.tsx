@@ -1,4 +1,4 @@
-import { projects } from "#site/content";
+import { articles } from "#site/content";
 import { MDXContent } from "@/components/mdx-components";
 import { notFound } from "next/navigation";
 
@@ -14,7 +14,7 @@ interface PostPageProps {
 
 async function getPostFromParams(params: PostPageProps["params"]) {
   const slug = params?.slug?.join("/");
-  const post = projects.find((project) => project.slugAsParams === slug);
+  const post = articles.find((project) => project.slugAsParams === slug);
 
   return post;
 }
@@ -61,7 +61,7 @@ export async function generateMetadata({
 export async function generateStaticParams(): Promise<
   PostPageProps["params"][]
 > {
-  return projects.map((project) => ({ slug: project.slugAsParams.split("/") }));
+  return articles.map((project) => ({ slug: project.slugAsParams.split("/") }));
 }
 
 export default async function PostPage({ params }: PostPageProps) {
