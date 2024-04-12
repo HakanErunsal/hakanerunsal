@@ -5,7 +5,7 @@ import Image from "next/image";
 // Interface for MediaCardProps
 interface MediaCardProps {
   slug: string; // Slug for the link
-  imageUrl: string; // URL of the image
+  image: string; // URL of the image
   title: string; // Title of the media card
   onClick?: () => void; // onClick event handler (optional)
   className?: string; // Additional class names for the container
@@ -13,7 +13,7 @@ interface MediaCardProps {
 }
 
 // MediaCard functional component
-function MediaCard({ slug, imageUrl, title, onClick, className, style }: MediaCardProps) {
+function MediaCard({ slug, image, title, onClick, className, style }: MediaCardProps) {
   return (
     // Container for the media card with fixed aspect ratio
     <div
@@ -23,13 +23,13 @@ function MediaCard({ slug, imageUrl, title, onClick, className, style }: MediaCa
       style={{ maxWidth: "1024px", maxHeight: "512px", minWidth: "256px", ...style }} // Custom styles
     >
       {/* Link wrapping the image */}
-      <Link href={"/" + slug}>
+      <Link href={"/" + slug}>{title}
         {/* Image */}
         <Image
           // Image properties
           width={1000}
           height={1000}
-          src={imageUrl} // Image URL
+          src={image} // Image URL
           alt={title} // Image alt text
           className="object-cover w-full h-full transition-transform duration-200 group-hover:scale-105"
         />

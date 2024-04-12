@@ -3,23 +3,28 @@ import rehypeSlug from "rehype-slug";
 import rehypePrettyCode from "rehype-pretty-code";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
 
+const computedFields = <T extends { slug: string }>(data: T) => ({
+  ...data,
+  slugAsParams: data.slug.split("/").slice(1).join("/"),
+});
+
 // Define collection for both blog posts and project posts
-const posts = defineCollection({
-  name: 'Post',
-  pattern: 'blog/**/*.mdx', // Adjust the pattern to collect all MDX files
+const articles = defineCollection({
+  name: 'Article',
+  pattern: 'articles/**/*.mdx', // Adjust the pattern to collect all MDX files
   schema: s
     .object({
-      slug: s.slug('blog'),
+      slug: s.path(),
       title: s.string().max(99),
       description: s.string().max(999).optional(),
-      image: s.string(),
+      image: s.image().optional(),
       date: s.isodate(),
       published: s.boolean().default(true),
       tags: s.array(s.string()).optional(),
       body: s.mdx(),
       // Add any other common attributes
     })
-    .transform(data => ({...data, permalink: '/blog/${data.slug}'})),
+    .transform(computedFields),
 });
 
 const projects = defineCollection({
@@ -27,18 +32,18 @@ const projects = defineCollection({
   pattern: 'projects/**/*.mdx', // Adjust the pattern to collect all MDX files
   schema: s
     .object({
-      slug: s.slug('projects'),
+      slug: s.path(),
       title: s.string().max(99),
       description: s.string().max(999).optional(),
-      image: s.string(),
+      image: s.image().optional(),
       date: s.isodate(),
       published: s.boolean().default(true),
       tags: s.array(s.string()).optional(),
+      links: s.array(s.string()).optional(),
       body: s.mdx(),
-      links: s.array(s.string()).optional()
       // Add any other common attributes
     })
-    .transform(data => ({...data, permalink: '/projects/${data.slug}'})),
+    .transform(computedFields),
 });
 
 export default defineConfig({
@@ -50,7 +55,7 @@ export default defineConfig({
     name: "[name]-[hash:6].[ext]",
     clean: true,
   },
-  collections: { posts, projects },
+  collections: { articles, projects },
   mdx: {
     rehypePlugins: [
       rehypeSlug,

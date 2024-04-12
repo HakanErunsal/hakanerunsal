@@ -16,7 +16,7 @@ export function NavigationColumn() {
       <div className="col-start-2 col-span-2 p-8 items-left">
         <ul className="space-y-2">
           <NavigationItem slug={"/articles"} title={"Articles"} />
-          <NavigationItem slug={"/portfolio"} title={"Portfolio"} />
+          <NavigationItem slug={"/projects"} title={"Portfolio"} />
           <NavigationItem slug={"/about"} title={"About"} />
         </ul>
       </div>

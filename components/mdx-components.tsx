@@ -1,25 +1,23 @@
-import * as runtime from 'react/jsx-runtime'
-import Image from 'next/image'
-
-import { Callout } from './callout'
-
-const sharedComponents = {
-  Callout,
-  Image
-}
+import Image from "next/image";
+import * as runtime from "react/jsx-runtime";
+import { Callout } from "./callout";
+import { cn } from "@/lib/utils";
 
 const useMDXComponent = (code: string) => {
-  const fn = new Function(code)
-  return fn({ ...runtime }).default
+  const fn = new Function(code);
+  return fn({ ...runtime }).default;
+};
+
+const components = {
+  Image,
+  Callout,
+};
+
+interface MdxProps {
+  code: string;
 }
 
-interface MDXProps {
-  code: string
-  components?: Record<string, React.ComponentType>
-  [key: string]: any
-}
-
-export const MDXContent = ({ code, components, ...props }: MDXProps) => {
-  const Component = useMDXComponent(code)
-  return <Component components={{ ...sharedComponents, ...components }} {...props} />
+export function MDXContent({ code }: MdxProps) {
+  const Component = useMDXComponent(code);
+  return <Component components={components} />;
 }
