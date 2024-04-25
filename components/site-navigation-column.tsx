@@ -7,8 +7,8 @@ export function NavigationColumn() {
       {/* Logo */}
       <div className="w-32 h-32 p-4 flex flex-none items-center justify-center">
         <Link href="/">
-          <img src="./logos/H_Logo.png" alt="Logo" className="w-full h-full" />
-          <img src="./logos/Hakan_Logo.png" alt="Logo" className="w-full h-full" />
+          <img src="logos/H_Logo.png" alt="Logo" className="w-full h-full" />
+          <img src="logos/Hakan_Logo.png" alt="Logo" className="w-full h-full" />
         </Link>
       </div>
 
