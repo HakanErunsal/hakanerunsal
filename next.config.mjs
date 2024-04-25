@@ -20,7 +20,7 @@ class VeliteWebpackPlugin {
     compiler.hooks.beforeCompile.tapPromise("VeliteWebpackPlugin", async () => {
       if (VeliteWebpackPlugin.started) return;
       VeliteWebpackPlugin.started = true;
-      const dev = compiler.options.mode === "distribution";
+      const dev = compiler.options.mode === "development";
       this.options.watch = this.options.watch ?? dev;
       this.options.clean = this.options.clean ?? !dev;
       await build(this.options); // start velite
