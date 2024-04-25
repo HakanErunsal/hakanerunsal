@@ -1,6 +1,5 @@
 import React from 'react'; // Import React
 
-import { Calendar } from "lucide-react";
 import Link from "next/link";
 import { buttonVariants } from "./ui/button";
 import { Icons } from './icons';
