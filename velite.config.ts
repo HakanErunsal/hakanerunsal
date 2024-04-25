@@ -43,7 +43,7 @@ const projects = defineCollection({
       body: s.mdx(),
       // Add any other common attributes
     })
-    .transform(computedFields),
+    .transform(data => ({ ...data, permalink: `/projects/${data.slug}`})),
 });
 
 export default defineConfig({
