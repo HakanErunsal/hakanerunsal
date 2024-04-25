@@ -5,6 +5,7 @@ import { projects } from "#site/content"; // Importing posts data from content
 import Link from "next/link"; // Importing Link component from Next.js
 import MediaCard from "@/components/media-card"; // Importing MediaCard component
 import { Icons } from "@/components/icons";
+import Image from 'next/image';
 
 // Home functional component
 export default function Home() {
@@ -36,6 +37,12 @@ export default function Home() {
               )}
               >
                 {latestProjects[0].title}
+                <Image 
+                  src={latestProjects[0].image? latestProjects[0].image.src : "/cover.jpg"}
+                  alt="Description of the image" 
+                  width={500}
+                  height={500}
+                />
               </Link>
                 )}
               </div>
