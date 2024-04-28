@@ -2,6 +2,7 @@ import { defineConfig, defineCollection, s } from "velite";
 import rehypeSlug from "rehype-slug";
 import rehypePrettyCode from "rehype-pretty-code";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
+import { SiteConfig, siteConfig } from "./config/site";
 
 const computedFields = <T extends { slug: string }>(data: T) => ({
   ...data,
@@ -46,12 +47,14 @@ const projects = defineCollection({
     .transform(computedFields),
 });
 
+const customBase = `/${siteConfig.repoName}/static/` as `/${string}/static/`;
+
 export default defineConfig({
   root: "content",
   output: {
     data: ".velite",
     assets: "public/static",
-    base: "/static/",
+    base: customBase,
     name: "[name]-[hash:6].[ext]",
     clean: true,
   },

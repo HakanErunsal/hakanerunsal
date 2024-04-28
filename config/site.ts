@@ -1,6 +1,7 @@
 export const siteConfig = {
   name: "Hakan",
   url: "https://hakanerunsal.github.io/hakanerunsal/",
+  repoName: "hakanerunsal",
   description: "Hakan's Blog",
   author: "Hakan",
   links: {
