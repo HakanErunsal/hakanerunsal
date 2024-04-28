@@ -58,7 +58,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/HakanErunsal/hakanerunsal.git"
+    "url": "git+https://github.com/hakanerunsal/hakanerunsal.git"
   },
   "keywords": [
     "website",
@@ -67,7 +67,8 @@
   "author": "Hakan",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/HakanErunsal/hakanerunsal/issues"
+    "url": "https://github.com/hakanerunsal/hakanerunsal/issues"
   },
-  "homepage": "https://github.com/HakanErunsal/hakanerunsal#readme"
+  "homepage": "https://github.com/hakanerunsal/hakanerunsal#readme",
+  "site_url": "https://github.com/hakanerunsal.github.io/hakanerunsal"
 }
