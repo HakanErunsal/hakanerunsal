@@ -47,7 +47,11 @@ const projects = defineCollection({
     .transform(computedFields),
 });
 
-const customBase = `/${siteConfig.repoName}/static/` as `/${string}/static/`;
+const customBase: `/${string}/` | `.${string}/` | `-${string}/` | `.${string}:${string}/` | undefined = process.env.NODE_ENV === 'production'
+  ? `/${siteConfig.repoName}/static/`
+  : '/static/';
+
+//const customBase = `/${siteConfig.repoName}/static/` as `/${string}/static/`;
 
 export default defineConfig({
   root: "content",
