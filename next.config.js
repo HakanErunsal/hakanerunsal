@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 module.exports = {
-  // othor next config here...
+  // other next config here...
   webpack: config => {
     config.plugins.push(new VeliteWebpackPlugin())
     return config
@@ -13,8 +13,6 @@ class VeliteWebpackPlugin {
     this.options = options
   }
   apply(/** @type {import('webpack').Compiler} */ compiler) {
-    // executed three times in nextjs !!!
-    // twice for the server (nodejs / edge runtime) and once for the client
     compiler.hooks.beforeCompile.tapPromise('VeliteWebpackPlugin', async () => {
       if (VeliteWebpackPlugin.started) return
       VeliteWebpackPlugin.started = true
@@ -22,7 +20,7 @@ class VeliteWebpackPlugin {
       this.options.watch = this.options.watch ?? dev
       this.options.clean = this.options.clean ?? !dev
       const { build } = await import('velite')
-      await build(this.options) // start velite
+      await build(this.options)
     })
   }
 }
