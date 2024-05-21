@@ -37,12 +37,6 @@ export default function Home() {
               )}
               >
                 {latestProjects[0].title}
-                <Image 
-                  src={latestProjects[0].image? latestProjects[0].image.src : "/cover.jpg"}
-                  alt="Description of the image" 
-                  width={500}
-                  height={500}
-                />
               </Link>
                 )}
               </div>

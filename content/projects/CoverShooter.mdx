@@ -1,0 +1,59 @@
+---
+title: "Cover Shooter"
+image: "./../images/covershooter-header.png"
+description: "An immersive shooting game with realistic graphics and intense gameplay."
+date: 2020-03-04
+developer: "Rigbak"
+published: true
+---
+
+## Cover Shooter: Gun Shooting
+
+<Image src="./../images/covershooter-header.png" width={512} height={512} />
+
+<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+  <div>
+    <strong>Android:</strong>
+    <ul>
+      <li>Rating: 4.7★</li>
+      <li>Downloads: 100K+</li>
+      <li>Reviews: 829</li>
+        <a href='https://play.google.com/store/apps/details?id=com.rigbakgames.covershooter3d' target="_blank" rel="noopener noreferrer">
+          <img alt='Get it on Google Play' src='./../images/googleplay-download-badge.png' style={{ width: '250px' }}/>
+        </a>
+    </ul>
+  </div>
+  <div>
+    <strong>iOS:</strong>
+    <ul>
+      <li>Rating: 4.6★</li>
+      <li>Downloads: 80K+</li>
+      <li>Reviews: 750</li>
+        <a href="https://apps.apple.com/us/app/cover-shooter-free-fire-games/id1505399592" target="_blank" rel="noopener noreferrer">
+          <img alt='Download on the App Store' src='./../images/appstore-download-badge.svg' style={{ width: '200px' }}/>
+        </a>
+    </ul>
+  </div>
+</div>
+
+### Overview
+
+Cover Shooter is my latest and most ambitious project. It's a third-person cover shooter for mobile that's all about smooth performance and scalability. I poured a lot into this one to make it something special.
+
+### Development Journey
+
+This game was a real test of everything I'd learned. I needed it to look amazing and run well on all kinds of devices. Since I was working alone on this project, I had to dive into many different systems which are generally their individual rabbit-holes. I dived into some serious optimization techniques and came up with creative solutions to keep things running smoothly.
+
+### Key Techniques and Learnings
+
+- **Instanced Static Mesh Systems:** These were crucial for keeping rendering efficient both for generating procedural worlds for easy level generation and optimization and reusage of the dynamic objects.
+- **Niagara Particle Effects:** Helped me add beautiful effects without a performance hit. For someone who is really used to handling ordered iterations and easy access on CPU to handle data in a smooth and good looking way on GPU level was a challenge.
+- **Transparent Particles Optimization:** Especially the bullet trails when there are 10 enemies + the player shooting was a huge impact on performance. Used some tricks to make transparent particles run better.
+- **Improved C++ Code Optimization:** Took my C++ skills to the next level to ensure super-fast execution. Most of the calculations that are done in Blueprints work so much faster just by moving it to C++ code.
+
+Working on this project really pushed me to improve my optimization strategies and design methods, resulting in a polished and efficient game.
+
+### Screenshots
+
+{/* <Image src="./../images/cover_shooter_screenshot1.png" width={512} height={512} />
+<Image src="./../images/cover_shooter_screenshot2.png" width={512} height={512} /> */}
