@@ -1,107 +1,44 @@
 ---
-title: "Adalet Namluda 1"
+title: "Cover Shooter"
 image: "./../images/AdaletNamluda2.png"
-description: "Cover shooter game description"
+description: "An immersive shooting game with realistic graphics and intense gameplay."
 date: 2020-03-04
+rating: "4.7★"
+downloads: "100K+"
+reviews: "829"
+age: "18+"
+developer: "Rigbak"
 published: true
 ---
 
-[`rehype-pretty-code`](https://github.com/atomiks/rehype-pretty-code) is a Rehype plugin powered by the
-[`shiki`](https://github.com/shikijs/shiki) syntax highlighter that provides beautiful code blocks for Markdown or MDX. It works on both the server at build-time (avoiding runtime syntax highlighting) and on the client for dynamic highlighting.
+## Cover Shooter
 
-## Editor-Grade Highlighting
+![Cover Shooter](./../images/AdaletNamluda2.png)
 
-<span className="mix-blend-plus-lighter text-zinc-400/80">
-  Enjoy the accuracy and granularity of VS Code's syntax highlighting engine and
-  the popularity of its themes ecosystem — use any VS Code theme you want!
-</span>
+**Rating:** 4.7★  
+**Downloads:** 100K+  
+**Reviews:** 829  
+**Age:** 18+  
+**Developer:** Rigbak
 
-## Line Numbers and Line Highlighting
+### Overview
 
-Draw attention to a particular line of code.
+Cover Shooter is my latest and most ambitious project. It's a third-person cover shooter for mobile that's all about smooth performance and scalability. I poured a lot into this one to make it something special.
 
-```js {4} showLineNumbers
-import { useFloating } from "@floating-ui/react";
+### Development Journey
 
-function MyComponent() {
-  const { refs, floatingStyles } = useFloating();
+This game was a real test of everything I'd learned. I needed it to look amazing and run well on all kinds of devices. Since i was working alone on this project, I had to dive into many different systems which are generally their individual rabbit-holes. I dived into some serious optimization techniques and came up with creative solutions to keep things running smoothly.
 
-  return (
-    <>
-      <div ref={refs.setReference} />
-      <div ref={refs.setFloating} style={floatingStyles} />
-    </>
-  );
-}
-```
+### Key Techniques and Learnings
 
-## Word Highlighting
+- **Instanced Static Mesh Systems:** These were crucial for keeping rendering efficient both for generating procedural worlds for easy level generation and optimization and reusage of the dynamic objects.
+- **Niagara Particle Effects:** Helped me add beautiful effects without a performance hit. For someone who is really used to handle ordered iterations and easy access on CPU to handle data in a smooth and good looking way on GPU level was a challange.
+- **Transparent Particles Optimization:** Especially the bullet trails when there are 10 enemies + the player shooting was a huge impact on performance. Used some tricks to make transparent particles run better.
+- **Improved C++ Code Optimization:** Took my C++ skills to the next level to ensure super-fast execution. Most of the calculations that are done in Blueprints work so much faster just by moving it to C++ code.
 
-Draw attention to a particular word or series of characters.
+Working on this project really pushed me to improve my optimization strategies and design methods, resulting in a polished and efficient game.
 
-```js /floatingStyles/
-import { useFloating } from "@floating-ui/react";
+### Screenshots
 
-function MyComponent() {
-  const { refs, floatingStyles } = useFloating();
-
-  return (
-    <>
-      <div ref={refs.setReference} />
-      <div ref={refs.setFloating} style={floatingStyles} />
-    </>
-  );
-}
-```
-
-## ANSI Highlighting
-
-```ansi
-[0;36m  vite v5.0.0[0;32m dev server running at:[0m
-
-  > Local: [0;36mhttp://localhost:[0;36;1m3000[0;36m/[0m
-  > Network: [0;2muse `--host` to expose[0m
-
-  [0;36mready in 125ms.[0m
-
-[0;2m8:38:02 PM[0m [0;36;1m[vite][0m [0;32mhmr update [0;2m/src/App.jsx
-```
-
-Inline ANSI: `> Local: [0;36mhttp://localhost:[0;36;1m3000[0;36m/[0m{:ansi}`
-
----
-
-### Kitchen Sink Meta Strings
-
-```js showLineNumbers {2-4} title="isEven.js" /console/ caption="Im a caption"
-function isEven(number) {
-  if (number === 1) {
-    return false;
-  } else if (number === 2) {
-    return true;
-  } else if (number === 3) {
-    return false;
-  } else if (number === 4) {
-    return true;
-  } else if (number === 5) {
-    return false;
-  } else if (number === 6) {
-    return true;
-  } else if (number === 7) {
-    return false;
-  } else if (number === 8) {
-    return true;
-  } else if (number === 9) {
-    return false;
-  } else if (number === 10) {
-    return true;
-  } else {
-    return "Number is not between 1 and 10.";
-  }
-}
-
-// Example usage:
-console.log(isEven(3)); // Should return false
-console.log(isEven(4)); // Should return true
-console.log(isEven(11)); // Should return "Number is not between 1 and 10."
-```
+{/* ![Screenshot 1](path/to/screenshot1.png)  
+![Screenshot 2](path/to/screenshot2.png) */}
