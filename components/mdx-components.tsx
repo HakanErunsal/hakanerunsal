@@ -10,7 +10,6 @@ const useMDXComponent = (code: string) => {
 const components = {
   Image,
   Callout,
-  DownloadSection,
 };
 
 interface MdxProps {
