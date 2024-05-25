@@ -20,7 +20,7 @@ const VideoLoop: React.FC<VideoLoopProps> = ({ src, className }) => {
 
       if (!isOpen) {
         setIsOpen(true);
-        setTimeout(() => setIsVisible(true),10); // Trigger fade-in after opening
+        setTimeout(() => setIsVisible(true), 10); // Trigger fade-in after opening
       } else {
         setIsVisible(false);
         setTimeout(() => {
@@ -80,12 +80,12 @@ const VideoLoop: React.FC<VideoLoopProps> = ({ src, className }) => {
             className="max-w-full max-h-full transform transition-transform duration-500 cursor-pointer"
             autoPlay
             loop
-            muted
             playsInline
             onClick={(e) => {
               e.stopPropagation();
               toggleDialog();
             }}
+            muted={false} // Ensure sound is on when in fullscreen
           />
         </div>
       )}
