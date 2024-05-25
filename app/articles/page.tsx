@@ -49,14 +49,14 @@ export default function Home() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
           {/* Mapping over latest posts and rendering MediaCard for each */}
           {latestArticles.map((article) => (
-            <li key={article.slug}>
+            <div key={article.slug}>
               {/* MediaCard component */}
               <MediaCard
                 slug={article.slug} // Slug of the post
                 image={article.image?.src || ''} // URL of the post image
                 title={article.title} // Title of the post
               />
-            </li>
+            </div>
           ))}
         </div>
       </div>

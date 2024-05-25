@@ -78,9 +78,12 @@ export default async function PostPage({ params }: PostPageProps) {
         {project.tags?.map((tag) => (
           <Tag tag={tag} key={tag} />
         ))}
+        <div>
+          Free2Play
+        </div>
       </div>
       {project.description ? (
-        <p className="text-xl mt-0 text-muted-foreground">{project.description}</p>
+        <p className="text-xl mt-10 text-muted-foreground">{project.description}</p>
       ) : null}
       <hr className="my-4" />
       <MDXContent code={project.body} />

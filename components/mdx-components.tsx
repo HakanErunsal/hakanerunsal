@@ -2,7 +2,9 @@ import Image from "next/image";
 import * as runtime from "react/jsx-runtime";
 import { Callout } from "./callout";
 import { Protip } from '@/components/Protip';
-import ImageDialog from "@/components/ZoomableImage";
+import ZoomableImage from "@/components/ZoomableImage";
+import GameStatusBadge from './GameStatusBadge';
+import VideoLoop from "./VideoLoop";
 
 const useMDXComponent = (code: string) => {
   const fn = new Function(code);
@@ -13,7 +15,9 @@ const components = {
   Image,
   Callout,
   Protip,
-  ImageDialog,
+  ZoomableImage,
+  VideoLoop,
+  GameStatusBadge,
 };
 
 interface MdxProps {

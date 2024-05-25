@@ -21,7 +21,7 @@ export default function Home() {
         {/* Title */}
         <div className="flex justify-center items-center h-80 p-8 font-mono">
           <div className="text-nowrap text-2xl">
-            Latest Article
+            Latest Project
             <div className="flex items-center">
               <Icons.downRightArrow
                 className="mr-2"

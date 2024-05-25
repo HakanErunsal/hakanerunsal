@@ -2,17 +2,24 @@
 
 import React, { useState } from 'react';
 
-interface ImageDialog {
+interface ZoomableImageProps {
   src: string;
   alt: string;
   className?: string;
 }
 
-const ImageDialog: React.FC<ImageDialog> = ({ src, alt, className }) => {
+const ZoomableImage: React.FC<ZoomableImageProps> = ({ src, alt, className }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
 
   const toggleDialog = () => {
-    setIsOpen(!isOpen);
+    if (!isOpen) {
+      setIsOpen(true);
+      setTimeout(() => setIsVisible(true), 10); // Trigger fade-in after opening
+    } else {
+      setIsVisible(false);
+      setTimeout(() => setIsOpen(false), 150); // Match duration of the fade-out
+    }
   };
 
   return (
@@ -26,14 +33,14 @@ const ImageDialog: React.FC<ImageDialog> = ({ src, alt, className }) => {
 
       {isOpen && (
         <div
-          className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-75 z-50"
+          className={`fixed inset-0 flex items-center justify-center bg-black bg-opacity-75 z-50 transition-opacity duration-200 ${isVisible ? 'opacity-100' : 'opacity-0'}`}
           onClick={toggleDialog}
         >
           <img
             src={src}
             alt={alt}
-            className="max-w-full max-h-full transform transition-transform duration-300"
-            onClick={(e) => e.stopPropagation()}
+            className="max-w-full max-h-full transform transition-transform duration-200"
+            onClick={toggleDialog}
           />
         </div>
       )}
@@ -41,4 +48,4 @@ const ImageDialog: React.FC<ImageDialog> = ({ src, alt, className }) => {
   );
 };
 
-export default ImageDialog;
+export default ZoomableImage;

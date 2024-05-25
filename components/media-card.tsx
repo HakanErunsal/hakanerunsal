@@ -23,12 +23,12 @@ function MediaCard({ slug, image, title, onClick, className, style }: MediaCardP
       style={{ maxWidth: "1024px", maxHeight: "512px", minWidth: "256px", ...style }} // Custom styles
     >
       {/* Link wrapping the image */}
-      <Link href={"/" + slug}>{title}
+      <Link href={"/" + slug}>
         {/* Image */}
         <Image
           // Image properties
-          width={1000}
-          height={1000}
+          width={1920}
+          height={1080}
           src={image} // Image URL
           alt={title} // Image alt text
           className="object-cover w-full h-full transition-transform duration-200 group-hover:scale-105"

@@ -37,6 +37,7 @@ const projects = defineCollection({
       title: s.string().max(99),
       description: s.string().max(999).optional(),
       image: s.image().optional(),
+      images: s.array(s.object({src: s.string(), alt: s.string()})).optional(),
       date: s.isodate(),
       published: s.boolean().default(true),
       tags: s.array(s.string()).optional(),
