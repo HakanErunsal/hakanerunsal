@@ -37,11 +37,11 @@ export default function RootLayout({
         )}
       >
         <Providers>
-          <div className="bg-background">
+          <div className="flex flex-col min-h-screen bg-background">
             {/* <SiteHeader/> */}
-            <div className=""> 
+            <div className="flex flex-col flex-grow"> 
             <NavigationColumn />
-            <main className="">{children}</main>
+            <main className="flex-grow">{children}</main>
             </div>
             <SiteFooter />
           </div>
