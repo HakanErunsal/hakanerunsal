@@ -16,10 +16,10 @@ export default function Home() {
       {/* Left column */}
       <div className=""></div>
       {/* Right column */}
-      <div className="col-span-2 mt-4 md:mt-0">
+      <div className="col-span-2 mt-4 md:mt-0 mr-0 md:mr-8">
         {/* Latest section */}
         {/* Title */}
-        <div className="flex justify-center items-center h-80 p-8 font-mono">
+        <div className="flex justify-center md:justify-end lg:justify-center items-center h-80 p-8 font-mono">
           <div className="text-nowrap text-2xl">
             Latest Article
             <div className="flex items-center">

@@ -17,10 +17,10 @@ export default function Home() {
       {/* Left column */}
       <div className=""></div>
       {/* Right column */}
-      <div className="col-span-2 mt-4 md:mt-0">
+      <div className="col-span-2 mt-4 md:mt-0 mr-0 md:mr-8">
         {/* Latest section */}
         {/* Title */}
-        <div className="flex justify-center items-center h-80 p-8 font-mono">
+        <div className="flex justify-center md:justify-end lg:justify-center items-center h-80 p-8 font-mono">
           <div className="text-nowrap text-2xl">
             Latest Project
             <div className="flex items-center">
@@ -44,20 +44,20 @@ export default function Home() {
           </div>
         </div>
 
-        <hr className="size-8 border-gray-600 w-full" />
+        <hr className="size-5 border-gray-600 w-full" />
 
         {/* Grid for displaying latest posts */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
           {/* Mapping over latest posts and rendering MediaCard for each */}
           {latestProjects.map((project) => (
-            <li key={project.slug}>
+            <div key={project.slug}>
               {/* MediaCard component */}
               <MediaCard
                 slug={project.slug} // Slug of the post
                 image={project.image?.src || ''} // URL of the post image
                 title={project.title} // Title of the post
               />
-            </li>
+            </div>
           ))}
         </div>
       </div>
