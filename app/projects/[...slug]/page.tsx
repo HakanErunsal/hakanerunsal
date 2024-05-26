@@ -75,7 +75,7 @@ export default async function PostPage({ params }: PostPageProps) {
     <div className="grid grid-cols-1 md:grid-cols-3">
     <div className=""></div>
     <div className="col-span-2 mt-4 md:mt-0 mr-0 md:mr-0">
-    <article className="container py-8 prose dark:prose-invert max-w-5xl justify-center md:justify-end lg:justify-center mx-0">
+    <article className="container py-8 prose dark:prose-invert max-w-4xl justify-center md:justify-end lg:justify-center mx-0">
       <h1 className="mb-2">{project.title}</h1>
       <div className="flex gap-2 mb-2">
         {project.tags?.map((tag) => (
