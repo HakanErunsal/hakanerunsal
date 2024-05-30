@@ -48,9 +48,9 @@ const projects = defineCollection({
     .transform(computedFields),
 });
 
-const customBase: `/${string}/` | `.${string}/` | `-${string}/` | `.${string}:${string}/` | undefined = process.env.NODE_ENV === 'production'
-? `${siteConfig.repoName}` //`/${siteConfig.repoName}/static/`
-: '/static/';
+// const customBase: `/${string}/` | `.${string}/` | `-${string}/` | `.${string}:${string}/` | undefined = process.env.NODE_ENV === 'production'
+// ? `${siteConfig.repoName}` //`/${siteConfig.repoName}/static/`
+// : '/static/';
 
 //const customBase = `/${siteConfig.repoName}/static/` as `/${string}/static/`;
 
@@ -59,7 +59,7 @@ export default defineConfig({
   output: {
     data: ".velite",
     assets: "public/static",
-    base: customBase,
+    base: "/static/",
     name: "[name]-[hash:6].[ext]",
     clean: true,
   },
