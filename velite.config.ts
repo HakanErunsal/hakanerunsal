@@ -49,8 +49,8 @@ const projects = defineCollection({
 });
 
 const customBase: `/${string}/` | `.${string}/` | `-${string}/` | `.${string}:${string}/` | undefined = process.env.NODE_ENV === 'production'
-  ? `/${siteConfig.repoName}/static/`
-  : '/static/';
+? `${siteConfig.repoName}` //`/${siteConfig.repoName}/static/`
+: '/static/';
 
 //const customBase = `/${siteConfig.repoName}/static/` as `/${string}/static/`;
 
