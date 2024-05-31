@@ -22,24 +22,30 @@ export default async function AboutPage() {
         <div className="min-w-48 max-w-48 flex flex-col gap-2">
           <Avatar className="h-48 w-48">
             <AvatarImage src="/images/AdaletNamluda2.png" alt={siteConfig.author} />
-            <AvatarFallback>JC</AvatarFallback>
+            <AvatarFallback>HE</AvatarFallback>
           </Avatar>
           <h2 className="text-2xl font-bold text-center break-words">
             {siteConfig.author}
           </h2>
           <p className="text-muted-foreground text-center break-words">
-            Software Developer
+          Software Engineer & Game Developer
           </p>
         </div>
-        <p className="text-muted-foreground text-lg py-4">
-          Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
-          eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad
-          minim veniam, quis nostrud exercitation ullamco laboris nisi ut
-          aliquip ex ea commodo consequat. Duis aute irure dolor in
-          reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla
-          pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
-          culpa qui officia deserunt mollit anim id est laborum
-        </p>
+        <div class="text-container">
+          <p class="text-muted-foreground text-lg py-4">
+              I am an enthusiastic game developer, interested in every field of game development and open to learning more. I have made a bunch of successful mobile shooter games.
+          </p>
+
+          <p class="text-muted-foreground text-lg py-4">
+              Coding Languages: C++, Unreal Blueprint, C#
+          </p>
+
+          <p class="text-muted-foreground text-lg py-4">
+              Game Engines: Unreal Engine (6 years), Unity (2 years)
+          </p>
+          
+      </div>
+
       </div>
     </div>
   );
