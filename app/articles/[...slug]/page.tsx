@@ -72,21 +72,23 @@ export default async function PostPage({ params }: PostPageProps) {
   }
 
   return (
-    <article className="container py-6 prose dark:prose-invert max-w-3xl mx-auto">
+    <div className="flex flex-col md:flex-row">
+    <div className="flex-none w-[26rem] md:w-[26rem]"></div>
+    <div className="flex-1 col-span-2 mt-4 md:mt-0 mr-0 md:mr-8">
+    <article className="container py-6 prose dark:prose-invert max-w-6xl justify-start">
       <h1 className="mb-2">{project.title}</h1>
       <div className="flex gap-2 mb-2">
         {project.tags?.map((tag) => (
           <Tag tag={tag} key={tag} />
         ))}
-        <div>
-          Free2Play
-        </div>
       </div>
       {project.description ? (
-        <p className="text-xl mt-10 text-muted-foreground">{project.description}</p>
+        <p className="text-xl mt-0 text-muted-foreground">{project.description}</p>
       ) : null}
       <hr className="my-4" />
       <MDXContent code={project.body} />
     </article>
+    </div>
+    </div>
   );
 }

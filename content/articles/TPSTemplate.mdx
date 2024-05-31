@@ -1,0 +1,116 @@
+---
+title: "Third Person Shooter Mobile Template"
+image: "./../images/tps_template_header.jpg"
+description: "A comprehensive third-person shooter template for mobile with advanced player character, AI, animation blueprints and mission creation system."
+date: 2024-05-31
+developer: "Your Name"
+published: true
+---
+
+## Third Person Shooter Mobile Template
+
+<ZoomableImage
+  src="../images/tps_header.jpg"
+/>
+
+<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start', marginTop: '20px' }}>
+  <div style={{ width: 'auto', height: 'auto', WStextAlign: 'left', marginRight: '40px' }}>
+    <h3 style={{ textAlign: 'left' }}>Features</h3>
+    <ul>
+      <li>TPS Character Base Class and Code</li>
+      <li>4 Types of AI with Behavior Trees</li>
+      <li>Animation Blueprint with Smooth Transitions</li>
+      <li>Bullet Pooling System</li>
+      <li>Stealth and Detection AI System</li>
+    </ul>
+  </div>
+</div>
+
+### Overview
+
+I developed this template for to be a candidate for the next game i wanted to release on mobile. It is a robust foundation for creating action-packed shooter games. It basically has a **modular player character**, **AI implementation** that has different type of behavior depending on the enemy type,
+smooth blending **animation blueprint** setup, and very easy to use **mission creation** system that is designed for to be used by an environment artist.
+
+### TPS Character Base Class
+
+The TPS character base class is designed to handle all the core functionalities of a third-person shooter character. It includes movement, aiming, shooting, and more. The input setup has keyboard, gamepad, and mobile input support.
+
+<ZoomableImage
+  src="../images/tps_template_character_bp.jpg"
+/>
+
+The logic for different purposes are split between these components which can be seen in the screenshot. 
+<ul>
+<li>**C_SoldierFootsteps**: Responsible for taking care of footstep sounds and particles for different types of ground types.</li>
+<li>**C_Health**: Basic health component for keeping the max hp, current hp, alive status and all the necessary functionalities.</li>
+<li>**C_Equipment**: Since the character is a combination of different body parts, and these parts can be dynamically changed as equipment changes, this component maintains these states and handling the changes.</li>
+<li>**C_Weapon**: This could be named better probably but this component is responsible for taking care of equipped gun array state, since multiple guns can be stored in players empty pockets and can be swapped with certain keys, their references and connections to player are handled here.</li>
+
+</ul>
+
+### AI Implementation
+
+<ZoomableImage
+  src="../images/AI_title.jpg"
+/>
+
+The template comes with five types of AI, each implemented using behavior trees. These AIs include patrol, guard, search, and attack behaviors, providing a realistic and challenging experience for players. They have dynamic movement depending on their state. Certain conditions
+will push them to make different type of cover point decisions. For example, they will only take cover if there is a cover spot that is not in a direct line of sight of the player. If it is exposed, an assault AI will looking
+for safe locations. If player gets too close to the cover they are hiding in, they will try to backup will suppressing with fire.
+
+<ZoomableImage
+  src="../images/AI_info1.jpg"
+/>
+
+There is 5 types of AI. 
+<li>**Assault** basically is a default AI that seeks cover and safe spots that player can't see, shoots once in a while, keeps distance with the player.</li>
+<li>**Rush** will seek for openings close to & behind the player, it will basically rush the player from these openings and try to kill.</li>
+<li>**Heavy** will stand it's ground and will suppress player with heavy fire. Even if you take cover, he will keep shooting to last seen position for a while, making sure you don't peek.</li>
+<li>**Sniper** will aim at player, a laser will show up and after 3 seconds of constant aiming, it will do a very high damage to player.</li>
+<li>**Friendly** will follow you, they will take cover if necessary, if player is low HP, they will get closer and protect the player.</li>
+
+These can be just picked from a selection of Enum, and it will change the behavior of this actor.
+
+<ZoomableImage
+  src="../images/AI_info2.jpg"
+/>
+
+<h3> Assault AI Behavior Tree Overview </h3>
+<ZoomableImage
+  src="../images/AI_overview.jpg"
+/>
+
+I can't demonstrate every type of AI but, here is the Assault, which is the basic one.
+
+<div class="mt-10">
+  <VideoLoop src="../images/AI_demonstration.mp4" className="w-full h-auto rounded-none shadow-lg" />
+</div>
+
+### Animation Blueprint Setup
+
+The animation blueprint is set up to ensure smooth transitions between different states, such as walking, running, sliding, shooting, and aimoffset. 
+Hands are positioned by the setting of the equipped weapon to avoid duplication of animations and matching the hand positions with the equipped tool.
+
+<ZoomableImage
+  src="../images/animation_blueprint.jpg"
+/>
+
+### Inventory Management
+
+<div class="mt-10">
+  <VideoLoop src="../images/tps_inventorysystem.mp4" className="w-full h-auto rounded-none shadow-lg" />
+</div>
+
+### Pooling System
+
+No need to demonstrate, it's as expected, bullets and grenades are pooled because they get reused thousands of times. Enemies are not pooled because, didn't need so many of them yet.
+
+### Stealth and Detection AI System
+
+The AI has stealth detection and warning each other system implemented. Basically if you make sounds or if one of them sees you, they will let their friends know, and it is calculated based on distance from the alert, so it will spread if you don't stop it. Stealth kill with knife mechanics are also implemented.
+
+### Conclusion
+
+This template is a hobby project that can turn into a product given the environment art and level design time. It includes features and optimized systems, it provides a strong foundation for building immersive and high-performance game.
+
+---
