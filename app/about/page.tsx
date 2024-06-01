@@ -31,16 +31,16 @@ export default async function AboutPage() {
           Software Engineer & Game Developer
           </p>
         </div>
-        <div class="text-container">
-          <p class="text-muted-foreground text-lg py-4">
+        <div className="text-container">
+          <p className="text-muted-foreground text-lg py-4">
               I am an enthusiastic game developer, interested in every field of game development and open to learning more. I have made a bunch of successful mobile shooter games.
           </p>
 
-          <p class="text-muted-foreground text-lg py-4">
+          <p className="text-muted-foreground text-lg py-4">
               Coding Languages: C++, Unreal Blueprint, C#
           </p>
 
-          <p class="text-muted-foreground text-lg py-4">
+          <p className="text-muted-foreground text-lg py-4">
               Game Engines: Unreal Engine (6 years), Unity (2 years)
           </p>
           
