@@ -1,0 +1,93 @@
+---
+title: "MetahumanToManny: Retarget Metahumans to UE5 Manny"
+image: "./../images/metahuman_to_manny_header.jpg"
+description: "A Blender-based workflow and scripts to convert MetaHuman skeletal meshes to the UE5 Manny skeleton for seamless retargeting and animation reuse."
+date: 2024-09-20
+developer: "Hakan Erünsal"
+published: true
+---
+
+## Metahuman To Manny
+
+<ZoomableImage
+  src="../images/metahuman_to_manny_showcase.jpg"
+/>
+
+A streamlined **Blender** workflow and helper scripts to convert MetaHuman skeletal meshes for compatibility with **UE5 Manny**. This enables **animation reuse**, **rapid prototyping**, and **shared retargeting** across MetaHumans and the default UE5 mannequin.
+
+### Why
+
+Teams frequently need to preview or reuse animations across **MetaHumans** and **Manny**. Differences in head/face bones, twist naming, and toe chains make direct reuse unreliable. This toolset standardizes the conversion to **Manny** to ensure predictable results.
+
+### Key Features
+
+- **Face bone weight cleanup** to remove incompatible branch bones.
+- **Body fixes** for twist naming, toes, and seam normalization.
+- **Automated vertex group cleanup** for lean exports when blendshapes are not required.
+- **Game Rig Tools pipeline** to bind converted meshes to a mannequin-compatible deform rig.
+- **Export-ready for UE5 Manny** with consistent rest pose and parenting.
+
+### Requirements
+
+- **Blender** (tested 3.6+).
+- **Game Rig Tools** add‑on.
+- MetaHuman skeletal mesh exported from Unreal Engine.
+- Optional: Manny skeleton reference in Blender for pose matching.
+
+### Quick Start
+
+1. **Export** your MetaHuman **body** and **head** skeletal meshes from Unreal (Level Sequencer export or direct asset export).
+2. **Import** meshes into Blender.
+3. **Head cleanup**  
+   Select head mesh and its armature then run:  
+   • *Clean Up Face Bone Weights*  
+   • *Fix Seams*  
+   • *(Optional)* *Cleanup Unused Vertex Groups* if you will not use blendshapes.
+4. **Body fixes**  
+   Select the body then run:  
+   • *Fix Twist Bone Names*  
+   • *Fix Toes*  
+   • *Fix Seams*  
+   • *(Optional)* *Cleanup Unused Vertex Groups*.
+5. **Reparent to mannequin rig**  
+   Open **Game Rig Tools**, **initiate a mannequin**, align **rest pose** to match your MetaHuman, and **apply rig**.  
+   Select **body** and **face** meshes → **Alt+P** → *Clear and Keep Transformation* to detach from original armatures.  
+   Delete the original MetaHuman armatures.  
+   Select **body** and **face**, then the **Deform Armature** from Game Rig Tools → **Ctrl+P** → *With Empty Groups*.
+6. **Export to Unreal**  
+   Switch the parent armature to **Unreal** in Game Rig Tools, select **body**, **face**, and the **skeleton**, and export.  
+   In Unreal, **import** using **UE5 Manny** as the **skeleton**.
+
+### Result
+
+Converted MetaHuman meshes are **fully compatible** with **UE5 Manny** for **IK/retargeting** and **shared animation** workflows.
+
+<ZoomableImage
+  src="../images/metahuman_to_manny_retarget.jpg"
+/>
+
+### Notes and Tips
+
+- Keep a **pose matching preset** per MetaHuman archetype to speed up repeated conversions.
+- If you need facial blendshapes, **skip deleting** relevant vertex groups during cleanup.
+- Run **seam fixes** before parenting to avoid split normals on export.
+
+### Known Limitations
+
+- Facial rigs beyond standard Manny requirements are out of scope. Use MetaHuman facial systems for high-fidelity facial animation.
+- Custom clothing with additional bones may require manual adjustments post‑conversion.
+
+### Roadmap
+
+- Batch automation for multi‑character pipelines.
+- One‑click Blender operator to execute the full sequence.
+- Optional export presets for UE5 FBX.
+
+### Repository
+
+<a href="https://github.com/HakanErunsal/MetahumanToManny" target="_blank" rel="noopener noreferrer">github.com/HakanErunsal/MetahumanToManny</a>
+
+### Credits
+
+Developed by **Hakan Erünsal**. Blender scripts and workflow authored to assist the UE community in cross‑skeleton retargeting.
+

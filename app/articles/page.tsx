@@ -9,7 +9,8 @@ import { Icons } from "@/components/icons";
 // Home functional component
 export default function Home() {
   // Sorting and selecting latest posts
-  const latestArticles = sortArticles(articles).slice(0, 20);
+  const latestArticles = sortArticles(articles.filter(a => a.published)).slice(0, 20);
+
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3">
@@ -25,19 +26,19 @@ export default function Home() {
             <div className="flex items-center">
               <Icons.downRightArrow
                 className="mr-2"
-                style={{ height: 40, width: 40}}
+                style={{ height: 40, width: 40 }}
               />
               <div className="inline-block">
-              {latestArticles.length > 0 && (
-              <Link href= {latestArticles[0].slug}
-              className={cn(
-                buttonVariants({ variant: "link" }),
-                "text-2xl font-mono p-0"
-              )}
-              >
-                {latestArticles[0].title}
-              </Link>
-              )}
+                {latestArticles.length > 0 && (
+                  <Link href={latestArticles[0].slug}
+                    className={cn(
+                      buttonVariants({ variant: "link" }),
+                      "text-2xl font-mono p-0"
+                    )}
+                  >
+                    {latestArticles[0].title}
+                  </Link>
+                )}
               </div>
             </div>
           </div>

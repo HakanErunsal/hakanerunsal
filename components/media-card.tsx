@@ -15,30 +15,26 @@ interface MediaCardProps {
 // MediaCard functional component
 function MediaCard({ slug, image, title, onClick, className, style }: MediaCardProps) {
   return (
-    // Container for the media card with fixed aspect ratio
     <div
-      // Styling classes for the container
-      className={`group relative mt-2 w-auto h-auto cursor-pointer overflow-hidden border rounded-none shadow-md ${className}`}
-      onClick={onClick} // onClick event handler
-      style={{ maxWidth: "1024px", maxHeight: "512px", minWidth: "256px", ...style }} // Custom styles
+      className={`group relative mt-2 w-full cursor-pointer overflow-hidden border rounded-none shadow-md ${className}`}
+      onClick={onClick}
+      style={{ maxWidth: "1024px", minWidth: "256px", ...style }}
     >
-      {/* Link wrapping the image */}
       <Link href={"/" + slug}>
-        {/* Image */}
-        <Image
-          // Image properties
-          width={1920}
-          height={1080}
-          src={image} // Image URL
-          alt={title} // Image alt text
-          className="object-cover w-full h-full transition-transform duration-200 group-hover:scale-105"
-        />
-      </Link>
-      {/* Title container */}
-      <div className="title-container absolute bottom-0 left-0 right-0 bg-black text-white text-center px-10 py-2 overflow-hidden">
-        <div className="text-md">
-          {title} {/* Title text */}
+        {/* Fixed aspect ratio wrapper */}
+        <div className="w-full aspect-[16/9] relative">
+          <Image
+            src={image}
+            alt={title}
+            fill
+            className="object-cover transition-transform duration-200 group-hover:scale-105"
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+          />
         </div>
+      </Link>
+
+      <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-center px-4 py-2">
+        <div className="text-md truncate">{title}</div>
       </div>
     </div>
   );
