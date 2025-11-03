@@ -1,6 +1,8 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { siteConfig } from "@/config/site";
 import { Metadata } from "next";
+import { Icons } from "@/components/icons";
+import { Mail } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "About Me",
@@ -20,8 +22,8 @@ export default async function AboutPage() {
       <hr className="my-8" />
       <div className="flex flex-col md:flex-row gap-8 items-center md:items-start">
         <div className="min-w-48 max-w-48 flex flex-col gap-2">
-          <Avatar className="h-48 w-48">
-            <AvatarImage src="/images/AdaletNamluda2.png" alt={siteConfig.author} />
+          <Avatar className="h-48 w-48 border-4 border-primary bg-background p-1">
+            <AvatarImage src="/logos/H_Logo.png" alt={siteConfig.author} className="object-contain scale-110" />
             <AvatarFallback>HE</AvatarFallback>
           </Avatar>
           <h2 className="text-2xl font-bold text-center break-words">
@@ -30,6 +32,24 @@ export default async function AboutPage() {
           <p className="text-muted-foreground text-center break-words">
           Software Engineer & Game Developer
           </p>
+          <div className="flex justify-center space-x-3 mt-4">
+            <a href="mailto:hakanerunsal2@gmail.com" className="cursor-pointer hover:text-primary transition-colors">
+              <span className="sr-only">Mail</span>
+              <Mail className="h-5 w-5" />
+            </a>
+            <a target="_blank" rel="noreferrer" href={siteConfig.links.linkedin} className="hover:text-primary transition-colors">
+              <span className="sr-only">LinkedIn</span>
+              <Icons.linkedin className="h-5 w-5" />
+            </a>
+            <a target="_blank" rel="noreferrer" href={siteConfig.links.twitter} className="hover:text-primary transition-colors">
+              <span className="sr-only">Twitter</span>
+              <Icons.twitter className="h-5 w-5" />
+            </a>
+            <a target="_blank" rel="noreferrer" href={siteConfig.links.github} className="hover:text-primary transition-colors">
+              <span className="sr-only">GitHub</span>
+              <Icons.gitHub className="h-5 w-5" />
+            </a>
+          </div>
         </div>
         <div className="text-container">
           <p className="text-muted-foreground text-lg py-4">
@@ -41,8 +61,26 @@ export default async function AboutPage() {
           </p>
 
           <p className="text-muted-foreground text-lg py-4">
-              Game Engines: Unreal Engine (6 years), Unity (2 years)
+              Game Engines: Unreal Engine (8 years), Unity (2 years)
           </p>
+
+          <div className="py-4">
+            <h3 className="text-xl font-bold mb-3">Connect</h3>
+            <div className="space-y-2">
+              <p className="text-muted-foreground">
+                <strong>Email:</strong> <a href="mailto:hakanerunsal2@gmail.com" className="hover:text-primary transition-colors underline">hakanerunsal2@gmail.com</a>
+              </p>
+              <p className="text-muted-foreground">
+                <strong>LinkedIn:</strong> <a href={siteConfig.links.linkedin} className="hover:text-primary transition-colors underline" target="_blank" rel="noreferrer">linkedin.com/in/hakandev</a>
+              </p>
+              <p className="text-muted-foreground">
+                <strong>GitHub:</strong> <a href={siteConfig.links.github} className="hover:text-primary transition-colors underline" target="_blank" rel="noreferrer">github.com/hakanerunsal</a>
+              </p>
+              <p className="text-muted-foreground">
+                <strong>Twitter:</strong> <a href={siteConfig.links.twitter} className="hover:text-primary transition-colors underline" target="_blank" rel="noreferrer">@Hakan_Erunsal</a>
+              </p>
+            </div>
+          </div>
           
       </div>
 

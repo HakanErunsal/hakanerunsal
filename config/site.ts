@@ -1,12 +1,14 @@
 export const siteConfig = {
-  name: "Hakan",
+  name: "Hakan Erunsal",
   url: "https://hakanerunsal.github.io",
   repoName: "",
-  description: "Hakan's Blog",
-  author: "Hakan",
+  description: "Game Developer & Software Engineer specializing in Unreal Engine. Portfolio of mobile shooter games and technical articles.",
+  author: "Hakan Erunsal",
   links: {
     twitter: "https://twitter.com/Hakan_Erunsal",
     github: "https://github.com/hakanerunsal",
+    linkedin: "https://www.linkedin.com/in/hakandev/",
+    email: "hakanerunsal2@gmail.com",
   },
 };
 

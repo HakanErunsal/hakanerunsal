@@ -53,9 +53,10 @@ export default function Home() {
             <div key={project.slug}>
               {/* MediaCard component */}
               <MediaCard
-                slug={project.slug} // Slug of the post
-                image={project.image?.src || ''} // URL of the post image
-                title={project.title} // Title of the post
+                slug={project.slug}
+                image={project.image?.src || ''}
+                title={project.title}
+                imagePosition={project.imagePosition}
               />
             </div>
           ))}

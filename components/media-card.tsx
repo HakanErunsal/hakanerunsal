@@ -10,10 +10,11 @@ interface MediaCardProps {
   onClick?: () => void; // onClick event handler (optional)
   className?: string; // Additional class names for the container
   style?: React.CSSProperties; // Additional inline styles for the container
+  imagePosition?: string; // CSS object-position for the image (optional)
 }
 
 // MediaCard functional component
-function MediaCard({ slug, image, title, onClick, className, style }: MediaCardProps) {
+function MediaCard({ slug, image, title, onClick, className, style, imagePosition }: MediaCardProps) {
   return (
     <div
       className={`group relative mt-2 w-full cursor-pointer overflow-hidden border rounded-none shadow-md ${className}`}
@@ -28,6 +29,7 @@ function MediaCard({ slug, image, title, onClick, className, style }: MediaCardP
             alt={title}
             fill
             className="object-cover transition-transform duration-200 group-hover:scale-105"
+            style={{ objectPosition: imagePosition || 'center' }}
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           />
         </div>

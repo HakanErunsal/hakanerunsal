@@ -55,6 +55,7 @@ export default function Home() {
                 slug={project.slug} // Slug of the post
                 image={project.image?.src || ''} // URL of the post image
                 title={project.title} // Title of the post
+                imagePosition={project.imagePosition} // Optional image positioning
               />
             </div>
           ))}

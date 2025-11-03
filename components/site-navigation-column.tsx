@@ -1,14 +1,23 @@
 import Link from "next/link";
+import Image from "next/image";
 import { NavigationItem } from "./navigation-button";
 
 export function NavigationColumn() {
   return (
     <div className="flex md:fixed top-0 left-0 p-4 z-10">
       {/* Logo */}
-      <div className="w-32 h-32 p-4 flex flex-none items-center justify-center">
+      <div className="w-40 h-40 p-4 flex flex-none items-center justify-center">
         <Link href="/">
-          <img src="logos/H_Logo.png" alt="Logo" className="w-full h-full" />
-          <img src="logos/HAKAN_Logo.png" alt="Logo" className="w-full h-full" />
+          <div className="w-full h-full rounded-full border-4 border-primary bg-background p-2 flex items-center justify-center">
+            <Image 
+              src="/logos/H_Logo.png" 
+              alt="Logo" 
+              width={160} 
+              height={160}
+              priority
+              className="object-contain scale-110"
+            />
+          </div>
         </Link>
       </div>
 
