@@ -15,6 +15,32 @@ published: true
 
 A streamlined **Blender** workflow and helper scripts to convert MetaHuman skeletal meshes for compatibility with **UE5 Manny**. This enables **animation reuse**, **rapid prototyping**, and **shared retargeting** across MetaHumans and the default UE5 mannequin.
 
+<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'stretch', marginTop: '20px' }}>
+  <div style={{ width: '300px', textAlign: 'left', marginRight: '40px', display: 'flex', flexDirection: 'column' }}>
+    <h3 style={{ textAlign: 'left', marginTop: 0 }}>Blender Extension</h3>
+    <ul style={{ flexGrow: 1, marginBottom: '10px' }}>
+      <li>Platform: Blender 4.2.4 LTS+</li>
+      <li>Category: Rigging, Retargeting</li>
+    </ul>
+    <div style={{ textAlign: 'center', marginTop: '10px' }}>
+      <a href="https://extensions.blender.org/add-ons/metahumantomanny/" target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', padding: '10px 20px', backgroundColor: '#1d6ace', color: 'white', textDecoration: 'none', borderRadius: '4px', fontWeight: 'bold' }}>
+        Get Blender Add-on
+      </a>
+    </div>
+  </div>
+
+  <div style={{ width: '300px', textAlign: 'left', marginRight: '40px', display: 'flex', flexDirection: 'column' }}>
+    <h3 style={{ textAlign: 'left', marginTop: 0 }}>Source & Docs</h3>
+    <ul style={{ flexGrow: 1, marginBottom: '10px' }}>
+    </ul>
+    <div style={{ textAlign: 'center', marginTop: '10px' }}>
+      <a href="https://github.com/HakanErunsal/MetahumanToManny" target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', padding: '10px 20px', backgroundColor: '#24292f', color: 'white', textDecoration: 'none', borderRadius: '4px', fontWeight: 'bold' }}>
+        View on GitHub
+      </a>
+    </div>
+  </div>
+</div>
+
 ### Why
 
 Teams frequently need to preview or reuse animations across **MetaHumans** and **Manny**. Differences in head/face bones, twist naming, and toe chains make direct reuse unreliable. This toolset standardizes the conversion to **Manny** to ensure predictable results.
@@ -29,8 +55,8 @@ Teams frequently need to preview or reuse animations across **MetaHumans** and *
 
 ### Requirements
 
-- **Blender** (tested 3.6+).
-- **Game Rig Tools** add‑on.
+- **Blender** (4.2.4 LTS+).
+- **Game Rig Tools** add‑on (optional).
 - MetaHuman skeletal mesh exported from Unreal Engine.
 - Optional: Manny skeleton reference in Blender for pose matching.
 
@@ -82,10 +108,6 @@ Converted MetaHuman meshes are **fully compatible** with **UE5 Manny** for **IK/
 - Batch automation for multi‑character pipelines.
 - One‑click Blender operator to execute the full sequence.
 - Optional export presets for UE5 FBX.
-
-### Repository
-
-<a href="https://github.com/HakanErunsal/MetahumanToManny" target="_blank" rel="noopener noreferrer">github.com/HakanErunsal/MetahumanToManny</a>
 
 ### Credits
 
