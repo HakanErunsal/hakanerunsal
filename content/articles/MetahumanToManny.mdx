@@ -47,6 +47,7 @@ Teams frequently need to preview or reuse animations across **MetaHumans** and *
 
 ### Key Features
 
+- One click **In Place Conversion** from Metahuman to Manny.
 - **Face bone weight cleanup** to remove incompatible branch bones.
 - **Body fixes** for twist naming, toes, and seam normalization.
 - **Automated vertex group cleanup** for lean exports when blendshapes are not required.
@@ -56,33 +57,28 @@ Teams frequently need to preview or reuse animations across **MetaHumans** and *
 ### Requirements
 
 - **Blender** (4.2.4 LTS+).
-- **Game Rig Tools** add‑on (optional).
 - MetaHuman skeletal mesh exported from Unreal Engine.
 - Optional: Manny skeleton reference in Blender for pose matching.
 
-### Quick Start
+## Quick Start
 
-1. **Export** your MetaHuman **body** and **head** skeletal meshes from Unreal (Level Sequencer export or direct asset export).
-2. **Import** meshes into Blender.
-3. **Head cleanup**  
-   Select head mesh and its armature then run:  
-   • *Clean Up Face Bone Weights*  
-   • *Fix Seams*  
-   • *(Optional)* *Cleanup Unused Vertex Groups* if you will not use blendshapes.
-4. **Body fixes**  
-   Select the body then run:  
-   • *Fix Twist Bone Names*  
-   • *Fix Toes*  
-   • *Fix Seams*  
-   • *(Optional)* *Cleanup Unused Vertex Groups*.
-5. **Reparent to mannequin rig**  
-   Open **Game Rig Tools**, **initiate a mannequin**, align **rest pose** to match your MetaHuman, and **apply rig**.  
-   Select **body** and **face** meshes → **Alt+P** → *Clear and Keep Transformation* to detach from original armatures.  
-   Delete the original MetaHuman armatures.  
-   Select **body** and **face**, then the **Deform Armature** from Game Rig Tools → **Ctrl+P** → *With Empty Groups*.
-6. **Export to Unreal**  
-   Switch the parent armature to **Unreal** in Game Rig Tools, select **body**, **face**, and the **skeleton**, and export.  
-   In Unreal, **import** using **UE5 Manny** as the **skeleton**.
+### Instant Conversion
+
+1. Export the MetaHuman skeletal meshes you want to Manny from Unreal.
+2. Import the meshes into Blender.
+3. Select one LOD mesh, then Shift-select the armature.
+4. Run **In Place Conversion**. All remaining LODs are processed automatically.
+5. Select an LOD mesh again and run **Setup LOD Hierarchy**.
+6. Select all meshes, including the LOD empty parent, then Shift-select the armature and export.
+7. Use these export settings:
+   - **Selected Objects:** true  
+   - **Object Types:** Empty, Armature, Mesh  
+   - **Forward:** Y Forward  
+   - **Up:** Z Up  
+   - **Smoothing:** Face  
+   - **Add Leaf Bones:** false  
+
+**Note:** Only the face mesh requires material section reordering.
 
 ### Result
 
@@ -106,7 +102,6 @@ Converted MetaHuman meshes are **fully compatible** with **UE5 Manny** for **IK/
 ### Roadmap
 
 - Batch automation for multi‑character pipelines.
-- One‑click Blender operator to execute the full sequence.
 - Optional export presets for UE5 FBX.
 
 ### Credits
