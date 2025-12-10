@@ -1,0 +1,104 @@
+---
+title: "API Reference"
+description: "Technical API reference for base classes and functions."
+date: 2025-12-10
+published: true
+tags: ["Documentation", "Unreal Engine", "AI", "API"]
+parent: "SoulslikeCombatDocs"
+---
+
+
+<Breadcrumb items={[
+    { label: "Docs", href: "/docs" },
+    { label: "SoulslikeCombat", href: "/docs/SoulslikeCombatDocs" },
+    { label: "API Reference" }
+]} />
+
+## Base Classes
+
+### AEnemyControllerBase
+
+```cpp
+// Get components
+UMovementEvaluatorComponent* GetMovementEvaluator();
+UThreatDetectionComponent* GetThreatDetection();
+UActionEvaluationComponent* GetActionEvaluation();
+
+// Runtime BT execution
+void RunBehaviorTreeSequence(const TArray<UBehaviorTree*>& Trees, float Timeout);
+```
+
+---
+
+### AEnemyCharacterBase
+
+```cpp
+// Get ASC
+UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+
+// Equip weapon
+void EquipWeapon(ASECWeaponBase* Weapon, FName SocketName);
+```
+
+---
+
+### ASECWeaponBase
+
+```cpp
+// Equip/unequip
+void Equip(ACharacter* Character, FName SocketName);
+void Unequip();
+
+// Auto-behavior:
+// - On Equip: Attaches, registers traces, sends tag event
+// - On Unequip: Detaches, unregisters, sends tag event
+```
+
+---
+
+## Roadmap
+
+### 2025 Q1
+
+**Player Combat Component**
+- Matching combat system for player characters
+- Same ActionSet-based architecture
+- Input handling and combo system
+- Stamina integration
+
+**Example Player Character**
+- Pre-configured third-person character
+- Working attacks, dodges, blocks
+- Camera system with lock-on
+- Demonstration of player-enemy interaction
+
+### 2025 Q2
+
+**Multiplayer Support**
+- Replication for server-authoritative combat
+- Client prediction for responsive feel
+- Authority handling for damage and abilities
+- Networked movement and actions
+
+**Advanced Boss Toolkit**
+- Phase transition system
+- Enrage states and special attacks
+- Health-gated abilities
+- Scripted sequences within AI
+
+### 2025 Q3
+
+**Ranged Combat Extension**
+- Projectile attack actions
+- Cover system integration
+- Aiming and leading targets
+- Dodge prediction
+
+**Group Tactics System**
+- Coordinated multi-enemy attacks
+- Formation movement
+- Priority target selection
+- Support behaviors (healing, buffing)
+
+
+<DocNav prev={{ title: "Patterns & Examples", href: "/docs/soulslike-combat/patterns" }} next={{ title: "Troubleshooting", href: "/docs/soulslike-combat/troubleshooting" }} />

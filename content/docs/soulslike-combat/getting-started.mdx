@@ -1,0 +1,231 @@
+---
+title: "Getting Started with SoulslikeCombat"
+description: "Installation guide, quick start, and your first enemy in 10 minutes."
+date: 2025-12-10
+published: true
+tags: ["Documentation", "Unreal Engine", "AI", "Tutorial"]
+parent: "SoulslikeCombatDocs"
+---
+
+
+<Breadcrumb items={[
+    { label: "Docs", href: "/docs" },
+    { label: "SoulslikeCombat", href: "/docs/SoulslikeCombatDocs" },
+    { label: "Getting Started" }
+]} />
+
+## Overview
+
+**SoulslikeCombat** is a production-ready AI combat plugin for Unreal Engine 5.7. It provides intelligent, tactical enemy behavior for souls-like and action RPG games through a modular component system.
+
+### What's Included
+
+- ✅ Complete C++ source code
+- ✅ Blueprint-compatible components and tasks
+- ✅ Demo level with fully functional enemy
+- ✅ Example weapons, abilities, and action configurations
+- ✅ StateTree and Behavior Tree integration
+- ✅ Comprehensive documentation (you're reading it!)
+
+### Who This Is For
+
+- Developers creating souls-like, action RPG, or tactical combat games
+- Teams needing production-ready AI without building from scratch
+- Designers who want data-driven AI configuration without code
+- Projects using Gameplay Ability System (GAS) for combat
+
+---
+
+## Installation
+
+### Step 1: Copy Plugin
+
+```
+YourProject/
+└── Plugins/
+    └── SoulslikeEnemyCombat/
+        ├── Source/
+        ├── Content/
+        └── SoulslikeEnemyCombat.uplugin
+```
+
+1. Download or clone the plugin
+2. Copy the `SoulslikeEnemyCombat` folder to your project's `Plugins` directory
+3. If `Plugins` doesn't exist, create it in your project root
+
+### Step 2: Regenerate Project Files
+
+Right-click your `.uproject` file → **Generate Visual Studio Project Files**
+
+### Step 3: Add Module Dependencies
+
+In your module's `.Build.cs` file:
+
+```csharp
+PublicDependencyModuleNames.AddRange(new string[] { 
+    "SoulslikeEnemyCombat",
+    "GameplayAbilities",
+    "GameplayTags",
+    "GameplayTasks"
+});
+```
+
+### Step 4: Enable Required Plugins
+
+In Unreal Editor → **Edit > Plugins**, ensure these are enabled:
+- GameplayAbilities
+- StateTree
+- GameplayStateTree
+
+### Step 5: Verify Installation
+
+1. Restart Unreal Editor
+2. Navigate to `Content > SoulslikeEnemyCombat > Maps`
+3. Open `SEC_DemoLevel`
+4. Click Play - you should see a working enemy
+
+**If you see compilation errors:** Check that you're using **Unreal Engine 5.7** exactly. Other versions have incompatible StateTree APIs.
+
+---
+
+## Quick Start Guide
+
+### Your First Enemy in 10 Minutes
+
+This quick start gets you from zero to a functional AI enemy as fast as possible.
+
+#### 1. Open Demo Level
+
+Navigate to `Content/SoulslikeEnemyCombat/Maps/SEC_DemoLevel` and open it. Study the working enemy to understand the system.
+
+#### 2. Create Enemy Blueprint
+
+**Right-click in Content Browser** → Blueprint Class → Search for `EnemyCharacterBase`
+
+**Name it:** `BP_MyEnemy`
+
+**In the Blueprint:**
+- Add your skeletal mesh
+- Configure capsule collision
+- Set movement speed (recommended: 400)
+
+**What `AEnemyCharacterBase` provides:**
+- `USECMeleeTraceComponent` - Melee hit detection
+- `UAbilitySystemComponent` - GAS integration
+- Character movement configured
+
+#### 3. Create AI Controller
+
+**Right-click** → Blueprint Class → Search for `EnemyControllerBase`
+
+**Name it:** `BP_MyEnemyController`
+
+**Configure in Details Panel:**
+
+**MovementEvaluator Settings:**
+```
+IdealMinDistance: 150.0    // Stay at least this close
+IdealMaxDistance: 300.0    // Don't go farther
+StrafeRadius: 200.0        // Circle at this distance
+```
+
+**ActionEvaluation Settings:**
+```
+CurrentActionSet: (create in next step)
+bDebugLog: true           // See decisions in Output Log
+```
+
+#### 4. Create ActionSet Data Asset
+
+**Right-click** → Miscellaneous → Data Asset → `ActionSet`
+
+**Name it:** `DA_MyEnemyActions`
+
+**Add your first action:**
+
+| Field | Value |
+|-------|-------|
+| **Id** | `LightAttack` |
+| **AbilityTag** | `SEC.Action.LightAttack` |
+| **AbilityEndTag** | `SEC.Action.End` |
+| **ExecutionMode** | `GameplayAbility` |
+| **Distance → OptimalMin** | `100` |
+| **Distance → OptimalMax** | `250` |
+| **Distance → MaxValue** | `400` |
+| **Angle → OptimalMax** | `30` |
+| **Cooldown → Duration** | `2.0` |
+| **BaseWeight** | `1.0` |
+
+#### 5. Create Gameplay Ability
+
+**Right-click** → Blueprint Class → `GameplayAbility`
+
+**Name it:** `GA_LightAttack`
+
+**Setup:**
+1. Class Defaults → Ability Tags → Add `SEC.Action.LightAttack`
+
+**Event Graph:**
+```
+ActivateAbility
+  ↓
+PlayMontageAndWait (YourAttackMontage)
+  ↓
+SendGameplayEventToActor
+  • Target: GetAvatarActorFromActorInfo
+  • EventTag: SEC.Action.End
+  ↓
+EndAbility
+```
+
+> **Pro Tip: Why the End Event Matters**
+> ActionEvaluationComponent listens for SEC.Action.End to know the action completed. Without it, the AI gets stuck waiting forever.
+
+#### 6. Create StateTree
+
+**Right-click** → AI → StateTree
+
+**Name it:** `ST_MyEnemy`
+
+**Structure:**
+```
+Root State
+├─ BuildDecisionContext [Tick]
+│  • TargetActor: GetPlayerCharacter
+│  • OutputPin: DecisionContext
+│
+├─ AIMovement [Tick]
+│  • Context: DecisionContext
+│
+├─ PollAction [On Enter]
+│  • Context: DecisionContext
+│  • Output: ChosenAction
+│
+└─ DoAction [On Enter]
+   • ChosenAction: (from PollAction)
+   • TargetActor: (from context)
+```
+
+#### 7. Assign StateTree to Controller
+
+In `BP_MyEnemyController` → Class Defaults → **StateTree Asset** → Set to `ST_MyEnemy`
+
+#### 8. Configure Character
+
+In `BP_MyEnemy` → Class Defaults → **AI Controller Class** → Set to `BP_MyEnemyController`
+
+#### 9. Place and Test
+
+1. Drag `BP_MyEnemy` into your level
+2. Set player as focus target (or use demo player)
+3. Click Play
+4. Watch Output Log for action selection debug messages
+
+**Expected behavior:**
+- Enemy approaches to ideal distance (150-300cm)
+- Executes light attack when in range
+- Waits for cooldown
+- Repeats
+
+
+<DocNav next={{ title: "Core Architecture", href: "/docs/soulslike-combat/architecture" }} />

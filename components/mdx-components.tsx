@@ -5,6 +5,8 @@ import { Protip } from '@/components/Protip';
 import ZoomableImage from "@/components/ZoomableImage";
 import GameStatusBadge from './GameStatusBadge';
 import VideoLoop from "./VideoLoop";
+import { Breadcrumb } from "./breadcrumb";
+import { DocNav } from "./doc-nav";
 
 const useMDXComponent = (code: string) => {
   const fn = new Function(code);
@@ -18,6 +20,8 @@ const components = {
   ZoomableImage,
   VideoLoop,
   GameStatusBadge,
+  Breadcrumb,
+  DocNav,
 };
 
 interface MdxProps {

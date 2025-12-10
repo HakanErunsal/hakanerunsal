@@ -61,6 +61,7 @@ const docs = defineCollection({
       date: s.isodate(),
       published: s.boolean().default(true),
       tags: s.array(s.string()).optional(),
+      parent: s.string().optional(),
       body: s.mdx(),
     })
     .transform(computedFields),

@@ -1,0 +1,243 @@
+---
+title: "Core Components Reference"
+description: "Technical reference for MovementEvaluator, ActionEvaluation, ThreatDetection, and MeleeTrace components."
+date: 2025-12-10
+published: true
+tags: ["Documentation", "Unreal Engine", "AI", "Reference"]
+parent: "SoulslikeCombatDocs"
+---
+
+
+<Breadcrumb items={[
+    { label: "Docs", href: "/docs" },
+    { label: "SoulslikeCombat", href: "/docs/SoulslikeCombatDocs" },
+    { label: "Components" }
+]} />
+
+## UMovementEvaluatorComponent
+
+**Purpose:** Handles tactical positioning, distance maintenance, strafing, and avoidance.
+
+### Key Properties
+
+```cpp
+// Distance Management
+UPROPERTY(EditAnywhere, Category = "Movement")
+float IdealMinDistance = 200.f;
+
+UPROPERTY(EditAnywhere, Category = "Movement")
+float IdealMaxDistance = 400.f;
+
+// Strafing
+UPROPERTY(EditAnywhere, Category = "Strafe")
+float StrafeRadius = 300.f;
+
+UPROPERTY(EditAnywhere, Category = "Strafe")
+float StrafeDuration = 3.f;
+
+UPROPERTY(EditAnywhere, Category = "Strafe")
+float StrafeCooldown = 2.f;
+
+// Navigation
+UPROPERTY(EditAnywhere, Category = "Navigation")
+float DirectControlThreshold = 600.f;
+
+// Debug
+UPROPERTY(EditAnywhere, Category = "Debug")
+bool bDebugLog = false;
+```
+
+### Key Functions
+
+```cpp
+// Called each tick to get movement direction
+FVector EvaluateMovement(const FVector& TargetLocation, float DeltaTime);
+
+// Apply behavior preset
+void ApplyBehaviorConfig(const FMovementBehaviorConfig& Config);
+void ApplyBehaviorProfile(UMovementBehaviorProfile* Profile);
+
+// Manual overrides
+void SetDesiredDistance(float Min, float Max);
+void EnableStrafing(bool bEnable);
+```
+
+### Behavior Presets
+
+```cpp
+// Aggressive close-range fighter
+FMovementBehaviorConfig::MakeAttacker();
+
+// Patient mid-range combatant
+FMovementBehaviorConfig::MakeWaiter();
+
+// Flanking enemy that circles wide
+FMovementBehaviorConfig::MakeFlanker();
+
+// Defensive enemy that keeps distance
+FMovementBehaviorConfig::MakeCoward();
+```
+
+### Usage Example
+
+```cpp
+// In BeginPlay of AI Controller:
+MovementEvaluator->ApplyBehaviorConfig(
+    FMovementBehaviorConfig::MakeAttacker()
+);
+
+// Or use data asset:
+MovementEvaluator->ApplyBehaviorProfile(AggressiveMeleeProfile);
+```
+
+---
+
+## UActionEvaluationComponent
+
+**Purpose:** Scores and selects actions, manages cooldowns, executes abilities or BT sequences.
+
+### Key Properties
+
+```cpp
+UPROPERTY(EditAnywhere, Category = "Actions")
+UActionSet* CurrentActionSet;
+
+UPROPERTY(EditAnywhere, Category = "Scoring")
+float NoveltyDecayRate = 0.2f;
+
+UPROPERTY(EditAnywhere, Category = "Debug")
+bool bDebugLog = false;
+```
+
+### Key Functions
+
+```cpp
+// Evaluate all actions and return best
+FChosenAction EvaluateBestAction(const FDecisionContext& Context);
+
+// Manually execute an action
+void ExecuteAction(const FChosenAction& Action, AActor* TargetActor);
+
+// Swap action set at runtime (e.g., boss phase 2)
+void SetActionSet(UActionSet* NewSet);
+
+// Notify when action ends (auto-called by SEC.Action.End event)
+void NotifyActionCommitted(FGameplayTag AbilityTag, double NowSeconds);
+
+// Add runtime modifiers
+void AddRuntimeModifier(FGameplayTag ActionTag, float BonusWeight);
+void ClearRuntimeModifiers();
+```
+
+### Scoring Formula
+
+```
+FinalScore = BaseWeight
+           × DistanceScore        // 0-1 from FRangeEval
+           × AngleScore           // 0-1 from FRangeEval
+           × HealthModifiers      // From context tags
+           × NoveltyScore         // Decays if used recently
+           × ChainBonus           // If valid combo
+           × RuntimeModifiers     // Dynamic adjustments
+```
+
+### Usage Example
+
+```cpp
+// In StateTree task or Blueprint:
+FDecisionContext Context = BuildContext();
+FChosenAction BestAction = ActionEvaluation->EvaluateBestAction(Context);
+
+if (BestAction.IsValid())
+{
+    ActionEvaluation->ExecuteAction(BestAction, TargetActor);
+}
+```
+
+---
+
+## UThreatDetectionComponent
+
+**Purpose:** Tracks player camera attention, adjusts behavior when under observation.
+
+### Key Properties
+
+```cpp
+UPROPERTY(EditAnywhere, Category = "Threat")
+float AttentionDecayRate = 0.5f;
+
+UPROPERTY(EditAnywhere, Category = "Threat")
+float DetectionAngle = 45.f;
+
+UPROPERTY(EditAnywhere, Category = "Threat")
+float MinThreatForReaction = 0.6f;
+```
+
+### Key Functions
+
+```cpp
+// Current threat level [0-1]
+float GetThreatLevel() const;
+
+// Is player looking at this AI?
+bool IsPlayerLookingAtMe() const;
+
+// Manually add threat
+void AddThreat(float Amount);
+```
+
+### How It Works
+
+- Detects when player camera points at AI (cone check)
+- Threat level builds up while under observation
+- Decays over time when not observed
+- Feeds into action scoring (defensive actions score higher when threatened)
+- Can trigger strafe direction changes
+
+---
+
+## USECMeleeTraceComponent
+
+**Purpose:** Frame-rate independent swept traces for melee combat.
+
+### Key Functions
+
+```cpp
+// Register weapon's trace sockets (auto-called on equip)
+void RegisterWeaponTraceSockets(const TArray<FSECTraceSocket>& Sockets);
+
+// Start tracing specific sockets (called by notify state)
+void BeginTrace(const TArray<FName>& SocketIDs);
+
+// Stop tracing
+void EndTrace(const TArray<FName>& SocketIDs);
+
+// Set damage for current traces
+void SetDamageConfig(USECDamageConfig* Config);
+```
+
+### Trace Shapes
+
+```cpp
+enum class ESECTraceShape
+{
+    Sphere,            // Single point sphere sweep
+    Capsule,           // Single point capsule sweep
+    CapsuleTwoPoint    // Capsule between two sockets (for blades)
+};
+```
+
+### How It Works
+
+1. Weapon registers trace sockets on equip
+2. Animation montage includes `SECMeleeTraceNotifyState`
+3. Notify state calls `BeginTrace` with socket IDs
+4. Component stores previous frame positions
+5. Performs swept traces from previous to current positions
+6. On hit, applies damage via Gameplay Effect
+7. Prevents multi-hit on same actor (configurable interval)
+
+**Usage:** Fully automatic - just configure weapon sockets and add notify states to montages.
+
+
+<DocNav prev={{ title: "Step-by-Step Enemy", href: "/docs/soulslike-combat/step-by-step-enemy" }} next={{ title: "Configuration Assets", href: "/docs/soulslike-combat/configuration" }} />

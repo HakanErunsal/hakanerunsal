@@ -8,8 +8,8 @@ import { Icons } from "@/components/icons";
 
 // Docs functional component
 export default function DocsPage() {
-    // Sorting and selecting published docs
-    const publishedDocs = sortDocs(docs.filter(d => d.published)).slice(0, 20);
+    // Sorting and selecting published docs (excluding sub-pages with parent field)
+    const publishedDocs = sortDocs(docs.filter(d => d.published && !d.parent)).slice(0, 20);
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-3">

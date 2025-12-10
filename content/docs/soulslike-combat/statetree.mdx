@@ -1,0 +1,99 @@
+---
+title: "StateTree Integration"
+description: "Guide to StateTree tasks, structure, and integration with the combat system."
+date: 2025-12-10
+published: true
+tags: ["Documentation", "Unreal Engine", "AI", "StateTree"]
+parent: "SoulslikeCombatDocs"
+---
+
+
+<Breadcrumb items={[
+    { label: "Docs", href: "/docs" },
+    { label: "SoulslikeCombat", href: "/docs/SoulslikeCombatDocs" },
+    { label: "StateTree" }
+]} />
+
+## Available StateTree Tasks
+
+| Task | Purpose | When to Use |
+|------|---------|-------------|
+| `STTask_BuildDecisionContext` | Gathers combat data | Every tick in root state |
+| `STTask_AIMovement` | Evaluates and applies movement | Every tick in root state |
+| `STTask_PollAction` | Scores and selects action | On entering decision state |
+| `STTask_DoAction` | Executes chosen action | On entering execute state |
+| `STTask_UpdateActionSet` | Swaps ActionSet | When changing AI behavior |
+
+---
+
+## Typical StateTree Structure
+
+```
+Root (Always Active)
+├─ BuildDecisionContext [Tick]
+├─ AIMovement [Tick]
+│
+├─ Idle State
+│  └─ Transition → Combat (when target acquired)
+│
+└─ Combat State
+   ├─ Decision State
+   │  ├─ PollAction [Enter]
+   │  └─ Transition → Execute (when action chosen)
+   │
+   └─ Execute State
+      ├─ DoAction [Enter]
+      └─ Transition → Decision (when complete)
+```
+
+---
+
+## Task Details
+
+### STTask_BuildDecisionContext
+
+**Inputs:**
+- TargetActor (Object)
+
+**Outputs:**
+- DecisionContext (FDecisionContext struct)
+
+**What it does:**
+- Calculates distance and angle to target
+- Checks line of sight
+- Evaluates health percentages
+- Gathers gameplay tags from target
+
+---
+
+### STTask_PollAction
+
+**Inputs:**
+- Context (FDecisionContext)
+
+**Outputs:**
+- ChosenAction (FChosenAction)
+
+**What it does:**
+- Scores all actions in ActionSet
+- Applies range evaluations
+- Checks cooldowns
+- Selects best valid action
+
+---
+
+### STTask_DoAction
+
+**Inputs:**
+- ChosenAction (FChosenAction)
+- TargetActor (Object)
+- WaitForCompletion (bool)
+
+**What it does:**
+- If Ability: Activates via ASC
+- If BT: Runs behavior tree sequence
+- Waits for SEC.Action.End event
+- Completes when action finishes
+
+
+<DocNav prev={{ title: "Configuration Assets", href: "/docs/soulslike-combat/configuration" }} next={{ title: "Behavior Tree Tasks", href: "/docs/soulslike-combat/behavior-trees" }} />

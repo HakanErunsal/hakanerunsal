@@ -1,0 +1,140 @@
+---
+title: "Configuration Assets"
+description: "Guide to ActionSets, Movement Profiles, Damage Configs, and other data assets."
+date: 2025-12-10
+published: true
+tags: ["Documentation", "Unreal Engine", "AI", "Configuration"]
+parent: "SoulslikeCombatDocs"
+---
+
+
+<Breadcrumb items={[
+    { label: "Docs", href: "/docs" },
+    { label: "SoulslikeCombat", href: "/docs/SoulslikeCombatDocs" },
+    { label: "Configuration" }
+]} />
+
+## UActionSet (Data Asset)
+
+Contains an array of `FActionSpec` - all available actions for an AI.
+
+### Creating an ActionSet
+
+1. Right-click → Miscellaneous → Data Asset → `ActionSet`
+2. Add actions to the Actions array
+3. Configure each action's properties
+
+### FActionSpec Structure
+
+```cpp
+struct FActionSpec
+{
+    // Identity
+    FName Id;                          // Unique identifier
+    FString DisplayName;               // Editor name
+    EActionExecutionMode ExecutionMode; // Ability or BT
+    
+    // Gameplay Ability Mode
+    FGameplayTag AbilityTag;           // Tag to activate
+    FGameplayTag AbilityEndTag;        // Completion signal
+    
+    // Behavior Tree Mode
+    TArray<UBehaviorTree*> BehaviorTrees;
+    float BehaviorTreeTimeout;
+    
+    // Scoring
+    FRangeEval Distance;               // Distance curve
+    FRangeEval Angle;                  // Angle curve
+    float BaseWeight;                  // Base priority
+    bool bRequireLOS;                  // Line of sight required
+    
+    // Cooldowns
+    FActionCooldown Cooldown;
+    
+    // Chaining
+    TArray<FName> ChainFrom;           // Can combo after these
+    float ChainBonusMultiplier;        // Score bonus if chaining
+    
+    // Context
+    FGameplayTagContainer RequiredTags;
+    FGameplayTagContainer BlockedTags;
+    TArray<FTagWeightModifier> ContextModifiers;
+};
+```
+
+### FRangeEval Explained
+
+```cpp
+struct FRangeEval
+{
+    float MinValue;      // Invalid below this
+    float OptimalMin;    // Score = 1.0 starts here
+    float OptimalMax;    // Score = 1.0 ends here
+    float MaxValue;      // Invalid above this
+};
+
+// Example: Distance range for melee attack
+Distance.MinValue = 0;       // Valid from 0cm
+Distance.OptimalMin = 100;   // Perfect from 100cm
+Distance.OptimalMax = 250;   // Perfect until 250cm
+Distance.MaxValue = 400;     // Invalid beyond 400cm
+
+// Scoring visualization:
+//   0    100       250      400
+//   |-----|========|--------|
+//   0.0   1.0     1.0      0.0
+```
+
+---
+
+## UMovementBehaviorProfile (Data Asset)
+
+Contains all parameters for `MovementEvaluatorComponent`.
+
+### Example Profile
+
+```cpp
+Name: DA_AggressiveMelee
+
+IdealMinDistance: 150
+IdealMaxDistance: 250
+StrafeRadius: 200
+StrafeDuration: 2.5
+StrafeCooldown: 1.0
+RetreatBias: 0.3           // 0=never retreat, 1=always retreat
+DirectControlThreshold: 500
+AvoidanceRadius: 100
+```
+
+### Using Profiles
+
+```cpp
+// In AI Controller BeginPlay:
+MovementEvaluator->ApplyBehaviorProfile(AggressiveMeleeProfile);
+
+// Or swap at runtime (e.g., boss phase change):
+MovementEvaluator->ApplyBehaviorProfile(EnragedProfile);
+```
+
+---
+
+## USECDamageConfig (Data Asset)
+
+Contains damage values and type for melee attacks.
+
+### Properties
+
+```cpp
+BaseDamage: 45.0
+DamageType: UDmgType_Physical
+ImpulseStrength: 1000.0
+bCanCritical: true
+CriticalMultiplier: 2.0
+```
+
+### Usage
+
+Assigned to weapons, automatically applied during melee traces.
+
+
+<DocNav prev={{ title: "Components Reference", href: "/docs/soulslike-combat/components" }} next={{ title: "StateTree Integration", href: "/docs/soulslike-combat/statetree" }} />
