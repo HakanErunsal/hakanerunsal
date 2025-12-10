@@ -1,5 +1,3 @@
-import Link from "next/link";
-import { slug } from "github-slugger";
 import { badgeVariants } from "./ui/badge";
 
 interface TagProps {
@@ -9,14 +7,13 @@ interface TagProps {
 }
 export function Tag({ tag, current, count }: TagProps) {
   return (
-    <Link
+    <span
       className={badgeVariants({
         variant: current ? "default" : "secondary",
-        className: "no-underline rounded-md",
+        className: "no-underline rounded-md cursor-default",
       })}
-      href={`/tags/${slug(tag)}`}
     >
       {tag} {count ? `(${count})` : null}
-    </Link>
+    </span>
   );
 }

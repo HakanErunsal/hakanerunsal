@@ -37,3 +37,13 @@
 .subheading-anchor {
   @apply no-underline hover:underline;
 }
+
+/* Doc card image styles */
+.doc-card-img {
+  filter: grayscale(70%);
+  transition: filter 0.3s ease;
+}
+
+.doc-card:hover .doc-card-img {
+  filter: grayscale(0%);
+}

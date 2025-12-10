@@ -7,7 +7,7 @@ published: false
 tags: ["Documentation", "Unreal Engine", "AI", "Tutorial"]
 ---
 
-[← Back to Plugin Overview](/articles/soulslike-combat-system) | [GitHub Repository](https://github.com/HakanErunsal/SoulslikeEnemyCombat)
+[← Back to Plugin Overview](/projects/SoulslikeCombatSystem) | [GitHub Repository](https://github.com/HakanErunsal/SoulslikeEnemyCombat)
 
 ## Table of Contents
 
@@ -127,53 +127,34 @@ Separate **strategic thinking** from **tactical execution**:
 
 ## Installation
 
-### Step 1: Copy Plugin
+### Step 1: Install from Fab Marketplace
 
-```
-YourProject/
-└── Plugins/
-    └── SoulslikeEnemyCombat/
-        ├── Source/
-        ├── Content/
-        └── SoulslikeEnemyCombat.uplugin
-```
+1. Purchase **SoulslikeCombat** on [Fab Marketplace](https://www.fab.com/)
+2. In the Epic Games Launcher or Fab, click **Add to Project**
+3. Select your Unreal Engine project
+4. The plugin will be automatically installed with all binaries
 
-1. Download or clone the plugin
-2. Copy the `SoulslikeEnemyCombat` folder to your project's `Plugins` directory
-3. If `Plugins` doesn't exist, create it in your project root
+### Step 2: Enable the Plugin
 
-### Step 2: Regenerate Project Files
+1. Open your project in Unreal Editor
+2. Go to **Edit → Plugins**
+3. Search for "SoulslikeCombat" and ensure it's enabled
+4. Restart the editor if prompted
 
-Right-click your `.uproject` file → **Generate Visual Studio Project Files**
+### Step 3: Enable Required Plugins
 
-### Step 3: Add Module Dependencies
-
-In your module's `.Build.cs` file:
-
-```csharp
-PublicDependencyModuleNames.AddRange(new string[] { 
-    "SoulslikeEnemyCombat",
-    "GameplayAbilities",
-    "GameplayTags",
-    "GameplayTasks"
-});
-```
-
-### Step 4: Enable Required Plugins
-
-In Unreal Editor → **Edit > Plugins**, ensure these are enabled:
+In **Edit → Plugins**, ensure these are also enabled:
 - GameplayAbilities
 - StateTree
 - GameplayStateTree
 
-### Step 5: Verify Installation
+### Step 4: Verify Installation
 
-1. Restart Unreal Editor
-2. Navigate to `Content > SoulslikeEnemyCombat > Maps`
-3. Open `SEC_DemoLevel`
-4. Click Play - you should see a working enemy
+1. Navigate to `Content > SoulslikeEnemyCombat > Maps`
+2. Open `SEC_DemoLevel`
+3. Click Play - you should see a working enemy
 
-**If you see compilation errors:** Check that you're using **Unreal Engine 5.7** exactly. Other versions have incompatible StateTree APIs.
+> **Note:** This plugin requires **Unreal Engine 5.7** exactly. Other versions have incompatible StateTree APIs.
 
 ---
 
@@ -1487,7 +1468,7 @@ Yes. MIT license allows commercial use without royalties.
 
 ---
 
-[← Back to Plugin Overview](/articles/SoulslikeCombatSystem) | [Get on Fab Marketplace](https://www.fab.com/)
+[← Back to Plugin Overview](/projects/SoulslikeCombatSystem) | [Get on Fab Marketplace](https://www.fab.com/)
 
 ---
 
