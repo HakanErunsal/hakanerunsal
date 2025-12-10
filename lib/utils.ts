@@ -1,6 +1,6 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { Article, Project } from "#site/content";
+import { Article, Project, Doc } from "#site/content";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -25,6 +25,14 @@ export function sortArticles(articles: Array<Article>) {
 
 export function sortProjects(projects: Array<Project>) {
   return projects.sort((a, b) => {
+    if (a.date > b.date) return -1;
+    if (a.date < b.date) return 1;
+    return 0;
+  });
+}
+
+export function sortDocs(docs: Array<Doc>) {
+  return docs.sort((a, b) => {
     if (a.date > b.date) return -1;
     if (a.date < b.date) return 1;
     return 0;

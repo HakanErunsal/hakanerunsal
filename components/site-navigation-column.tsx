@@ -9,10 +9,10 @@ export function NavigationColumn() {
       <div className="w-40 h-40 p-4 flex flex-none items-center justify-center">
         <Link href="/">
           <div className="w-full h-full rounded-full border-4 border-primary bg-background p-2 flex items-center justify-center">
-            <Image 
-              src="/logos/H_Logo.png" 
-              alt="Logo" 
-              width={160} 
+            <Image
+              src="/logos/H_Logo.png"
+              alt="Logo"
+              width={160}
               height={160}
               priority
               className="object-contain scale-110"
@@ -26,6 +26,7 @@ export function NavigationColumn() {
         <ul className="space-y-2">
           <NavigationItem slug={"/articles"} title={"Articles"} />
           <NavigationItem slug={"/projects"} title={"Portfolio"} />
+          <NavigationItem slug={"/docs"} title={"Docs"} />
           <NavigationItem slug={"/about"} title={"About"} />
         </ul>
       </div>

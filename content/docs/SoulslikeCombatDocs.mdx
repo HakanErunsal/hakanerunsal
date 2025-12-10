@@ -1,0 +1,1470 @@
+---
+title: "SoulslikeCombat: Complete Documentation"
+image: "./../images/metahuman_to_manny_header.jpg"
+description: "Complete technical reference for the SoulslikeCombat Unreal Engine plugin - tutorials, API reference, and examples."
+date: 2025-12-10
+published: true
+tags: ["Documentation", "Unreal Engine", "AI", "Tutorial"]
+---
+
+## Overview
+
+**SoulslikeCombat** is a production-ready AI combat plugin for Unreal Engine 5.7. It provides intelligent, tactical enemy behavior for souls-like and action RPG games through a modular component system.
+
+### What's Included
+
+- ✅ Complete C++ source code
+- ✅ Blueprint-compatible components and tasks
+- ✅ Demo level with fully functional enemy
+- ✅ Example weapons, abilities, and action configurations
+- ✅ StateTree and Behavior Tree integration
+- ✅ Comprehensive documentation (you're reading it!)
+
+### Who This Is For
+
+- Developers creating souls-like, action RPG, or tactical combat games
+- Teams needing production-ready AI without building from scratch
+- Designers who want data-driven AI configuration without code
+- Projects using Gameplay Ability System (GAS) for combat
+
+---
+
+## Core Architecture
+
+### The StateTree + Behavior Tree Hybrid
+
+This plugin implements the **AAA-standard AI architecture** used in professional action games. Understanding this architecture is key to using the plugin effectively.
+
+### Why This Architecture?
+
+**The Problem with Traditional Approaches:**
+
+Most developers build AI using a single massive Behavior Tree. This leads to:
+- ❌ Unmaintainable trees with hundreds of nodes
+- ❌ Mixed concerns (strategy + execution in one place)
+- ❌ Difficult debugging and iteration
+- ❌ Poor scalability as complexity grows
+
+**The Professional Solution:**
+
+Separate **strategic thinking** from **tactical execution**:
+
+**StateTree (The Brain)** - High-level decision making:
+```
+┌─────────────────────────────────────┐
+│ StateTree: Strategic Layer          │
+├─────────────────────────────────────┤
+│ • Evaluates combat context          │
+│ • Scores available actions          │
+│ • Manages state transitions         │
+│ • Controls movement strategy        │
+│ • Handles target acquisition        │
+└─────────────────────────────────────┘
+          ↓
+┌─────────────────────────────────────┐
+│ Action Execution: Tactical Layer    │
+├─────────────────────────────────────┤
+│ Option A: Gameplay Ability          │
+│   → Simple: Play montage, apply dmg │
+│                                     │
+│ Option B: Behavior Tree Sequence    │
+│   → Complex: Multi-step, branching  │
+└─────────────────────────────────────┘
+```
+
+**Benefits:**
+
+✅ **Clear Separation** - Strategy decisions separate from action execution
+✅ **Scalability** - Add new actions without touching state machine logic
+✅ **Debuggability** - Isolate issues to strategy or execution layer
+✅ **Maintainability** - Each layer has single responsibility
+✅ **Industry Standard** - Same pattern used in major action games
+
+> **Pro Tip: When to Use Each Execution Mode**
+> Use Gameplay Abilities for simple attacks (play montage → damage). Use Behavior Tree sequences for complex multi-step actions with conditional branches (charge attack → check stamina → branch to heavy or light version).
+
+### System Flow
+
+1. **StateTree** polls `ActionEvaluationComponent` each tick
+2. **Component** gathers context: distance, angle, health, threat, tags
+3. **ActionSet** scores all available actions using:
+   - Distance and angle evaluations
+   - Health-based modifiers
+   - Cooldown status
+   - Context tags (player blocking, low health, etc.)
+   - Novelty decay (anti-repetition)
+4. **Best action selected** and executed as:
+   - **Gameplay Ability** (via AbilitySystemComponent), OR
+   - **Behavior Tree sequence** (via temporary BT component)
+5. **Movement system** evaluates 16 directions simultaneously:
+   - Scores each for distance, angle, avoidance
+   - Blends pathfinding with direct input
+   - Applies strafing, retreat, or approach behavior
+
+---
+
+## Installation
+
+### Step 1: Copy Plugin
+
+```
+YourProject/
+└── Plugins/
+    └── SoulslikeEnemyCombat/
+        ├── Source/
+        ├── Content/
+        └── SoulslikeEnemyCombat.uplugin
+```
+
+1. Download or clone the plugin
+2. Copy the `SoulslikeEnemyCombat` folder to your project's `Plugins` directory
+3. If `Plugins` doesn't exist, create it in your project root
+
+### Step 2: Regenerate Project Files
+
+Right-click your `.uproject` file → **Generate Visual Studio Project Files**
+
+### Step 3: Add Module Dependencies
+
+In your module's `.Build.cs` file:
+
+```csharp
+PublicDependencyModuleNames.AddRange(new string[] { 
+    "SoulslikeEnemyCombat",
+    "GameplayAbilities",
+    "GameplayTags",
+    "GameplayTasks"
+});
+```
+
+### Step 4: Enable Required Plugins
+
+In Unreal Editor → **Edit > Plugins**, ensure these are enabled:
+- GameplayAbilities
+- StateTree
+- GameplayStateTree
+
+### Step 5: Verify Installation
+
+1. Restart Unreal Editor
+2. Navigate to `Content > SoulslikeEnemyCombat > Maps`
+3. Open `SEC_DemoLevel`
+4. Click Play - you should see a working enemy
+
+**If you see compilation errors:** Check that you're using **Unreal Engine 5.7** exactly. Other versions have incompatible StateTree APIs.
+
+---
+
+## Quick Start Guide
+
+### Your First Enemy in 10 Minutes
+
+This quick start gets you from zero to a functional AI enemy as fast as possible.
+
+#### 1. Open Demo Level
+
+Navigate to `Content/SoulslikeEnemyCombat/Maps/SEC_DemoLevel` and open it. Study the working enemy to understand the system.
+
+#### 2. Create Enemy Blueprint
+
+**Right-click in Content Browser** → Blueprint Class → Search for `EnemyCharacterBase`
+
+**Name it:** `BP_MyEnemy`
+
+**In the Blueprint:**
+- Add your skeletal mesh
+- Configure capsule collision
+- Set movement speed (recommended: 400)
+
+**What `AEnemyCharacterBase` provides:**
+- `USECMeleeTraceComponent` - Melee hit detection
+- `UAbilitySystemComponent` - GAS integration
+- Character movement configured
+
+#### 3. Create AI Controller
+
+**Right-click** → Blueprint Class → Search for `EnemyControllerBase`
+
+**Name it:** `BP_MyEnemyController`
+
+**Configure in Details Panel:**
+
+**MovementEvaluator Settings:**
+```
+IdealMinDistance: 150.0    // Stay at least this close
+IdealMaxDistance: 300.0    // Don't go farther
+StrafeRadius: 200.0        // Circle at this distance
+```
+
+**ActionEvaluation Settings:**
+```
+CurrentActionSet: (create in next step)
+bDebugLog: true           // See decisions in Output Log
+```
+
+#### 4. Create ActionSet Data Asset
+
+**Right-click** → Miscellaneous → Data Asset → `ActionSet`
+
+**Name it:** `DA_MyEnemyActions`
+
+**Add your first action:**
+
+| Field | Value |
+|-------|-------|
+| **Id** | `LightAttack` |
+| **AbilityTag** | `SEC.Action.LightAttack` |
+| **AbilityEndTag** | `SEC.Action.End` |
+| **ExecutionMode** | `GameplayAbility` |
+| **Distance → OptimalMin** | `100` |
+| **Distance → OptimalMax** | `250` |
+| **Distance → MaxValue** | `400` |
+| **Angle → OptimalMax** | `30` |
+| **Cooldown → Duration** | `2.0` |
+| **BaseWeight** | `1.0` |
+
+#### 5. Create Gameplay Ability
+
+**Right-click** → Blueprint Class → `GameplayAbility`
+
+**Name it:** `GA_LightAttack`
+
+**Setup:**
+1. Class Defaults → Ability Tags → Add `SEC.Action.LightAttack`
+
+**Event Graph:**
+```
+ActivateAbility
+  ↓
+PlayMontageAndWait (YourAttackMontage)
+  ↓
+SendGameplayEventToActor
+  • Target: GetAvatarActorFromActorInfo
+  • EventTag: SEC.Action.End
+  ↓
+EndAbility
+```
+
+> **Pro Tip: Why the End Event Matters**
+> ActionEvaluationComponent listens for SEC.Action.End to know the action completed. Without it, the AI gets stuck waiting forever.
+
+#### 6. Create StateTree
+
+**Right-click** → AI → StateTree
+
+**Name it:** `ST_MyEnemy`
+
+**Structure:**
+```
+Root State
+├─ BuildDecisionContext [Tick]
+│  • TargetActor: GetPlayerCharacter
+│  • OutputPin: DecisionContext
+│
+├─ AIMovement [Tick]
+│  • Context: DecisionContext
+│
+├─ PollAction [On Enter]
+│  • Context: DecisionContext
+│  • Output: ChosenAction
+│
+└─ DoAction [On Enter]
+   • ChosenAction: (from PollAction)
+   • TargetActor: (from context)
+```
+
+#### 7. Assign StateTree to Controller
+
+In `BP_MyEnemyController` → Class Defaults → **StateTree Asset** → Set to `ST_MyEnemy`
+
+#### 8. Configure Character
+
+In `BP_MyEnemy` → Class Defaults → **AI Controller Class** → Set to `BP_MyEnemyController`
+
+#### 9. Place and Test
+
+1. Drag `BP_MyEnemy` into your level
+2. Set player as focus target (or use demo player)
+3. Click Play
+4. Watch Output Log for action selection debug messages
+
+**Expected behavior:**
+- Enemy approaches to ideal distance (150-300cm)
+- Executes light attack when in range
+- Waits for cooldown
+- Repeats
+
+---
+
+## Step-by-Step Enemy Creation
+
+This section provides comprehensive instructions for creating a complete enemy from scratch, including weapons, animations, and advanced features.
+
+### Prerequisites
+
+Before starting, ensure you have:
+- Character skeletal mesh with animations
+- Attack animation montages with hit frames identified
+- Basic understanding of Gameplay Ability System
+- Unreal Engine 5.7 installed
+
+### Step 1: Character Setup
+
+**Create Blueprint:** `BP_DetailedEnemy` (inherits `AEnemyCharacterBase`)
+
+**In Components Panel:**
+1. Select **SkeletalMesh** component
+   - Set your character mesh
+   - Configure materials
+
+2. Select **CapsuleComponent**
+   - Adjust radius to fit mesh
+   - Set height appropriately
+
+3. Select **CharacterMovement** component
+   - Max Walk Speed: `400`
+   - Max Acceleration: `2048`
+   - Rotation Rate: `(Pitch=0, Yaw=360, Roll=0)`
+
+**What You Get Automatically:**
+- `USECMeleeTraceComponent` - Already added by base class
+- `UAbilitySystemComponent` - Already configured
+- `IAbilitySystemInterface` - Already implemented
+
+### Step 2: AI Controller Setup
+
+**Create Blueprint:** `BP_DetailedEnemyController` (inherits `AEnemyControllerBase`)
+
+**What the base class provides:**
+```cpp
+// These components are automatically added:
+UMovementEvaluatorComponent*    // Tactical movement
+UThreatDetectionComponent*      // Player attention tracking
+UActionEvaluationComponent*     // Action scoring & execution
+UBehaviorTreeComponent*         // For BT sequence execution
+```
+
+**Configure Movement:**
+
+Open `BP_DetailedEnemyController` → Details Panel → **Movement Evaluator:**
+
+```
+Distance Settings:
+  IdealMinDistance: 150.0
+  IdealMaxDistance: 300.0
+  
+Strafe Settings:
+  StrafeRadius: 200.0
+  StrafeDuration: 3.0
+  StrafeCooldown: 2.0
+  
+Navigation:
+  DirectControlThreshold: 600.0
+  AvoidanceRadius: 100.0
+  
+Debug:
+  bDebugLog: false (enable to see movement decisions)
+```
+
+**Configure Action Evaluation:**
+
+Details Panel → **Action Evaluation:**
+
+```
+CurrentActionSet: DA_DetailedEnemyActions (create next)
+NoveltyDecayRate: 0.2
+bDebugLog: true (enable to see action scoring)
+```
+
+### Step 3: Create Comprehensive ActionSet
+
+**Create Data Asset:** `DA_DetailedEnemyActions` (type: `ActionSet`)
+
+**Add Multiple Actions for Variety:**
+
+**Action 1: Light Attack (Close Range)**
+
+| Property | Value | Notes |
+|----------|-------|-------|
+| Id | `LightAttack` | Unique identifier |
+| DisplayName | `Light Attack` | Editor display |
+| ExecutionMode | `GameplayAbility` | Simple ability execution |
+| AbilityTag | `SEC.Action.LightAttack` | Triggers GA_LightAttack |
+| AbilityEndTag | `SEC.Action.End` | Completion signal |
+| **Distance** | | |
+| ↳ MinValue | `0` | Valid from 0cm |
+| ↳ OptimalMin | `100` | Score = 1.0 starts |
+| ↳ OptimalMax | `250` | Score = 1.0 ends |
+| ↳ MaxValue | `400` | Invalid beyond |
+| **Angle** | | |
+| ↳ MinValue | `0` | Must face target |
+| ↳ OptimalMin | `0` | Perfect facing |
+| ↳ OptimalMax | `30` | Up to 30° good |
+| ↳ MaxValue | `90` | Don't use >90° |
+| **Cooldown** | | |
+| ↳ Duration | `2.0` | 2 second cooldown |
+| ↳ WarmupCooldown | `1.0` | Can't use first 1s |
+| BaseWeight | `1.0` | Selection priority |
+| bRequireLOS | `true` | Need line of sight |
+
+**Action 2: Heavy Attack (Medium Range)**
+
+| Property | Value | Notes |
+|----------|-------|-------|
+| Id | `HeavyAttack` | |
+| ExecutionMode | `GameplayAbility` | |
+| AbilityTag | `SEC.Action.HeavyAttack` | |
+| AbilityEndTag | `SEC.Action.End` | |
+| Distance: OptimalMin | `150` | Slightly farther |
+| Distance: OptimalMax | `300` | |
+| Cooldown: Duration | `4.0` | Longer cooldown |
+| BaseWeight | `0.8` | Lower priority |
+| **Chain From** | `LightAttack` | Can combo after light |
+| **Chain Bonus** | `0.5` | +50% score if chaining |
+
+**Action 3: Defensive Retreat (When Too Close)**
+
+| Property | Value | Notes |
+|----------|-------|-------|
+| Id | `QuickRetreat` | |
+| ExecutionMode | `BehaviorTreeSequence` | Uses BT for movement |
+| BehaviorTrees | `[BT_QuickBackstep]` | Array of BTs to run |
+| Distance: OptimalMin | `0` | Use when very close |
+| Distance: OptimalMax | `100` | |
+| Cooldown: Duration | `3.0` | |
+| BaseWeight | `1.5` | Higher priority |
+| **Context Modifiers:** | | |
+| ↳ Tag: `Player.Attacking` | Multiplier: `2.0` | Much higher score if player attacking |
+
+### Step 4: Create Gameplay Abilities
+
+For each action using `GameplayAbility` execution mode, create an ability Blueprint.
+
+**Example: GA_LightAttack**
+
+**Class Defaults:**
+- Ability Tags: `SEC.Action.LightAttack`
+- Activation Policy: `OnSpawn`
+
+**Event Graph Implementation:**
+
+```
+Event ActivateAbility
+  ↓
+[Branch: Check if montage valid]
+  ↓ True
+Play Montage and Wait
+  • Montage: AM_LightAttack
+  • Rate: 1.0
+  ↓ On Completed
+Send Gameplay Event to Actor
+  • Target: Get Avatar Actor from Actor Info
+  • Event Tag: SEC.Action.End
+  • Payload: (optional ActionInfo)
+  ↓
+End Ability
+  • Cancel: false
+  
+  ↓ On Cancelled/Interrupted
+Send Gameplay Event to Actor (SEC.Action.End)
+  ↓
+End Ability
+```
+
+**Important:** Always send the `SEC.Action.End` event, even if interrupted. Otherwise, the AI gets stuck.
+
+### Step 5: Configure Animation Montages
+
+**Create Montage:** `AM_LightAttack` from your attack animation
+
+**Add Melee Trace Notify State:**
+
+1. Right-click timeline at attack's active frames
+2. Add Notify State → `SECMeleeTraceNotifyState`
+3. Duration: Cover the weapon swing (e.g., frames 10-25)
+
+**Configure Notify State:**
+
+Details Panel:
+```
+Socket IDs: ["Blade"]  // Must match weapon trace socket
+```
+
+**Add End Event Notify:**
+
+1. Near montage end (e.g., frame 40)
+2. Add Notify → `AnimNotify_GameplayCue`
+3. Gameplay Cue Tag: `SEC.Action.End`
+
+**Timing Example:**
+```
+Frame:     0    10    20    30    40    50
+Animation: [━━━━][━━━━][━━━━][━━━━][━━━━]
+           Windup Strike  Follow Recovery
+Trace:          [═════════]
+End Event:                           ▲
+```
+
+### Step 6: Create Weapon
+
+**Create Blueprint:** `BP_Sword` (inherits `ASECWeaponBase`)
+
+**Class Defaults:**
+
+**Attachment:**
+```
+AttachSocket: "RightHandSocket"  // Socket on character skeleton
+```
+
+**Trace Sockets Array:**
+
+Add element [0]:
+```
+ID: "Blade"
+Shape: CapsuleTwoPoint
+SocketOrBoneName: "blade_start"    // Socket on weapon mesh
+EndSocketOrBoneName: "blade_end"   // Socket on weapon mesh
+Radius: 15.0
+TraceChannel: ECC_GameTraceChannel1
+```
+
+**Damage Configuration:**
+```
+DamageConfig: DA_SwordDamage  // Create data asset
+```
+
+**Weapon Mesh Setup:**
+
+1. Components → WeaponMesh → Set your sword static/skeletal mesh
+2. Add sockets to weapon mesh:
+   - `blade_start` at blade base
+   - `blade_end` at blade tip
+3. Position sockets along the cutting edge
+
+**What Happens Automatically:**
+- On equip → Registers trace sockets with character's `MeleeTraceComponent`
+- During montage notify → Traces activate between sockets
+- On hit → Applies damage via DamageConfig
+
+### Step 7: Create Damage Configuration
+
+**Create Data Asset:** `DA_SwordDamage` (type: `SECDamageConfig`)
+
+```
+BaseDamage: 25.0
+DamageType: UDamageType (or custom class)
+ImpulseStrength: 500.0
+bCanCritical: false
+```
+
+### Step 8: Build StateTree Logic
+
+**Create StateTree:** `ST_DetailedEnemy`
+
+**Root State Configuration:**
+
+```
+StateTree: ST_DetailedEnemy
+
+├─ Root State (Always Active)
+│  │
+│  ├─ [Tick] STTask_BuildDecisionContext
+│  │  • TargetActor: Get Player Character (or blackboard)
+│  │  • Output Pin: DecisionContext (FDecisionContext struct)
+│  │
+│  ├─ [Tick] STTask_AIMovement
+│  │  • Context: DecisionContext (linked from above)
+│  │  • MovementProfile: (empty = use controller defaults)
+│  │
+│  └─ Transition → Combat State
+│     • Condition: DecisionContext.TargetActor Is Valid
+│
+└─ Combat State
+   │
+   ├─ Decision Substate
+   │  │
+   │  ├─ [Enter] STTask_PollAction
+   │  │  • Context: DecisionContext
+   │  │  • Output: ChosenAction (FChosenAction struct)
+   │  │
+   │  └─ Transition → Execute State
+   │     • Condition: ChosenAction.IsValid == true
+   │
+   └─ Execute Substate
+      │
+      ├─ [Enter] STTask_DoAction
+      │  • ChosenAction: (from PollAction)
+      │  • TargetActor: DecisionContext.TargetActor
+      │  • WaitForCompletion: true
+      │
+      └─ Transition → Decision State
+         • Condition: DoAction.Completed == true
+```
+
+**Task Breakdown:**
+
+**STTask_BuildDecisionContext** (Runs Every Tick):
+- Gathers distance to target
+- Calculates angle to target
+- Checks line of sight
+- Evaluates health percentages
+- Outputs comprehensive context struct
+
+**STTask_AIMovement** (Runs Every Tick):
+- Uses context to determine ideal position
+- Evaluates 16 directional samples
+- Scores each for distance, angle, avoidance
+- Applies movement input to character
+
+**STTask_PollAction** (Runs When Entering Decision State):
+- Scores all actions in ActionSet
+- Applies distance/angle evaluations
+- Checks cooldowns
+- Considers context modifiers
+- Selects highest-scoring valid action
+
+**STTask_DoAction** (Runs When Entering Execute State):
+- If Ability mode: Activates ability via ASC
+- If BT mode: Runs behavior tree sequence
+- Waits for `SEC.Action.End` event
+- Returns when action completes
+
+### Step 9: Test Your Enemy
+
+**Place in Level:**
+
+1. Drag `BP_DetailedEnemy` into level
+2. Details Panel → Pawn → AI Controller Class → `BP_DetailedEnemyController`
+
+**Debug Configuration:**
+
+Enable logging in controller:
+```
+ActionEvaluation → bDebugLog: true
+MovementEvaluator → bDebugLog: true
+```
+
+**Play and Observe:**
+
+**Output Log Messages:**
+```
+LogEvaluation: Evaluating 3 actions for BP_DetailedEnemy_1...
+LogEvaluation: [LightAttack] Dist:180 Angle:15 Score:0.95 SELECTED
+LogEvaluation: [HeavyAttack] Dist:180 Angle:15 Score:0.60 (cooldown)
+LogEvaluation: [QuickRetreat] Dist:180 Angle:15 Score:0.10 (too far)
+```
+
+**Expected Behavior:**
+- Approaches to ideal distance range
+- Strafes around player
+- Executes light attack when in optimal range
+- Occasionally uses heavy attack
+- Retreats if player gets too close
+
+**Common Issues:**
+
+| Problem | Cause | Solution |
+|---------|-------|----------|
+| AI doesn't attack | Ability not activating | Check AbilityTag matches, verify ASC grants ability |
+| AI stuck after attack | End event not sent | Verify montage sends SEC.Action.End notify |
+| AI repeats same action | Only one action valid | Add more actions with different ranges |
+| AI doesn't move | Movement not enabled | Check STTask_AIMovement is ticking |
+| Weapon doesn't hit | Socket mismatch | Verify notify Socket IDs match weapon TraceSockets IDs |
+
+---
+
+## Core Components Reference
+
+### UMovementEvaluatorComponent
+
+**Purpose:** Handles tactical positioning, distance maintenance, strafing, and avoidance.
+
+**Key Properties:**
+
+```cpp
+// Distance Management
+UPROPERTY(EditAnywhere, Category = "Movement")
+float IdealMinDistance = 200.f;
+
+UPROPERTY(EditAnywhere, Category = "Movement")
+float IdealMaxDistance = 400.f;
+
+// Strafing
+UPROPERTY(EditAnywhere, Category = "Strafe")
+float StrafeRadius = 300.f;
+
+UPROPERTY(EditAnywhere, Category = "Strafe")
+float StrafeDuration = 3.f;
+
+UPROPERTY(EditAnywhere, Category = "Strafe")
+float StrafeCooldown = 2.f;
+
+// Navigation
+UPROPERTY(EditAnywhere, Category = "Navigation")
+float DirectControlThreshold = 600.f;
+
+// Debug
+UPROPERTY(EditAnywhere, Category = "Debug")
+bool bDebugLog = false;
+```
+
+**Key Functions:**
+
+```cpp
+// Called each tick to get movement direction
+FVector EvaluateMovement(const FVector& TargetLocation, float DeltaTime);
+
+// Apply behavior preset
+void ApplyBehaviorConfig(const FMovementBehaviorConfig& Config);
+void ApplyBehaviorProfile(UMovementBehaviorProfile* Profile);
+
+// Manual overrides
+void SetDesiredDistance(float Min, float Max);
+void EnableStrafing(bool bEnable);
+```
+
+**Behavior Presets:**
+
+```cpp
+// Aggressive close-range fighter
+FMovementBehaviorConfig::MakeAttacker();
+
+// Patient mid-range combatant
+FMovementBehaviorConfig::MakeWaiter();
+
+// Flanking enemy that circles wide
+FMovementBehaviorConfig::MakeFlanker();
+
+// Defensive enemy that keeps distance
+FMovementBehaviorConfig::MakeCoward();
+```
+
+**Usage Example (Blueprint):**
+
+```cpp
+// In BeginPlay of AI Controller:
+MovementEvaluator->ApplyBehaviorConfig(
+    FMovementBehaviorConfig::MakeAttacker()
+);
+
+// Or use data asset:
+MovementEvaluator->ApplyBehaviorProfile(AggressiveMeleeProfile);
+```
+
+---
+
+### UActionEvaluationComponent
+
+**Purpose:** Scores and selects actions, manages cooldowns, executes abilities or BT sequences.
+
+**Key Properties:**
+
+```cpp
+UPROPERTY(EditAnywhere, Category = "Actions")
+UActionSet* CurrentActionSet;
+
+UPROPERTY(EditAnywhere, Category = "Scoring")
+float NoveltyDecayRate = 0.2f;
+
+UPROPERTY(EditAnywhere, Category = "Debug")
+bool bDebugLog = false;
+```
+
+**Key Functions:**
+
+```cpp
+// Evaluate all actions and return best
+FChosenAction EvaluateBestAction(const FDecisionContext& Context);
+
+// Manually execute an action
+void ExecuteAction(const FChosenAction& Action, AActor* TargetActor);
+
+// Swap action set at runtime (e.g., boss phase 2)
+void SetActionSet(UActionSet* NewSet);
+
+// Notify when action ends (auto-called by SEC.Action.End event)
+void NotifyActionCommitted(FGameplayTag AbilityTag, double NowSeconds);
+
+// Add runtime modifiers
+void AddRuntimeModifier(FGameplayTag ActionTag, float BonusWeight);
+void ClearRuntimeModifiers();
+```
+
+**Scoring Formula:**
+
+```
+FinalScore = BaseWeight
+           × DistanceScore        // 0-1 from FRangeEval
+           × AngleScore           // 0-1 from FRangeEval
+           × HealthModifiers      // From context tags
+           × NoveltyScore         // Decays if used recently
+           × ChainBonus           // If valid combo
+           × RuntimeModifiers     // Dynamic adjustments
+```
+
+**Usage Example:**
+
+```cpp
+// In StateTree task or Blueprint:
+FDecisionContext Context = BuildContext();
+FChosenAction BestAction = ActionEvaluation->EvaluateBestAction(Context);
+
+if (BestAction.IsValid())
+{
+    ActionEvaluation->ExecuteAction(BestAction, TargetActor);
+}
+```
+
+---
+
+### UThreatDetectionComponent
+
+**Purpose:** Tracks player camera attention, adjusts behavior when under observation.
+
+**Key Properties:**
+
+```cpp
+UPROPERTY(EditAnywhere, Category = "Threat")
+float AttentionDecayRate = 0.5f;
+
+UPROPERTY(EditAnywhere, Category = "Threat")
+float DetectionAngle = 45.f;
+
+UPROPERTY(EditAnywhere, Category = "Threat")
+float MinThreatForReaction = 0.6f;
+```
+
+**Key Functions:**
+
+```cpp
+// Current threat level [0-1]
+float GetThreatLevel() const;
+
+// Is player looking at this AI?
+bool IsPlayerLookingAtMe() const;
+
+// Manually add threat
+void AddThreat(float Amount);
+```
+
+**How It Works:**
+
+- Detects when player camera points at AI (cone check)
+- Threat level builds up while under observation
+- Decays over time when not observed
+- Feeds into action scoring (defensive actions score higher when threatened)
+- Can trigger strafe direction changes
+
+---
+
+### USECMeleeTraceComponent
+
+**Purpose:** Frame-rate independent swept traces for melee combat.
+
+**Key Functions:**
+
+```cpp
+// Register weapon's trace sockets (auto-called on equip)
+void RegisterWeaponTraceSockets(const TArray<FSECTraceSocket>& Sockets);
+
+// Start tracing specific sockets (called by notify state)
+void BeginTrace(const TArray<FName>& SocketIDs);
+
+// Stop tracing
+void EndTrace(const TArray<FName>& SocketIDs);
+
+// Set damage for current traces
+void SetDamageConfig(USECDamageConfig* Config);
+```
+
+**Trace Shapes:**
+
+```cpp
+enum class ESECTraceShape
+{
+    Sphere,            // Single point sphere sweep
+    Capsule,           // Single point capsule sweep
+    CapsuleTwoPoint    // Capsule between two sockets (for blades)
+};
+```
+
+**How It Works:**
+
+1. Weapon registers trace sockets on equip
+2. Animation montage includes `SECMeleeTraceNotifyState`
+3. Notify state calls `BeginTrace` with socket IDs
+4. Component stores previous frame positions
+5. Performs swept traces from previous to current positions
+6. On hit, applies damage via Gameplay Effect
+7. Prevents multi-hit on same actor (configurable interval)
+
+**Usage:** Fully automatic - just configure weapon sockets and add notify states to montages.
+
+---
+
+## Configuration Assets
+
+### UActionSet (Data Asset)
+
+Contains an array of `FActionSpec` - all available actions for an AI.
+
+**Creating an ActionSet:**
+
+1. Right-click → Miscellaneous → Data Asset → `ActionSet`
+2. Add actions to the Actions array
+3. Configure each action's properties
+
+**FActionSpec Structure:**
+
+```cpp
+struct FActionSpec
+{
+    // Identity
+    FName Id;                          // Unique identifier
+    FString DisplayName;               // Editor name
+    EActionExecutionMode ExecutionMode; // Ability or BT
+    
+    // Gameplay Ability Mode
+    FGameplayTag AbilityTag;           // Tag to activate
+    FGameplayTag AbilityEndTag;        // Completion signal
+    
+    // Behavior Tree Mode
+    TArray<UBehaviorTree*> BehaviorTrees;
+    float BehaviorTreeTimeout;
+    
+    // Scoring
+    FRangeEval Distance;               // Distance curve
+    FRangeEval Angle;                  // Angle curve
+    float BaseWeight;                  // Base priority
+    bool bRequireLOS;                  // Line of sight required
+    
+    // Cooldowns
+    FActionCooldown Cooldown;
+    
+    // Chaining
+    TArray<FName> ChainFrom;           // Can combo after these
+    float ChainBonusMultiplier;        // Score bonus if chaining
+    
+    // Context
+    FGameplayTagContainer RequiredTags;
+    FGameplayTagContainer BlockedTags;
+    TArray<FTagWeightModifier> ContextModifiers;
+};
+```
+
+**FRangeEval Explained:**
+
+```cpp
+struct FRangeEval
+{
+    float MinValue;      // Invalid below this
+    float OptimalMin;    // Score = 1.0 starts here
+    float OptimalMax;    // Score = 1.0 ends here
+    float MaxValue;      // Invalid above this
+};
+
+// Example: Distance range for melee attack
+Distance.MinValue = 0;       // Valid from 0cm
+Distance.OptimalMin = 100;   // Perfect from 100cm
+Distance.OptimalMax = 250;   // Perfect until 250cm
+Distance.MaxValue = 400;     // Invalid beyond 400cm
+
+// Scoring visualization:
+//   0    100       250      400
+//   |-----|========|--------|
+//   0.0   1.0     1.0      0.0
+```
+
+---
+
+### UMovementBehaviorProfile (Data Asset)
+
+Contains all parameters for `MovementEvaluatorComponent`.
+
+**Example Profile:**
+
+```cpp
+Name: DA_AggressiveMelee
+
+IdealMinDistance: 150
+IdealMaxDistance: 250
+StrafeRadius: 200
+StrafeDuration: 2.5
+StrafeCooldown: 1.0
+RetreatBias: 0.3           // 0=never retreat, 1=always retreat
+DirectControlThreshold: 500
+AvoidanceRadius: 100
+```
+
+**Using Profiles:**
+
+```cpp
+// In AI Controller BeginPlay:
+MovementEvaluator->ApplyBehaviorProfile(AggressiveMeleeProfile);
+
+// Or swap at runtime (e.g., boss phase change):
+MovementEvaluator->ApplyBehaviorProfile(EnragedProfile);
+```
+
+---
+
+### USECDamageConfig (Data Asset)
+
+Contains damage values and type for melee attacks.
+
+**Properties:**
+
+```cpp
+BaseDamage: 45.0
+DamageType: UDmgType_Physical
+ImpulseStrength: 1000.0
+bCanCritical: true
+CriticalMultiplier: 2.0
+```
+
+**Usage:**
+
+Assigned to weapons, automatically applied during melee traces.
+
+---
+
+## StateTree Integration
+
+### Available StateTree Tasks
+
+| Task | Purpose | When to Use |
+|------|---------|-------------|
+| `STTask_BuildDecisionContext` | Gathers combat data | Every tick in root state |
+| `STTask_AIMovement` | Evaluates and applies movement | Every tick in root state |
+| `STTask_PollAction` | Scores and selects action | On entering decision state |
+| `STTask_DoAction` | Executes chosen action | On entering execute state |
+| `STTask_UpdateActionSet` | Swaps ActionSet | When changing AI behavior |
+
+### Typical StateTree Structure
+
+```
+Root (Always Active)
+├─ BuildDecisionContext [Tick]
+├─ AIMovement [Tick]
+│
+├─ Idle State
+│  └─ Transition → Combat (when target acquired)
+│
+└─ Combat State
+   ├─ Decision State
+   │  ├─ PollAction [Enter]
+   │  └─ Transition → Execute (when action chosen)
+   │
+   └─ Execute State
+      ├─ DoAction [Enter]
+      └─ Transition → Decision (when complete)
+```
+
+### Task Details
+
+**STTask_BuildDecisionContext:**
+
+Inputs:
+- TargetActor (Object)
+
+Outputs:
+- DecisionContext (FDecisionContext struct)
+
+What it does:
+- Calculates distance and angle to target
+- Checks line of sight
+- Evaluates health percentages
+- Gathers gameplay tags from target
+
+**STTask_PollAction:**
+
+Inputs:
+- Context (FDecisionContext)
+
+Outputs:
+- ChosenAction (FChosenAction)
+
+What it does:
+- Scores all actions in ActionSet
+- Applies range evaluations
+- Checks cooldowns
+- Selects best valid action
+
+**STTask_DoAction:**
+
+Inputs:
+- ChosenAction (FChosenAction)
+- TargetActor (Object)
+- WaitForCompletion (bool)
+
+What it does:
+- If Ability: Activates via ASC
+- If BT: Runs behavior tree sequence
+- Waits for SEC.Action.End event
+- Completes when action finishes
+
+---
+
+## Behavior Tree Tasks
+
+For actions using `BehaviorTreeSequence` execution mode.
+
+| Task | Purpose |
+|------|---------|
+| `BTTask_MoveUntilDistance` | Move toward target until within range |
+| `BTTask_MakeDistance` | Retreat from target |
+| `BTTask_ActivateAbility` | Activate ability by class |
+| `BTTask_ActivateBlackboardAbility` | Activate ability from blackboard tag |
+| `BTTask_DebugSECValues` | Debug display for SEC keys |
+
+### Auto-Populated Blackboard Keys
+
+When `STTask_DoAction` runs a BT sequence, these keys are set:
+
+| Key | Type | Value |
+|-----|------|-------|
+| `SEC_TargetActor` | Object | Current focus actor |
+| `SEC_SelfActor` | Object | Controlled pawn |
+| `SEC_Distance` | Float | Distance to target |
+| `SEC_ActionId` | Name | ID of executing action |
+| `SEC_AbilityTag` | Name | Ability tag (if set) |
+| `SEC_AbilityEndTag` | Name | End tag (if set) |
+
+---
+
+## Common Patterns & Examples
+
+### Pattern 1: Basic Melee Enemy
+
+**ActionSet:**
+- 2-3 melee attacks at close range (100-300cm)
+- Quick retreat when too close (under 100cm)
+
+**Movement:**
+- IdealMinDistance: 150
+- IdealMaxDistance: 250
+- Strafe enabled
+
+**Actions:**
+```
+LightAttack:  100-250cm, 2s cooldown, weight 1.0
+HeavyAttack:  150-300cm, 4s cooldown, weight 0.8, chains from LightAttack
+QuickRetreat: 0-100cm,   3s cooldown, weight 1.5 (defensive)
+```
+
+---
+
+### Pattern 2: Defensive Enemy
+
+**ActionSet:**
+- Defensive actions score higher
+- Longer cooldowns, stays at distance
+
+**Movement:**
+- IdealMinDistance: 250
+- IdealMaxDistance: 400
+- Retreat bias: 0.7
+
+**Actions:**
+```
+CounterAttack: 150-250cm, only when Player.Attacking tag (2x multiplier)
+Block:         100-300cm, BehaviorTree sequence with shield raise
+Retreat:       0-200cm,   high weight, moves away
+```
+
+---
+
+### Pattern 3: Aggressive Rusher
+
+**ActionSet:**
+- Close-range focused
+- Short cooldowns
+
+**Movement:**
+- IdealMinDistance: 50
+- IdealMaxDistance: 150
+- Strafe disabled, aggressive approach
+
+**Actions:**
+```
+LungeAttack:   200-400cm, 1s cooldown, high weight (initiator)
+RapidSlash:    50-150cm,  1.5s cooldown, chains from LungeAttack
+Grapple:       0-100cm,   3s cooldown, BehaviorTree with special animation
+```
+
+---
+
+## API Reference
+
+### Base Classes
+
+**AEnemyControllerBase**
+
+```cpp
+// Get components
+UMovementEvaluatorComponent* GetMovementEvaluator();
+UThreatDetectionComponent* GetThreatDetection();
+UActionEvaluationComponent* GetActionEvaluation();
+
+// Runtime BT execution
+void RunBehaviorTreeSequence(const TArray<UBehaviorTree*>& Trees, float Timeout);
+```
+
+**AEnemyCharacterBase**
+
+```cpp
+// Get ASC
+UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+
+// Equip weapon
+void EquipWeapon(ASECWeaponBase* Weapon, FName SocketName);
+```
+
+**ASECWeaponBase**
+
+```cpp
+// Equip/unequip
+void Equip(ACharacter* Character, FName SocketName);
+void Unequip();
+
+// Auto-behavior:
+// - On Equip: Attaches, registers traces, sends tag event
+// - On Unequip: Detaches, unregisters, sends tag event
+```
+
+---
+
+## Debugging & Troubleshooting
+
+### Enable Debug Logging
+
+**In AI Controller Blueprint:**
+
+```
+ActionEvaluation → bDebugLog: true
+MovementEvaluator → bDebugLog: true
+ThreatDetection → bDebugLog: true
+```
+
+**Output Log Messages:**
+
+```
+LogEvaluation: Evaluating 3 actions...
+LogEvaluation: [LightAttack] Dist:180 Angle:15 Score:0.95 SELECTED
+LogEvaluation: [HeavyAttack] Dist:180 Angle:15 Score:0.60 (cooldown:1.2s)
+```
+
+### Visual Debugging
+
+**Console Commands:**
+
+```cpp
+// Show debug spheres for movement evaluation
+showdebug SEC
+
+// Visualize StateTree execution
+statetree.debug 1
+
+// Show ability activations
+showdebug abilitysystem
+```
+
+### Common Issues
+
+#### AI doesn't attack
+
+**Possible Causes:**
+- Ability not granted to ASC
+- AbilityTag mismatch
+- Action out of range
+- Action on cooldown
+- No valid actions in ActionSet
+
+**Solutions:**
+- Check ASC grants ability with correct tag
+- Verify ActionSet AbilityTag matches ability's tags
+- Enable bDebugLog to see why action isn't selected
+- Check distance/angle ranges in ActionSet
+
+#### AI gets stuck after attacking
+
+**Cause:** End event not sent
+
+**Solution:**
+- Verify montage sends `SEC.Action.End` notify
+- Check ability sends event on completion, cancellation, AND interruption
+- Look for "Waiting for action to complete..." in log (means no end event received)
+
+#### Weapon doesn't deal damage
+
+**Possible Causes:**
+- Socket ID mismatch
+- Trace channel not configured
+- Damage config not set
+- No MeleeTraceComponent on character
+
+**Solutions:**
+- Verify notify state Socket IDs match weapon TraceSockets IDs exactly
+- Check trace channel in Project Settings → Collision
+- Assign DamageConfig to weapon
+- Ensure character has USECMeleeTraceComponent (inherited from base)
+
+#### AI doesn't move
+
+**Possible Causes:**
+- Movement task not ticking
+- NavMesh not present
+- DirectControlThreshold too high/low
+
+**Solutions:**
+- Verify STTask_AIMovement is in root state with [Tick]
+- Press P in viewport to show NavMesh
+- Adjust DirectControlThreshold (try 500-700)
+- Enable MovementEvaluator debug logging
+
+---
+
+## What It Is / What It's Not
+
+### What SoulslikeCombat IS
+
+✅ **Production-Ready Enemy AI** - Intelligent tactical combat behaviors  
+✅ **Modular Component System** - Mix and match for different enemy types  
+✅ **Data-Driven Configuration** - Designers tune without code  
+✅ **Blueprint-Friendly** - Full Blueprint support, C++ optional  
+✅ **Demo-Included** - Working enemy to study and extend  
+✅ **Professionally Architected** - AAA-standard StateTree/BT hybrid  
+✅ **Scalable** - Works for simple enemies and complex bosses
+
+### What It's NOT (Yet)
+
+❌ **NOT a Complete Game Template** - Combat systems only, not a full game  
+❌ **NOT Player Character Combat** - Focused on enemy AI (player template coming Q1 2025)  
+❌ **NOT Multiplayer-Ready** - Single-player focused (replication planned Q2 2025)  
+❌ **NOT a Visual Scripting Tool** - Uses standard UE StateTree and Behavior Tree  
+❌ **NOT "No-Code"** - Requires understanding of UE's AI, GAS, and animation systems
+
+### Scope & Expectations
+
+**This plugin provides:**
+- Enemy AI decision-making and movement
+- Melee combat hit detection
+- Action scoring and execution framework
+- Multi-enemy coordination
+- Component-based architecture
+
+**You still need:**
+- Player character combat system
+- UI/HUD (health bars, lock-on indicators, damage numbers)
+- Level design and encounter placement
+- Save/load systems
+- Progression and difficulty balancing
+
+---
+
+## Roadmap
+
+### 2025 Q1
+
+**Player Combat Component**
+- Matching combat system for player characters
+- Same ActionSet-based architecture
+- Input handling and combo system
+- Stamina integration
+
+**Example Player Character**
+- Pre-configured third-person character
+- Working attacks, dodges, blocks
+- Camera system with lock-on
+- Demonstration of player-enemy interaction
+
+### 2025 Q2
+
+**Multiplayer Support**
+- Replication for server-authoritative combat
+- Client prediction for responsive feel
+- Authority handling for damage and abilities
+- Networked movement and actions
+
+**Advanced Boss Toolkit**
+- Phase transition system
+- Enrage states and special attacks
+- Health-gated abilities
+- Scripted sequences within AI
+
+### 2025 Q3
+
+**Ranged Combat Extension**
+- Projectile attack actions
+- Cover system integration
+- Aiming and leading targets
+- Dodge prediction
+
+**Group Tactics System**
+- Coordinated multi-enemy attacks
+- Formation movement
+- Priority target selection
+- Support behaviors (healing, buffing)
+
+### Community Requests
+
+Want to influence development? Contact via:
+- Fab Marketplace support ticket
+- Website contact form
+- Feature requests from verified buyers are prioritized
+
+---
+
+## FAQ
+
+### Can I use this with my existing character?
+
+Yes. Add the components to your controller and character, create an ActionSet, and set up a StateTree. The plugin is designed to integrate with existing projects.
+
+### Does this work with multiplayer?
+
+Not yet. Current version is single-player focused. Multiplayer support is planned for Q2 2025.
+
+### Can I use this without Gameplay Ability System?
+
+The melee trace system can work standalone, but action execution relies on GAS. Implementing a non-GAS execution mode is possible but not currently supported.
+
+### What Unreal Engine versions are supported?
+
+Only UE 5.7. StateTree APIs have breaking changes between versions, so other versions are not compatible.
+
+### Can I make bosses with this?
+
+Yes. The system scales well. Use ActionSets with phase-specific actions, swap sets at health thresholds, and combine with custom Behavior Tree sequences for scripted attacks.
+
+### How do I make ranged enemies?
+
+Current version is melee-focused. You can create ranged actions using Behavior Tree sequences to handle aiming and projectile spawning. Native ranged support coming in Q3 2025.
+
+### Is source code included?
+
+Yes. Full C++ source is included under MIT license.
+
+### Can I sell games made with this?
+
+Yes. MIT license allows commercial use without royalties.
+
+---
+
+## Support & Resources
+
+**Documentation:** You're reading it!
+
+**Purchase:** [Fab Marketplace](https://www.fab.com/)
+
+**Support:** Contact through Fab Marketplace or via this website's contact form
+
+**Updates:** Plugin updates delivered through Fab Marketplace to all buyers
+
+**Feature Requests:** Contact via Fab Marketplace support or website
+
+---
+
+**SoulslikeCombat** - Built by **Hakan Erünsal** to save developers time and provide a professional foundation for action combat AI.
+
+**For buyers:** Full C++ source code, demo content, and all future updates included with purchase.

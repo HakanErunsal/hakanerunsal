@@ -38,13 +38,30 @@ const projects = defineCollection({
       description: s.string().max(999).optional(),
       image: s.image().optional(),
       imagePosition: s.string().optional(),
-      images: s.array(s.object({src: s.string(), alt: s.string()})).optional(),
+      images: s.array(s.object({ src: s.string(), alt: s.string() })).optional(),
       date: s.isodate(),
       published: s.boolean().default(true),
       tags: s.array(s.string()).optional(),
       links: s.array(s.string()).optional(),
       body: s.mdx(),
       // Add any other common attributes
+    })
+    .transform(computedFields),
+});
+
+const docs = defineCollection({
+  name: 'Doc',
+  pattern: 'docs/**/*.mdx',
+  schema: s
+    .object({
+      slug: s.path(),
+      title: s.string().max(99),
+      description: s.string().max(999).optional(),
+      image: s.image().optional(),
+      date: s.isodate(),
+      published: s.boolean().default(true),
+      tags: s.array(s.string()).optional(),
+      body: s.mdx(),
     })
     .transform(computedFields),
 });
@@ -64,7 +81,7 @@ export default defineConfig({
     name: "[name]-[hash:6].[ext]",
     clean: true,
   },
-  collections: { articles, projects },
+  collections: { articles, projects, docs },
   mdx: {
     rehypePlugins: [
       rehypeSlug,
