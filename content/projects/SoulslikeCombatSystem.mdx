@@ -28,7 +28,7 @@ A **production-ready AI combat system** for Unreal Engine 5.7+. Built for souls-
       <li>Platform: All Platforms</li>
       <li>Price: TBD</li>
     </ul>
-    <a href="https://www.fab.com/" target="_blank" rel="noopener noreferrer" style={{ display: 'block', padding: '12px 24px', backgroundColor: '#fa5c5c', color: 'white', textDecoration: 'none', borderRadius: '8px', fontWeight: '600', textAlign: 'center', fontSize: '14px' }}>
+    <a href="https://www.fab.com/listings/7087cec0-6975-4de5-82e0-0de0b9b3e9a7" target="_blank" rel="noopener noreferrer" style={{ display: 'block', padding: '12px 24px', backgroundColor: '#fa5c5c', color: 'white', textDecoration: 'none', borderRadius: '8px', fontWeight: '600', textAlign: 'center', fontSize: '14px' }}>
       Get on Fab Marketplace
     </a>
   </div>
@@ -43,9 +43,20 @@ A **production-ready AI combat system** for Unreal Engine 5.7+. Built for souls-
       Full Documentation
     </a>
   </div>
+  <div style={{ width: '280px', padding: '24px', backgroundColor: 'rgba(76, 175, 80, 0.1)', borderRadius: '12px', border: '1px solid rgba(76, 175, 80, 0.3)' }}>
+    <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Sample Project</h3>
+    <ul style={{ margin: '0 0 20px 0', paddingLeft: '20px', fontSize: '14px', lineHeight: '1.8' }}>
+      <li>Fully Playable Demo</li>
+      <li>Working Enemy AI</li>
+      <li>Ready to Explore</li>
+    </ul>
+    <a href="https://drive.google.com/file/d/1N9-JDj1Fa8xqO0sfA3JA8FNDVMnx7pvt/view?usp=drive_link" target="_blank" rel="noopener noreferrer" style={{ display: 'block', padding: '12px 24px', backgroundColor: '#4CAF50', color: 'white', textDecoration: 'none', borderRadius: '8px', fontWeight: '600', textAlign: 'center', fontSize: '14px' }}>
+      Download Sample
+    </a>
+  </div>
 </div>
 
-### Why I Built This
+## Why I Built This
 
 I've spent years building combat systems for commercial mobile games and action prototypes. Every time, I faced the same challenges: building intelligent AI that feels responsive, tactical movement that looks natural, and an architecture that doesn't collapse under complexity.
 
@@ -55,7 +66,7 @@ I've spent years building combat systems for commercial mobile games and action 
 
 The result? **Scalable, maintainable AI** that works for both simple melee enemies and complex boss encounters.
 
-### AAA-Quality Architecture
+## AAA-Quality Architecture
 
 This plugin uses the **professional AI architecture** found in modern action games:
 
@@ -87,7 +98,7 @@ This **separation of concerns** means you can:
   description="This hybrid approach is the same pattern used in professional action games. Strategic thinking lives in the high-level controller, tactical execution in specialized systems."
 />
 
-### Key Features
+## Key Features
 
 **🎯 Tactical Movement System**
 - Direction sampling evaluates multiple paths per frame for optimal positioning
@@ -122,13 +133,12 @@ This **separation of concerns** means you can:
 - Distance-based priority assignment
 - Dynamic role switching as combat evolves
 
-{/* TODO: Replace with actual blueprint setup screenshot */}
 <ZoomableImage
-  src="../images/metahuman_to_manny_showcase.jpg"
+  src="../images/soulslikecombat_hero.jpg"
   alt="Action evaluation and movement system setup"
 />
 
-### What It Is / What It's Not
+## What It Is / What It's Not
 
 **What SoulslikeCombat IS:**
 
@@ -153,48 +163,40 @@ This **separation of concerns** means you can:
 - Level design and enemy encounter placement
 - Progression systems and difficulty balancing
 
-### Quick Start
+## Quick Start
 
 Get your first intelligent enemy running in **under 10 minutes**:
 
 1. **Install via Fab Marketplace** - Add to your project directly from Fab
 2. **Enable the plugin** in Edit → Plugins if not auto-enabled
-3. **Open the demo level** (`SEC_DemoLevel`) to see a working enemy
+3. **Open the demo level** (`LVL_SEC_Showcase`) to see a working enemy
 4. **Create your enemy** by inheriting from `AEnemyCharacterBase`
 5. **Set up AI controller** inheriting from `AEnemyControllerBase`
 6. **Create an ActionSet** data asset with your enemy's attacks
 7. **Configure your StateTree** using the included tasks
 8. **Test and iterate** using built-in debug visualization
 
-{/* TODO: Replace with actual combat demo video */}
-<ZoomableImage
-  src="../images/metahuman_to_manny_retarget.jpg"
-  alt="Enemy AI in action - tactical movement and combat"
-/>
 
 The plugin includes everything you need: base classes, components, StateTree tasks, example data assets, and a fully functional demo enemy to learn from.
 
-### Visual Showcase
+## Visual Showcase
 
-{/* TODO: Replace with actual ActionSet configuration screenshot */}
 <ZoomableImage
-  src="../images/metahuman_to_manny_showcase.jpg"
+  src="../images/sec_01.png"
   alt="ActionSet configuration - scoring-based action selection"
 />
 
-{/* TODO: Replace with actual StateTree setup screenshot */}
 <ZoomableImage
-  src="../images/metahuman_to_manny_showcase.jpg"
+  src="../images/sec_02.png"
   alt="StateTree setup showing high-level AI flow"
 />
 
-{/* TODO: Replace with actual melee trace setup screenshot */}
 <ZoomableImage
-  src="../images/metahuman_to_manny_showcase.jpg"
+  src="../images/sec_03.png"
   alt="Melee trace system with weapon sockets"
 />
 
-### Use Cases
+## Use Cases
 
 **Who benefits from this plugin:**
 
@@ -208,7 +210,7 @@ The plugin includes everything you need: base classes, components, StateTree tas
 
 **Students/Learners** - Study a professional AI architecture with full source code.
 
-### Roadmap
+## Roadmap
 
 **Planned Features:**
 
@@ -226,7 +228,7 @@ The plugin includes everything you need: base classes, components, StateTree tas
 
 Want to influence development? Open an issue on GitHub or join the discussions.
 
-### Technical Highlights
+## Technical Highlights
 
 **For Programmers:**
 - Full C++ source code included
@@ -243,21 +245,27 @@ Want to influence development? Open an issue on GitHub or join the discussions.
 - Behavior presets (Aggressive, Defensive, Flanker, etc.)
 - Easy-to-tune parameters with tooltips
 
-### Requirements
+## Requirements
 
 - **Unreal Engine 5.7** (uses StateTree and GameplayStateTree APIs - other versions not supported due to breaking changes)
 - **Gameplay Abilities System** (included with UE5)
 - **StateTree Plugin** (included with UE5)
 - **GameplayStateTree Plugin** (included with UE5)
 
-### Links & Resources
+## Links & Resources
 
 <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '16px' }}>
   <a href="/docs/SoulslikeCombatDocs" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px', backgroundColor: 'rgba(29, 106, 206, 0.1)', color: '#1d6ace', textDecoration: 'none', borderRadius: '8px', fontWeight: '500', border: '1px solid rgba(29, 106, 206, 0.3)', fontSize: '14px' }}>
     📖 Full Documentation
   </a>
-  <a href="https://www.fab.com/" target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px', backgroundColor: 'rgba(250, 92, 92, 0.1)', color: '#fa5c5c', textDecoration: 'none', borderRadius: '8px', fontWeight: '500', border: '1px solid rgba(250, 92, 92, 0.3)', fontSize: '14px' }}>
+  <a href="https://www.fab.com/listings/7087cec0-6975-4de5-82e0-0de0b9b3e9a7" target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px', backgroundColor: 'rgba(250, 92, 92, 0.1)', color: '#fa5c5c', textDecoration: 'none', borderRadius: '8px', fontWeight: '500', border: '1px solid rgba(250, 92, 92, 0.3)', fontSize: '14px' }}>
     🛒 Get on Fab Marketplace
+  </a>
+  <a href="https://drive.google.com/file/d/1N9-JDj1Fa8xqO0sfA3JA8FNDVMnx7pvt/view?usp=drive_link" target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px', backgroundColor: 'rgba(76, 175, 80, 0.1)', color: '#4CAF50', textDecoration: 'none', borderRadius: '8px', fontWeight: '500', border: '1px solid rgba(76, 175, 80, 0.3)', fontSize: '14px' }}>
+    📦 Sample Project
+  </a>
+  <a href="https://trello.com/b/gN7Fxryx/soulslike-enemy-combat-plugin-roadmap" target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px', backgroundColor: 'rgba(156, 39, 176, 0.1)', color: '#9C27B0', textDecoration: 'none', borderRadius: '8px', fontWeight: '500', border: '1px solid rgba(156, 39, 176, 0.3)', fontSize: '14px' }}>
+    🗺️ Roadmap
   </a>
 </div>
 
@@ -265,7 +273,7 @@ Want to influence development? Open an issue on GitHub or join the discussions.
 
 **Support** - Contact via this website or Fab marketplace for assistance
 
-### Credits
+## Credits
 
 Developed by **Hakan Erünsal**. Built from experience shipping commercial mobile games and prototyping action combat systems. Designed to save developers the pain of building scalable AI from scratch.
 

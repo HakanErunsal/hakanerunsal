@@ -14,6 +14,58 @@ parent: "SoulslikeCombatDocs"
     { label: "Configuration" }
 ]} />
 
+## UAICombatConfig (Data Asset)
+
+Defines combat role selection, behavior logic, and action set binding for an AI.
+
+### Example Profile
+
+```cpp /DA_SEC_CombatConfig_Default/ /DA_SEC_ActionSet_Attacker/ /DA_SEC_ActionSet_Waiter/ /DA_SEC_ActionSet_Flanker/ /DA_SEC_ActionSet_Ranged/
+Name: DA_SEC_CombatConfig_Default
+
+CombatRole
+  AutoRegisterForCombatRoles: true
+
+RoleRegistration
+  AllowedRoles:
+    - SEC.Role.Attacker
+    - SEC.Role.Flanker
+    - SEC.Role.Supporter
+    - SEC.Role.Waiter
+  Priority: 0
+  PreferredRole: SEC.Role.Attacker
+
+FitnessEvaluators
+  - DistanceEvaluator
+  - BP_HealthEvaluator
+  - BP_RandomEvaluator
+
+Behavior
+  StateTree: StateTree_SEC_Core
+
+ActionSets
+  ManageActionSetsAutomatically: true
+  DefaultActionSet: DA_SEC_ActionSet_Attacker
+
+RoleActionSets
+  SEC.Role.Waiter
+    Managed: true
+    ActionSet: DA_SEC_ActionSet_Waiter
+
+  SEC.Role.Flanker
+    Managed: true
+    ActionSet: DA_SEC_ActionSet_Flanker
+
+  SEC.Role.Supporter
+    Managed: true
+    ActionSet: DA_SEC_ActionSet_Ranged
+```
+
+>FitnessEvaluators are editor-instanced scoring objects.
+Each evaluator computes a normalized fitness score based on the current AI context, such as distance, health, or randomness.
+All active evaluators are executed during role selection, and their results are combined to determine the most suitable combat role. You can inherit from RoleEvaluator class and implement your own scoring and stack it inside the AIConfig, or use the existing ones i have created.
+
+
 ## UActionSet (Data Asset)
 
 Contains an array of `FActionSpec` - all available actions for an AI.
@@ -45,20 +97,20 @@ struct FActionSpec
     // Scoring
     FRangeEval Distance;               // Distance curve
     FRangeEval Angle;                  // Angle curve
+    FRangeEval Health;                 // Health curve
     float BaseWeight;                  // Base priority
-    bool bRequireLOS;                  // Line of sight required
-    
+
     // Cooldowns
     FActionCooldown Cooldown;
     
     // Chaining
-    TArray<FName> ChainFrom;           // Can combo after these
+    FName PrefferedNextAction;         // This action will receive a bonus on the next evaluation
     float ChainBonusMultiplier;        // Score bonus if chaining
     
     // Context
-    FGameplayTagContainer RequiredTags;
-    FGameplayTagContainer BlockedTags;
-    TArray<FTagWeightModifier> ContextModifiers;
+    FGameplayTagContainer RequiredTags;// Action is blocked if these tags don't exist on the AbilitySystemComponent
+    FGameplayTagContainer BlockedTags; // Action is blocked if these tags exist on the AbilitySystemComponent
+    FGameplayTagContainer AddTags;     // These tags will be given to the AbilitySystemComponent as long as this action is active
 };
 ```
 
@@ -93,18 +145,19 @@ Contains all parameters for `MovementEvaluatorComponent`.
 
 ### Example Profile
 
-```cpp
+```cpp /DA_AggressiveMelee/
 Name: DA_AggressiveMelee
 
-IdealMinDistance: 150
-IdealMaxDistance: 250
-StrafeRadius: 200
-StrafeDuration: 2.5
-StrafeCooldown: 1.0
-RetreatBias: 0.3           // 0=never retreat, 1=always retreat
-DirectControlThreshold: 500
-AvoidanceRadius: 100
+Desired Distance: 300
+DistanceTolerance: 0.15
+EnableStrafeRest: true
+StrafeRestTimeLimit: 10.0f
+StrafeRestDuration: 1.0f
+
+Positioning Rules {}
 ```
+
+>PositioningRule is an editor-instanced UObject, you can derive from UPositioningRule, override function **EvaluateDirection**, this function will give you the context that is being tested, you can basically return a weight multiplier from this function. All PositioningRules that are stacked on your UMovementBehaviorProfile will be considered when making movement decisions.
 
 ### Using Profiles
 

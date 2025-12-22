@@ -21,7 +21,7 @@ parent: "SoulslikeCombatDocs"
 | `STTask_BuildDecisionContext` | Gathers combat data | Every tick in root state |
 | `STTask_AIMovement` | Evaluates and applies movement | Every tick in root state |
 | `STTask_PollAction` | Scores and selects action | On entering decision state |
-| `STTask_DoAction` | Executes chosen action | On entering execute state |
+| `STTask_DoAction` | Triggers execution of chosen action | On entering execute state |
 | `STTask_UpdateActionSet` | Swaps ActionSet | When changing AI behavior |
 
 ---
@@ -53,14 +53,15 @@ Root (Always Active)
 ### STTask_BuildDecisionContext
 
 **Inputs:**
-- TargetActor (Object)
+- AIController (Object)
+- DefaultAggressionLevel
+- WindowIdIntervalSeconds
 
 **Outputs:**
-- DecisionContext (FDecisionContext struct)
+- OutDecisionContext (FDecisionContext struct)
 
 **What it does:**
 - Calculates distance and angle to target
-- Checks line of sight
 - Evaluates health percentages
 - Gathers gameplay tags from target
 
@@ -69,14 +70,17 @@ Root (Always Active)
 ### STTask_PollAction
 
 **Inputs:**
+- AIController
 - Context (FDecisionContext)
+- EvaluationCooldown
+- DebugLog
 
 **Outputs:**
 - ChosenAction (FChosenAction)
 
 **What it does:**
 - Scores all actions in ActionSet
-- Applies range evaluations
+- Applies evaluators
 - Checks cooldowns
 - Selects best valid action
 
@@ -85,15 +89,15 @@ Root (Always Active)
 ### STTask_DoAction
 
 **Inputs:**
-- ChosenAction (FChosenAction)
-- TargetActor (Object)
-- WaitForCompletion (bool)
+- Actor
+- AIController
+- InChosenAction (FChosenAction)
+- DebugLog
 
 **What it does:**
 - If Ability: Activates via ASC
 - If BT: Runs behavior tree sequence
 - Waits for SEC.Action.End event
 - Completes when action finishes
-
 
 <DocNav prev={{ title: "Configuration Assets", href: "/docs/soulslike-combat/configuration" }} next={{ title: "Behavior Tree Tasks", href: "/docs/soulslike-combat/behavior-trees" }} />

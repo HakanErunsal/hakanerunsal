@@ -40,14 +40,17 @@ Before starting, ensure you have:
    - Set height appropriately
 
 3. Select **CharacterMovement** component
-   - Max Walk Speed: `400`
-   - Max Acceleration: `2048`
-   - Rotation Rate: `(Pitch=0, Yaw=360, Roll=0)`
+
+Adjust movement component settings if you want.
 
 **What You Get Automatically:**
 - `USECMeleeTraceComponent` - Already added by base class
 - `UAbilitySystemComponent` - Already configured
 - `IAbilitySystemInterface` - Already implemented
+
+- `AIConfig` -> Set it to your AI Config or the `DA_SEC_Enemy_AIConfig_Default`
+
+>AIConfig will be acquired from the pawn by the controller if it's set here. If it is not set in the pawn, AIController will try to use it's own. If that is also not set, there will be no AI behavior.
 
 ---
 
@@ -69,18 +72,11 @@ UBehaviorTreeComponent*         // For BT sequence execution
 Open `BP_DetailedEnemyController` → Details Panel → **Movement Evaluator:**
 
 ```
-Distance Settings:
-  IdealMinDistance: 150.0
-  IdealMaxDistance: 300.0
-  
-Strafe Settings:
-  StrafeRadius: 200.0
-  StrafeDuration: 3.0
-  StrafeCooldown: 2.0
-  
-Navigation:
-  DirectControlThreshold: 600.0
-  AvoidanceRadius: 100.0
+Movement Evaluator:
+
+There are a lot of movement related settings. 
+Default values on `BP_SEC_EnemyController` work well for a smooth and realistic looking enemy. 
+You can configure these settings further.
   
 Debug:
   bDebugLog: false (enable to see movement decisions)
@@ -92,9 +88,10 @@ Details Panel → **Action Evaluation:**
 
 ```
 CurrentActionSet: DA_DetailedEnemyActions (create next)
-NoveltyDecayRate: 0.2
 bDebugLog: true (enable to see action scoring)
 ```
+
+>ActionSet is updated by the StateTree depending on the current role. This is defined inside the AIConfig.
 
 ---
 
@@ -162,13 +159,12 @@ bDebugLog: true (enable to see action scoring)
 
 ## Step 4: Create Gameplay Abilities
 
-For each action using `GameplayAbility` execution mode, create an ability Blueprint.
+For each action using `GameplayAbility` execution mode, create an ability Blueprint inheriting from **GameplayAbilityBase**.
 
 **Example: GA_LightAttack**
 
 **Class Defaults:**
 - Ability Tags: `SEC.Action.LightAttack`
-- Activation Policy: `OnSpawn`
 
 **Event Graph Implementation:**
 
@@ -195,7 +191,7 @@ Send Gameplay Event to Actor (SEC.Action.End)
 End Ability
 ```
 
-**Important:** Always send the `SEC.Action.End` event, even if interrupted. Otherwise, the AI gets stuck.
+>**Important:** All of this is covered inside the **GA_SEC_Attack**, if you choose to not derive from **GameplayAbilityBase**, always send the **ability end tag** event, even if interrupted. Otherwise, the AI gets stuck. Action evaluator needs to know when ability is done. This is automatically handled if you are using **GameplayAbilityBase** as your parent class for abilities.
 
 ---
 
@@ -206,21 +202,21 @@ End Ability
 **Add Melee Trace Notify State:**
 
 1. Right-click timeline at attack's active frames
-2. Add Notify State → `SECMeleeTraceNotifyState`
+2. Add Notify State → `SECMeleeTraceWindow`
 3. Duration: Cover the weapon swing (e.g., frames 10-25)
+4. Add MotionWarping notify state if you want chase behavior during the attacks in certain frames.
+
+<ZoomableImage
+  src="../images/sec_animmontagenotifiers.jpg"
+/>
 
 **Configure Notify State:**
 
 Details Panel:
 ```
-Socket IDs: ["Blade"]  // Must match weapon trace socket
+Socket IDs: ["Blade"]  // Must match weapon trace socket, 
+not the mesh socket, the trace socket that is registered on the SECMeleeTrace component
 ```
-
-**Add End Event Notify:**
-
-1. Near montage end (e.g., frame 40)
-2. Add Notify → `AnimNotify_GameplayCue`
-3. Gameplay Cue Tag: `SEC.Action.End`
 
 **Timing Example:**
 ```
@@ -242,6 +238,7 @@ End Event:                          ▲
 **Attachment:**
 ```
 AttachSocket: "RightHandSocket"  // Socket on character skeleton
+AttackOffset: Relative offset that will be applied after attachment
 ```
 
 **Trace Sockets Array:**
@@ -253,12 +250,12 @@ Shape: CapsuleTwoPoint
 SocketOrBoneName: "blade_start"    // Socket on weapon mesh
 EndSocketOrBoneName: "blade_end"   // Socket on weapon mesh
 Radius: 15.0
-TraceChannel: ECC_GameTraceChannel1
+TraceChannel: ECC_Pawn
 ```
 
 **Damage Configuration:**
 ```
-DamageConfig: DA_SwordDamage  // Create data asset
+DamageConfig: DA_SwordDamage  // Create data asset from `SECDamageConfig`
 ```
 
 **Weapon Mesh Setup:**
@@ -269,10 +266,14 @@ DamageConfig: DA_SwordDamage  // Create data asset
    - `blade_end` at blade tip
 3. Position sockets along the cutting edge
 
+>For different types of weapons, there are multiple selections for how should the trace work, for example, a hammer can use Sphere instead of CapsuleTwoPoint. You can select what works the best for your case.
+
 **What Happens Automatically:**
 - On equip → Registers trace sockets with character's `MeleeTraceComponent`
 - During montage notify → Traces activate between sockets
 - On hit → Applies damage via DamageConfig
+
+>The Apply Damage function is called on the actor that has been hit, this function is from unreal. If you want to implement your own way of communicating the damage, you can just ignore this and implement it on top. Both SECMeleeTrace component has functions and delegates you can listen to easily.
 
 ---
 
@@ -281,56 +282,65 @@ DamageConfig: DA_SwordDamage  // Create data asset
 **Create Data Asset:** `DA_SwordDamage` (type: `SECDamageConfig`)
 
 ```
-BaseDamage: 25.0
+Damage: 25.0
 DamageType: UDamageType (or custom class)
-ImpulseStrength: 500.0
-bCanCritical: false
+
+SECDamageConfig comes with common use-case variables, like "CanBeBlocked", "CanBeParried". 
+If you need more, you can create a blueprint inheriting SECDamageConfig and extend the data.
+
 ```
 
 ---
 
 ## Step 8: Build StateTree Logic
 
+>For this step, i highly recommend using "StateTree_SEC_Core" instead. For majority of the cases it will work as expected. Otherwise you can learn from it.
+
 **Create StateTree:** `ST_DetailedEnemy`
 
 **Root State Configuration:**
 
-```
-StateTree: ST_DetailedEnemy
+<ZoomableImage
+  src = "../images/sec_statetree.jpg"
+  />
 
-├─ Root State (Always Active)
+```
+
+StateTree: (Core)
+
+├─ Root State
 │  │
-│  ├─ [Tick] STTask_BuildDecisionContext
-│  │  • TargetActor: Get Player Character (or blackboard)
-│  │  • Output Pin: DecisionContext (FDecisionContext struct)
+│  ├─ Combat State
+│  │  • Condition: (Is Object Valid) AND (Not SEC.Role.None contains exactly PollCombatRole.OutCombatRole)
+│  │  │
+│  │  ├─ Role State
+│  │  │  • Condition: SEC.Role.* contains exactly PollCombatRole.OutCombatRole
+│  │  │  └─ Linked Subtree: *_Subtree → StateTree_SEC_MoveAndAction
 │  │
-│  ├─ [Tick] STTask_AIMovement
-│  │  • Context: DecisionContext (linked from above)
-│  │  • MovementProfile: (empty = use controller defaults)
+│  └─ Idle State
+│     • Task: Delay 1.0
+
+StateTree: StateTree_SEC_MoveAndAction
+
+├─ Root State
+│  • Task: Sync Action Set from Pawn
 │  │
-│  └─ Transition → Combat State
-│     • Condition: DecisionContext.TargetActor Is Valid
-│
-└─ Combat State
-   │
-   ├─ Decision Substate
-   │  │
-   │  ├─ [Enter] STTask_PollAction
-   │  │  • Context: DecisionContext
-   │  │  • Output: ChosenAction (FChosenAction struct)
-   │  │
-   │  └─ Transition → Execute State
-   │     • Condition: ChosenAction.IsValid == true
-   │
-   └─ Execute Substate
-      │
-      ├─ [Enter] STTask_DoAction
-      │  • ChosenAction: (from PollAction)
-      │  • TargetActor: DecisionContext.TargetActor
-      │  • WaitForCompletion: true
-      │
-      └─ Transition → Decision State
-         • Condition: DoAction.Completed == true
+│  └─ Role State
+│     • Tasks: PollTargetActor, Build Decision Context, Poll Action
+│     │
+│     ├─ Move State
+│     │  • Condition: ASC Has Tag
+│     │  • Task: AI Movement (Distance: 600)
+│     │  └─ Transition → Action State
+│     │
+│     ├─ Action State
+│     │  • Task: Do Action
+│     │  ├─ Transition → Recovery State (Success)
+│     │  └─ Transition → Role State (Failure)
+│     │
+│     └─ Recovery State
+│        • Task: Delay Parameters.RecoveryDuration
+│        └─ Transition → Role State
 ```
 
 ---
@@ -374,7 +384,6 @@ LogEvaluation: [QuickRetreat] Dist:180 Angle:15 Score:0.10 (too far)
 | Problem | Cause | Solution |
 |---------|-------|----------|
 | AI doesn't attack | Ability not activating | Check AbilityTag matches, verify ASC grants ability |
-| AI stuck after attack | End event not sent | Verify montage sends SEC.Action.End notify |
 | AI repeats same action | Only one action valid | Add more actions with different ranges |
 | AI doesn't move | Movement not enabled | Check STTask_AIMovement is ticking |
 | Weapon doesn't hit | Socket mismatch | Verify notify Socket IDs match weapon TraceSockets IDs |

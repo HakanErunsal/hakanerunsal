@@ -19,6 +19,7 @@ parent: "SoulslikeCombatDocs"
 **In AI Controller Blueprint:**
 
 ```
+
 ActionEvaluation → bDebugLog: true
 MovementEvaluator → bDebugLog: true
 ThreatDetection → bDebugLog: true
@@ -39,27 +40,30 @@ LogEvaluation: [HeavyAttack] Dist:180 Angle:15 Score:0.60 (cooldown:1.2s)
 **Console Commands:**
 
 ```cpp
-// Show debug spheres for movement evaluation
-showdebug SEC
+// Show debug for entire SEC system
+Evaluator.Debug.DrawAvoidance 0-1
+Evaluator.Debug.DrawScoring 0-1
+Evaluator.Debug.LogAvoidance 0-1
+Evaluator.Debug.LogMovement 0-1
+Evaluator.Debug.LogScoring 0-1
+Evaluator.Debug.LogStrafeState 0-1
+Evaluator.Debug.LogStrafeSwap 0-1
 
-// Visualize StateTree execution
-statetree.debug 1
-
-// Show ability activations
-showdebug abilitysystem
+Melee.Debug.DrawTracing 0-1
 ```
 
 ---
 
 ## Common Issues
 
+>Majority of the times, logs will tell you what is wrong, but if you have a specific case;
+
 ### AI doesn't attack
 
 **Possible Causes:**
-- Ability not granted to ASC
-- AbilityTag mismatch
-- Action out of range
-- Action on cooldown
+- Ability not granted to ASC and ExecuteAbility is not marked with GrantAbilityIfMissing.
+- AbilityTag mismatch, update ability tags on the DataAssets if you changed them somewhere else.
+- Action on cooldown, check your cooldowns and cooldown randomization
 - No valid actions in ActionSet
 
 **Solutions:**
@@ -75,7 +79,7 @@ showdebug abilitysystem
 **Cause:** End event not sent
 
 **Solution:**
-- Verify montage sends `SEC.Action.End` notify
+- Verify that you are using GameplayAbilityBase, it is necessary for end ability to be detected by SEC components.
 - Check ability sends event on completion, cancellation, AND interruption
 - Look for "Waiting for action to complete..." in log (means no end event received)
 
@@ -91,7 +95,7 @@ showdebug abilitysystem
 
 **Solutions:**
 - Verify notify state Socket IDs match weapon TraceSockets IDs exactly
-- Check trace channel in Project Settings → Collision
+- Check trace channel, debug and see if it actually hits
 - Assign DamageConfig to weapon
 - Ensure character has USECMeleeTraceComponent (inherited from base)
 
@@ -101,7 +105,7 @@ showdebug abilitysystem
 
 **Possible Causes:**
 - Movement task not ticking
-- NavMesh not present
+- NavMesh not present above hybrid movement range
 - DirectControlThreshold too high/low
 
 **Solutions:**
@@ -120,15 +124,15 @@ Yes. Add the components to your controller and character, create an ActionSet, a
 
 ### Does this work with multiplayer?
 
-Not yet. Current version is single-player focused. Multiplayer support is planned for Q2 2025.
+Not yet. Current version is single-player focused. Multiplayer support is planned for Q2 2026.
 
 ### Can I use this without Gameplay Ability System?
 
-The melee trace system can work standalone, but action execution relies on GAS. Implementing a non-GAS execution mode is possible but not currently supported.
+The melee trace system can work standalone, but action execution relies on GAS. Implementing a non-GAS execution mode is possible with only using behavior tree execution, but i would highly recommend to explore GAS if you didn't yet.
 
 ### What Unreal Engine versions are supported?
 
-Only UE 5.7. StateTree APIs have breaking changes between versions, so other versions are not compatible.
+Only UE 5.7+. StateTree APIs have breaking changes between versions, so other versions are not compatible.
 
 ### Can I make bosses with this?
 
@@ -136,35 +140,26 @@ Yes. The system scales well. Use ActionSets with phase-specific actions, swap se
 
 ### How do I make ranged enemies?
 
-Current version is melee-focused. You can create ranged actions using Behavior Tree sequences to handle aiming and projectile spawning. Native ranged support coming in Q3 2025.
+There is already an example for Supporter role. Pay attention to how they execute their ranged ability. It is quite simple to implement your own by looking at it.
 
 ### Is source code included?
 
 Yes. Full C++ source is included under MIT license.
 
-### Can I sell games made with this?
-
-Yes. MIT license allows commercial use without royalties.
-
 ---
 
 ## Support & Resources
 
-**Documentation:** You're reading it!
-
 **Purchase:** [Fab Marketplace](https://www.fab.com/)
 
-**Support:** Contact through Fab Marketplace or via this website's contact form
+**Support:** Contact through Discord, Fab Marketplace or via email
 
-**Updates:** Plugin updates delivered through Fab Marketplace to all buyers
+**Updates:** Plugin updates delivered through Fab Marketplace
 
-**Feature Requests:** Contact via Fab Marketplace support or website
+**Feature Requests:** Contact via Discord, Fab Marketplace, or via email
 
 ---
 
 **SoulslikeCombat** - Built by **Hakan Erünsal** to save developers time and provide a professional foundation for action combat AI.
-
-**For buyers:** Full C++ source code, demo content, and all future updates included with purchase.
-
 
 <DocNav prev={{ title: "API Reference", href: "/docs/soulslike-combat/api-reference" }} />

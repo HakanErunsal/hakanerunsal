@@ -18,22 +18,6 @@ parent: "SoulslikeCombatDocs"
 
 **SoulslikeCombat** is a production-ready AI combat plugin for Unreal Engine 5.7. It provides intelligent, tactical enemy behavior for souls-like and action RPG games through a modular component system.
 
-### What's Included
-
-- ✅ Complete C++ source code
-- ✅ Blueprint-compatible components and tasks
-- ✅ Demo level with fully functional enemy
-- ✅ Example weapons, abilities, and action configurations
-- ✅ StateTree and Behavior Tree integration
-- ✅ Comprehensive documentation (you're reading it!)
-
-### Who This Is For
-
-- Developers creating souls-like, action RPG, or tactical combat games
-- Teams needing production-ready AI without building from scratch
-- Designers who want data-driven AI configuration without code
-- Projects using Gameplay Ability System (GAS) for combat
-
 ---
 
 ## Installation
@@ -54,10 +38,16 @@ parent: "SoulslikeCombatDocs"
 
 ### Step 3: Enable Required Plugins
 
-In **Edit → Plugins**, ensure these are also enabled:
+In **Edit → Plugins**, ensure these are also enabled, the plugin has dependencies for these and will enable them by default:
 - GameplayAbilities
 - StateTree
 - GameplayStateTree
+- MotionWarping
+- AnimationLocomotionLibrary
+- AnimationWarping
+
+> **Note:** Animation plugin dependencies are required only if you want to use the template enemy that comes with the system. If you want to use your own animation system and do not require these, you do not have to keep them enabled.
+
 
 ### Step 4: Verify Installation
 
@@ -90,27 +80,27 @@ Navigate to `Content/SoulslikeEnemyCombat/Maps/SEC_DemoLevel` and open it. Study
 - Configure capsule collision
 - Set movement speed (recommended: 400)
 
-**What `AEnemyCharacterBase` provides:**
-- `USECMeleeTraceComponent` - Melee hit detection
-- `UAbilitySystemComponent` - GAS integration
-- Character movement configured
-
 #### 3. Create AI Controller
 
 **Right-click** → Blueprint Class → Search for `EnemyControllerBase`
 
 **Name it:** `BP_MyEnemyController`
 
-**Configure in Details Panel:**
+**AI Config**
 
-**MovementEvaluator Settings:**
-```
-IdealMinDistance: 150.0    // Stay at least this close
-IdealMaxDistance: 300.0    // Don't go farther
-StrafeRadius: 200.0        // Circle at this distance
-```
+**Right-click** → Miscellaneous → Data Asset → 
 
-**ActionEvaluation Settings:**
+`BP_EnemyAIConfigBase` for a preset or `AI Config` for a fresh start 
+
+**Name it:** `DA_MyAIConfig`
+
+Go to `BP_MyEnemy`, set **AIConfig** property to `DA_MyAIConfig`
+
+> **Note:** AIConfig will be acquired by the controller OnPossess. Alternatively, you can leave it empty on the pawn and set it on the Controller. This means all AI units that are controlled by this controller will use that AIConfig.
+
+**Add your first action:**
+
+**Controller->ActionEvaluationComponent Settings:**
 ```
 CurrentActionSet: (create in next step)
 bDebugLog: true           // See decisions in Output Log
@@ -139,12 +129,15 @@ bDebugLog: true           // See decisions in Output Log
 
 #### 5. Create Gameplay Ability
 
-**Right-click** → Blueprint Class → `GameplayAbility`
+**Right-click** → Blueprint Class → `GameplayAbilityBase`
+
+This is a SEC Gameplay Ability, if you want your ability begin/end to be detected by the action system automatically, you have to use this base class. Alternatively, you can inspect the content of the class in C++, and call the necessary events yourself.
 
 **Name it:** `GA_LightAttack`
 
 **Setup:**
-1. Class Defaults → Ability Tags → Add `SEC.Action.LightAttack`
+1. Class Defaults → Ability Tags → Add `Action.LightAttack`
+2. Class Defaults → Ability End Tag → Add `Action.LightAttack.End`
 
 **Event Graph:**
 ```
@@ -152,60 +145,32 @@ ActivateAbility
   ↓
 PlayMontageAndWait (YourAttackMontage)
   ↓
-SendGameplayEventToActor
-  • Target: GetAvatarActorFromActorInfo
-  • EventTag: SEC.Action.End
-  ↓
 EndAbility
 ```
 
-> **Pro Tip: Why the End Event Matters**
-> ActionEvaluationComponent listens for SEC.Action.End to know the action completed. Without it, the AI gets stuck waiting forever.
+> ActionEvaluationComponent listens for ability end tag to know the action completed. Without it, the AI gets stuck until the timeout is over.
 
-#### 6. Create StateTree
+#### 6. Assign StateTree and ActionSet to AIConfig
 
-**Right-click** → AI → StateTree
+In `DA_MyAIConfig` → **StateTree** → Set to `StateTree_SEC_Core`
 
-**Name it:** `ST_MyEnemy`
+In `DA_MyAIConfig` → **Default Action Set** → Set to `DA_MyEnemyActions`
 
-**Structure:**
-```
-Root State
-├─ BuildDecisionContext [Tick]
-│  • TargetActor: GetPlayerCharacter
-│  • OutputPin: DecisionContext
-│
-├─ AIMovement [Tick]
-│  • Context: DecisionContext
-│
-├─ PollAction [On Enter]
-│  • Context: DecisionContext
-│  • Output: ChosenAction
-│
-└─ DoAction [On Enter]
-   • ChosenAction: (from PollAction)
-   • TargetActor: (from context)
-```
-
-#### 7. Assign StateTree to Controller
-
-In `BP_MyEnemyController` → Class Defaults → **StateTree Asset** → Set to `ST_MyEnemy`
-
-#### 8. Configure Character
+#### 7. Configure Character
 
 In `BP_MyEnemy` → Class Defaults → **AI Controller Class** → Set to `BP_MyEnemyController`
 
-#### 9. Place and Test
+#### 8. Place and Test
 
 1. Drag `BP_MyEnemy` into your level
-2. Set player as focus target (or use demo player)
+2. Set player as focus target (or use demo BP_DummyTarget, which registers itself as target automatically)
 3. Click Play
 4. Watch Output Log for action selection debug messages
 
 **Expected behavior:**
 - Enemy approaches to ideal distance (150-300cm)
 - Executes light attack when in range
-- Waits for cooldown
+- Waits for cooldown, positions itself by the movement behavior configuration
 - Repeats
 
 

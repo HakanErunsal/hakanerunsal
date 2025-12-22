@@ -6,6 +6,8 @@ import "@/styles/mdx.css";
 import { Metadata } from "next";
 import { siteConfig } from "@/config/site";
 import { Tag } from "@/components/tag";
+import { DocsSidebar } from "@/components/docs-sidebar";
+
 interface PostPageProps {
   params: {
     slug: string[];
@@ -73,22 +75,30 @@ export default async function PostPage({ params }: PostPageProps) {
 
   return (
     <div className="flex flex-col md:flex-row">
-    <div className="flex-none w-[26rem] md:w-[26rem]"></div>
-    <div className="flex-1 col-span-2 mt-4 md:mt-0 mr-0 md:mr-8">
-    <article className="container py-6 prose dark:prose-invert max-w-7xl justify-start">
-      <h1 className="mb-2">{project.title}</h1>
-      <div className="flex gap-2 mb-2">
-        {project.tags?.map((tag) => (
-          <Tag tag={tag} key={tag} />
-        ))}
+      {/* Docs Sidebar - Table of Contents */}
+      <DocsSidebar />
+
+      {/* Spacer to account for fixed sidebar + logo area on large screens */}
+      <div className="flex-none w-0 lg:w-72"></div>
+
+      {/* Spacer for logo/nav area - matching articles page */}
+      <div className="flex-none w-[26rem] md:w-[10rem] lg:w-[10rem]"></div>
+
+      <div className="flex-1 mt-4 md:mt-0 mr-0 md:mr-8">
+        <article className="container py-6 prose dark:prose-invert max-w-7xl justify-start">
+          <h1 className="mb-2">{project.title}</h1>
+          <div className="flex gap-2 mb-2">
+            {project.tags?.map((tag) => (
+              <Tag tag={tag} key={tag} />
+            ))}
+          </div>
+          {project.description ? (
+            <p className="text-xl mt-0 text-muted-foreground">{project.description}</p>
+          ) : null}
+          <hr className="my-4" />
+          <MDXContent code={project.body} />
+        </article>
       </div>
-      {project.description ? (
-        <p className="text-xl mt-0 text-muted-foreground">{project.description}</p>
-      ) : null}
-      <hr className="my-4" />
-      <MDXContent code={project.body} />
-    </article>
-    </div>
     </div>
   );
 }

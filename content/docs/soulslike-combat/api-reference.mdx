@@ -23,9 +23,6 @@ parent: "SoulslikeCombatDocs"
 UMovementEvaluatorComponent* GetMovementEvaluator();
 UThreatDetectionComponent* GetThreatDetection();
 UActionEvaluationComponent* GetActionEvaluation();
-
-// Runtime BT execution
-void RunBehaviorTreeSequence(const TArray<UBehaviorTree*>& Trees, float Timeout);
 ```
 
 ---
@@ -37,7 +34,7 @@ void RunBehaviorTreeSequence(const TArray<UBehaviorTree*>& Trees, float Timeout)
 UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
 // Equip weapon
-void EquipWeapon(ASECWeaponBase* Weapon, FName SocketName);
+void SpawnWeapon(TSubClass<ASECWeaponBase> WeaponToSpawn);
 ```
 
 ---
@@ -46,11 +43,13 @@ void EquipWeapon(ASECWeaponBase* Weapon, FName SocketName);
 
 ```cpp
 // Equip/unequip
-void Equip(ACharacter* Character, FName SocketName);
-void Unequip();
+void OnEquipped(FSECEquipContext Context);
+void Unequip(FSECUnequipContext Context);
+FName GetDefaultAttachSocket();
+FTransform GetDefaultAttachOffset();
 
 // Auto-behavior:
-// - On Equip: Attaches, registers traces, sends tag event
+// - On Equip: Attaches, registers traces, sends tag event, links animation layer
 // - On Unequip: Detaches, unregisters, sends tag event
 ```
 
@@ -58,21 +57,18 @@ void Unequip();
 
 ## Roadmap
 
-### 2025 Q1
+### 2026 Q1
 
 **Player Combat Component**
-- Matching combat system for player characters
-- Same ActionSet-based architecture
+- Combat system for player
 - Input handling and combo system
-- Stamina integration
 
 **Example Player Character**
-- Pre-configured third-person character
+- Pre-configured third-person/first-person character
 - Working attacks, dodges, blocks
-- Camera system with lock-on
 - Demonstration of player-enemy interaction
 
-### 2025 Q2
+### 2026 Q1-Q2
 
 **Multiplayer Support**
 - Replication for server-authoritative combat
@@ -80,25 +76,12 @@ void Unequip();
 - Authority handling for damage and abilities
 - Networked movement and actions
 
-**Advanced Boss Toolkit**
-- Phase transition system
-- Enrage states and special attacks
-- Health-gated abilities
-- Scripted sequences within AI
+### 2026 Q3
 
-### 2025 Q3
-
-**Ranged Combat Extension**
-- Projectile attack actions
-- Cover system integration
-- Aiming and leading targets
-- Dodge prediction
-
+"Experimental"
 **Group Tactics System**
-- Coordinated multi-enemy attacks
+- Coordinated multi-enemy attacks, extra token layer if needed
 - Formation movement
-- Priority target selection
-- Support behaviors (healing, buffing)
-
+- Separation of Action Behaviors (Attack, Buff, Debuff, etc.)
 
 <DocNav prev={{ title: "Patterns & Examples", href: "/docs/soulslike-combat/patterns" }} next={{ title: "Troubleshooting", href: "/docs/soulslike-combat/troubleshooting" }} />

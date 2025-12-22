@@ -58,9 +58,13 @@ Separate **strategic thinking** from **tactical execution**:
 **Benefits:**
 
 ✅ **Clear Separation** - Strategy decisions separate from action execution
+
 ✅ **Scalability** - Add new actions without touching state machine logic
+
 ✅ **Debuggability** - Isolate issues to strategy or execution layer
+
 ✅ **Maintainability** - Each layer has single responsibility
+
 ✅ **Industry Standard** - Same pattern used in major action games
 
 > **Pro Tip: When to Use Each Execution Mode**
@@ -86,6 +90,10 @@ Separate **strategic thinking** from **tactical execution**:
    - Blends pathfinding with direct input
    - Applies strafing, retreat, or approach behavior
 
+<ZoomableImage
+  src="../images/soulslikeenemycombat_corearchitecture.jpg"
+/>
+
 ---
 
 ## What It Is / What It's Not
@@ -98,30 +106,27 @@ Separate **strategic thinking** from **tactical execution**:
 ✅ **Blueprint-Friendly** - Full Blueprint support, C++ optional  
 ✅ **Demo-Included** - Working enemy to study and extend  
 ✅ **Professionally Architected** - AAA-standard StateTree/BT hybrid  
-✅ **Scalable** - Works for simple enemies and complex bosses
+✅ **Scalable** - Works for simple enemies and complex bosses  
+✅ **Keeps Improving** - I develop games with the systems I have made. So this plugin will keep improving!
 
 ### What It's NOT (Yet)
 
 ❌ **NOT a Complete Game Template** - Combat systems only, not a full game  
 ❌ **NOT Player Character Combat** - Focused on enemy AI (player template coming Q1 2025)  
 ❌ **NOT Multiplayer-Ready** - Single-player focused (replication planned Q2 2025)  
-❌ **NOT a Visual Scripting Tool** - Uses standard UE StateTree and Behavior Tree  
-❌ **NOT "No-Code"** - Requires understanding of UE's AI, GAS, and animation systems
 
 ### Scope & Expectations
 
 **This plugin provides:**
-- Enemy AI decision-making and movement
+- Enemy AI decision-making and tactical movement
 - Melee combat hit detection
 - Action scoring and execution framework
 - Multi-enemy coordination
 - Component-based architecture
 
-**You still need:**
-- Player character combat system
+**You still need in order to make a game:**
 - UI/HUD (health bars, lock-on indicators, damage numbers)
-- Level design and encounter placement
-- Save/load systems
+- Level design and encounter placement or spawning the enemies
 - Progression and difficulty balancing
 
 
