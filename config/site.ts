@@ -1,6 +1,6 @@
 export const siteConfig = {
   name: "Hakan Erunsal",
-  url: "https://hakanerunsal.github.io",
+  url: "https://hakanerunsal.com",
   repoName: "",
   description: "Game Developer & Software Engineer specializing in Unreal Engine. Portfolio of mobile shooter games and technical articles.",
   author: "Hakan Erunsal",
