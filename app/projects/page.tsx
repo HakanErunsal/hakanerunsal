@@ -1,10 +1,7 @@
 // Importing necessary modules and components
-import { buttonVariants } from "@/components/ui/button"; // Importing buttonVariants utility function from button module
-import { cn, sortProjects } from "@/lib/utils"; // Importing utility functions from utils module
+import { sortProjects } from "@/lib/utils"; // Importing utility functions from utils module
 import { projects } from "#site/content"; // Importing posts data from content
-import Link from "next/link"; // Importing Link component from Next.js
 import MediaCard from "@/components/media-card"; // Importing MediaCard component
-import { Icons } from "@/components/icons";
 
 // Home functional component
 export default function Home() {
@@ -17,30 +14,14 @@ export default function Home() {
       <div className=""></div>
       {/* Right column */}
       <div className="col-span-2 mt-4 md:mt-0 mr-0 md:mr-8">
-        {/* Latest section */}
-        {/* Title */}
-        <div className="flex justify-center md:justify-end lg:justify-center items-center h-80 p-8 font-mono">
-          <div className="text-nowrap text-2xl">
-            Latest Project
-            <div className="flex items-center">
-              <Icons.downRightArrow
-                className="mr-2"
-                style={{ height: 40, width: 40}}
-              />
-              <div className="inline-block">
-                {latestProjects.length > 0 && (
-                  <Link href= {latestProjects[0].slug}
-                  className={cn(
-                    buttonVariants({ variant: "link" }),
-                    "text-2xl font-mono p-0"
-                  )}
-                  >
-                    {latestProjects[0].title}
-                  </Link>
-                )}
-              </div>
-            </div>
-          </div>
+        {/* Hero section */}
+        <div className="flex flex-col justify-center items-center md:items-end lg:items-center h-80 p-8">
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
+            Projects
+          </h1>
+          <p className="mt-4 text-lg text-muted-foreground font-mono">
+            Things I&apos;ve built & shipped
+          </p>
         </div>
 
         <hr className="size-5 border-gray-600 w-full" />
