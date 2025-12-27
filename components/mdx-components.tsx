@@ -7,6 +7,11 @@ import GameStatusBadge from './GameStatusBadge';
 import VideoLoop from "./VideoLoop";
 import { Breadcrumb } from "./breadcrumb";
 import { DocNav } from "./doc-nav";
+import MovementVisualizer from '@/components/MovementVisualizer';
+import ActionFlowVisualizer from '@/components/ActionFlowVisualizer';
+import CombatRoleVisualizer from '@/components/CombatRoleVisualizer';
+import ThreatVisualizer from '@/components/ThreatVisualizer';
+import MeleeTraceVisualizer from '@/components/MeleeTraceVisualizer';
 
 const useMDXComponent = (code: string) => {
   const fn = new Function(code);
@@ -22,6 +27,11 @@ const components = {
   GameStatusBadge,
   Breadcrumb,
   DocNav,
+  MovementVisualizer,
+  ActionFlowVisualizer,
+  CombatRoleVisualizer,
+  ThreatVisualizer,
+  MeleeTraceVisualizer,
 };
 
 interface MdxProps {

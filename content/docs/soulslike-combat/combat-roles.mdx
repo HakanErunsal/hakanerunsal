@@ -1,0 +1,240 @@
+---
+title: "Combat Roles"
+description: "Multi-enemy coordination with role-based behavior, slot management, and fitness evaluation."
+date: 2025-12-27
+published: true
+tags: ["Documentation", "Unreal Engine", "AI", "Combat Roles"]
+parent: "SoulslikeCombatDocs"
+---
+
+
+<Breadcrumb items={[
+    { label: "Docs", href: "/docs" },
+    { label: "SoulslikeCombat", href: "/docs/SoulslikeCombatDocs" },
+    { label: "Combat Roles" }
+]} />
+
+> Coordinating multiple enemies so they don't all attack at once. Some flank, some wait, some support.
+
+<CombatRoleVisualizer />
+
+## When to Use This
+
+- Any game with multiple enemies at once that shouldn't all attack simultaneously
+- Soulslike encounters where enemies take turns
+- Group tactics with specialized roles (tank, flanker, support)
+- Dynamic difficulty by adjusting how many attackers are allowed
+
+> This system can be used independently of the other plugin systems.
+
+---
+
+## Core Concepts
+
+### The Role System
+
+Instead of all enemies rushing the player, each gets assigned a **role**:
+
+| Role | Behavior | Typical Actions |
+|------|----------|-----------------|
+| **Attacker** | Close-range aggressive | Melee combos, pressure |
+| **Flanker** | Circles wide, attacks from angles | Side attacks, backstabs |
+| **Waiter** | Maintains distance, watches | Occasional pokes, ready to swap in |
+| **Supporter** | Stays back, buffs/debuffs | Ranged attacks, healing allies |
+| **Elite** | Priority attacker, ignores some limits | Boss-tier behavior |
+
+Roles are **dynamic**. Enemies swap based on distance, fitness scores, and availability.
+
+### Slot Management
+
+The subsystem limits how many enemies can attack at once:
+
+```cpp
+// In your AIConfig:
+MaxAttackers = 2;        // Only 2 enemies attack at a time
+MaxTotalCombatants = 5;  // Only 5 enemies engage at all
+```
+
+When one Attacker finishes or dies, a Waiter can take its place.
+
+### Fitness Evaluation
+
+"Who should be the next Attacker?" is decided by **Fitness Evaluators**. These are scoring functions that run on each AI:
+
+```cpp
+// Built-in evaluators:
+DistanceEvaluator     // Closer = higher fitness
+HealthEvaluator       // Healthier = higher fitness  
+RandomEvaluator       // Adds unpredictability
+CooldownEvaluator     // Fewer actions on cooldown = higher fitness
+```
+
+The AI with the highest combined fitness score gets priority for open slots.
+
+### Role-Based ActionSets
+
+Each role can have a different ActionSet:
+
+```
+Attacker  → DA_ActionSet_Aggressive (fast attacks, short cooldowns)
+Flanker   → DA_ActionSet_Flanking (side-specific attacks)
+Waiter    → DA_ActionSet_Patient (defensive, occasional pokes)
+Supporter → DA_ActionSet_Ranged (projectiles, buffs)
+```
+
+When an AI's role changes, its ActionSet automatically swaps to match.
+
+---
+
+## Quick Setup
+
+### 1. Create an AICombatConfig
+
+Right-click → Miscellaneous → Data Asset → **AICombatConfig**
+
+### 2. Configure Roles
+
+```cpp
+// Example configuration:
+AutoRegisterForCombatRoles: true
+
+AllowedRoles:
+  - SEC.Role.Attacker
+  - SEC.Role.Flanker  
+  - SEC.Role.Waiter
+
+Priority: 0              // Lower = higher priority for slots
+PreferredRole: SEC.Role.Attacker
+```
+
+### 3. Set Up Fitness Evaluators
+
+Add evaluators to determine role assignment priority:
+
+```cpp
+FitnessEvaluators:
+  - DistanceEvaluator (Weight: 1.0)
+  - HealthEvaluator (Weight: 0.5)
+  - RandomEvaluator (Weight: 0.2)
+```
+
+Evaluators are instanced UObjects. You can create custom ones by inheriting from `URoleEvaluator`.
+
+### 4. Map Roles to ActionSets
+
+```cpp
+ManageActionSetsAutomatically: true
+DefaultActionSet: DA_ActionSet_Attacker
+
+RoleActionSets:
+  SEC.Role.Waiter   → DA_ActionSet_Patient
+  SEC.Role.Flanker  → DA_ActionSet_Flanking
+  SEC.Role.Supporter → DA_ActionSet_Ranged
+```
+
+### 5. Assign to Enemy
+
+In your Enemy Blueprint → **AIConfig** → Set to your AICombatConfig
+
+See [Configuration Reference](/docs/soulslike-combat/configuration#combat-config) for the complete structure.
+
+---
+
+## How Role Assignment Works
+
+```
+1. Enemy spawns, registers with AICombatRoleSubsystem
+2. Subsystem evaluates all registered enemies
+3. Fitness scores calculated for each
+4. Roles assigned based on:
+   - Slot availability (MaxAttackers limit)
+   - Fitness scores
+   - Distance priority
+   - Preferred role
+5. Each enemy's ActionSet/MovementProfile updated to match role
+6. Re-evaluation happens when:
+   - An enemy dies
+   - An Attacker finishes their attack
+   - Periodic tick (configurable)
+```
+
+---
+
+## Custom Fitness Evaluators
+
+Create your own scoring logic:
+
+```cpp
+UCLASS()
+class UMyCustomEvaluator : public URoleEvaluator
+{
+    GENERATED_BODY()
+    
+public:
+    virtual float EvaluateFitness(const FRoleEvaluationContext& Context) override
+    {
+        // Return 0.0 - 1.0
+        // Higher = more fit for the role
+        
+        // Example: Prioritize enemies the player can't see
+        if (!PlayerCanSeeMe(Context.Pawn))
+            return 1.0f;
+        return 0.3f;
+    }
+};
+```
+
+Add it to your AICombatConfig's FitnessEvaluators array.
+
+---
+
+## Key Functions
+
+```cpp
+// Get the combat role subsystem
+UAICombatRoleSubsystem* RoleSystem = GetWorld()->GetSubsystem<UAICombatRoleSubsystem>();
+
+// Register/unregister an AI
+RoleSystem->RegisterCombatant(MyController);
+RoleSystem->UnregisterCombatant(MyController);
+
+// Force role reassignment
+RoleSystem->RequestRoleReassignment();
+
+// Get current role of an AI
+FGameplayTag CurrentRole = RoleSystem->GetCombatRole(MyController);
+```
+
+Most of this is automatic if you use `AEnemyControllerBase` with `AutoRegisterForCombatRoles: true`.
+
+---
+
+## Debug Tools
+
+**Console Commands:**
+```
+SEC.Debug.Roles.ShowAssignments 1   // Display current role assignments
+SEC.Debug.Roles.LogTransitions 1    // Log role changes
+```
+
+**In AICombatConfig:**
+```cpp
+bDebugLogRoleChanges: true
+```
+
+---
+
+## Integration Points
+
+| System | How Combat Roles Uses It |
+|--------|-------------------------|
+| [Action System](/docs/soulslike-combat/action-system) | Swaps ActionSet when role changes |
+| [Movement System](/docs/soulslike-combat/movement-system) | Different roles have different positioning profiles |
+| [Threat Detection](/docs/soulslike-combat/threat-detection) | Threatened AI may be deprioritized for Attacker role |
+
+---
+
+<DocNav 
+  prev={{ title: "Action System", href: "/docs/soulslike-combat/action-system" }} 
+  next={{ title: "Threat Detection", href: "/docs/soulslike-combat/threat-detection" }} 
+/>

@@ -1,0 +1,198 @@
+---
+title: "Threat Detection"
+description: "Track player camera attention and react when being observed."
+date: 2025-12-27
+published: true
+tags: ["Documentation", "Unreal Engine", "AI", "Threat Detection"]
+parent: "SoulslikeCombatDocs"
+---
+
+
+<Breadcrumb items={[
+    { label: "Docs", href: "/docs" },
+    { label: "SoulslikeCombat", href: "/docs/SoulslikeCombatDocs" },
+    { label: "Threat Detection" }
+]} />
+
+> The AI knows when you're watching, and changes behavior accordingly.
+
+<ThreatVisualizer />
+
+## When to Use This
+
+- Soulslike games where enemies react to player attention
+- Stealth/horror games with awareness mechanics
+- Dynamic difficulty that punishes passive observation
+- Any AI that should behave differently when the spotlight is on them
+
+> This component can be used independently of the other plugin systems.
+
+---
+
+## Core Concepts
+
+### How It Works
+
+The component checks if the **player's camera** is pointing at the AI:
+
+```
+Player Camera
+      \
+       \  < 15° (configurable)
+        \
+         ↘ [AI]  ← "I'm being watched!"
+```
+
+When the player looks at the AI:
+1. **Threat level** starts accumulating (0.0 → 1.0)
+2. The longer they stare, the higher the threat
+3. When threat reaches threshold, the AI reacts
+
+When the player looks away:
+- Threat level **decays** over time back to 0
+
+### Threat Level
+
+A normalized value from **0.0 to 1.0**:
+
+| Value | Meaning |
+|-------|---------|
+| 0.0 | Not observed at all |
+| 0.0 - 0.5 | Casually glanced at |
+| 0.5 - 0.8 | Player is watching |
+| 0.8 - 1.0 | Player is staring |
+
+Use this value to:
+- Modify action scores (defensive actions score higher when threatened)
+- Trigger strafe direction changes
+- Enable/disable certain behaviors
+
+---
+
+## Quick Setup
+
+The component is automatically added to `AEnemyControllerBase`.
+
+### Configure Thresholds
+
+In your AI Controller Blueprint → ThreatDetectionComponent:
+
+```cpp
+PlayerLookAngleThreshold = 15.0f;   // Degrees - how directly must player look
+PlayerLookTimeThreshold = 3.0f;     // Seconds to reach max threat
+```
+
+### Read Threat Level
+
+```cpp
+// In StateTree, Blueprint, or C++:
+float Threat = ThreatDetection->GetCurrentThreatLevel();
+
+if (Threat > 0.7f)
+{
+    // Player is really staring - do something about it
+}
+```
+
+---
+
+## Key Properties
+
+| Property | Default | Purpose |
+|----------|---------|---------|
+| `PlayerLookAngleThreshold` | 15.0° | How directly player must look to trigger |
+| `PlayerLookTimeThreshold` | 3.0s | Time to reach max threat |
+| `ThreatDecayRate` | 0.5 | How fast threat drops when not observed |
+| `bEnabled` | true | Toggle detection on/off |
+
+---
+
+## Key Functions
+
+```cpp
+// Current threat level [0.0 - 1.0]
+float GetCurrentThreatLevel() const;
+
+// Is player actively looking at this AI right now?
+bool IsPlayerLookingAtMe() const;
+
+// Enable/disable detection
+void SetThreatDetectionEnabled(bool bEnabled);
+
+// Reset threat to zero
+void ResetThreat();
+```
+
+---
+
+## Usage Examples
+
+### Strafe Direction Swap
+
+The Movement System automatically uses threat to trigger strafe swaps:
+
+```cpp
+// When threat exceeds threshold, AI changes strafe direction
+// This prevents the player from predicting movement
+if (ThreatDetection->GetCurrentThreatLevel() > 0.8f)
+{
+    MovementEvaluator->SwapStrafeSide();
+}
+```
+
+This is built-in to the Movement System. No extra code needed if you're using both.
+
+### Defensive Action Bonus
+
+Modify action scores based on threat:
+
+```cpp
+// In your action scoring (or use context modifiers):
+float ThreatBonus = ThreatDetection->GetCurrentThreatLevel();
+DefensiveAction.RuntimeScoreBonus = ThreatBonus * 0.5f;  // Up to +50% when threatened
+```
+
+### "I See You" Bark
+
+Trigger audio/visual feedback:
+
+```cpp
+void OnThreatLevelChanged(float OldThreat, float NewThreat)
+{
+    if (OldThreat < 0.5f && NewThreat >= 0.5f)
+    {
+        PlayBarkSound("ISeeYou");
+    }
+}
+```
+
+---
+
+## Debug Tools
+
+**Enable Logging:**
+```cpp
+ThreatDetection->bDebugLog = true;
+```
+
+**Console Command:**
+```
+SEC.Debug.Threat.DrawDetection 1   // Visualize detection cone
+```
+
+---
+
+## Integration Points
+
+| System | How Threat Detection Connects |
+|--------|------------------------------|
+| [Movement System](/docs/soulslike-combat/movement-system) | Triggers strafe direction swap when threatened |
+| [Action System](/docs/soulslike-combat/action-system) | Threat level can boost defensive action scores |
+| [Combat Roles](/docs/soulslike-combat/combat-roles) | Threatened AI may be deprioritized for Attacker role |
+
+---
+
+<DocNav 
+  prev={{ title: "Combat Roles", href: "/docs/soulslike-combat/combat-roles" }} 
+  next={{ title: "Melee Trace", href: "/docs/soulslike-combat/melee-trace" }} 
+/>

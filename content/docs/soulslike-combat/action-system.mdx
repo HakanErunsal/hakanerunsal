@@ -1,0 +1,266 @@
+---
+title: "Action System"
+description: "Intelligent action selection with scoring, cooldowns, and hybrid Ability/BehaviorTree execution."
+date: 2025-12-27
+published: true
+tags: ["Documentation", "Unreal Engine", "AI", "Actions"]
+parent: "SoulslikeCombatDocs"
+---
+
+
+<Breadcrumb items={[
+    { label: "Docs", href: "/docs" },
+    { label: "SoulslikeCombat", href: "/docs/SoulslikeCombatDocs" },
+    { label: "Action System" }
+]} />
+
+> The brain behind enemy decisions. Scoring every available action and picking the right one for the moment.
+
+<ActionFlowVisualizer />
+
+## When to Use This
+
+- Any AI that chooses between multiple actions (attacks, abilities, retreats)
+- Enemies with varied movesets where you want intelligent selection
+- Boss fights with phase-based action sets
+- Context-aware AI that reacts to player state (blocking, low health, etc.)
+
+> This system can be used independently of the other plugin systems.
+
+---
+
+## Core Concepts
+
+### The Scoring Formula
+
+Every action in your ActionSet gets scored each evaluation:
+
+```
+FinalScore = BaseWeight
+           × DistanceScore        // Are we at the right range?
+           × AngleScore           // Are we facing the target?
+           × HealthModifier       // Does our health affect this?
+           × NoveltyScore         // Have we used this recently?
+           × ChainBonus           // Does this combo from our last action?
+           × ContextModifiers     // Player blocking? Low health?
+```
+
+The highest-scoring action that's off cooldown and meets requirements wins.
+
+### Distance & Angle Evaluation
+
+Each action defines its ideal range using `FRangeEval`:
+
+```cpp
+// Example: Light attack is perfect at 150-250cm, valid up to 400cm
+Distance.MinValue = 0;
+Distance.OptimalMin = 150;    // Score = 1.0 starts here
+Distance.OptimalMax = 250;    // Score = 1.0 ends here  
+Distance.MaxValue = 400;      // Invalid beyond this
+
+// Visualization:
+//   0    150      250      400
+//   |-----|========|--------|
+//  0.0   1.0     1.0      0.0
+```
+
+Same concept applies to angle. Attacks that require facing the target score higher when aligned.
+
+### Cooldowns
+
+Each action has independent cooldown tracking:
+
+| Property | Purpose |
+|----------|---------|
+| `Duration` | Time before action can be used again |
+| `WarmupCooldown` | Starting cooldown (prevents immediate use on spawn) |
+| `RandomDeviation` | Adds randomness to cooldown duration |
+
+### Novelty Decay
+
+To prevent repetitive behavior, recently-used actions get penalized:
+
+- Just used: Score heavily reduced
+- A few seconds ago: Score slightly reduced  
+- Long time ago: Full score
+
+This creates natural variety without explicit randomization.
+
+### Chain Bonuses
+
+Actions can combo into each other:
+
+```cpp
+// In your ActionSet:
+LightAttack.PreferredNextAction = "HeavyAttack";
+LightAttack.ChainBonusMultiplier = 0.5f;  // +50% score for HeavyAttack if chaining
+```
+
+After a LightAttack, HeavyAttack gets a scoring boost, encouraging combos.
+
+---
+
+## Execution Modes
+
+
+
+Actions can execute in two ways:
+
+### Gameplay Ability Mode
+
+For simple actions: play a montage, apply damage, done.
+
+```cpp
+FActionSpec LightAttack;
+LightAttack.Id = "LightAttack";
+LightAttack.ExecutionMode = EActionExecutionMode::GameplayAbility;
+LightAttack.AbilityTag = GameplayTag("SEC.Action.LightAttack");
+LightAttack.AbilityEndTag = GameplayTag("SEC.Action.End");
+```
+
+The system activates the ability via AbilitySystemComponent and waits for the end tag.
+
+### Behavior Tree Mode
+
+For complex multi-step actions with branching logic:
+
+```cpp
+FActionSpec ChargeAttack;
+ChargeAttack.Id = "ChargeAttack";
+ChargeAttack.ExecutionMode = EActionExecutionMode::BehaviorTreeSequence;
+ChargeAttack.BehaviorTrees = { BT_ChargeWindup, BT_ChargeRelease };
+ChargeAttack.BehaviorTreeTimeout = 5.0f;
+```
+
+The system runs each BT in sequence. Use this for:
+- Charge attacks with stamina checks
+- Multi-hit combos with conditional branches
+- Actions that need movement mid-execution
+
+**Auto-populated Blackboard Keys:**
+
+| Key | Type | Value |
+|-----|------|-------|
+| `SEC_TargetActor` | Object | Current focus actor |
+| `SEC_SelfActor` | Object | Controlled pawn |
+| `SEC_Distance` | Float | Distance to target |
+| `SEC_ActionId` | Name | ID of executing action |
+
+---
+
+## Quick Setup
+
+### 1. Create an ActionSet
+
+Right-click → Miscellaneous → Data Asset → **ActionSet**
+
+### 2. Add Actions
+
+| Field | Example Value |
+|-------|---------------|
+| Id | `LightAttack` |
+| ExecutionMode | `GameplayAbility` |
+| AbilityTag | `SEC.Action.LightAttack` |
+| AbilityEndTag | `SEC.Action.End` |
+| Distance.OptimalMin | `100` |
+| Distance.OptimalMax | `250` |
+| Cooldown.Duration | `2.0` |
+| BaseWeight | `1.0` |
+
+See [Configuration Reference](/docs/soulslike-combat/configuration#action-sets) for the complete FActionSpec structure.
+
+### 3. Assign to Controller
+
+```cpp
+// In AI Controller:
+ActionEvaluationComponent->SetActionSet(MyActionSet);
+```
+
+Or configure in the [AICombatConfig](/docs/soulslike-combat/configuration#combat-config) for automatic role-based switching.
+
+### 4. Create the Gameplay Ability
+
+Inherit from `GameplayAbilityBase` (required for end detection):
+
+```
+Event ActivateAbility
+    ↓
+PlayMontageAndWait
+    ↓
+EndAbility  // Automatically sends end event
+```
+
+> **Important:** Always use `GameplayAbilityBase` as your parent class. It handles the end event automatically. Otherwise, the AI gets stuck waiting.
+
+---
+
+## Key Functions
+
+```cpp
+// Evaluate all actions, return the best one
+FChosenAction EvaluateBestAction(const FDecisionContext& Context, float GameTimeSeconds);
+
+// Execute a chosen action
+bool ExecuteAction(FName ActionId);
+
+// Swap action set at runtime (e.g., boss phase 2)
+void SetActionSet(UActionSet* NewSet);
+
+// Is an action currently running?
+bool IsActionExecuting();
+
+// Runtime score modifiers
+void SetActionOverride(FName ActionId, float ScoreMultiplier);
+void ClearAllOverrides();
+```
+
+---
+
+## Context Tags
+
+Actions can require or block based on gameplay tags:
+
+```cpp
+// Only use this action if player is attacking
+LightCounterAttack.RequiredTags = {"Player.Attacking"};
+
+// Never use this action if we're enraged
+DefensiveRetreat.BlockedTags = {"Self.Enraged"};
+
+// Add these tags while action is active
+HeavyAttack.AddTags = {"Self.SuperArmor"};
+```
+
+---
+
+## Debug Tools
+
+**Enable Logging:**
+```cpp
+ActionEvaluationComponent->bDebugLogDecisions = true;
+```
+
+**Output:**
+```
+LogEvaluation: Evaluating 3 actions for BP_Enemy_1...
+LogEvaluation: [LightAttack] Dist:180 Angle:15 Score:0.95 SELECTED
+LogEvaluation: [HeavyAttack] Dist:180 Angle:15 Score:0.60 (cooldown:1.2s)
+LogEvaluation: [Retreat] Dist:180 Angle:15 Score:0.10 (out of range)
+```
+
+---
+
+## Integration Points
+
+| System | How Actions Uses It |
+|--------|---------------------|
+| [Movement System](/docs/soulslike-combat/movement-system) | Provides distance/angle context for scoring |
+| [Combat Roles](/docs/soulslike-combat/combat-roles) | Swaps ActionSets based on current role |
+| [Threat Detection](/docs/soulslike-combat/threat-detection) | Threat level can modify action scores |
+
+---
+
+<DocNav 
+  prev={{ title: "Movement System", href: "/docs/soulslike-combat/movement-system" }} 
+  next={{ title: "Combat Roles", href: "/docs/soulslike-combat/combat-roles" }} 
+/>

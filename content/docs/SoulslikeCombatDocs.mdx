@@ -11,6 +11,8 @@ tags: ["Documentation", "Unreal Engine", "AI", "Tutorial"]
 
 **SoulslikeEnemyCombat** is a production-ready AI combat plugin for Unreal Engine 5.7. It provides intelligent, tactical enemy behavior for souls-like and action RPG games through a modular component system.
 
+The plugin consists of **5 systems** that work together seamlessly: Movement, Actions, Combat Roles, Threat Detection, and Melee Trace. Each system can also be used independently if you only need specific functionality.
+
 ### What's Included
 
 - ✅ Complete C++ source code
@@ -20,16 +22,9 @@ tags: ["Documentation", "Unreal Engine", "AI", "Tutorial"]
 - ✅ StateTree and Behavior Tree integration
 - ✅ Comprehensive documentation
 
-### Who This Is For
-
-- Developers creating souls-like, action RPG, or tactical combat games
-- Teams needing production-ready AI without building from scratch
-- Designers who want data-driven AI configuration without code
-- Projects using Gameplay Ability System (GAS) for combat
-
 ---
 
-## Documentation Sections
+## Getting Started
 
 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8 p-6 not-prose">
 
@@ -66,27 +61,53 @@ tags: ["Documentation", "Unreal Engine", "AI", "Tutorial"]
   </div>
 </a>
 
-<a href="/docs/soulslike-combat/components" className="doc-card rounded-lg border border-border hover:border-primary/50 transition-all duration-300 bg-card block overflow-hidden">
-  <div style={{height: "144px", position: "relative", overflow: "hidden", display: "flex", alignItems: "center"}}>
-    <img src="./../images/docs_components_1765393829785.png" alt="Components" className="doc-card-img" style={{width: "100%", height: "auto", objectFit: "cover", objectPosition: "center", minHeight: "100%"}} />
-    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-  </div>
-  <div className="p-6">
-    <h3 className="text-lg font-semibold mb-3">Components Reference</h3>
-    <p className="text-sm text-muted-foreground">MovementEvaluator, ActionEvaluation, ThreatDetection, and more.</p>
-  </div>
+</div>
+
+---
+
+## Systems Deep Dive
+
+Each system is independent and can be used standalone. Click to learn how each works.
+
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8 p-6 not-prose">
+
+<a href="/docs/soulslike-combat/movement-system" className="doc-card rounded-lg border border-border hover:border-primary/50 transition-all duration-300 bg-card block p-6">
+  <h3 className="text-lg font-semibold mb-2">🎯 Movement System</h3>
+  <p className="text-sm text-muted-foreground">Tactical positioning, strafing, distance maintenance, pawn avoidance.</p>
 </a>
 
-<a href="/docs/soulslike-combat/configuration" className="doc-card rounded-lg border border-border hover:border-primary/50 transition-all duration-300 bg-card block overflow-hidden">
-  <div style={{height: "144px", position: "relative", overflow: "hidden", display: "flex", alignItems: "center"}}>
-    <img src="./../images/docs_configuration_1765393846896.png" alt="Configuration" className="doc-card-img" style={{width: "100%", height: "auto", objectFit: "cover", objectPosition: "center", minHeight: "100%"}} />
-    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-  </div>
-  <div className="p-6">
-    <h3 className="text-lg font-semibold mb-3">Configuration Assets</h3>
-    <p className="text-sm text-muted-foreground">ActionSets, Movement Profiles, and Damage Configs.</p>
-  </div>
+<a href="/docs/soulslike-combat/action-system" className="doc-card rounded-lg border border-border hover:border-primary/50 transition-all duration-300 bg-card block p-6">
+  <h3 className="text-lg font-semibold mb-2">⚔️ Action System</h3>
+  <p className="text-sm text-muted-foreground">Scoring-based action selection, cooldowns, Ability/BT execution.</p>
 </a>
+
+<a href="/docs/soulslike-combat/combat-roles" className="doc-card rounded-lg border border-border hover:border-primary/50 transition-all duration-300 bg-card block p-6">
+  <h3 className="text-lg font-semibold mb-2">🎖️ Combat Roles</h3>
+  <p className="text-sm text-muted-foreground">Multi-enemy coordination with Attacker, Flanker, Waiter roles.</p>
+</a>
+
+<a href="/docs/soulslike-combat/threat-detection" className="doc-card rounded-lg border border-border hover:border-primary/50 transition-all duration-300 bg-card block p-6">
+  <h3 className="text-lg font-semibold mb-2">👁️ Threat Detection</h3>
+  <p className="text-sm text-muted-foreground">Track player camera attention and react when observed.</p>
+</a>
+
+<a href="/docs/soulslike-combat/melee-trace" className="doc-card rounded-lg border border-border hover:border-primary/50 transition-all duration-300 bg-card block p-6">
+  <h3 className="text-lg font-semibold mb-2">🗡️ Melee Trace</h3>
+  <p className="text-sm text-muted-foreground">Frame-rate independent hit detection with swept traces.</p>
+</a>
+
+<a href="/docs/soulslike-combat/configuration" className="doc-card rounded-lg border border-border hover:border-primary/50 transition-all duration-300 bg-card block p-6">
+  <h3 className="text-lg font-semibold mb-2">⚙️ Configuration Reference</h3>
+  <p className="text-sm text-muted-foreground">All data assets: ActionSets, Profiles, Damage Configs.</p>
+</a>
+
+</div>
+
+---
+
+## Reference & Examples
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8 p-6 not-prose">
 
 <a href="/docs/soulslike-combat/statetree" className="doc-card rounded-lg border border-border hover:border-primary/50 transition-all duration-300 bg-card block overflow-hidden">
   <div style={{height: "144px", position: "relative", overflow: "hidden", display: "flex", alignItems: "center"}}>
@@ -94,19 +115,8 @@ tags: ["Documentation", "Unreal Engine", "AI", "Tutorial"]
     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
   </div>
   <div className="p-6">
-    <h3 className="text-lg font-semibold mb-3">StateTree Integration</h3>
-    <p className="text-sm text-muted-foreground">StateTree tasks, structure, and setup guide.</p>
-  </div>
-</a>
-
-<a href="/docs/soulslike-combat/behavior-trees" className="doc-card rounded-lg border border-border hover:border-primary/50 transition-all duration-300 bg-card block overflow-hidden">
-  <div style={{height: "144px", position: "relative", overflow: "hidden", display: "flex", alignItems: "center"}}>
-    <img src="./../images/docs_behavior_trees_1765393878637.png" alt="Behavior Trees" className="doc-card-img" style={{width: "100%", height: "auto", objectFit: "cover", objectPosition: "center", minHeight: "100%"}} />
-    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-  </div>
-  <div className="p-6">
-    <h3 className="text-lg font-semibold mb-3">Behavior Tree Tasks</h3>
-    <p className="text-sm text-muted-foreground">BT tasks and auto-populated blackboard keys.</p>
+    <h3 className="text-lg font-semibold mb-3">StateTree Tasks</h3>
+    <p className="text-sm text-muted-foreground">Available StateTree tasks and structure guide.</p>
   </div>
 </a>
 
@@ -116,19 +126,8 @@ tags: ["Documentation", "Unreal Engine", "AI", "Tutorial"]
     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
   </div>
   <div className="p-6">
-    <h3 className="text-lg font-semibold mb-3">Patterns and Examples</h3>
+    <h3 className="text-lg font-semibold mb-3">Patterns & Examples</h3>
     <p className="text-sm text-muted-foreground">Ready-to-use patterns for melee, defensive, and aggressive enemies.</p>
-  </div>
-</a>
-
-<a href="/docs/soulslike-combat/api-reference" className="doc-card rounded-lg border border-border hover:border-primary/50 transition-all duration-300 bg-card block overflow-hidden">
-  <div style={{height: "144px", position: "relative", overflow: "hidden", display: "flex", alignItems: "center"}}>
-    <img src="./../images/docs_api_reference_1765393908793.png" alt="API Reference" className="doc-card-img" style={{width: "100%", height: "auto", objectFit: "cover", objectPosition: "center", minHeight: "100%"}} />
-    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-  </div>
-  <div className="p-6">
-    <h3 className="text-lg font-semibold mb-3">API Reference</h3>
-    <p className="text-sm text-muted-foreground">Technical API reference for base classes and functions.</p>
   </div>
 </a>
 
@@ -145,7 +144,21 @@ tags: ["Documentation", "Unreal Engine", "AI", "Tutorial"]
 
 </div>
 
+---
 
+## Roadmap
+
+Check out the [public Trello roadmap](https://trello.com/b/gN7Fxryx/soulslike-enemy-combat-plugin-roadmap) to see what's coming next.
+
+### 2026 Q1
+- 🔮 **Player Combat Component**: Combat system for player characters
+- 🔮 **Example Player Character**: Pre-configured with attacks, dodges, blocks
+
+### 2026 Q1-Q2
+- 🔮 **Multiplayer Support**: Replication, client prediction, server authority
+
+### 2026 Q3
+- 🔮 **Group Tactics** (Experimental): Coordinated multi-enemy attacks, formations
 
 ---
 
@@ -165,8 +178,6 @@ tags: ["Documentation", "Unreal Engine", "AI", "Tutorial"]
     💬 Discord Support
   </a>
 </div>
-
-**Roadmap:** Check out the [public roadmap](https://trello.com/b/gN7Fxryx/soulslike-enemy-combat-plugin-roadmap) to see what's coming next and suggest features.
 
 **Support:** Join the [Discord server](https://discord.gg/34zvkgxN) for help, bug reports, and community discussion.
 

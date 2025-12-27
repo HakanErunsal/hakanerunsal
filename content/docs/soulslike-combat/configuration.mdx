@@ -1,9 +1,9 @@
 ---
-title: "Configuration Assets"
-description: "Guide to ActionSets, Movement Profiles, Damage Configs, and other data assets."
+title: "Configuration Reference"
+description: "Complete reference for all data assets: AICombatConfig, ActionSets, Movement Profiles, and Damage Config."
 date: 2025-12-10
 published: true
-tags: ["Documentation", "Unreal Engine", "AI", "Configuration"]
+tags: ["Documentation", "Unreal Engine", "AI", "Configuration", "Reference"]
 parent: "SoulslikeCombatDocs"
 ---
 
@@ -11,16 +11,43 @@ parent: "SoulslikeCombatDocs"
 <Breadcrumb items={[
     { label: "Docs", href: "/docs" },
     { label: "SoulslikeCombat", href: "/docs/SoulslikeCombatDocs" },
-    { label: "Configuration" }
+    { label: "Configuration Reference" }
 ]} />
 
-## UAICombatConfig (Data Asset)
+> All data assets in one place. Link here from system pages for specific configuration details.
+
+---
+
+<h2 id="combat-config">AICombatConfig</h2>
+
+**Used by:** [Combat Roles System](/docs/soulslike-combat/combat-roles)
 
 Defines combat role selection, behavior logic, and action set binding for an AI.
 
-### Example Profile
+### Full Structure
 
-```cpp /DA_SEC_CombatConfig_Default/ /DA_SEC_ActionSet_Attacker/ /DA_SEC_ActionSet_Waiter/ /DA_SEC_ActionSet_Flanker/ /DA_SEC_ActionSet_Ranged/
+```cpp
+// Role Registration
+bool AutoRegisterForCombatRoles;     // Auto-register with role subsystem
+TArray<FGameplayTag> AllowedRoles;   // Roles this AI can take
+int32 Priority;                       // Lower = higher priority for slots
+FGameplayTag PreferredRole;           // Default role when available
+
+// Fitness Evaluation
+TArray<URoleEvaluator*> FitnessEvaluators;  // Scoring objects for role assignment
+
+// Behavior
+UStateTree* StateTree;                // Main AI behavior tree
+
+// Action Set Management
+bool ManageActionSetsAutomatically;   // Swap ActionSets based on role
+UActionSet* DefaultActionSet;         // Fallback ActionSet
+TMap<FGameplayTag, FRoleActionSetMapping> RoleActionSets;  // Per-role ActionSets
+```
+
+### Example
+
+```cpp /DA_SEC_CombatConfig_Default/
 Name: DA_SEC_CombatConfig_Default
 
 CombatRole
@@ -48,31 +75,24 @@ ActionSets
   DefaultActionSet: DA_SEC_ActionSet_Attacker
 
 RoleActionSets
-  SEC.Role.Waiter
-    Managed: true
-    ActionSet: DA_SEC_ActionSet_Waiter
-
-  SEC.Role.Flanker
-    Managed: true
-    ActionSet: DA_SEC_ActionSet_Flanker
-
-  SEC.Role.Supporter
-    Managed: true
-    ActionSet: DA_SEC_ActionSet_Ranged
+  SEC.Role.Waiter   → DA_SEC_ActionSet_Waiter
+  SEC.Role.Flanker  → DA_SEC_ActionSet_Flanker
+  SEC.Role.Supporter → DA_SEC_ActionSet_Ranged
 ```
 
->FitnessEvaluators are editor-instanced scoring objects.
-Each evaluator computes a normalized fitness score based on the current AI context, such as distance, health, or randomness.
-All active evaluators are executed during role selection, and their results are combined to determine the most suitable combat role. You can inherit from RoleEvaluator class and implement your own scoring and stack it inside the AIConfig, or use the existing ones i have created.
+> **Fitness Evaluators** are editor-instanced UObjects. Inherit from `URoleEvaluator` to create custom scoring logic for role assignment.
 
+---
 
-## UActionSet (Data Asset)
+<h2 id="action-sets">ActionSet</h2>
 
-Contains an array of `FActionSpec` - all available actions for an AI.
+**Used by:** [Action System](/docs/soulslike-combat/action-system)
+
+Contains an array of `FActionSpec`, which are all available actions for an AI.
 
 ### Creating an ActionSet
 
-1. Right-click → Miscellaneous → Data Asset → `ActionSet`
+1. Right-click → Miscellaneous → Data Asset → **ActionSet**
 2. Add actions to the Actions array
 3. Configure each action's properties
 
@@ -83,111 +103,197 @@ struct FActionSpec
 {
     // Identity
     FName Id;                          // Unique identifier
-    FString DisplayName;               // Editor name
-    EActionExecutionMode ExecutionMode; // Ability or BT
+    FString DisplayName;               // Editor display name
+    EActionExecutionMode ExecutionMode; // Ability or BehaviorTree
     
     // Gameplay Ability Mode
-    FGameplayTag AbilityTag;           // Tag to activate
-    FGameplayTag AbilityEndTag;        // Completion signal
+    FGameplayTag AbilityTag;           // Tag to activate ability
+    FGameplayTag AbilityEndTag;        // Completion signal tag
     
     // Behavior Tree Mode
-    TArray<UBehaviorTree*> BehaviorTrees;
-    float BehaviorTreeTimeout;
+    TArray<UBehaviorTree*> BehaviorTrees;  // Sequence of BTs to run
+    float BehaviorTreeTimeout;              // Max execution time
     
     // Scoring
-    FRangeEval Distance;               // Distance curve
-    FRangeEval Angle;                  // Angle curve
-    FRangeEval Health;                 // Health curve
-    float BaseWeight;                  // Base priority
+    FRangeEval Distance;               // Optimal distance range
+    FRangeEval Angle;                  // Optimal angle to target
+    FRangeEval Health;                 // Optimal self-health range
+    float BaseWeight;                  // Base priority multiplier
 
     // Cooldowns
     FActionCooldown Cooldown;
+        float Duration;                // Time before reuse
+        float WarmupCooldown;          // Starting cooldown
+        float RandomDeviation;         // Randomness range
     
     // Chaining
-    FName PrefferedNextAction;         // This action will receive a bonus on the next evaluation
-    float ChainBonusMultiplier;        // Score bonus if chaining
+    FName PreferredNextAction;         // Bonus for this action next
+    float ChainBonusMultiplier;        // Score multiplier if chaining
     
-    // Context
-    FGameplayTagContainer RequiredTags;// Action is blocked if these tags don't exist on the AbilitySystemComponent
-    FGameplayTagContainer BlockedTags; // Action is blocked if these tags exist on the AbilitySystemComponent
-    FGameplayTagContainer AddTags;     // These tags will be given to the AbilitySystemComponent as long as this action is active
+    // Context Tags
+    FGameplayTagContainer RequiredTags;// Must have these to use
+    FGameplayTagContainer BlockedTags; // Cannot use if these exist
+    FGameplayTagContainer AddTags;     // Added while action active
 };
 ```
 
 ### FRangeEval Explained
 
+Defines a scoring curve for distance, angle, or health:
+
 ```cpp
 struct FRangeEval
 {
-    float MinValue;      // Invalid below this
+    float MinValue;      // Score = 0 below this (invalid)
     float OptimalMin;    // Score = 1.0 starts here
     float OptimalMax;    // Score = 1.0 ends here
-    float MaxValue;      // Invalid above this
+    float MaxValue;      // Score = 0 above this (invalid)
 };
+```
 
-// Example: Distance range for melee attack
-Distance.MinValue = 0;       // Valid from 0cm
-Distance.OptimalMin = 100;   // Perfect from 100cm
-Distance.OptimalMax = 250;   // Perfect until 250cm
-Distance.MaxValue = 400;     // Invalid beyond 400cm
+**Visualization:**
+```
+   0    100       250      400
+   |-----|========|--------|
+  0.0   1.0     1.0      0.0
+   ↑     ↑        ↑        ↑
+  Min  OptMin  OptMax    Max
+```
 
-// Scoring visualization:
-//   0    100       250      400
-//   |-----|========|--------|
-//   0.0   1.0     1.0      0.0
+**Example:** Melee attack valid 0-400cm, optimal 100-250cm:
+```cpp
+Distance.MinValue = 0;
+Distance.OptimalMin = 100;
+Distance.OptimalMax = 250;
+Distance.MaxValue = 400;
 ```
 
 ---
 
-## UMovementBehaviorProfile (Data Asset)
+<h2 id="movement-profiles">MovementBehaviorProfile</h2>
+
+**Used by:** [Movement System](/docs/soulslike-combat/movement-system)
 
 Contains all parameters for `MovementEvaluatorComponent`.
+
+### Full Structure
+
+```cpp
+// Distance
+float DesiredMinDistance;         // Approach until this close
+float DesiredMaxDistance;         // Retreat if farther than this
+float DistanceTolerance;          // Acceptable variance (0.0-1.0)
+
+// Strafing
+bool EnableStrafe;                // Allow lateral movement
+bool AutoStrafeSwap;              // Randomly change direction
+float StrafeSpeedPenalty;         // Speed multiplier when strafing
+
+// Strafe Fatigue
+bool EnableStrafeRest;            // Pause strafing periodically
+float StrafeTimeLimit;            // Seconds before rest
+float StrafeRestDuration;         // Rest duration
+
+// Avoidance
+bool EnableAvoidance;             // Avoid other pawns
+float AvoidanceRadius;            // Distance to maintain
+
+// Hybrid Navigation
+bool EnableHybridMovement;        // Switch pathfind/direct
+float HybridSwitchDistance;       // Distance threshold
+
+// Custom Rules
+TArray<UPositioningRule*> PositioningRules;  // Custom direction modifiers
+```
 
 ### Example Profile
 
 ```cpp /DA_AggressiveMelee/
 Name: DA_AggressiveMelee
 
-Desired Distance: 300
+DesiredMinDistance: 200
+DesiredMaxDistance: 350
 DistanceTolerance: 0.15
-EnableStrafeRest: true
-StrafeRestTimeLimit: 10.0f
-StrafeRestDuration: 1.0f
 
-Positioning Rules {}
+EnableStrafe: true
+AutoStrafeSwap: true
+StrafeSpeedPenalty: 0.8
+
+EnableStrafeRest: true
+StrafeTimeLimit: 5.0
+StrafeRestDuration: 1.0
+
+EnableAvoidance: true
+AvoidanceRadius: 125
+
+PositioningRules: []
 ```
 
->PositioningRule is an editor-instanced UObject, you can derive from UPositioningRule, override function **EvaluateDirection**, this function will give you the context that is being tested, you can basically return a weight multiplier from this function. All PositioningRules that are stacked on your UMovementBehaviorProfile will be considered when making movement decisions.
+### Built-in Presets
 
-### Using Profiles
+For quick setup without data assets:
 
 ```cpp
-// In AI Controller BeginPlay:
-MovementEvaluator->ApplyBehaviorProfile(AggressiveMeleeProfile);
-
-// Or swap at runtime (e.g., boss phase change):
-MovementEvaluator->ApplyBehaviorProfile(EnragedProfile);
+FMovementBehaviorConfig::MakeAttacker();   // Close-range aggressive
+FMovementBehaviorConfig::MakeWaiter();     // Mid-range patient
+FMovementBehaviorConfig::MakeFlanker();    // Wide circling
+FMovementBehaviorConfig::MakeCoward();     // Maintains distance
 ```
+
+> **Positioning Rules** are editor-instanced UObjects. Inherit from `UPositioningRule` and override `EvaluateDirection()` to create custom direction scoring.
 
 ---
 
-## USECDamageConfig (Data Asset)
+<h2 id="damage-config">DamageConfig</h2>
+
+**Used by:** [Melee Trace System](/docs/soulslike-combat/melee-trace)
 
 Contains damage values and type for melee attacks.
 
-### Properties
+### Full Structure
 
 ```cpp
-BaseDamage: 45.0
-DamageType: UDmgType_Physical
-ImpulseStrength: 1000.0
+float BaseDamage;              // Base damage value
+TSubclassOf<UDamageType> DamageType;  // Damage type class
+float ImpulseStrength;         // Physics impulse on hit
+
+bool bCanBeBlocked;            // Can target block this?
+bool bCanBeParried;            // Can target parry this?
+
+bool bCanCritical;             // Can this crit?
+float CriticalMultiplier;      // Damage multiplier on crit
+float CriticalChance;          // Base crit chance (0.0-1.0)
+```
+
+### Example
+
+```cpp
+Name: DA_SwordDamage
+
+BaseDamage: 25.0
+DamageType: UDamageType_Physical
+ImpulseStrength: 500.0
+
+bCanBeBlocked: true
+bCanBeParried: true
+
 bCanCritical: true
 CriticalMultiplier: 2.0
+CriticalChance: 0.1
 ```
 
 ### Usage
 
-Assigned to weapons, automatically applied during melee traces.
+Assigned to weapons via the `DamageConfig` property. Automatically applied during melee traces.
 
+```cpp
+// In weapon Blueprint:
+DamageConfig: DA_SwordDamage
+```
 
-<DocNav prev={{ title: "Components Reference", href: "/docs/soulslike-combat/components" }} next={{ title: "StateTree Integration", href: "/docs/soulslike-combat/statetree" }} />
+---
+
+<DocNav 
+  prev={{ title: "Melee Trace", href: "/docs/soulslike-combat/melee-trace" }} 
+  next={{ title: "Patterns & Examples", href: "/docs/soulslike-combat/patterns" }} 
+/>

@@ -1,0 +1,259 @@
+---
+title: "Melee Trace"
+description: "Frame-rate independent hit detection with swept traces and automatic damage application."
+date: 2025-12-27
+published: true
+tags: ["Documentation", "Unreal Engine", "AI", "Melee", "Combat"]
+parent: "SoulslikeCombatDocs"
+---
+
+
+<Breadcrumb items={[
+    { label: "Docs", href: "/docs" },
+    { label: "SoulslikeCombat", href: "/docs/SoulslikeCombatDocs" },
+    { label: "Melee Trace" }
+]} />
+
+> Frame-perfect hit detection that works at any frame rate. No more attacks passing through enemies.
+
+<MeleeTraceVisualizer />
+
+## When to Use This
+
+- Any game with melee combat (works for both AI and player characters)
+- Fast weapon swings that might miss at low framerates
+- Multiple hit zones on a single weapon (blade tip vs. hilt)
+- Configurable damage per weapon or attack
+
+> This system is completely standalone and works independently of the AI systems.
+
+---
+
+## Core Concepts
+
+### The Problem
+
+Traditional per-frame collision checks can miss:
+
+```
+Frame 1:  Sword ──→    [Enemy]
+Frame 2:              [Enemy]   ←── Sword
+                        ↑
+          Sword passed through between frames!
+```
+
+At 30 FPS, a fast sword swing can teleport 50cm between frames, missing the target entirely.
+
+### The Solution: Swept Traces
+
+The component **remembers where the weapon was last frame** and traces the entire path:
+
+```
+Frame 1 position ═══════════════► Frame 2 position
+                   ↑
+            Continuous trace catches the hit
+```
+
+This works identically at 30 FPS or 144 FPS.
+
+### Trace Sockets
+
+Weapons define **trace sockets**, which are points along the weapon that are tracked:
+
+```
+                  ┌─────────────────┐
+   Handle         │     BLADE       │         Tip
+   [socket]───────┴─────────────────┴────────[socket]
+     ↑                                          ↑
+  blade_start                               blade_end
+```
+
+The component traces between these sockets, creating a swept volume that matches the weapon's swing.
+
+### Trace Shapes
+
+| Shape | Use Case | How It Works |
+|-------|----------|--------------|
+| **Sphere** | Blunt weapons | Single point with radius |
+| **Capsule** | Short blades | Single point with capsule volume |
+| **CapsuleTwoPoint** | Long blades | Capsule stretched between two sockets |
+
+For swords, use `CapsuleTwoPoint` with `blade_start` and `blade_end` sockets.
+
+---
+
+## Quick Setup
+
+### 1. Add Sockets to Weapon Mesh
+
+In your weapon's skeletal/static mesh, add sockets:
+- `blade_start`: Base of the hitbox
+- `blade_end`: Tip of the hitbox
+
+### 2. Create Weapon Blueprint
+
+Inherit from `ASECWeaponBase`:
+
+```cpp
+// In Class Defaults:
+AttachSocket: "RightHandSocket"     // Socket on character skeleton
+DefaultAttachOffset: (Transform)     // Offset after attachment
+
+TraceSockets:
+  - ID: "Blade"
+    Shape: CapsuleTwoPoint
+    SocketOrBoneName: "blade_start"
+    EndSocketOrBoneName: "blade_end"
+    Radius: 15.0
+    TraceChannel: ECC_Pawn
+
+DamageConfig: DA_SwordDamage        // Reference to damage data asset
+```
+
+### 3. Create Damage Config
+
+Right-click → Data Asset → **SECDamageConfig**
+
+```cpp
+BaseDamage: 25.0
+DamageType: UDamageType_Physical
+bCanBeBlocked: true
+bCanBeParried: true
+ImpulseStrength: 500.0
+```
+
+See [Configuration Reference](/docs/soulslike-combat/configuration#damage-config) for all options.
+
+### 4. Add Notify States to Animation
+
+In your attack montage:
+
+1. Right-click timeline at the **start of the swing**
+2. Add Notify State → **SECMeleeTraceWindow**
+3. Drag to cover the active swing frames
+4. Configure: `SocketIDs: ["Blade"]`
+
+<ZoomableImage
+  src="../images/sec_animmontagenotifiers.jpg"
+  alt="Animation montage with melee trace notify state"
+/>
+
+**Timing guide:**
+```
+Frame:     0    10    20    30    40    50
+Animation: [━━━━][━━━━][━━━━][━━━━][━━━━]
+           Windup Strike  Follow Recovery
+                  ↑
+Trace Window:    [═══════════]
+                Start        End
+```
+
+### 5. Done!
+
+When the weapon is equipped and the montage plays:
+1. Weapon auto-registers its trace sockets with the character's `MeleeTraceComponent`
+2. Notify state triggers tracing during active frames
+3. Hits apply damage automatically via `ApplyDamage`
+
+---
+
+## Key Properties
+
+### On Weapon (`ASECWeaponBase`)
+
+| Property | Purpose |
+|----------|---------|
+| `TraceSockets` | Array of socket definitions |
+| `DamageConfig` | Data asset with damage values |
+| `AttachSocket` | Character socket to attach to |
+
+### On Character (`USECMeleeTraceComponent`)
+
+| Property | Default | Purpose |
+|----------|---------|---------|
+| `DefaultDamageConfig` | - | Fallback if weapon has none |
+| `BaseDamage` | 10 | Fallback damage |
+| `HitResetInterval` | 0.0 | Time before same target can be hit again |
+| `bDebugDraw` | false | Visualize traces |
+
+---
+
+## Key Functions
+
+```cpp
+// Called automatically by weapon on equip
+void RegisterWeaponTraceSockets(const TArray<FSECTraceSocket>& Sockets);
+
+// Called by notify state
+void StartTracing(const TArray<FName>& SocketIDs, UDamageConfig* Config, bool bDebug);
+void StopTracing();
+
+// Manual control (if not using notify states)
+void BeginTrace(FName SocketID);
+void EndTrace(FName SocketID);
+
+// Events
+FOnMeleeHit OnMeleeHit;  // Delegate when hit occurs
+```
+
+---
+
+## Advanced: Custom Damage Handling
+
+If you don't want to use Unreal's built-in `ApplyDamage`, bind to the delegate:
+
+```cpp
+MeleeTraceComponent->OnMeleeHit.AddDynamic(this, &AMyCharacter::HandleMeleeHit);
+
+void AMyCharacter::HandleMeleeHit(const FHitResult& Hit, float Damage, UDamageConfig* Config)
+{
+    // Your custom damage logic
+    IHealthInterface* Health = Cast<IHealthInterface>(Hit.GetActor());
+    if (Health)
+    {
+        Health->TakeDamage(Damage, Config->bCanBeBlocked, Config->bCanBeParried);
+    }
+}
+```
+
+---
+
+## Debug Tools
+
+**Console Command:**
+```
+SEC.Debug.Melee.DrawTracing 1   // Visualize swept traces
+```
+
+**In Component:**
+```cpp
+MeleeTraceComponent->bDebugDraw = true;
+```
+
+This draws the trace volumes in real-time. Very useful for tuning socket positions and timing.
+
+---
+
+## Common Issues
+
+| Problem | Cause | Solution |
+|---------|-------|----------|
+| No hits registering | Socket ID mismatch | Verify notify `SocketIDs` matches weapon `TraceSockets.ID` |
+| Hitting through walls | Wrong trace channel | Set `TraceChannel` to one that blocks geometry |
+| Multiple hits per swing | `HitResetInterval` is 0 | Set to 0.1+ to prevent rapid multi-hits |
+| Weapon not tracing | Not equipped properly | Ensure `OnEquipped()` is called |
+
+---
+
+## Integration Points
+
+When used with the full plugin, the melee trace integrates automatically. Weapons register on equip and animation notifies trigger tracing.
+
+For standalone use (player characters, destructibles), just add `USECMeleeTraceComponent` to your actor and call `StartTracing()`/`StopTracing()` manually.
+
+---
+
+<DocNav 
+  prev={{ title: "Threat Detection", href: "/docs/soulslike-combat/threat-detection" }} 
+  next={{ title: "Configuration Reference", href: "/docs/soulslike-combat/configuration" }} 
+/>

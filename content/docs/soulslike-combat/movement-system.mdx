@@ -1,0 +1,203 @@
+---
+title: "Movement System"
+description: "Tactical AI positioning with direction sampling, distance maintenance, strafing, and pawn avoidance."
+date: 2025-12-27
+published: true
+tags: ["Documentation", "Unreal Engine", "AI", "Movement"]
+parent: "SoulslikeCombatDocs"
+---
+
+
+<Breadcrumb items={[
+    { label: "Docs", href: "/docs" },
+    { label: "SoulslikeCombat", href: "/docs/SoulslikeCombatDocs" },
+    { label: "Movement System" }
+]} />
+
+> Smart positioning that makes AI feel alive. Approaching, strafing, retreating, and avoiding obstacles without looking robotic.
+
+## When to Use This
+
+- Any AI that needs tactical positioning around a target
+- Melee enemies that maintain attack distance
+- Ranged enemies that keep their distance
+- Group AI where pawns need to avoid each other
+- Boss fights with phase-based positioning changes
+
+> This system can be used independently of the other plugin systems.
+
+---
+
+## Core Concepts
+
+### Direction Sampling
+
+Every tick, the system evaluates **16 directions** around the AI and scores each one:
+
+<MovementVisualizer />
+
+Each direction gets a score based on:
+
+- **Distance to target**: Does moving here get us closer to ideal range?
+- **Angle to target**: Are we facing the target?
+- **Avoidance**: Is there a wall or another pawn in this direction?
+- **Positioning Rules**: Custom modifiers you define
+
+The highest-scoring direction wins. The result is movement that *feels* intelligent because it considers multiple factors simultaneously.
+
+### Distance Maintenance
+
+The AI tries to stay within an **ideal distance range**:
+
+```
+Too Close    Ideal Range    Too Far
+   |---------|============|---------|
+   0        Min          Max       ∞
+          (approach)    (hold)    (retreat)
+```
+
+Configure this via `DesiredMinDistance` and `DesiredMaxDistance`, or use a [MovementBehaviorProfile](/docs/soulslike-combat/configuration#movement-profiles).
+
+### Strafing
+
+The AI naturally circles the target while maintaining distance:
+
+- **AutoStrafeSwap**: Randomly changes direction to avoid predictability
+- **Strafe Fatigue**: After strafing too long, the AI rests briefly
+- **Threat-Triggered Swap**: If the player stares at the AI, it swaps direction (requires [Threat Detection](/docs/soulslike-combat/threat-detection))
+
+### Hybrid Navigation
+
+The system intelligently switches between two movement modes:
+
+| Mode | When | How |
+|------|------|-----|
+| **Pathfinding** | Target is far away | Uses NavMesh for navigation |
+| **Direct Input** | Target is close | Direct movement input for responsiveness |
+
+The switch happens at `HybridSwitchDistance` (default: 800 units). This gives you the reliability of pathfinding at range and the snappy feel of direct control up close.
+
+---
+
+## Quick Setup
+
+### Option 1: Use a Preset
+
+```cpp
+// In your AI Controller's BeginPlay:
+MovementEvaluator->ApplyBehaviorConfig(FMovementBehaviorConfig::MakeAttacker());
+```
+
+**Available presets:**
+- `MakeAttacker()`: Close-range aggressive
+- `MakeWaiter()`: Mid-range patient
+- `MakeFlanker()`: Wide circling
+- `MakeCoward()`: Maintains distance, retreats when approached
+
+### Option 2: Use a Data Asset
+
+1. Create a [MovementBehaviorProfile](/docs/soulslike-combat/configuration#movement-profiles) data asset
+2. Configure desired distances, strafing, and positioning rules
+3. Apply it:
+
+```cpp
+MovementEvaluator->ApplyBehaviorProfile(MyProfile);
+```
+
+### Option 3: Configure at Runtime
+
+```cpp
+MovementEvaluator->SetDesiredDistance(200.f, 350.f);
+MovementEvaluator->SetStrafeSide(1);  // 1 = right, -1 = left
+```
+
+---
+
+## Key Properties
+
+| Property | Default | Purpose |
+|----------|---------|---------|
+| `NumSamples` | 16 | Directions to evaluate per tick |
+| `DesiredMinDistance` | 200 | Closest the AI wants to be |
+| `DesiredMaxDistance` | 400 | Farthest before approaching |
+| `EnableAvoidance` | true | Avoid other pawns |
+| `AvoidanceRadius` | 125 | How far to stay from others |
+| `EnableHybridMovement` | true | Switch between pathfinding and direct |
+| `HybridSwitchDistance` | 800 | Distance to switch modes |
+| `AutoStrafeSwap` | true | Randomly change strafe direction |
+| `StrafeTimeLimit` | 5.0 | Seconds before fatigue rest |
+
+See [Configuration Reference](/docs/soulslike-combat/configuration#movement-profiles) for the complete list.
+
+---
+
+## Key Functions
+
+```cpp
+// Main tick function - call from StateTree or Blueprint
+EMovementEvaluatorResult EvaluateAndMove();
+
+// Apply a preset configuration
+void ApplyBehaviorConfig(const FMovementBehaviorConfig& Config);
+
+// Apply a data asset profile
+void ApplyBehaviorProfile(UMovementBehaviorProfile* Profile);
+
+// Runtime adjustments
+void SetDesiredDistance(float Min, float Max);
+void SetStrafeSide(int Side);  // 1, -1, or 0 for auto
+void SwapStrafeSide();
+```
+
+---
+
+## Positioning Rules
+
+For advanced control, create custom **Positioning Rules**. These are UObjects that modify direction scores:
+
+```cpp
+UCLASS()
+class UAvoidCornersRule : public UPositioningRule
+{
+    virtual float EvaluateDirection(const FPositioningContext& Context) override
+    {
+        // Return 0.0 to 1.0 multiplier
+        // Lower values make this direction less desirable
+    }
+};
+```
+
+Add rules to your MovementBehaviorProfile. They stack, so all rules are evaluated and their scores are multiplied together.
+
+---
+
+## Debug Tools
+
+**Console Commands:**
+```
+SEC.Debug.Movement.DrawScoring 1      // Visualize direction scores
+SEC.Debug.Movement.DrawAvoidance 1    // Show avoidance radii
+SEC.Debug.Movement.LogStrafeState 1   // Log strafe decisions
+```
+
+**Blueprint/C++:**
+```cpp
+MovementEvaluator->bDebugLog = true;
+```
+
+---
+
+## Integration Points
+
+| System | How Movement Uses It |
+|--------|---------------------|
+| [Threat Detection](/docs/soulslike-combat/threat-detection) | Swaps strafe direction when player stares too long |
+| [Combat Roles](/docs/soulslike-combat/combat-roles) | Different roles apply different MovementBehaviorProfiles |
+| [Action System](/docs/soulslike-combat/action-system) | Actions can temporarily override movement (e.g., lunging) |
+
+---
+
+<DocNav 
+  prev={{ title: "Step-by-Step Enemy", href: "/docs/soulslike-combat/step-by-step-enemy" }} 
+  next={{ title: "Action System", href: "/docs/soulslike-combat/action-system" }} 
+/>
