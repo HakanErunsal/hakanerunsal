@@ -1,0 +1,144 @@
+---
+title: "Performance"
+image: "../../images/docs_performance.png"
+description: "Benchmark results, profiling tools, and optimization guidance for Soulslike Enemy Combat."
+date: 2025-12-29
+published: true
+tags: ["Documentation", "Unreal Engine", "AI", "Performance"]
+parent: "SoulslikeCombatDocs"
+---
+
+<Breadcrumb items={[
+    { label: "Docs", href: "/docs" },
+    { label: "SoulslikeCombat", href: "/docs/SoulslikeCombatDocs" },
+    { label: "Performance" }
+]} />
+
+## Overview
+
+The Soulslike Enemy Combat plugin is highly optimized for performance. All calculations are primarily simple vector math, resulting in negligible overhead even with large numbers of enemies.
+
+---
+
+## Benchmark Results
+
+Use the interactive tool below to see how the performance scales with enemy count.
+Benchmarks are performed on a **Ryzen 9950x**.
+
+<PerformanceVisualizer />
+
+**Context**: At 60fps, you have 16.6ms per frame. Even with 150 enemies, the plugin uses less than **4%** of your frame budget.
+
+---
+
+## System Breakdown
+
+### MovementEvaluatorComponent
+
+The main per-frame cost. Handles tactical positioning via direction sampling.
+
+| Metric          | Value                    |
+|-----------------|--------------------------|
+| Default samples | 16 directions            |
+| Cost per AI     | ~0.004ms                 |
+| Scaling         | Linear with enemy count  |
+
+**Optimization options:**
+- Reduce `NumSamples` property (default 16, can go as low as 8)
+- Disable avoidance if not needed
+
+### Avoidance System
+
+Prevents AI from bunching up. Already optimized with throttling.
+
+| Metric       | Value                                    |
+|--------------|------------------------------------------|
+| Update rate  | 10Hz (every 0.1s)                        |
+| Cost         | Negligible                               |
+| Configurable | `AvoidanceRadius`, `bEnableAvoidance`    |
+
+### Role Assignment Subsystem
+
+Manages combat roles (Attacker, Waiter, Flanker, etc.)
+
+| Metric      | Value                             |
+|-------------|-----------------------------------|
+| Update rate | Timer-based (configurable interval) |
+| Cost        | Negligible                        |
+| Note        | Not per-frame                     |
+
+### Threat Detection
+
+Tracks player look direction to influence AI behavior.
+
+| Metric      | Value                  |
+|-------------|------------------------|
+| Update rate | Per-tick               |
+| Cost        | ~0.0004ms per AI       |
+| Note        | Simple dot product math |
+
+---
+
+## Built-in Profiling
+
+The plugin includes custom stat groups for real-time profiling.
+
+### Console Command
+
+Open the console (~) and run:
+
+```
+stat SEC
+```
+
+### Stats Available
+
+| Stat Name                            | Description                      |
+|--------------------------------------|----------------------------------|
+| MovementEvaluator - Total            | Full per-AI movement cost        |
+| MovementEvaluator - Direction Scoring | 16-sample scoring loop           |
+| MovementEvaluator - Avoidance        | Overlap queries and avoidance    |
+| RoleSubsystem - Role Distribution    | Role assignment algorithm        |
+| ThreatDetection - Tick              | Per-tick threat calculation      |
+
+### Unreal Insights
+
+All stats are also visible in **Unreal Insights**. Filter for `SEC_*` trace events:
+- `SEC_MovementEvaluator`
+- `SEC_DirectionScoring`
+- `SEC_Avoidance`
+- `SEC_RoleDistribution`
+- `SEC_ThreatDetection`
+
+---
+
+## Scaling Recommendations
+
+| Use Case           | Expected Enemies | Performance Impact       |
+|--------------------|------------------|--------------------------|
+| Soulslike (typical) | 3-5              | Negligible (&lt;0.05ms)     |
+| Action RPG         | 10-20            | Negligible (~0.1ms)      |
+| Horde mode         | 50-100           | Low (~0.2-0.4ms)         |
+| Stress test        | 150+             | Acceptable (~0.6ms+)     |
+
+---
+
+## Key Optimizations Built-In
+
+1. **Precomputed trigonometry** - Sample directions cached at startup
+2. **Throttled avoidance** - Overlap queries run at 10Hz, not every frame
+3. **Timer-based roles** - Role reassignment doesn't run per-frame
+4. **Hybrid movement** - Distant AI use cheaper pathfinding, close AI use tactical sampling
+5. **Conditional ticking** - Melee traces only tick during active attacks
+
+---
+
+## Summary
+
+- **&lt;0.1ms** for typical Soulslike scenarios (3-10 enemies)
+- **~0.2ms** for medium-scale encounters (50 enemies)
+- **~0.6ms** for extreme stress tests (150 enemies)
+- Linear scaling with enemy count
+- Built-in `stat SEC` command for real-time profiling
+
+<DocNav prev={{ title: "Troubleshooting", href: "/docs/soulslike-combat/troubleshooting" }} next={{ title: "Getting Started", href: "/docs/soulslike-combat/getting-started" }} />
