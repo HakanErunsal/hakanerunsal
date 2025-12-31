@@ -1,0 +1,208 @@
+---
+title: "MetahumanToManny: Documentation"
+image: "./../images/metahuman_to_manny_header.jpg"
+description: "Learn how to convert MetaHuman skeletal meshes to UE5 Manny skeleton using Blender - step-by-step guide with video tutorial."
+date: 2025-09-20
+published: true
+tags: ["Documentation", "Blender", "Unreal Engine", "MetaHuman", "Tutorial"]
+---
+
+## Introduction
+
+This documentation covers how to use **MetahumanToManny** to convert MetaHuman skeletal meshes for compatibility with **UE5 Manny**. By the end of this guide, you'll be able to:
+
+- Export MetaHuman meshes from Unreal Engine
+- Run the in-place conversion in Blender
+- Set up LOD hierarchy
+- Export back to Unreal with correct settings
+
+---
+
+## Video Tutorial
+
+<div style={{ position: 'relative', marginTop: '24px', marginBottom: '40px', borderRadius: '12px', overflow: 'hidden', backgroundColor: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+  <div style={{ display: 'flex', alignItems: 'center', gap: '20px', padding: '24px 28px' }}>
+    <div style={{ flexShrink: 0, width: '56px', height: '56px', borderRadius: '12px', backgroundColor: 'rgba(255, 255, 255, 0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="#FF0000">
+        <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+      </svg>
+    </div>
+    <div style={{ flex: 1 }}>
+      <h3 style={{ margin: '0 0 6px 0', fontSize: '17px', fontWeight: '600' }}>Video Tutorial</h3>
+      <p style={{ margin: '0', fontSize: '14px', opacity: 0.6, lineHeight: 1.5 }}>Full step-by-step walkthrough of the conversion workflow.</p>
+    </div>
+    <a href="https://www.youtube.com/watch?v=RK8c9zUgDmw" target="_blank" rel="noopener noreferrer" style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px', backgroundColor: 'rgba(255, 255, 255, 0.08)', color: 'inherit', textDecoration: 'none', borderRadius: '8px', fontWeight: '500', fontSize: '14px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+      Watch on YouTube
+    </a>
+  </div>
+</div>
+
+---
+
+## Prerequisites
+
+Before starting, make sure you have:
+
+| Requirement | Minimum Version | Notes |
+|-------------|-----------------|-------|
+| **Blender** | 4.2.4 LTS | Any newer version works |
+| **MetaHuman Mesh** | - | Exported from Unreal Engine |
+| **Add-on** | Latest | Install from [Blender Extensions](https://extensions.blender.org/add-ons/metahumantomanny/) or [itch.io](https://hakanerunsal.itch.io/metahumantomanny) |
+
+---
+
+## Installation
+
+### Option 1: Blender Extensions (Recommended)
+
+1. Open Blender
+2. Go to **Edit → Preferences → Get Extensions**
+3. Search for "MetahumanToManny"
+4. Click **Install**
+
+### Option 2: itch.io
+
+1. Download from [itch.io](https://hakanerunsal.itch.io/metahumantomanny)
+2. In Blender, go to **Edit → Preferences → Add-ons**
+3. Click **Install** and select the downloaded `.zip`
+4. Enable the add-on
+
+### Option 3: GitHub
+
+1. Download from [GitHub](https://github.com/HakanErunsal/MetahumanToManny)
+2. In Blender, go to **Edit → Preferences → Add-ons**
+3. Click **Install** and select the downloaded `.zip`
+4. Enable the add-on
+
+---
+
+## Step-by-Step Conversion
+
+### Step 1: Export from Unreal Engine
+
+1. Open your Unreal project containing the MetaHuman
+2. Navigate to the skeletal mesh assets you want to convert
+3. Right-click and select **Asset Actions → Export**
+4. Export as FBX with default settings
+
+> [!TIP]
+> Export each body part (head, body, etc.) separately for easier management.
+
+### Step 2: Import into Blender
+
+1. Open Blender
+2. **File → Import → FBX**
+3. Select your exported MetaHuman FBX file
+4. Import with default settings
+
+### Step 3: Run In-Place Conversion
+
+This is the main conversion step that transforms the MetaHuman skeleton to Manny-compatible format.
+
+1. In the 3D viewport, **select one LOD mesh** (e.g., `head_lod0_mesh`)
+2. **Shift-click** to also select the armature
+3. Open the sidebar (**N** key) and find the **MetahumanToManny** panel
+4. Click **In Place Conversion**
+
+The add-on will automatically:
+- Process all LOD levels
+- Clean up face bone weights
+- Fix twist bone naming
+- Normalize toe chains
+- Adjust seams
+
+### Step 4: Setup LOD Hierarchy
+
+After conversion, you need to organize the LOD meshes:
+
+1. Select any LOD mesh
+2. In the MetahumanToManny panel, click **Setup LOD Hierarchy**
+
+This creates an empty parent object that organizes all LODs correctly for Unreal.
+
+### Step 5: Export to Unreal
+
+1. Select all meshes (including the LOD empty parent)
+2. **Shift-select** the armature
+3. **File → Export → FBX**
+4. Use these settings:
+
+| Setting | Value |
+|---------|-------|
+| **Selected Objects** | ✓ Enabled |
+| **Object Types** | Empty, Armature, Mesh |
+| **Forward** | Y Forward |
+| **Up** | Z Up |
+| **Smoothing** | Face |
+| **Add Leaf Bones** | ✗ Disabled |
+
+> [!IMPORTANT]
+> Only the face mesh requires material section reordering after import in Unreal.
+
+---
+
+## Import Back to Unreal
+
+1. In Unreal, **Import** your exported FBX
+2. Set the skeleton to **SK_Mannequin** (UE5 Manny)
+3. Import and verify the mesh works with Manny animations
+
+Your converted MetaHuman mesh is now fully compatible with:
+- UE5 Manny IK Retargeter
+- Manny animation blueprints
+- Shared animation assets
+
+---
+
+## Troubleshooting
+
+### Common Issues
+
+**Mesh appears distorted after conversion**
+- Ensure you selected both the mesh AND armature before running conversion
+- Try running conversion on each body part separately
+
+**Export creates extra bones**
+- Disable "Add Leaf Bones" in FBX export settings
+
+**Materials look wrong in Unreal**
+- For face mesh, reorder material sections in Unreal's skeletal mesh editor
+
+**Animations don't retarget correctly**
+- Verify the skeleton was set to SK_Mannequin on import
+- Check that IK Retargeter is properly configured
+
+---
+
+## Best Practices
+
+- **Keep pose presets**: Save a pose matching preset per MetaHuman archetype to speed up repeated conversions
+- **Preserve blendshapes**: If you need facial blendshapes, skip deleting relevant vertex groups during cleanup
+- **Fix seams early**: Run seam fixes before parenting to avoid split normals on export
+- **Batch similar characters**: Process multiple characters of the same type together for consistency
+
+---
+
+## Limitations
+
+| Limitation | Workaround |
+|------------|------------|
+| Facial rigs beyond Manny | Use MetaHuman facial systems for high-fidelity animation |
+| Custom clothing bones | Manual adjustment post-conversion |
+| Full body blendshapes | Not supported in current version |
+
+---
+
+## Additional Resources
+
+<div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '16px' }}>
+  <a href="https://github.com/HakanErunsal/MetahumanToManny" target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px', backgroundColor: 'rgba(36, 41, 47, 0.15)', color: 'inherit', textDecoration: 'none', borderRadius: '8px', fontWeight: '500', border: '1px solid rgba(36, 41, 47, 0.25)', fontSize: '14px' }}>
+    📚 GitHub Repository
+  </a>
+  <a href="https://hakanerunsal.itch.io/metahumantomanny" target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px', backgroundColor: 'rgba(250, 92, 92, 0.1)', color: '#fa5c5c', textDecoration: 'none', borderRadius: '8px', fontWeight: '500', border: '1px solid rgba(250, 92, 92, 0.25)', fontSize: '14px' }}>
+    💾 itch.io Page
+  </a>
+  <a href="https://extensions.blender.org/add-ons/metahumantomanny/" target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px', backgroundColor: 'rgba(29, 106, 206, 0.1)', color: '#1d6ace', textDecoration: 'none', borderRadius: '8px', fontWeight: '500', border: '1px solid rgba(29, 106, 206, 0.25)', fontSize: '14px' }}>
+    🔧 Blender Extensions
+  </a>
+</div>
