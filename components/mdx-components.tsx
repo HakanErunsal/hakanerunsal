@@ -13,6 +13,7 @@ import CombatRoleVisualizer from '@/components/CombatRoleVisualizer';
 import ThreatVisualizer from '@/components/ThreatVisualizer';
 import MeleeTraceVisualizer from '@/components/MeleeTraceVisualizer';
 import PerformanceVisualizer from '@/components/PerformanceVisualizer';
+import TargetingVisualizer from '@/components/TargetingVisualizer';
 
 const useMDXComponent = (code: string) => {
   const fn = new Function(code);
@@ -34,6 +35,7 @@ const components = {
   ThreatVisualizer,
   MeleeTraceVisualizer,
   PerformanceVisualizer,
+  TargetingVisualizer,
 };
 
 interface MdxProps {
