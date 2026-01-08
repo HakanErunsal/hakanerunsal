@@ -111,6 +111,18 @@ MovementEvaluator->SetDesiredDistance(200.f, 350.f);
 MovementEvaluator->SetStrafeSide(1);  // 1 = right, -1 = left
 ```
 
+### Option 4: Role-Based (Recommended)
+This is the most automated way. The movement profile is determined by the AI's current combat role.
+
+1. Configure your **EnemyAIConfig** data asset.
+2. Assign profiles to roles (e.g., *Attacker* gets Aggressive, *Waiter* gets Passive).
+3. The system syncs automatically when the role changes.
+
+```cpp
+// Called by EnemyControllerBase automatically
+MovementEvaluator->SyncForCombatRole(CurrentRole, MyAIConfig);
+```
+
 ---
 
 ## Key Properties
@@ -147,6 +159,9 @@ void ApplyBehaviorProfile(UMovementBehaviorProfile* Profile);
 void SetDesiredDistance(float Min, float Max);
 void SetStrafeSide(int Side);  // 1, -1, or 0 for auto
 void SwapStrafeSide();
+
+// Sync with AI Config (Role-based switch)
+bool SyncForCombatRole(FGameplayTag Role, UEnemyAIConfig* Config);
 ```
 
 ---

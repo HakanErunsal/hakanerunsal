@@ -43,6 +43,11 @@ UStateTree* StateTree;                // Main AI behavior tree
 bool ManageActionSetsAutomatically;   // Swap ActionSets based on role
 UActionSet* DefaultActionSet;         // Fallback ActionSet
 TMap<FGameplayTag, FRoleActionSetMapping> RoleActionSets;  // Per-role ActionSets
+
+// Movement Profile Management
+bool ManageMovementProfilesAutomatically; // Swap Movement Profiles based on role
+UMovementBehaviorProfile* DefaultMovementProfile; // Fallback Profile
+TMap<FGameplayTag, FRoleMovementProfileConfig> RoleMovementProfiles; // Per-role Profiles
 ```
 
 ### Example
@@ -78,6 +83,14 @@ RoleActionSets
   SEC.Role.Waiter   → DA_SEC_ActionSet_Waiter
   SEC.Role.Flanker  → DA_SEC_ActionSet_Flanker
   SEC.Role.Supporter → DA_SEC_ActionSet_Ranged
+
+MovementProfiles
+  ManageMovementProfilesAutomatically: true
+  DefaultMovementProfile: DA_SEC_Movement_Aggressive
+
+RoleMovementProfiles
+  SEC.Role.Waiter   → DA_SEC_Movement_Passive
+  SEC.Role.Flanker  → DA_SEC_Movement_Flanking
 ```
 
 > **Fitness Evaluators** are editor-instanced UObjects. Inherit from `URoleEvaluator` to create custom scoring logic for role assignment.

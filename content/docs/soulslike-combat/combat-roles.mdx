@@ -188,24 +188,65 @@ Add it to your AICombatConfig's FitnessEvaluators array.
 
 ---
 
-## Key Functions
+## Runtime Control & API
+
+You can control the role system dynamically during gameplay using the **AI Combat Role Subsystem**. This is great for boss fights, cutscenes, or changing difficulty on the fly.
+
+### Blueprint Functions
+
+<BlueprintUE 
+  id="ixz62sjp" 
+  title="Runtime Control API"
+  height="460px"
+/>
+
+**Configuration Overrides:**
+*   **Set Reassignment Interval**: Change how often the system re-evaluates roles.
+*   **Set Min Time In Role**: Stop enemies from switching roles too quickly (hysteresis).
+*   **Set Role Limit Override**: Change the max number of actors allowed in a role.
+    *   *Example:* Allow 3 Attackers instead of 1 for a "Enrage" phase.
+*   **Clear Role Limit Override**: Reset limits back to project settings.
+*   **Update Config**: Swap the entire configuration struct at runtime.
+
+**Manual Control:**
+*   **Force Assign Role**: Lock an AI into a specific role.
+    *   *Useful for:* Scripted events where an enemy must wait or taunt.
+*   **Unlock Role**: Return the AI to the automatic pool.
+*   **Force Reassignment**: Trigger an immediate re-evaluation of all AI.
 
 ```cpp
-// Get the combat role subsystem
-UAICombatRoleSubsystem* RoleSystem = GetWorld()->GetSubsystem<UAICombatRoleSubsystem>();
-
-// Register/unregister an AI
-RoleSystem->RegisterCombatant(MyController);
-RoleSystem->UnregisterCombatant(MyController);
-
-// Force role reassignment
-RoleSystem->RequestRoleReassignment();
-
-// Get current role of an AI
-FGameplayTag CurrentRole = RoleSystem->GetCombatRole(MyController);
+// Example: Enrage phase - Allow more attackers
+UAICombatRoleSubsystem* RoleSys = GetWorld()->GetSubsystem<UAICombatRoleSubsystem>();
+RoleSys->SetRoleLimitOverride(FGameplayTag::RequestGameplayTag("SEC.Role.Attacker"), 3);
+RoleSys->ForceReassignment();
 ```
 
-Most of this is automatic if you use `AEnemyControllerBase` with `AutoRegisterForCombatRoles: true`.
+---
+
+## Role Syncing
+
+When an enemy's role changes (e.g., from *Waiter* to *Attacker*), their abilities and movement behavior need to update to match.
+
+### Automatic Syncing
+If you use **`AEnemyControllerBase`**, this happens automatically. The controller monitors role changes and updates the components for you.
+
+### Manual Syncing (Custom Controllers)
+If you are building your own controller, use the **SEC Combat Role Sync Library**. It handles the complex logic of finding the right asset for the role.
+
+**Nodes:**
+*   **Sync All For Combat Role**: Updates both ActionSets and Movement profiles.
+*   **Sync Action Set For Role**: Updates only abilities.
+*   **Sync Movement Profile For Role**: Updates only movement.
+
+```cpp
+// Inside your Custom Controller: On Role Changed Event
+USECCombatRoleSyncLibrary::SyncAllForCombatRole(
+    this,               // Controller
+    GetPawn(),          // Pawn
+    NewRoleTag,         // The new role
+    MyEnemyAIConfig     // The config asset
+);
+```
 
 ---
 

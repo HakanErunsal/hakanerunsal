@@ -148,6 +148,28 @@ The system runs each BT in sequence. Use this for:
 
 ---
 
+---
+
+## Role-Based Switching (Advanced)
+
+To automatically swap ActionSets when roles change (e.g., from *Attacker* to *Supporter*), you normally use the **SEC Action Set Component** on your Pawn.
+
+### How it Works
+1.  **AI Config:** Map roles to ActionSets in your `UEnemyAIConfig`.
+2.  **Component:** The `SECActionSetComponent` on your Pawn acts as the manager.
+3.  **Syncing:** When the role changes, the component queries the correct ActionSet and pushes it to the controller.
+
+### Resolution Order
+The component decides which ActionSet to use based on this priority:
+1.  **Runtime Override** (Highest Priority - e.g., Boss entering Phase 2)
+2.  **Equipped Weapon** (If the weapon implements `ISECWeaponActionSetProvider`)
+3.  **AI Config Role** (Specific set for "Attacker", "Flanker", etc.)
+4.  **AI Config Default** (Fallback)
+
+> **Pro Tip:** This allows "Weapon-Driven" combat. If an enemy picks up a bow, the weapon can provide a Ranged ActionSet, instantly changing the AI's behavior.
+
+---
+
 ## Quick Setup
 
 ### 1. Create an ActionSet
