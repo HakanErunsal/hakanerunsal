@@ -5,12 +5,10 @@ import "./globals.css";
 import { cn } from "@/lib/utils";
 import { Providers } from "@/components/providers";
 import { siteConfig } from "@/config/site";
-import { SiteFooter } from "@/components/site-footer";
-import NavigationColumn from "@/components/site-navigation-column";
 
-const rubik = Rubik({ 
-  subsets: ["latin"], 
-  variable: "--font-sans", 
+const rubik = Rubik({
+  subsets: ["latin"],
+  variable: "--font-sans",
   display: "swap",
   preload: true,
 });
@@ -73,13 +71,7 @@ export default function RootLayout({
         )}
       >
         <Providers>
-          <div className="flex flex-col min-h-screen bg-background">
-            <div className="flex flex-col flex-grow">
-              <NavigationColumn />
-              <main className="flex-grow">{children}</main>
-            </div>
-            <SiteFooter />
-          </div>
+          {children}
         </Providers>
       </body>
     </html>

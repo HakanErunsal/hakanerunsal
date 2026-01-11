@@ -23,6 +23,7 @@
     "@types/mdx": "^2.0.12",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
+    "country-list-js": "^3.1.8",
     "github-slugger": "^2.0.0",
     "lucide": "^0.363.0",
     "lucide-react": "^0.344.0",
