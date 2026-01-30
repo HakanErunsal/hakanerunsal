@@ -115,7 +115,7 @@ export default function JobHuntDashboard() {
                         <h2 className="text-lg font-semibold mb-2">Strategy Notes</h2>
                         <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
                             <li><strong>Region Tags</strong>: <span className="text-xs bg-blue-100 dark:bg-blue-900 px-1 rounded">EU</span> covers all Europe. <span className="text-xs bg-green-100 dark:bg-green-900 px-1 rounded">US</span> targets Freelance/Contract in States.</li>
-                            <li><strong>Broad Search</strong>: "Remote" filters are strictly enforced.</li>
+                            <li><strong>Broad Search</strong>: &quot;Remote&quot; filters are strictly enforced.</li>
                             <li><strong>HiringCafe</strong>: Uses specific region targets (Europe/US/Germany).</li>
                         </ul>
                     </section>
