@@ -265,6 +265,52 @@ bDebugLogRoleChanges: true
 
 ---
 
+## Client-Side Role Visibility (SECCombatRoleComponent)
+
+The role subsystem runs on the server — it lives on AI controllers, which don't exist on clients. To let clients know what role an enemy has (for UI, VFX, debug overlays), the plugin includes **`USECCombatRoleComponent`**.
+
+This component sits on the enemy pawn and replicates the currently assigned role tag. The server writes to it whenever the role changes, and clients can read it or bind to its delegate.
+
+### Setup
+
+`EnemyCharacterBase` adds this component by default. If you're using a custom character class, just add it:
+
+```cpp
+// In your custom character constructor:
+CombatRoleComponent = CreateDefaultSubobject<USECCombatRoleComponent>(TEXT("CombatRoleComponent"));
+```
+
+Or add it in Blueprint via the Components panel — search for "SEC Combat Role".
+
+### How It Works
+
+1. The server-side AI controller receives a role change from the subsystem
+2. The controller calls `SetCombatRole()` on the pawn's `USECCombatRoleComponent`
+3. The role tag replicates to all clients
+4. Clients receive `OnCombatRoleChanged` delegate
+
+### Reading on Clients
+
+```cpp
+// Get the component from any pawn reference
+USECCombatRoleComponent* RoleComp = Pawn->FindComponentByClass<USECCombatRoleComponent>();
+
+// Read the current role
+FGameplayTag CurrentRole = RoleComp->GetCombatRole();
+
+// React to changes
+RoleComp->OnCombatRoleChanged.AddDynamic(this, &UMyWidget::OnRoleChanged);
+
+void UMyWidget::OnRoleChanged(FGameplayTag NewRole, FGameplayTag OldRole)
+{
+    // Update role indicator icon, change outline color, etc.
+}
+```
+
+> This component is purely informational on the client side. Setting the role on clients is a no-op — only the server can assign roles through the subsystem.
+
+---
+
 ## Integration Points
 
 | System | How Combat Roles Uses It |
@@ -272,6 +318,7 @@ bDebugLogRoleChanges: true
 | [Action System](/docs/soulslike-combat/action-system) | Swaps ActionSet when role changes |
 | [Movement System](/docs/soulslike-combat/movement-system) | Different roles have different positioning profiles |
 | [Threat Detection](/docs/soulslike-combat/threat-detection) | Threatened AI may be deprioritized for Attacker role |
+| [Multiplayer](/docs/soulslike-combat/multiplayer) | Roles replicate to clients via SECCombatRoleComponent |
 
 ---
 

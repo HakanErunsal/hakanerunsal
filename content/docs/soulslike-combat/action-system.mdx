@@ -170,6 +170,141 @@ The component decides which ActionSet to use based on this priority:
 
 ---
 
+## Dynamic Action Management
+
+Sometimes you need to add or remove individual actions at runtime without swapping the entire ActionSet. For example, an enemy picks up a grenade and gains a "ThrowGrenade" action, or a boss loses a limb and can no longer use "SweepAttack".
+
+Granted actions live in a **separate runtime pool** that persists across role changes and ActionSet swaps. They participate in evaluation alongside the base ActionSet — same scoring, same cooldowns.
+
+### Grant / Revoke API
+
+```cpp
+// Grant a single action at runtime
+ActionEvaluationComponent->GrantAction(ThrowGrenadeSpec);
+
+// Grant all actions from a data asset
+ActionEvaluationComponent->GrantActionsFromSet(DA_BonusActions);
+
+// Revoke by ID
+ActionEvaluationComponent->RevokeAction("ThrowGrenade");
+
+// Revoke all actions from a data asset
+ActionEvaluationComponent->RevokeActionsFromSet(DA_BonusActions);
+
+// Clear everything granted at runtime
+ActionEvaluationComponent->ClearGrantedActions();
+
+// Query
+bool bHas = ActionEvaluationComponent->HasGrantedAction("ThrowGrenade");
+TArray<FName> Ids = ActionEvaluationComponent->GetGrantedActionIds();
+```
+
+### Delegates
+
+```cpp
+// React to runtime action changes
+ActionEvaluationComponent->OnActionGranted.AddDynamic(this, &AMyClass::HandleGranted);
+ActionEvaluationComponent->OnActionRevoked.AddDynamic(this, &AMyClass::HandleRevoked);
+
+void AMyClass::HandleGranted(FName ActionId)  { /* update UI, etc. */ }
+void AMyClass::HandleRevoked(FName ActionId)  { /* clean up */ }
+```
+
+### Pawn-Side Convenience
+
+`SECActionSetComponent` provides convenience wrappers that forward to the controller's `ActionEvaluationComponent`. This is useful when Blueprint code has a reference to the pawn but not the controller:
+
+```cpp
+// These do the same thing, just accessed from different places:
+Pawn->ActionSetComponent->GrantAction(Spec);
+Controller->ActionEvaluationComponent->GrantAction(Spec);
+```
+
+> Granted actions are independent from the base ActionSet. When the AI changes roles and gets a new ActionSet, all previously granted actions remain available.
+
+---
+
+## Replicated Action State
+
+The **SECActionSetComponent** replicates key execution state to clients. This is useful for driving client-side visuals — enemy health bars showing the current attack, UI indicators, VFX triggers, etc.
+
+### What Replicates
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `CurrentActionId` | `FName` | Currently executing action (NAME_None when idle) |
+| `bActionExecuting` | `bool` | True while an action is running |
+| `ActiveActionSet` | `UActionSet*` | The active ActionSet data asset |
+
+### Client-Side Delegates
+
+```cpp
+// Fires on both server and clients when an action starts
+ActionSetComponent->OnActionExecutionStarted.AddDynamic(this, &UMyWidget::OnStarted);
+
+// Fires on both server and clients when an action completes
+ActionSetComponent->OnActionExecutionCompleted.AddDynamic(this, &UMyWidget::OnCompleted);
+
+// Fires when the active ActionSet changes (e.g., role swap)
+ActionSetComponent->OnActionSetChanged.AddDynamic(this, &UMyWidget::OnSetChanged);
+```
+
+### Reading State from Clients
+
+```cpp
+// Blueprint-friendly getters (work on server and clients):
+FName ActionId = ActionSetComponent->GetCurrentActionId();
+bool bBusy = ActionSetComponent->IsActionExecuting();
+UActionSet* Set = ActionSetComponent->GetActiveActionSet();
+```
+
+> The controller pushes execution state to `SECActionSetComponent` automatically. You don't need to do anything special for replication to work — just read the values on clients.
+
+---
+
+## SEC Play Montage And Wait (Ability Task)
+
+The plugin includes a custom Ability Task called **SEC Play Montage And Wait** — a drop-in replacement for `PlayMontageAndWait` with additional output pins for anim notify callbacks.
+
+### Why?
+
+Standard `PlayMontageAndWait` gives you OnCompleted, OnBlendOut, OnInterrupted, OnCancelled. But if you want to react to specific moments *during* the montage (spawn a projectile at a specific frame, trigger a VFX on impact, etc.), you need custom notify handling.
+
+This task adds **OnNotifyBegin** and **OnNotifyEnd** pins that fire when `PlayMontageNotify` or `PlayMontageNotifyWindow` notify states are hit.
+
+### Output Pins
+
+| Pin | When It Fires | NotifyName Value |
+|-----|---------------|-----------------|
+| **OnCompleted** | Montage played to the end | `NAME_None` |
+| **OnBlendedIn** | Montage finished blending in | `NAME_None` |
+| **OnBlendOut** | Montage started blending out | `NAME_None` |
+| **OnInterrupted** | Interrupted by another montage | `NAME_None` |
+| **OnCancelled** | Task cancelled externally | `NAME_None` |
+| **OnNotifyBegin** | A `PlayMontageNotify` or `PlayMontageNotifyWindow` begin | The notify's FName |
+| **OnNotifyEnd** | A `PlayMontageNotifyWindow` end | The notify's FName |
+
+### Usage
+
+In your Gameplay Ability Blueprint:
+1. Replace `PlayMontageAndWait` with **SEC Play Montage And Wait**
+2. Add `PlayMontageNotify` notifies to your montage timeline with descriptive names (e.g., "SpawnProjectile", "ImpactVFX")
+3. Wire up `OnNotifyBegin` and switch on `NotifyName` to handle each event
+
+```
+SEC Play Montage And Wait (AM_RangedAttack)
+  ↓
+OnNotifyBegin → Switch on NotifyName
+  • "SpawnProjectile" → Spawn and launch projectile
+  • "WindupVFX" → Play windup particle effect
+OnCompleted → End Ability
+OnInterrupted → End Ability (cancelled)
+```
+
+> This task supports full GAS replication. Montage plays replicate to simulated proxies the same way standard GAS montages do.
+
+---
+
 ## Quick Setup
 
 ### 1. Create an ActionSet
@@ -234,6 +369,15 @@ bool IsActionExecuting();
 // Runtime score modifiers
 void SetActionOverride(FName ActionId, float ScoreMultiplier);
 void ClearAllOverrides();
+
+// Dynamic Action Management
+bool GrantAction(const FActionSpec& Action);
+int32 GrantActionsFromSet(const UActionSet* ActionSet);
+bool RevokeAction(FName ActionId);
+int32 RevokeActionsFromSet(const UActionSet* ActionSet);
+void ClearGrantedActions();
+bool HasGrantedAction(FName ActionId);
+TArray<FName> GetGrantedActionIds();
 ```
 
 ---
@@ -279,6 +423,7 @@ LogEvaluation: [Retreat] Dist:180 Angle:15 Score:0.10 (out of range)
 | [Movement System](/docs/soulslike-combat/movement-system) | Provides distance/angle context for scoring |
 | [Combat Roles](/docs/soulslike-combat/combat-roles) | Swaps ActionSets based on current role |
 | [Threat Detection](/docs/soulslike-combat/threat-detection) | Threat level can modify action scores |
+| [Multiplayer](/docs/soulslike-combat/multiplayer) | Action state replicates to clients via SECActionSetComponent |
 
 ---
 

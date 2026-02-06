@@ -251,6 +251,12 @@ When used with the full plugin, the melee trace integrates automatically. Weapon
 
 For standalone use (player characters, destructibles), just add `USECMeleeTraceComponent` to your actor and call `StartTracing()`/`StopTracing()` manually.
 
+### Multiplayer
+
+Melee traces are **server-authoritative**. The component only ticks on the server (authority check in `TickComponent`), so clients never run trace logic. Damage is applied server-side. Weapons replicate as actors, so they're visible on all clients. Hit reactions and damage feedback on clients should be driven by replicated health changes or Gameplay Cues.
+
+See [Multiplayer](/docs/soulslike-combat/multiplayer) for the full replication overview.
+
 ---
 
 <DocNav 

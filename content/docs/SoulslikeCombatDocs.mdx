@@ -9,7 +9,7 @@ tags: ["Documentation", "Unreal Engine", "AI", "Tutorial"]
 
 ## Overview
 
-**SoulslikeEnemyCombat** is a production-ready AI combat plugin for Unreal Engine 5.7. It provides intelligent, tactical enemy behavior for souls-like and action RPG games through a modular component system.
+**SoulslikeEnemyCombat** is a production-ready AI combat plugin for Unreal Engine 5.7. It provides intelligent, tactical enemy behavior for souls-like and action RPG games through a modular component system. Supports single-player, listen server, and dedicated server configurations.
 
 The plugin consists of **5 systems** that work together seamlessly: Movement, Actions, Combat Roles, Threat Detection, and Melee Trace. Each system can also be used independently if you only need specific functionality.
 
@@ -107,6 +107,11 @@ Each system is independent and can be used standalone. Click to learn how each w
   <p className="text-sm text-muted-foreground">All data assets: ActionSets, Profiles, Damage Configs.</p>
 </a>
 
+<a href="/docs/soulslike-combat/multiplayer" className="doc-card rounded-lg border border-border hover:border-primary/50 transition-all duration-300 bg-card block p-6">
+  <h3 className="text-lg font-semibold mb-2">🌐 Multiplayer</h3>
+  <p className="text-sm text-muted-foreground">Replication architecture, server authority, and client-side state.</p>
+</a>
+
 </div>
 
 ---
@@ -167,12 +172,12 @@ Each system is independent and can be used standalone. Click to learn how each w
 
 Check out the [public Trello roadmap](https://trello.com/b/gN7Fxryx/soulslike-enemy-combat-plugin-roadmap) to see what's coming next.
 
+### Shipped
+- ✅ **Multiplayer Support**: Server-authoritative AI with replicated state for listen and dedicated servers
+
 ### 2026 Q1
 - 🔮 **Player Combat Component**: Combat system for player characters
 - 🔮 **Example Player Character**: Pre-configured with attacks, dodges, blocks
-
-### 2026 Q1-Q2
-- 🔮 **Multiplayer Support**: Replication, client prediction, server authority
 
 ### 2026 Q3
 - 🔮 **Group Tactics** (Experimental): Coordinated multi-enemy attacks, formations
