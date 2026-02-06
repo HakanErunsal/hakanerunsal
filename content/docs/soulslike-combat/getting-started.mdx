@@ -163,7 +163,10 @@ In `BP_MyEnemy` → Class Defaults → **AI Controller Class** → Set to `BP_My
 #### 8. Place and Test
 
 1. Drag `BP_MyEnemy` into your level
-2. Set player as focus target (or use demo BP_DummyTarget, which registers itself as target automatically)
+2. Register the player as a combat target:
+   - In your Player Pawn **BeginPlay**, get the **AICombatRoleSubsystem**
+   - Call **RegisterCombatTarget** with `Self` as the target actor
+   - Check `BP_Dummy` for a working Example
 3. Click Play
 4. Watch Output Log for action selection debug messages
 
