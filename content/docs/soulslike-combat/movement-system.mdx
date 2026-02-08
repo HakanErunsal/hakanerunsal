@@ -116,10 +116,10 @@ This is the most automated way. The movement profile is determined by the AI's c
 
 1. Configure your **EnemyAIConfig** data asset.
 2. Assign profiles to roles (e.g., *Attacker* gets Aggressive, *Waiter* gets Passive).
-3. The system syncs automatically when the role changes.
+3. The `SECCombatControllerComponent` syncs automatically when the role changes.
 
 ```cpp
-// Called by EnemyControllerBase automatically
+// Called by SECCombatControllerComponent automatically when role changes
 MovementEvaluator->SyncForCombatRole(CurrentRole, MyAIConfig);
 ```
 

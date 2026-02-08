@@ -130,10 +130,14 @@ When a target dies or unregisters, the system automatically handles orphaned AI:
 
 ### Handling Target Loss Manually
 
-Implement `IAICombatRoleInterface` on your AI Controller:
+Bind to the `SECCombatControllerComponent`'s delegate on your AI Controller:
 
 ```cpp
-void AMyAIController::OnCombatTargetLost_Implementation(AActor* LostTarget)
+// In your AI Controller's BeginPlay:
+USECCombatControllerComponent* CombatComp = FindComponentByClass<USECCombatControllerComponent>();
+CombatComp->OnCombatTargetLost.AddDynamic(this, &AMyAIController::HandleTargetLost);
+
+void AMyAIController::HandleTargetLost(AActor* LostTarget)
 {
     // Play confused animation
     PlayAnimMontage(ConfusedMontage);

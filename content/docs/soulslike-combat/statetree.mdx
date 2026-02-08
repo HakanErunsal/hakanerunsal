@@ -23,6 +23,12 @@ parent: "SoulslikeCombatDocs"
 | `STTask_PollAction` | Scores and selects action | On entering decision state |
 | `STTask_DoAction` | Triggers execution of chosen action | On entering execute state |
 | `STTask_UpdateActionSet` | Swaps ActionSet | When changing AI behavior |
+| `STTask_PollCombatRole` | Polls current combat role | Every tick, outputs role tag |
+| `STTask_PollFocusActor` | Polls controller focus actor | Every tick, outputs target reference |
+| `STTask_SyncActionSet` | Syncs ActionSet from pawn's SECActionSetComponent | On entering role state |
+| `STTask_SyncMovementProfile` | Syncs MovementProfile for current role | On entering role state |
+
+> All StateTree tasks work with any `AAIController` that has a `SECCombatControllerComponent`. They use the component's static resolution helpers to find AIConfig and combat role data.
 
 ---
 

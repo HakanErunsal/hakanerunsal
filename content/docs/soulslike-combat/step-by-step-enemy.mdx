@@ -22,7 +22,7 @@ Before starting, ensure you have:
 - Character skeletal mesh with animations
 - Attack animation montages with hit frames identified
 - Basic understanding of Gameplay Ability System
-- Unreal Engine 5.7 installed
+- Unreal Engine 5.6+ installed
 
 ---
 
@@ -52,22 +52,30 @@ Adjust movement component settings if you want.
 
 - `AIConfig` -> Set it to your AI Config or the `DA_SEC_Enemy_AIConfig_Default`
 
->AIConfig will be acquired from the pawn by the controller if it's set here. If it is not set in the pawn, AIController will try to use it's own. If that is also not set, there will be no AI behavior.
+>AIConfig will be acquired from the pawn by the controller's `SECCombatControllerComponent` if it's set here. If it is not set in the pawn, the component will use its own `DefaultAIConfig`. If neither is set, there will be no AI behavior.
 
 ---
 
 ## Step 2: AI Controller Setup
+
+### Option A: Use EnemyControllerBase (Recommended)
 
 **Create Blueprint:** `BP_DetailedEnemyController` (inherits `AEnemyControllerBase`)
 
 **What the base class provides:**
 ```cpp
 // These components are automatically added:
+USECCombatControllerComponent*  // Combat system integration (AIConfig, roles, sync)
 UMovementEvaluatorComponent*    // Tactical movement
 UThreatDetectionComponent*      // Player attention tracking
 UActionEvaluationComponent*     // Action scoring & execution
 UBehaviorTreeComponent*         // For BT sequence execution
+UBotStateTreeAIComponent*       // StateTree AI behavior
 ```
+
+### Option B: Use Any AAIController + Components
+
+If you have an existing AI controller, add `SECCombatControllerComponent` in the Components panel. Then add whichever other SEC components you need (`MovementEvaluatorComponent`, `ActionEvaluationComponent`, etc.). Everything connects automatically on possession.
 
 **Configure Movement:**
 

@@ -152,12 +152,12 @@ The system runs each BT in sequence. Use this for:
 
 ## Role-Based Switching (Advanced)
 
-To automatically swap ActionSets when roles change (e.g., from *Attacker* to *Supporter*), you normally use the **SEC Action Set Component** on your Pawn.
+To automatically swap ActionSets when roles change (e.g., from *Attacker* to *Supporter*), the **SECCombatControllerComponent** handles this automatically.
 
 ### How it Works
 1.  **AI Config:** Map roles to ActionSets in your `UEnemyAIConfig`.
-2.  **Component:** The `SECActionSetComponent` on your Pawn acts as the manager.
-3.  **Syncing:** When the role changes, the component queries the correct ActionSet and pushes it to the controller.
+2.  **Component:** The `SECCombatControllerComponent` on your controller detects role changes from the subsystem.
+3.  **Syncing:** When the role changes, the component queries the correct ActionSet and pushes it to the `ActionEvaluationComponent` and `SECActionSetComponent` on the pawn.
 
 ### Resolution Order
 The component decides which ActionSet to use based on this priority:
@@ -346,6 +346,8 @@ PlayMontageAndWait
     ↓
 EndAbility  // Automatically sends end event
 ```
+
+`GameplayAbilityBase` works with **any AAIController**, not just `EnemyControllerBase`. It uses `AAIController::GetFocusActor()` to build the action context (target, distance, direction). If the controller is an `EnemyControllerBase`, it also provides rotation lock during abilities for committed attacks.
 
 > **Important:** Always use `GameplayAbilityBase` as your parent class. It handles the end event automatically. Otherwise, the AI gets stuck waiting.
 

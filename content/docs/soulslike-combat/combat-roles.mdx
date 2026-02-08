@@ -143,16 +143,17 @@ See [Configuration Reference](/docs/soulslike-combat/configuration#combat-config
 ## How Role Assignment Works
 
 ```
-1. Enemy spawns, registers with AICombatRoleSubsystem
-2. Subsystem evaluates all registered enemies
-3. Fitness scores calculated for each
-4. Roles assigned based on:
+1. Enemy spawns, controller possesses pawn
+2. SECCombatControllerComponent resolves AIConfig and registers with AICombatRoleSubsystem
+3. Subsystem evaluates all registered enemies
+4. Fitness scores calculated for each
+5. Roles assigned based on:
    - Slot availability (MaxAttackers limit)
    - Fitness scores
    - Distance priority
    - Preferred role
-5. Each enemy's ActionSet/MovementProfile updated to match role
-6. Re-evaluation happens when:
+6. Each enemy's ActionSet/MovementProfile updated via SECCombatControllerComponent
+7. Re-evaluation happens when:
    - An enemy dies
    - An Attacker finishes their attack
    - Periodic tick (configurable)
@@ -228,10 +229,10 @@ RoleSys->ForceReassignment();
 When an enemy's role changes (e.g., from *Waiter* to *Attacker*), their abilities and movement behavior need to update to match.
 
 ### Automatic Syncing
-If you use **`AEnemyControllerBase`**, this happens automatically. The controller monitors role changes and updates the components for you.
+If your AI controller has a **`SECCombatControllerComponent`** (included by default in `AEnemyControllerBase`), this happens automatically. The component monitors role changes and updates ActionSets and MovementProfiles for you.
 
-### Manual Syncing (Custom Controllers)
-If you are building your own controller, use the **SEC Combat Role Sync Library**. It handles the complex logic of finding the right asset for the role.
+### Manual Syncing (Custom Controllers without SECCombatControllerComponent)
+If you are building a fully custom controller without `SECCombatControllerComponent`, use the **SEC Combat Role Sync Library**. It handles the complex logic of finding the right asset for the role.
 
 **Nodes:**
 *   **Sync All For Combat Role**: Updates both ActionSets and Movement profiles.
@@ -247,6 +248,8 @@ USECCombatRoleSyncLibrary::SyncAllForCombatRole(
     MyEnemyAIConfig     // The config asset
 );
 ```
+
+> **Recommended:** Use `SECCombatControllerComponent` on your controller instead of manual syncing. It can be added to any `AAIController` Blueprint and handles all of this automatically.
 
 ---
 
@@ -284,8 +287,8 @@ Or add it in Blueprint via the Components panel — search for "SEC Combat Role"
 
 ### How It Works
 
-1. The server-side AI controller receives a role change from the subsystem
-2. The controller calls `SetCombatRole()` on the pawn's `USECCombatRoleComponent`
+1. The server-side AI controller's `SECCombatControllerComponent` receives a role change from the subsystem
+2. The component calls `SetCombatRole()` on the pawn's `USECCombatRoleComponent`
 3. The role tag replicates to all clients
 4. Clients receive `OnCombatRoleChanged` delegate
 

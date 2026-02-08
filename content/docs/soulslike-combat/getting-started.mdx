@@ -16,7 +16,7 @@ parent: "SoulslikeCombatDocs"
 
 ## Overview
 
-**SoulslikeCombat** is a production-ready AI combat plugin for Unreal Engine 5.7. It provides intelligent, tactical enemy behavior for souls-like and action RPG games through a modular component system. The plugin supports both single-player and multiplayer (listen server and dedicated server) out of the box.
+**SoulslikeCombat** is a production-ready AI combat plugin for Unreal Engine 5.6+. It provides intelligent, tactical enemy behavior for souls-like and action RPG games through a modular component system. The plugin supports both single-player and multiplayer (listen server and dedicated server) out of the box.
 
 ---
 
@@ -55,7 +55,7 @@ In **Edit → Plugins**, ensure these are also enabled, the plugin has dependenc
 2. Open `SEC_DemoLevel`
 3. Click Play - you should see a working enemy
 
-> **Note:** This plugin requires **Unreal Engine 5.7** exactly. Other versions have incompatible StateTree APIs.
+> **Note:** This plugin requires **Unreal Engine 5.6** or later. Older versions have incompatible StateTree APIs.
 
 ---
 
@@ -82,9 +82,19 @@ Navigate to `Content/SoulslikeEnemyCombat/Maps/SEC_DemoLevel` and open it. Study
 
 #### 3. Create AI Controller
 
+You have two options:
+
+**Option A: Use EnemyControllerBase (Recommended for Quick Start)**
+
 **Right-click** → Blueprint Class → Search for `EnemyControllerBase`
 
 **Name it:** `BP_MyEnemyController`
+
+This comes with all SEC components pre-wired: `SECCombatControllerComponent`, `MovementEvaluatorComponent`, `ActionEvaluationComponent`, `ThreatDetectionComponent`, `BotStateTreeAIComponent`, and a helper `BehaviorTreeComponent`.
+
+**Option B: Use Any AAIController + SECCombatControllerComponent**
+
+Create or open your existing AI Controller Blueprint. In the Components panel, add **SEC Combat Controller** (`SECCombatControllerComponent`). Then add whichever SEC components you need (e.g., `MovementEvaluatorComponent`, `ActionEvaluationComponent`). Everything wires up automatically on possession.
 
 **AI Config**
 
@@ -96,7 +106,7 @@ Navigate to `Content/SoulslikeEnemyCombat/Maps/SEC_DemoLevel` and open it. Study
 
 Go to `BP_MyEnemy`, set **AIConfig** property to `DA_MyAIConfig`
 
-> **Note:** AIConfig will be acquired by the controller OnPossess. Alternatively, you can leave it empty on the pawn and set it on the Controller. This means all AI units that are controlled by this controller will use that AIConfig.
+> **Note:** AIConfig is resolved in this order: (1) SECCombatControllerComponent's cached config, (2) Pawn implementing IEnemyAIConfigProvider. Set it on the pawn for per-enemy configs, or on the SECCombatControllerComponent's `DefaultAIConfig` for all units sharing a controller.
 
 **Add your first action:**
 
@@ -105,6 +115,8 @@ Go to `BP_MyEnemy`, set **AIConfig** property to `DA_MyAIConfig`
 CurrentActionSet: (create in next step)
 bDebugLog: true           // See decisions in Output Log
 ```
+
+> If using a custom controller (Option B), add an `ActionEvaluationComponent` manually in the Components panel.
 
 #### 4. Create ActionSet Data Asset
 

@@ -120,7 +120,7 @@ Melee.Debug.DrawTracing 0-1
 
 ### Can I use this with my existing character?
 
-Yes. Add the components to your controller and character, create an ActionSet, and set up a StateTree. The plugin is designed to integrate with existing projects.
+Yes. Add `SECCombatControllerComponent` to your AI controller and the necessary pawn components to your character. Create an ActionSet, configure an AIConfig, and set up a StateTree. The plugin is designed to integrate with existing projects without requiring you to inherit from `EnemyControllerBase` or `EnemyCharacterBase`.
 
 ### Does this work with multiplayer?
 
@@ -132,7 +132,7 @@ The melee trace system can work standalone, but action execution relies on GAS. 
 
 ### What Unreal Engine versions are supported?
 
-Only UE 5.7+. StateTree APIs have breaking changes between versions, so other versions are not compatible.
+UE 5.6+. StateTree APIs have breaking changes between versions, so older versions are not compatible.
 
 ### Can I make bosses with this?
 

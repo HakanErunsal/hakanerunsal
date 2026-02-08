@@ -32,12 +32,13 @@ These components live on the AI controller and only exist on the server:
 
 | Component | Purpose |
 |-----------|---------|
+| `SECCombatControllerComponent` | AIConfig resolution, combat role handling, sync |
 | `ActionEvaluationComponent` | Scores and selects actions |
 | `MovementEvaluatorComponent` | Tactical positioning |
 | `ThreatDetectionComponent` | Tracks player camera attention |
 | `AICombatRoleSubsystem` | Assigns roles across all AI |
 
-This is the brain. Clients never run action evaluation or movement scoring.
+This is the brain. Clients never run action evaluation or movement scoring. `SECCombatControllerComponent` is the central integration point that connects all these systems together.
 
 ### Replicated to Clients
 
@@ -98,7 +99,7 @@ HealthComponent->OnHealthDecreased.AddDynamic(this, &UMyWidget::OnDamaged);
 
 ### Action State (SECActionSetComponent)
 
-The controller pushes execution events to the pawn's `SECActionSetComponent`, which replicates them:
+The `SECCombatControllerComponent` pushes execution events to the pawn's `SECActionSetComponent`, which replicates them:
 
 ```cpp
 // Server-side (automatic, handled by controller):
@@ -113,7 +114,7 @@ ActionSetComponent->OnActionSetChanged.AddDynamic(...);
 
 ### Combat Role (SECCombatRoleComponent)
 
-The role subsystem assigns roles to controllers (server-only). When a role changes, the controller writes it to the pawn's `SECCombatRoleComponent`, which replicates the tag:
+The role subsystem assigns roles to controllers (server-only). When a role changes, the `SECCombatControllerComponent` writes it to the pawn's `SECCombatRoleComponent`, which replicates the tag:
 
 ```cpp
 // Client-side:

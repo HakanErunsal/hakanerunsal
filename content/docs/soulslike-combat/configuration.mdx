@@ -18,11 +18,17 @@ parent: "SoulslikeCombatDocs"
 
 ---
 
-<h2 id="combat-config">AICombatConfig</h2>
+<h2 id="combat-config">EnemyAIConfig</h2>
 
-**Used by:** [Combat Roles System](/docs/soulslike-combat/combat-roles)
+**Used by:** [Combat Roles System](/docs/soulslike-combat/combat-roles), [SECCombatControllerComponent](/docs/soulslike-combat/architecture#controller-architecture)
 
 Defines combat role selection, behavior logic, and action set binding for an AI.
+
+**Config Resolution Order:**
+1. `SECCombatControllerComponent` cached config (from `DefaultAIConfig` property)
+2. Pawn implementing `IEnemyAIConfigProvider`
+
+Set the config on the pawn for per-enemy customization, or on the `SECCombatControllerComponent`'s `DefaultAIConfig` when all units sharing a controller should use the same config.
 
 ### Full Structure
 

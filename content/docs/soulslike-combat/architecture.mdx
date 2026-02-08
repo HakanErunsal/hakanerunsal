@@ -72,6 +72,47 @@ Separate **strategic thinking** from **tactical execution**:
 
 ---
 
+## Controller Architecture
+
+The plugin supports two controller setups:
+
+### Option A: EnemyControllerBase (Quick Start)
+
+A pre-configured AI controller that creates all common SEC components as default subobjects. Best for getting started quickly.
+
+```
+AEnemyControllerBase (convenience wrapper)
+├── SECCombatControllerComponent   ← handles AIConfig, combat roles, sync
+├── MovementEvaluatorComponent
+├── ThreatDetectionComponent
+├── ActionEvaluationComponent
+├── BehaviorTreeComponent (helper)
+└── BotStateTreeAIComponent
+```
+
+### Option B: Custom AAIController + SECCombatControllerComponent
+
+Add `SECCombatControllerComponent` to any AAIController Blueprint. This is the minimal path for integrating with existing controllers.
+
+```
+YourCustomAIController
+├── SECCombatControllerComponent   ← add this
+├── (your own components)
+└── (pick which SEC components you need)
+```
+
+`SECCombatControllerComponent` is the **single source of truth** for all combat system integration. It handles:
+- AIConfig resolution (from component or pawn)
+- Combat role registration/unregistration
+- Role-based sync of action sets and movement profiles
+- Action execution state delegation for replication
+
+All SEC subsystems and StateTree tasks communicate through this component. If an AI controller has it, the full combat system works.
+
+> **When to use which:** Use `EnemyControllerBase` for new projects where you want everything pre-wired. Use a custom controller + component when integrating into an existing project or when you need a different controller hierarchy.
+
+---
+
 ## System Flow
 
 1. **StateTree** polls `ActionEvaluationComponent` each tick
