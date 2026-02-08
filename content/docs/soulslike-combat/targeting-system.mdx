@@ -412,15 +412,14 @@ No additional configuration is needed. Set TeamIds on your pawns/controllers via
 
 ## Backward Compatibility
 
-Existing single-player setups work with **zero changes**:
+The legacy single-target API still works:
 
 ```cpp
-// Old API (deprecated but functional)
 Subsystem->SetCombatTarget(Player);  // → calls RegisterCombatTarget(Player, true)
-Subsystem->GetCombatTarget();         // → returns first registered target
-
-// These log deprecation warnings but compile and run correctly
+Subsystem->GetCombatTarget();        // → returns first registered target
 ```
+
+These log deprecation warnings but compile and run correctly.
 
 ---
 

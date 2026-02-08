@@ -1,6 +1,6 @@
 ---
 title: "Core Architecture"
-description: "Understanding the StateTree + Behavior Tree hybrid architecture used in professional action games."
+description: "Understanding the StateTree + Behavior Tree hybrid architecture."
 date: 2025-12-10
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Architecture"]
@@ -16,21 +16,7 @@ parent: "SoulslikeCombatDocs"
 
 ## The StateTree + Behavior Tree Hybrid
 
-This plugin implements the **AAA-standard AI architecture** used in professional action games. Understanding this architecture is key to using the plugin effectively.
-
-### Why This Architecture?
-
-**The Problem with Traditional Approaches:**
-
-Most developers build AI using a single massive Behavior Tree. This leads to:
-- ❌ Unmaintainable trees with hundreds of nodes
-- ❌ Mixed concerns (strategy + execution in one place)
-- ❌ Difficult debugging and iteration
-- ❌ Poor scalability as complexity grows
-
-**The Professional Solution:**
-
-Separate **strategic thinking** from **tactical execution**:
+The plugin separates **strategic thinking** from **tactical execution**. This avoids the common pitfall of a single massive Behavior Tree that mixes strategy and execution logic.
 
 **StateTree (The Brain)** - High-level decision making:
 ```
@@ -55,19 +41,7 @@ Separate **strategic thinking** from **tactical execution**:
 └─────────────────────────────────────┘
 ```
 
-**Benefits:**
-
-✅ **Clear Separation** - Strategy decisions separate from action execution
-
-✅ **Scalability** - Add new actions without touching state machine logic
-
-✅ **Debuggability** - Isolate issues to strategy or execution layer
-
-✅ **Maintainability** - Each layer has single responsibility
-
-✅ **Industry Standard** - Same pattern used in major action games
-
-> **Pro Tip: When to Use Each Execution Mode**
+> **When to Use Each Execution Mode:**
 > Use Gameplay Abilities for simple attacks (play montage → damage). Use Behavior Tree sequences for complex multi-step actions with conditional branches (charge attack → check stamina → branch to heavy or light version).
 
 ---
@@ -161,37 +135,21 @@ You can subclass `SECCombatControllerComponent` in Blueprint and override these 
 
 ---
 
-## What It Is / What It's Not
+## Scope
 
-### What SoulslikeCombat IS
-
-✅ **Production-Ready Enemy AI** - Intelligent tactical combat behaviors  
-✅ **Multiplayer-Ready** - Replication built-in, works with listen and dedicated servers  
-✅ **Modular Component System** - Mix and match for different enemy types  
-✅ **Data-Driven Configuration** - Designers tune without code  
-✅ **Blueprint-Friendly** - Full Blueprint support, C++ optional  
-✅ **Demo-Included** - Working enemy to study and extend  
-✅ **Professionally Architected** - AAA-standard StateTree/BT hybrid  
-✅ **Scalable** - Works for simple enemies and complex bosses  
-✅ **Keeps Improving** - I develop games with the systems I have made. So this plugin will keep improving!
-
-### What It's NOT
-
-❌ **NOT a Complete Game Template** - Combat systems only, not a full game  
-❌ **NOT Player Character Combat** - Focused on enemy AI (melee trace can be used for player characters independently)  
-
-### Scope & Expectations
-
-**This plugin provides:**
+**What the plugin provides:**
 - Enemy AI decision-making and tactical movement
-- Melee combat hit detection
+- Melee combat hit detection (can also be used for player characters)
 - Action scoring and execution framework
-- Multi-enemy coordination
-- Component-based architecture
+- Multi-enemy coordination with role-based behavior
+- Multiplayer support (listen server and dedicated server)
+- Modular component system — mix and match for different enemy types
+- Data-driven configuration with full Blueprint support
+- Working demo enemy to study and extend
 
-**You still need in order to make a game:**
+**What you still need:**
 - UI/HUD (health bars, lock-on indicators, damage numbers)
-- Level design and encounter placement or spawning the enemies
+- Level design and encounter placement
 - Progression and difficulty balancing
 
 
