@@ -73,6 +73,26 @@ Use this value to:
 
 The component is automatically added to `AEnemyControllerBase`. For custom AI controllers, add `ThreatDetectionComponent` in the Components panel.
 
+### Threat Response Wiring
+
+The `SECCombatControllerComponent` automatically wires threat responses if both `ThreatDetectionComponent` and `MovementEvaluatorComponent` are present on the controller.
+
+**On `SECCombatControllerComponent`** (wiring toggle):
+
+| Property | Default | Purpose |
+|----------|---------|----------|
+| `bEnableThreatDetection` | `true` | Enable threat detection on BeginPlay |
+
+**On `MovementBehaviorProfile`** (per-role behavior - switches automatically with combat role):
+
+| Property | Default | Purpose |
+|----------|---------|----------|
+| `bSwapStrafeOnHighThreat` | `false` | Swap strafe direction when threat duration is exceeded |
+| `bAdjustDistanceByThreat` | `false` | Adjust movement distance multiplier based on threat |
+| `ThreatDistanceScale` | `1.0` | Scale factor for distance adjustment: `1.0 + ThreatLevel * Scale` |
+
+Because threat response settings live on the movement profile, they automatically change when the AI switches combat roles. A cautious "Waiter" role can react to threat with distance adjustments, while an aggressive "Attacker" profile ignores threat entirely. No per-AI configuration needed.
+
 ### Configure Thresholds
 
 In your AI Controller Blueprint → ThreatDetectionComponent:
@@ -129,18 +149,23 @@ void ResetThreat();
 
 ### Strafe Direction Swap
 
-The Movement System automatically uses threat to trigger strafe swaps:
+The `SECCombatControllerComponent` automatically handles strafe swaps when threat duration is exceeded. Enable `bSwapStrafeOnHighThreat` on the component:
 
 ```cpp
-// When threat exceeds threshold, AI changes strafe direction
-// This prevents the player from predicting movement
-if (ThreatDetection->GetCurrentThreatLevel() > 0.8f)
-{
-    MovementEvaluator->SwapStrafeSide();
-}
+// Configured via SECCombatControllerComponent properties:
+// bSwapStrafeOnHighThreat = true
+// When OnThreatDurationExceeded fires, MovementEvaluator->SwapStrafeSide() is called automatically
 ```
 
-This is built-in to the Movement System. No extra code needed if you're using both.
+No extra code needed if you're using `SECCombatControllerComponent` with both `ThreatDetectionComponent` and `MovementEvaluatorComponent`.
+
+To also adjust distance based on threat, enable `bAdjustDistanceByThreat`:
+
+```cpp
+// Distance multiplier formula: 1.0 + ThreatLevel * ThreatDistanceScale
+// At ThreatLevel = 0.8 with ThreatDistanceScale = 1.0 → multiplier = 1.8
+// AI backs away further when the player is staring
+```
 
 ### Defensive Action Bonus
 
@@ -186,7 +211,7 @@ SEC.Debug.Threat.DrawDetection 1   // Visualize detection cone
 
 | System | How Threat Detection Connects |
 |--------|------------------------------|
-| [Movement System](/docs/soulslike-combat/movement-system) | Triggers strafe direction swap when threatened |
+| [Movement System](/docs/soulslike-combat/movement-system) | `SECCombatControllerComponent` auto-wires strafe swap and distance adjustment based on threat |
 | [Action System](/docs/soulslike-combat/action-system) | Threat level can boost defensive action scores |
 | [Combat Roles](/docs/soulslike-combat/combat-roles) | Threatened AI may be deprioritized for Attacker role |
 

@@ -174,7 +174,7 @@ The component decides which ActionSet to use based on this priority:
 
 Sometimes you need to add or remove individual actions at runtime without swapping the entire ActionSet. For example, an enemy picks up a grenade and gains a "ThrowGrenade" action, or a boss loses a limb and can no longer use "SweepAttack".
 
-Granted actions live in a **separate runtime pool** that persists across role changes and ActionSet swaps. They participate in evaluation alongside the base ActionSet — same scoring, same cooldowns.
+Granted actions live in a **separate runtime pool** that persists across role changes and ActionSet swaps. They participate in evaluation alongside the base ActionSet - same scoring, same cooldowns.
 
 ### Grant / Revoke API
 
@@ -210,6 +210,44 @@ void AMyClass::HandleGranted(FName ActionId)  { /* update UI, etc. */ }
 void AMyClass::HandleRevoked(FName ActionId)  { /* clean up */ }
 ```
 
+> **Delegates vs. Overridable Hooks:** Delegates let you *react to* events. For *modifying* behavior (gating which actions can execute, adjusting scores), use the `BlueprintNativeEvent` hooks described below.
+
+### Custom Action Gating & Scoring
+
+The `ActionEvaluationComponent` provides two `BlueprintNativeEvent` hooks you can override in a Blueprint subclass. These let you inject project-specific logic without understanding the built-in scoring pipeline.
+
+**CanExecuteAction** - Custom gate called after all built-in hard gates pass. Return `false` to veto an action.
+
+```cpp
+// Override in your Blueprint subclass of ActionEvaluationComponent:
+bool UMyActionEval::CanExecuteAction_Implementation(FName ActionId, const FDecisionContext& Context)
+{
+    // Block heavy attacks during boss phase 2
+    if (ActionId == "HeavyAttack" && Context.WorldTags.HasTag(Phase2Tag))
+    {
+        return false;
+    }
+    return true; // Allow by default
+}
+```
+
+**ModifyActionScore** - Called after the built-in scoring pipeline computes a score. Return a modified score.
+
+```cpp
+// Override in your Blueprint subclass:
+float UMyActionEval::ModifyActionScore_Implementation(FName ActionId, float BaseScore, const FDecisionContext& Context)
+{
+    // Boost defensive actions when health is low
+    if (ActionId == "Block" && Context.HealthPercentage < 0.3f)
+    {
+        return BaseScore * 2.0f;
+    }
+    return BaseScore; // No change by default
+}
+```
+
+These hooks are called during `EvaluateBestAction()` and work alongside the existing `GlobalMultiplier` and `ActionOverrides` runtime modifier API.
+
 ### Pawn-Side Convenience
 
 `SECActionSetComponent` provides convenience wrappers that forward to the controller's `ActionEvaluationComponent`. This is useful when Blueprint code has a reference to the pawn but not the controller:
@@ -226,7 +264,7 @@ Controller->ActionEvaluationComponent->GrantAction(Spec);
 
 ## Replicated Action State
 
-The **SECActionSetComponent** replicates key execution state to clients. This is useful for driving client-side visuals — enemy health bars showing the current attack, UI indicators, VFX triggers, etc.
+The **SECActionSetComponent** replicates key execution state to clients. This is useful for driving client-side visuals like enemy health bars showing the current attack, UI indicators, VFX triggers, etc.
 
 ### What Replicates
 
@@ -258,13 +296,13 @@ bool bBusy = ActionSetComponent->IsActionExecuting();
 UActionSet* Set = ActionSetComponent->GetActiveActionSet();
 ```
 
-> The controller pushes execution state to `SECActionSetComponent` automatically. You don't need to do anything special for replication to work — just read the values on clients.
+> The controller pushes execution state to `SECActionSetComponent` automatically. You don't need to do anything special for replication to work - just read the values on clients.
 
 ---
 
 ## SEC Play Montage And Wait (Ability Task)
 
-The plugin includes a custom Ability Task called **SEC Play Montage And Wait** — a drop-in replacement for `PlayMontageAndWait` with additional output pins for anim notify callbacks.
+The plugin includes a custom Ability Task called **SEC Play Montage And Wait** - a drop-in replacement for `PlayMontageAndWait` with additional output pins for anim notify callbacks.
 
 ### Why?
 

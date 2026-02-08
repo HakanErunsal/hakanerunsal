@@ -94,7 +94,7 @@ This comes with all SEC components pre-wired: `SECCombatControllerComponent`, `M
 
 **Option B: Use Any AAIController + SECCombatControllerComponent**
 
-Create or open your existing AI Controller Blueprint. In the Components panel, add **SEC Combat Controller** (`SECCombatControllerComponent`). Then add whichever SEC components you need (e.g., `MovementEvaluatorComponent`, `ActionEvaluationComponent`). Everything wires up automatically on possession.
+Create or open your existing AI Controller Blueprint. In the Components panel, add **SEC Combat Controller** (`SECCombatControllerComponent`). Then add whichever SEC components you need (e.g., `MovementEvaluatorComponent`, `ActionEvaluationComponent`). Everything wires up automatically on possession, including threat-to-movement response if both `ThreatDetectionComponent` and `MovementEvaluatorComponent` are present.
 
 **AI Config**
 

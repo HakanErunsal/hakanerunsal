@@ -30,6 +30,32 @@ Defines combat role selection, behavior logic, and action set binding for an AI.
 
 Set the config on the pawn for per-enemy customization, or on the `SECCombatControllerComponent`'s `DefaultAIConfig` when all units sharing a controller should use the same config.
 
+### SECCombatControllerComponent Properties
+
+| Property | Category | Default | Purpose |
+|----------|----------|---------|----------|
+| `DefaultAIConfig` | AI\|SEC | `nullptr` | Fallback AI Config when pawn doesn't provide one |
+| `bAutoRegisterForCombatRoles` | Combat Role | `true` | Auto-register with the role subsystem on possession |
+| `bEnableThreatDetection` | Threat Response | `true` | Enable `ThreatDetectionComponent` on BeginPlay |
+
+### SECCombatControllerComponent Delegates
+
+| Delegate | Purpose |
+|----------|----------|
+| `OnCombatRoleChanged` | Broadcast when combat role changes (new role, old role) |
+| `OnCombatTargetLost` | Broadcast when assigned combat target is destroyed/unregistered |
+| `OnCombatRoleSystemReady` | Broadcast after successful registration with the role subsystem. Safe to call `ForceAssignRole` here. |
+
+### MovementBehaviorProfile Threat Response
+
+These settings live on the `MovementBehaviorProfile` data asset, so they automatically change when the AI switches combat roles:
+
+| Property | Default | Purpose |
+|----------|---------|----------|
+| `bSwapStrafeOnHighThreat` | `false` | Swap strafe direction when threat duration exceeded |
+| `bAdjustDistanceByThreat` | `false` | Adjust movement distance based on threat level |
+| `ThreatDistanceScale` | `1.0` | Scale factor: `DistMultiplier = 1.0 + ThreatLevel * Scale` |
+
 ### Full Structure
 
 ```cpp
@@ -41,6 +67,10 @@ FGameplayTag PreferredRole;           // Default role when available
 
 // Fitness Evaluation
 TArray<URoleEvaluator*> FitnessEvaluators;  // Scoring objects for role assignment
+
+// Target Selection
+UTargetSelector* TargetSelector;      // Per-AI target selector (instanced)
+bool bIgnoreTargetRedistribution;     // Opt out of periodic target reshuffling
 
 // Behavior
 UStateTree* StateTree;                // Main AI behavior tree

@@ -242,6 +242,21 @@ if (Context.bIsTargetLossReselection)
 Subsystem->AssignCombatantToTarget(Controller, Target, /*bTriggerRoleEvaluation=*/ true);
 ```
 
+### Select Target Utility
+
+Run the full target selection pipeline (config lookup, self-exclusion, team filtering) for a specific AI with an explicit candidate list:
+
+```cpp
+// Run selector with custom candidate list
+AActor* Best = Subsystem->SelectTargetFor(Controller, CandidateTargets);
+if (Best)
+{
+    Subsystem->AssignCombatantToTarget(Controller, Best);
+}
+```
+
+This resolves the AI's `TargetSelector` from its `EnemyAIConfig`, falls back to the project default, removes the AI's own pawn, removes friendly targets, and returns the selector's pick.
+
 ### Trigger Re-evaluation
 
 ```cpp
@@ -250,6 +265,33 @@ Subsystem->ReassignCombatantTarget(Controller);
 
 // Re-run for ALL AI (respects bIgnoreTargetRedistribution)
 Subsystem->ReevaluateAllTargets();
+```
+
+### Periodic Target Refresh
+
+By default, the reassignment timer only re-evaluates **roles**, not targets. In multi-target scenarios where targets are moving around, you may want AI to periodically reconsider which target is best.
+
+Enable periodic target re-evaluation in **Project Settings → Plugins → Soulslike Enemy Combat → Timing**:
+
+```
+bReevaluateTargetsOnReassignment: true
+```
+
+When enabled, each reassignment cycle (default every 8 seconds) will:
+1. Re-run each AI's `TargetSelector` (respects `bIgnoreTargetRedistribution`)
+2. Then evaluate roles against the updated target assignments
+
+This only takes effect when multiple combat targets are registered. Single-target setups are unaffected.
+
+**Runtime control:**
+```cpp
+// Enable/disable dynamically
+Subsystem->SetReevaluateTargetsOnReassignment(true);
+
+// Or via UpdateConfig
+FAICombatRoleConfig Config = Subsystem->GetConfig();
+Config.bReevaluateTargetsOnReassignment = true;
+Subsystem->UpdateConfig(Config);
 ```
 
 ### Balance Distribution
@@ -325,6 +367,46 @@ void UMyClass::OnOrphaned(AActor* LostTarget, const TArray<AController*>& Orphan
 // When a new target registers
 Subsystem->OnCombatTargetRegistered.AddDynamic(this, &UMyClass::OnNewTarget);
 ```
+
+---
+
+## Team-Aware Target Filtering
+
+The subsystem automatically filters targets based on team affinity. Any actor implementing `ISECTeamInterface` (or `IGenericTeamAgentInterface`) has a TeamId. The subsystem uses `USECTeamHelpers::AreFriendly()` to exclude friendly targets from every assignment path:
+
+- **Target selection** (custom selectors receive only hostile/neutral candidates)
+- **Auto-assignment** (unassigned AI skip friendly targets in `RegisterCombatTarget`)
+- **Fallback assignment** (no-selector path skips friendly targets)
+- **`SetPrimaryTargetAndAssignAll`** (skips friendly combatants)
+- **`BalanceCombatantsAcrossTargets`** (per-combatant hostile-only target list)
+
+**Team rules:**
+
+| Relationship | Same Team? | Filtered? |
+|-------------|------------|----------|
+| Same non-255 TeamId | Friendly | Yes (skipped) |
+| Different TeamIds | Hostile | No (kept) |
+| Either has TeamId 255 (NoTeam) | Neutral | No (kept) |
+| No team interface | Neutral | No (kept) |
+
+This is fully backward compatible. Existing setups without teams are unaffected since all actors without a team interface are treated as neutral.
+
+### Multi-Faction Example
+
+Two boss factions fighting the player and each other:
+
+```cpp
+// Boss A (Team 2) and Boss B (Team 3) both register as targets
+Subsystem->RegisterCombatTarget(BossA);
+Subsystem->RegisterCombatTarget(BossB);
+Subsystem->RegisterCombatTarget(Player); // Team 0
+
+// Boss A's minions (Team 2) will only target Boss B and the Player
+// Boss B's minions (Team 3) will only target Boss A and the Player
+// Player's allies (Team 0) will only target Boss A and Boss B
+```
+
+No additional configuration is needed. Set TeamIds on your pawns/controllers via `ISECTeamInterface` and the subsystem handles the rest.
 
 ---
 

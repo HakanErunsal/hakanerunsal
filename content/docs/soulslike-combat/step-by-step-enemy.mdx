@@ -77,6 +77,10 @@ UBotStateTreeAIComponent*       // StateTree AI behavior
 
 If you have an existing AI controller, add `SECCombatControllerComponent` in the Components panel. Then add whichever other SEC components you need (`MovementEvaluatorComponent`, `ActionEvaluationComponent`, etc.). Everything connects automatically on possession.
 
+Threat-to-movement response is auto-wired if both `ThreatDetectionComponent` and `MovementEvaluatorComponent` are present. Configure `bSwapStrafeOnHighThreat` and `bAdjustDistanceByThreat` on the `SECCombatControllerComponent`.
+
+For advanced customization, subclass `SECCombatControllerComponent` in Blueprint and override `SyncStateForCombatRole` (custom role-change behavior) or `HandleCombatTargetLost` (custom target-loss fallback). Subclass `ActionEvaluationComponent` and override `CanExecuteAction` or `ModifyActionScore` for custom action gating and scoring.
+
 **Configure Movement:**
 
 Open `BP_DetailedEnemyController` → Details Panel → **Movement Evaluator:**

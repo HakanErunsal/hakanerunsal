@@ -64,7 +64,7 @@ The AI naturally circles the target while maintaining distance:
 
 - **AutoStrafeSwap**: Randomly changes direction to avoid predictability
 - **Strafe Fatigue**: After strafing too long, the AI rests briefly
-- **Threat-Triggered Swap**: If the player stares at the AI, it swaps direction (requires [Threat Detection](/docs/soulslike-combat/threat-detection))
+- **Threat-Triggered Swap**: If the player stares at the AI, it swaps direction. Configured per `MovementBehaviorProfile` (requires [Threat Detection](/docs/soulslike-combat/threat-detection))
 
 ### Hybrid Navigation
 
@@ -206,7 +206,7 @@ MovementEvaluator->bDebugLog = true;
 
 | System | How Movement Uses It |
 |--------|---------------------|
-| [Threat Detection](/docs/soulslike-combat/threat-detection) | Swaps strafe direction when player stares too long |
+| [Threat Detection](/docs/soulslike-combat/threat-detection) | `SECCombatControllerComponent` auto-wires delegates; threat response behavior (`bSwapStrafeOnHighThreat`, `bAdjustDistanceByThreat`) is configured per `MovementBehaviorProfile` and switches automatically with combat role |
 | [Combat Roles](/docs/soulslike-combat/combat-roles) | Different roles apply different MovementBehaviorProfiles |
 | [Action System](/docs/soulslike-combat/action-system) | Actions can temporarily override movement (e.g., lunging) |
 

@@ -231,6 +231,25 @@ When an enemy's role changes (e.g., from *Waiter* to *Attacker*), their abilitie
 ### Automatic Syncing
 If your AI controller has a **`SECCombatControllerComponent`** (included by default in `AEnemyControllerBase`), this happens automatically. The component monitors role changes and updates ActionSets and MovementProfiles for you.
 
+**Customizing Sync Behavior:** You can subclass `SECCombatControllerComponent` in Blueprint and override `SyncStateForCombatRole` to add custom logic when roles change (e.g., switch animation sets, trigger visual effects, load a different StateTree, or notify other systems). Call the parent function to preserve the default action set and movement profile sync.
+
+```cpp
+// Override in your Blueprint subclass of SECCombatControllerComponent:
+void UMyCombatController::SyncStateForCombatRole_Implementation(const FGameplayTag& RoleTag)
+{
+    // Call parent to keep default ActionSet + MovementProfile sync
+    Super::SyncStateForCombatRole_Implementation(RoleTag);
+
+    // Your custom sync logic here
+    if (RoleTag.MatchesTag(FGameplayTag::RequestGameplayTag("SEC.Role.Attacker")))
+    {
+        // Switch to aggressive animation blueprint, trigger FX, etc.
+    }
+}
+```
+
+Similarly, you can override `HandleCombatTargetLost` to customize behavior when a target is destroyed or unregistered.
+
 ### Manual Syncing (Custom Controllers without SECCombatControllerComponent)
 If you are building a fully custom controller without `SECCombatControllerComponent`, use the **SEC Combat Role Sync Library**. It handles the complex logic of finding the right asset for the role.
 
@@ -253,6 +272,55 @@ USECCombatRoleSyncLibrary::SyncAllForCombatRole(
 
 ---
 
+## Boss AI & Local Roles
+
+For bosses or scripted AI that should adopt a combat role **without participating in the subsystem's slot coordination**, use `ApplyLocalCombatRole` on the `SECCombatControllerComponent`.
+
+### Why Local Roles?
+
+The subsystem enforces slot limits (e.g., max 2 Attackers). A boss shouldn't consume one of those slots — it should always behave as an Attacker regardless of what the other enemies are doing. Local roles give the boss:
+
+- ✅ Role-based ActionSet and MovementProfile sync (identical to subsystem-assigned roles)
+- ✅ `OnCombatRoleChanged` delegate fires normally
+- ✅ Pawn's `SECCombatRoleComponent` updates for client replication
+- ❌ Does **not** consume subsystem slots
+- ❌ Does **not** participate in role redistribution
+
+### Setup
+
+1. Set `bAutoRegisterForCombatRoles` to `false` on the boss controller's `SECCombatControllerComponent` (or in its `EnemyAIConfig`)
+2. Call `ApplyLocalCombatRole` when the boss should start fighting:
+
+```cpp
+// In your Boss AI Controller or Blueprint:
+USECCombatControllerComponent* CombatComp = FindComponentByClass<USECCombatControllerComponent>();
+CombatComp->ApplyLocalCombatRole(FGameplayTag::RequestGameplayTag("SEC.Role.Attacker"));
+```
+
+Or in Blueprint: call **Apply Local Combat Role** on the component with the desired role tag.
+
+### Combining With the Subsystem
+
+If you call `ApplyLocalCombatRole` on an AI that **is** registered with the subsystem, a warning will be logged. The subsystem's next evaluation cycle may overwrite the locally applied role. To avoid this, either:
+- Don't register the AI (`bAutoRegisterForCombatRoles = false`)
+- Or unregister it first, then apply the local role
+
+### OnCombatRoleSystemReady Delegate
+
+If you need to call `ForceAssignRole` immediately after spawning (for AI that *does* register), bind to `OnCombatRoleSystemReady`. This delegate fires after the subsystem accepts the registration, guaranteeing it's safe to call subsystem APIs:
+
+```cpp
+CombatComp->OnCombatRoleSystemReady.AddDynamic(this, &AMyController::OnReadyForCombat);
+
+void AMyController::OnReadyForCombat(AAIController* Controller)
+{
+    UAICombatRoleSubsystem* Sub = GetWorld()->GetSubsystem<UAICombatRoleSubsystem>();
+    Sub->ForceAssignRole(Controller, FGameplayTag::RequestGameplayTag("SEC.Role.Attacker"));
+}
+```
+
+---
+
 ## Debug Tools
 
 **Console Commands:**
@@ -270,7 +338,7 @@ bDebugLogRoleChanges: true
 
 ## Client-Side Role Visibility (SECCombatRoleComponent)
 
-The role subsystem runs on the server — it lives on AI controllers, which don't exist on clients. To let clients know what role an enemy has (for UI, VFX, debug overlays), the plugin includes **`USECCombatRoleComponent`**.
+The role subsystem runs on the server. It lives on AI controllers, which don't exist on clients. To let clients know what role an enemy has (for UI, VFX, debug overlays), the plugin includes **`USECCombatRoleComponent`**.
 
 This component sits on the enemy pawn and replicates the currently assigned role tag. The server writes to it whenever the role changes, and clients can read it or bind to its delegate.
 
@@ -283,7 +351,7 @@ This component sits on the enemy pawn and replicates the currently assigned role
 CombatRoleComponent = CreateDefaultSubobject<USECCombatRoleComponent>(TEXT("CombatRoleComponent"));
 ```
 
-Or add it in Blueprint via the Components panel — search for "SEC Combat Role".
+Or add it in Blueprint via the Components panel. Search for "SEC Combat Role".
 
 ### How It Works
 
@@ -310,7 +378,7 @@ void UMyWidget::OnRoleChanged(FGameplayTag NewRole, FGameplayTag OldRole)
 }
 ```
 
-> This component is purely informational on the client side. Setting the role on clients is a no-op — only the server can assign roles through the subsystem.
+> This component is purely informational on the client side. Setting the role on clients is a no-op. Only the server can assign roles through the subsystem.
 
 ---
 
@@ -321,6 +389,7 @@ void UMyWidget::OnRoleChanged(FGameplayTag NewRole, FGameplayTag OldRole)
 | [Action System](/docs/soulslike-combat/action-system) | Swaps ActionSet when role changes |
 | [Movement System](/docs/soulslike-combat/movement-system) | Different roles have different positioning profiles |
 | [Threat Detection](/docs/soulslike-combat/threat-detection) | Threatened AI may be deprioritized for Attacker role |
+| [Targeting System](/docs/soulslike-combat/targeting-system) | Team-aware target filtering prevents friendly assignments |
 | [Multiplayer](/docs/soulslike-combat/multiplayer) | Roles replicate to clients via SECCombatRoleComponent |
 
 ---

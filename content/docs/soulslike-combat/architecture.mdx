@@ -106,8 +106,32 @@ YourCustomAIController
 - Combat role registration/unregistration
 - Role-based sync of action sets and movement profiles
 - Action execution state delegation for replication
+- Threat-to-movement auto-wiring (if `ThreatDetectionComponent` and `MovementEvaluatorComponent` are present)
 
 All SEC subsystems and StateTree tasks communicate through this component. If an AI controller has it, the full combat system works.
+
+**Overridable Hooks (BlueprintNativeEvent):**
+
+You can subclass `SECCombatControllerComponent` in Blueprint and override these functions:
+
+| Function | Purpose |
+|----------|----------|
+| `SyncStateForCombatRole` | Called when role changes. Override to add custom sync logic (animation sets, VFX, StateTree swaps). Call parent to keep default action set and movement profile sync. |
+| `HandleCombatTargetLost` | Called when combat target is destroyed/unregistered. Override to add custom fallback behavior (patrol, aggro switch). |
+
+**Blueprint-Callable API:**
+
+| Function | Purpose |
+|----------|----------|
+| `ApplyLocalCombatRole` | Adopt a combat role locally without subsystem registration. Syncs ActionSet and MovementProfile exactly like a subsystem-assigned role, but doesn't consume slots or participate in coordination. Designed for boss AI. |
+
+**Delegates:**
+
+| Delegate | Purpose |
+|----------|----------|
+| `OnCombatRoleChanged` | Fires when the combat role changes (from subsystem assignment or local apply). Provides new and old role tags. |
+| `OnCombatTargetLost` | Fires when the combat target is destroyed or unregistered. |
+| `OnCombatRoleSystemReady` | Fires after successful registration with `AICombatRoleSubsystem`. Safe to call `ForceAssignRole` or read the initial role in this handler. |
 
 > **When to use which:** Use `EnemyControllerBase` for new projects where you want everything pre-wired. Use a custom controller + component when integrating into an existing project or when you need a different controller hierarchy.
 
