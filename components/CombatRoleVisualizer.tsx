@@ -92,8 +92,8 @@ export default function CombatRoleVisualizer() {
     }, []);
 
     return (
-        <div className="my-8 rounded-lg border border-border bg-black/20 p-8 shadow-sm">
-            <div className="relative mx-auto flex h-[350px] w-full max-w-[500px] flex-col items-center justify-center">
+        <div className="my-8 rounded-lg border border-border bg-black/20 p-4 sm:p-8 shadow-sm">
+            <div className="relative mx-auto flex h-[350px] w-full max-w-[500px] flex-col items-center justify-center overflow-hidden sm:overflow-visible">
 
                 {/* CENTER: Player */}
                 <div className="absolute left-1/2 top-1/2 z-20 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-blue-500 text-white shadow-[0_0_20px_rgba(59,130,246,0.5)]">

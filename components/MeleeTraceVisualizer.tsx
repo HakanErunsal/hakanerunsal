@@ -208,7 +208,7 @@ export default function MeleeTraceVisualizer() {
                 </div>
             </div>
 
-            <div className="relative mx-auto h-[320px] w-full max-w-[400px] overflow-hidden rounded bg-black/40 border border-white/5">
+            <div className="relative mx-auto aspect-[400/350] w-full max-w-[400px] overflow-hidden rounded bg-black/40 border border-white/5">
                 <canvas
                     ref={canvasRef}
                     width={400}

@@ -157,13 +157,13 @@ export default function MovementVisualizer() {
                 onMouseMove={handleMouseMove}
                 onMouseEnter={() => setIsHovering(true)}
                 onMouseLeave={() => setIsHovering(false)}
-                className="relative mx-auto h-[400px] w-[400px] cursor-crosshair overflow-hidden rounded bg-black/20"
+                className="relative mx-auto aspect-square w-full max-w-[400px] cursor-crosshair overflow-hidden rounded bg-black/20"
             >
                 <canvas
                     ref={canvasRef}
                     width={400}
                     height={400}
-                    className="absolute inset-0"
+                    className="absolute inset-0 h-full w-full"
                 />
 
                 {/* Legend */}

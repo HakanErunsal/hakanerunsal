@@ -104,7 +104,8 @@ export default function ActionFlowVisualizer() {
                     </div>
 
                     {/* Path to Left (Ability) */}
-                    <svg className="absolute inset-0 h-full w-full overflow-visible pointer-events-none">
+                    {/* Path to Left (Ability) */}
+                    <svg className="absolute inset-0 h-full w-full pointer-events-none" viewBox="0 0 500 100" preserveAspectRatio="none">
                         {/* Top to Left */}
                         <path
                             d="M 250 0 C 250 40, 100 0, 100 80"

@@ -115,6 +115,47 @@ BehaviorTreeTimeout = 5.0f;
 
 ---
 
+## Contextual Execution
+
+Sometimes you need to tell an action *exactly* what to do — "Attack *that* specific target", "Use *this* item", or "Apply *strength* 0.5".
+
+Creating a new ActionId for every variation (e.g., `Attack_TargetA`, `Attack_TargetB`) is impossible. Instead, use **Context**.
+
+### 1. Execute with Context
+
+Call this function from Blueprint or C++ to pass dynamic data:
+
+```cpp
+FActionExecutionContext Context;
+Context.Target = CustomTargetActor;
+Context.OptionalObject = SomeItem;
+Context.Magnitude = 0.5f;
+Context.ContextTags.AddTag(Tag_QuickVariant);
+
+ActionEvaluationComponent->ExecuteActionWithContext("SpecialAttack", Context);
+```
+
+### 2. Receive in Ability
+
+Your ability (inheriting from `UGameplayAbilityBase`) automatically captures this data.
+
+- **Event:** `On Action Context Received` (Blueprint)
+- **Accessor:** `GetActionContext()` (Blueprint Pure)
+
+The system maps the context as follows:
+
+| Context Field | Maps To |
+|---------------|---------|
+| `Target` | `ActionContext.TargetActor` |
+| `OptionalObject` | `ActionContext.OptionalObject` |
+| `Magnitude` | `ActionContext.Magnitude` |
+| `ContextTags` | `ActionContext.ContextTags` |
+
+> [!NOTE]
+> If `Target` is not provided in context, the system falls back to the AI's current **Focus Actor**.
+
+---
+
 ## How Action Sets Are Managed
 
 The plugin uses a **push-based** architecture. When a combat role changes, the `SECCombatControllerComponent` on the controller automatically syncs everything.
@@ -226,6 +267,7 @@ See [Configuration Reference](/docs/soulslike-combat/configuration) for the comp
 **ActionEvaluationComponent (Controller)**
 - `EvaluateBestAction(Context, Time, OutChosen)` — Run the scoring pipeline.
 - `ExecuteAction(ActionId)` — Force-execute a specific action.
+- `ExecuteActionWithContext(Id, Context)` — Execute with custom data (Target, etc.).
 - `SetActionOverride(ActionId, Multiplier)` — Runtime buff/nerf a specific action's score.
 - `CanExecuteAction()` / `ModifyActionScore()` — Override hooks (see above).
 

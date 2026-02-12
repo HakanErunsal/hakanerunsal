@@ -171,7 +171,7 @@ export default function ThreatVisualizer() {
             <div
                 ref={containerRef}
                 onMouseMove={handleMouseMove}
-                className="relative mx-auto h-[350px] w-[400px] cursor-crosshair overflow-hidden rounded bg-black/20"
+                className="relative mx-auto aspect-[400/350] w-full max-w-[400px] cursor-crosshair overflow-hidden rounded bg-black/20"
             >
                 <canvas
                     ref={canvasRef}

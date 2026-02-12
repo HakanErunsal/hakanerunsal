@@ -403,8 +403,8 @@ export default function TargetingVisualizer() {
                     </div>
                 ))}
 
-                {/* Legend */}
-                <div className="absolute bottom-2 left-2 rounded bg-background/80 p-2 text-[10px] border border-border">
+                {/* Legend - Desktop (Absolute) / Mobile (Hidden from here, moved below) */}
+                <div className="hidden sm:block absolute bottom-2 left-2 rounded bg-background/80 p-2 text-[10px] border border-border">
                     <div className="font-bold text-muted-foreground mb-1">Target Counts</div>
                     {targets.filter(t => t.alive).map(t => (
                         <div key={t.id} className="flex items-center gap-1">
@@ -415,10 +415,10 @@ export default function TargetingVisualizer() {
                     ))}
                 </div>
 
-                {/* Event Log */}
+                {/* Event Log - Desktop (Absolute) / Mobile (Hidden from here, moved below) */}
                 <div
                     ref={logRef}
-                    className="absolute bottom-2 right-2 w-[180px] rounded bg-background/80 p-2 text-[10px] border border-border max-h-[80px] overflow-hidden"
+                    className="hidden sm:block absolute bottom-2 right-2 w-[180px] rounded bg-background/80 p-2 text-[10px] border border-border max-h-[80px] overflow-hidden"
                 >
                     <div className="font-bold text-muted-foreground mb-1 flex items-center gap-1">
                         <Zap className="h-3 w-3" /> Events
@@ -429,6 +429,36 @@ export default function TargetingVisualizer() {
                     {eventLog.slice(-3).map((log, i) => (
                         <div key={i} className="text-slate-400 truncate">{log}</div>
                     ))}
+                </div>
+            </div>
+
+            {/* Mobile Layout: Legend & Logs below */}
+            <div className="mt-4 flex flex-col gap-4 sm:hidden">
+                {/* Mobile Legend */}
+                <div className="rounded bg-background/40 p-3 text-xs border border-border">
+                    <div className="font-bold text-muted-foreground mb-2">Target Counts</div>
+                    <div className="flex flex-wrap gap-4">
+                        {targets.filter(t => t.alive).map(t => (
+                            <div key={t.id} className="flex items-center gap-1.5">
+                                <div className="h-2 w-2 rounded-full" style={{ backgroundColor: t.color }} />
+                                <span>{t.name}: {counts[t.id] || 0}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Mobile Log */}
+                <div className="rounded bg-background/40 p-3 text-xs border border-border">
+                    <div className="font-bold text-muted-foreground mb-2 flex items-center gap-2">
+                        <Zap className="h-3 w-3" /> Event Log
+                        {isRunning && <span className="text-green-400 animate-pulse">●</span>}
+                    </div>
+                    <div className="space-y-1">
+                        {eventLog.slice(-3).map((log, i) => (
+                            <div key={i} className="text-slate-400 truncate">{log}</div>
+                        ))}
+                        {eventLog.length === 0 && <div className="text-muted-foreground italic">No events yet</div>}
+                    </div>
                 </div>
             </div>
 
