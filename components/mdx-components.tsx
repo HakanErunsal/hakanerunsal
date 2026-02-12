@@ -15,6 +15,7 @@ import MeleeTraceVisualizer from '@/components/MeleeTraceVisualizer';
 import PerformanceVisualizer from '@/components/PerformanceVisualizer';
 import TargetingVisualizer from '@/components/TargetingVisualizer';
 import BlueprintUE from '@/components/BlueprintUE';
+import ArchitectureDiagram from '@/components/ArchitectureDiagram';
 
 const useMDXComponent = (code: string) => {
   const fn = new Function(code);
@@ -38,6 +39,7 @@ const components = {
   PerformanceVisualizer,
   TargetingVisualizer,
   BlueprintUE,
+  ArchitectureDiagram,
 };
 
 interface MdxProps {

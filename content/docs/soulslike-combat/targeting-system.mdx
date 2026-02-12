@@ -22,11 +22,10 @@ parent: "SoulslikeCombatDocs"
 
 - **Co-op games** where multiple players fight together
 - **Versus modes** where AI needs to distribute attention across teams
-- **Dynamic encounters** where targets spawn/die mid-combat
+- **Dynamic encounters** where targets spawn or die mid-combat
 - **Boss fights** where specific AI should ignore player-switching
 
-> [!NOTE]
-> Works seamlessly with single-player - zero configuration needed. AI auto-assigns to the first registered target.
+> Works seamlessly with single-player. Zero configuration needed. AI auto-assigns to the first registered target.
 
 ---
 
@@ -47,28 +46,28 @@ Each target maintains its own **independent pool** of combatants with separate r
 
 ### Target Selectors
 
-When an AI needs a target (spawn, death, re-evaluation), it uses a **Target Selector**:
+When an AI needs a target (at spawn, on target death, or during re-evaluation), it uses a **Target Selector**:
 
 | Selector | Behavior | Best For |
 |----------|----------|----------|
 | **FirstTargetSelector** | Picks first registered target | Single-player (default) |
 | **ClosestTargetSelector** | Picks nearest target | Distance-based threat |
-| **BalancedTargetSelector** | Picks target with fewest enemies | Fair distribution |
+| **BalancedTargetSelector** | Picks target with fewest combatants (with stickiness) | Fair distribution |
 | **RandomTargetSelector** | Random distribution | Unpredictable encounters |
 
-Selectors are **data-driven** and can be configured per-AI or project-wide.
+Selectors are **data-driven** and can be configured per-AI via `EnemyAIConfig` or project-wide.
 
 ### Lazy Target Acquisition
 
-AI spawning before targets exist? No problem:
+AI spawning before targets exist? Not a problem:
 
 ```
-1. Enemy spawns → No target available → Waits (unassigned)
-2. Player registers → Subsystem notifies unassigned AI
-3. Each AI runs its TargetSelector → Gets assigned
+1. Enemy spawns -> No target available -> Waits (unassigned)
+2. Player registers -> Subsystem notifies unassigned AI
+3. Each AI runs its TargetSelector -> Gets assigned
 ```
 
-This solves the classic "AI spawns before player" race condition.
+This solves the classic "AI spawns before player" race condition. Use `RegisterCombatTarget(Player, /*bAutoAssignUnassigned=*/ true)` to trigger immediate assignment of waiting AI.
 
 ---
 
@@ -105,13 +104,13 @@ bIgnoreTargetRedistribution: true
 
 ### 3. Project-Wide Default
 
-**Project Settings → Plugins → Soulslike Enemy Combat:**
+**Project Settings > Plugins > Soulslike Enemy Combat:**
 
 ```
 Default Target Selector: UBalancedTargetSelector
 ```
 
-If no per-AI selector is set, AI uses this. If neither is set, it falls back to `UFirstTargetSelector`.
+If no per-AI selector is set, AI uses the project default. If neither is configured, it falls back to `UFirstTargetSelector`.
 
 ---
 
@@ -120,17 +119,16 @@ If no per-AI selector is set, AI uses this. If neither is set, it falls back to 
 When a target dies or unregisters, the system automatically handles orphaned AI:
 
 ```
-1. Target destroyed → Subsystem detects
-2. Orphaned AI roles reset to "None"
-3. Each AI receives OnCombatTargetLost() callback
-4. Subsystem runs TargetSelector for each orphan
-5. AI auto-assigns to new targets
-6. OnCombatantsOrphaned delegate broadcasts (for custom handling)
+1. Target destroyed -> Subsystem detects via OnDestroyed binding
+2. Orphaned AI roles reset to SEC.Role.None
+3. OnCombatantsOrphaned delegate broadcasts (for custom handling)
+4. Subsystem re-runs each orphan's TargetSelector
+5. AI auto-assigns to remaining targets
 ```
 
-### Handling Target Loss Manually
+### Handling Target Loss on the AI Controller
 
-Bind to the `SECCombatControllerComponent`'s delegate on your AI Controller:
+The `SECCombatControllerComponent` exposes an `OnCombatTargetLost` delegate. Bind to it on your AI Controller:
 
 ```cpp
 // In your AI Controller's BeginPlay:
@@ -139,18 +137,11 @@ CombatComp->OnCombatTargetLost.AddDynamic(this, &AMyAIController::HandleTargetLo
 
 void AMyAIController::HandleTargetLost(AActor* LostTarget)
 {
-    // Play confused animation
-    PlayAnimMontage(ConfusedMontage);
-    
-    // Wait before accepting new target
-    FTimerHandle Handle;
-    GetWorld()->GetTimerManager().SetTimer(Handle, [this]()
-    {
-        // TargetSelector will have already assigned a new target
-        // Resume normal behavior
-    }, 1.5f, false);
+    // Play confused animation, delay before accepting new target, etc.
 }
 ```
+
+`EnemyControllerBase` also provides a Blueprint-overridable event `K2_OnCombatTargetLost` that fires from this delegate.
 
 ---
 
@@ -158,7 +149,7 @@ void AMyAIController::HandleTargetLost(AActor* LostTarget)
 
 ### Selection Context
 
-Custom selectors receive rich context for informed decisions:
+Custom selectors receive pre-computed context for informed decisions:
 
 ```cpp
 USTRUCT(BlueprintType)
@@ -170,7 +161,7 @@ struct FTargetSelectionContext
     // How many AI assigned to each target
     TMap<TObjectPtr<AActor>, int32> CombatantCountPerTarget;
     
-    // Pre-computed distances from AI to each target
+    // Pre-computed squared distances from AI to each target
     TMap<TObjectPtr<AActor>, float> DistanceSquaredPerTarget;
     
     // True if called due to target destruction
@@ -180,7 +171,7 @@ struct FTargetSelectionContext
 
 ### Creating Custom Selectors
 
-Subclass `UTargetSelector` for custom logic:
+Subclass `UTargetSelector` in C++ or Blueprint:
 
 ```cpp
 UCLASS(DisplayName = "Threat-Based Target Selector")
@@ -208,16 +199,14 @@ public:
             }
         }
         
-        // Fall back to balanced if no damage history
-        if (!HighestThreat)
-        {
-            return AvailableTargets[0];
-        }
-        
-        return HighestThreat;
+        // Fall back to first target if no damage history
+        return HighestThreat ? HighestThreat : 
+               (AvailableTargets.Num() > 0 ? AvailableTargets[0] : nullptr);
     }
 };
 ```
+
+> `SelectTarget` is a `BlueprintNativeEvent`, meaning you can also create selectors entirely in Blueprint by subclassing `UTargetSelector` and overriding the function. No C++ required.
 
 ### Skipping Auto-Reselection
 
@@ -226,7 +215,7 @@ Return `nullptr` from a selector during target loss to handle assignment manuall
 ```cpp
 if (Context.bIsTargetLossReselection)
 {
-    // Don't auto-assign - let OnCombatTargetLost handle it
+    // Don't auto-assign. Let OnCombatTargetLost handle it.
     return nullptr;
 }
 ```
@@ -255,7 +244,7 @@ if (Best)
 }
 ```
 
-This resolves the AI's `TargetSelector` from its `EnemyAIConfig`, falls back to the project default, removes the AI's own pawn, removes friendly targets, and returns the selector's pick.
+This resolves the AI's `TargetSelector` from its `EnemyAIConfig`, falls back to the project default, removes the AI's own pawn from candidates, filters out friendly targets, and returns the selector's pick.
 
 ### Trigger Re-evaluation
 
@@ -269,11 +258,12 @@ Subsystem->ReevaluateAllTargets();
 
 ### Periodic Target Refresh
 
-By default, the reassignment timer only re-evaluates **roles**, not targets. In multi-target scenarios where targets are moving around, you may want AI to periodically reconsider which target is best.
+By default, the reassignment timer only re-evaluates **roles**, not targets. In multi-target scenarios where targets move around, you may want AI to periodically reconsider which target is best.
 
-Enable periodic target re-evaluation in **Project Settings → Plugins → Soulslike Enemy Combat → Timing**:
+Enable periodic target re-evaluation:
 
 ```
+// In Project Settings > Plugins > Soulslike Enemy Combat > Timing:
 bReevaluateTargetsOnReassignment: true
 ```
 
@@ -316,7 +306,8 @@ Lock AI into specific roles during boss phases or cinematics:
 
 ```cpp
 // Force this AI to be an Attacker, locked from evaluation
-Subsystem->ForceAssignRole(Controller, SEC.Role.Attacker, /*bLockRole=*/ true);
+Subsystem->ForceAssignRole(Controller,
+    FGameplayTag::RequestGameplayTag("SEC.Role.Attacker"), /*bLockRole=*/ true);
 
 // Later, unlock so normal evaluation can resume
 Subsystem->UnlockRole(Controller);
@@ -334,7 +325,7 @@ Locked combatants are **completely skipped** during automatic role evaluation.
 
 ## Configuration: bIgnoreTargetRedistribution
 
-For bosses or special AI that shouldn't auto-switch targets:
+For bosses or special AI that should not auto-switch targets:
 
 ```cpp
 // In EnemyAIConfig:
@@ -342,12 +333,12 @@ bIgnoreTargetRedistribution = true;
 ```
 
 This AI will:
-- ✅ Get initial target assignment via TargetSelector
-- ✅ React to its own target dying (OnCombatTargetLost)
-- ❌ Ignore `ReevaluateAllTargets()` calls
-- ❌ Ignore new target registration reshuffles
+- Get initial target assignment via its TargetSelector
+- React to its own target dying (OnCombatTargetLost delegate)
+- Ignore `ReevaluateAllTargets()` calls
+- Ignore new target registration reshuffles
 
-Perfect for boss encounters in co-op where the boss should focus one player until they're dead.
+Useful for boss encounters in co-op where the boss should focus one player until they are dead.
 
 ---
 
@@ -356,23 +347,26 @@ Perfect for boss encounters in co-op where the boss should focus one player unti
 Subscribe to global events for UI, analytics, or custom logic:
 
 ```cpp
-// When any combatant's target changes
+// When any combatant's role changes (includes target info)
 Subsystem->OnCombatRoleChangedForTarget.AddDynamic(this, &UMyClass::OnRoleChanged);
-void UMyClass::OnRoleChanged(AController* Controller, AActor* Target, FGameplayTag NewRole, FGameplayTag OldRole);
+void UMyClass::OnRoleChanged(AController* Controller, AActor* Target,
+    FGameplayTag NewRole, FGameplayTag OldRole);
 
 // When combatants lose their target
 Subsystem->OnCombatantsOrphaned.AddDynamic(this, &UMyClass::OnOrphaned);
-void UMyClass::OnOrphaned(AActor* LostTarget, const TArray<AController*>& OrphanedCombatants);
+void UMyClass::OnOrphaned(AActor* LostTarget,
+    const TArray<AController*>& OrphanedCombatants);
 
 // When a new target registers
 Subsystem->OnCombatTargetRegistered.AddDynamic(this, &UMyClass::OnNewTarget);
+void UMyClass::OnNewTarget(AActor* NewTarget);
 ```
 
 ---
 
 ## Team-Aware Target Filtering
 
-The subsystem automatically filters targets based on team affinity. Any actor implementing `ISECTeamInterface` (or `IGenericTeamAgentInterface`) has a TeamId. The subsystem uses `USECTeamHelpers::AreFriendly()` to exclude friendly targets from every assignment path:
+The subsystem automatically filters targets based on team affinity. Any actor implementing `ISECTeamInterface` receives a team ID (0-254). The subsystem uses `USECTeamHelpers::AreFriendly()` to exclude friendly targets from every assignment path:
 
 - **Target selection** (custom selectors receive only hostile/neutral candidates)
 - **Auto-assignment** (unassigned AI skip friendly targets in `RegisterCombatTarget`)
@@ -380,16 +374,44 @@ The subsystem automatically filters targets based on team affinity. Any actor im
 - **`SetPrimaryTargetAndAssignAll`** (skips friendly combatants)
 - **`BalanceCombatantsAcrossTargets`** (per-combatant hostile-only target list)
 
-**Team rules:**
+**Team relationship rules (`ESECTeamRelation`):**
 
 | Relationship | Same Team? | Filtered? |
-|-------------|------------|----------|
+|-------------|------------|-----------|
 | Same non-255 TeamId | Friendly | Yes (skipped) |
 | Different TeamIds | Hostile | No (kept) |
 | Either has TeamId 255 (NoTeam) | Neutral | No (kept) |
 | No team interface | Neutral | No (kept) |
 
-This is fully backward compatible. Existing setups without teams are unaffected since all actors without a team interface are treated as neutral.
+This is fully backward compatible. Existing setups without teams are unaffected since all actors without `ISECTeamInterface` are treated as neutral.
+
+### Implementing ISECTeamInterface
+
+In Blueprint:
+1. Open your Actor/Controller Blueprint
+2. Class Settings > Interfaces > Add "SEC Team Interface"
+3. Implement "Get SEC Team ID" (return your team number: 0 for player, 1 for enemy, etc.)
+4. Optionally implement "Set SEC Team ID" if you need runtime changes
+
+Common team ID constants are available in `SECTeamID` namespace: `Player = 0`, `Enemy = 1`, `NoTeam = 255`.
+
+### Damage Filtering
+
+`USECTeamHelpers` also provides `CanDamageWithFilter` for team-aware damage filtering:
+
+```cpp
+// Before applying damage:
+if (USECTeamHelpers::CanDamageWithFilter(DamageCauser, Target, ESECTeamFilter::EnemiesOnly))
+{
+    // Apply damage
+}
+```
+
+Available filter modes (`ESECTeamFilter`):
+- `NoFilter` - Can hit anyone
+- `EnemiesOnly` - Only hit enemies and neutrals (no friendly fire)
+- `FriendliesOnly` - Only hit friendlies (for healing/buffs)
+- `NeutralOnly` - Only hit neutral actors
 
 ### Multi-Faction Example
 
@@ -415,8 +437,8 @@ No additional configuration is needed. Set TeamIds on your pawns/controllers via
 The legacy single-target API still works:
 
 ```cpp
-Subsystem->SetCombatTarget(Player);  // → calls RegisterCombatTarget(Player, true)
-Subsystem->GetCombatTarget();        // → returns first registered target
+Subsystem->SetCombatTarget(Player);  // -> calls RegisterCombatTarget(Player, true)
+Subsystem->GetCombatTarget();        // -> returns first registered target
 ```
 
 These log deprecation warnings but compile and run correctly.
@@ -439,7 +461,8 @@ AActor* Target = Subsystem->GetCombatantTarget(Controller);
 TArray<AController*> Enemies = Subsystem->GetCombatantsForTarget(Player);
 
 // Get role count for a specific target
-int32 AttackerCount = Subsystem->GetRoleCountForTarget(SEC.Role.Attacker, Player);
+int32 AttackerCount = Subsystem->GetRoleCountForTarget(
+    FGameplayTag::RequestGameplayTag("SEC.Role.Attacker"), Player);
 ```
 
 ---
@@ -454,7 +477,7 @@ int32 AttackerCount = Subsystem->GetRoleCountForTarget(SEC.Role.Attacker, Player
 
 ---
 
-<DocNav 
-  prev={{ title: "Combat Roles", href: "/docs/soulslike-combat/combat-roles" }} 
-  next={{ title: "Multiplayer", href: "/docs/soulslike-combat/multiplayer" }} 
+<DocNav
+  prev={{ title: "Combat Roles", href: "/docs/soulslike-combat/combat-roles" }}
+  next={{ title: "Multiplayer", href: "/docs/soulslike-combat/multiplayer" }}
 />

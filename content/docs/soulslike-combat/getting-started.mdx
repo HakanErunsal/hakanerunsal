@@ -32,26 +32,26 @@ parent: "SoulslikeCombatDocs"
 ### Step 2: Enable the Plugin
 
 1. Open your project in Unreal Editor
-2. Go to **Edit → Plugins**
-3. Search for "SoulslikeCombat" and ensure it's enabled
+2. Go to **Edit > Plugins**
+3. Search for "SoulslikeCombat" and ensure it is enabled
 4. Restart the editor if prompted
 
 ### Step 3: Enable Required Plugins
 
-In **Edit → Plugins**, ensure these are also enabled, the plugin has dependencies for these and will enable them by default:
+In **Edit > Plugins**, ensure these are also enabled. The plugin depends on them and will enable them by default:
 - GameplayAbilities
 - StateTree
 - GameplayStateTree
 - MotionWarping
 
-> **Note:** Animation plugin dependencies are required only if you want to use the template enemy that comes with the system. If you want to use your own animation system and do not require these, you do not have to keep them enabled.
+> **Note:** The animation plugin dependencies are only required if you use the showcase enemy that ships with the plugin. If you bring your own animation system, you can disable them.
 
 
 ### Step 4: Verify Installation
 
 1. Navigate to `Content > SoulslikeEnemyCombat > Showcase > Maps`
 2. Open `LVL_SEC_Showcase`
-3. Click Play - you should see a working enemy
+3. Click Play. You should see a working enemy
 
 > **Note:** This plugin requires **Unreal Engine 5.6** or later. Older versions have incompatible StateTree APIs.
 
@@ -61,15 +61,15 @@ In **Edit → Plugins**, ensure these are also enabled, the plugin has dependenc
 
 ### Your First Enemy in 10 Minutes
 
-This quick start gets you from zero to a functional AI enemy as fast as possible.
+This guide gets you from zero to a functional AI enemy as fast as possible.
 
-#### 1. Open Demo Level
+#### 1. Study the Showcase
 
-Navigate to `Content/SoulslikeEnemyCombat/Maps/SEC_DemoLevel` and open it. Study the working enemy to understand the system.
+Navigate to `Content/SoulslikeEnemyCombat/Showcase/Maps/LVL_SEC_Showcase` and open it. The working enemies here are the reference implementation. Open `BP_Dummy` from `Showcase/AI/Characters/Dummy` to see how a combat target is registered.
 
 #### 2. Create Enemy Blueprint
 
-**Right-click in Content Browser** → Blueprint Class → Search for `EnemyCharacterBase`
+**Right-click in Content Browser** > Blueprint Class > Search for `EnemyCharacterBase`
 
 **Name it:** `BP_MyEnemy`
 
@@ -78,47 +78,51 @@ Navigate to `Content/SoulslikeEnemyCombat/Maps/SEC_DemoLevel` and open it. Study
 - Configure capsule collision
 - Set movement speed (recommended: 400)
 
+`EnemyCharacterBase` comes with these components pre-created:
+- `AbilitySystemComponent` for ability execution
+- `SECActionSetComponent` for action set syncing and replication
+- `SECCombatRoleComponent` for role replication to clients
+- `SECMeleeTraceComponent` for melee hit detection
+
+It also implements `IAbilitySystemInterface` and `IEnemyAIConfigProvider`. You can set the `AIConfig` property directly on the pawn.
+
+> **Alternative:** You do not have to inherit from `EnemyCharacterBase`. Any `ACharacter` works. Implement `IEnemyAIConfigProvider` on your pawn so the controller can query for per-pawn AI settings. Add the components you need manually.
+
 #### 3. Create AI Controller
 
 You have two options:
 
-**Option A: Use EnemyControllerBase (Recommended for Quick Start)**
+**Option A: Use EnemyControllerBase (Recommended)**
 
-**Right-click** → Blueprint Class → Search for `EnemyControllerBase`
+**Right-click** > Blueprint Class > Search for `EnemyControllerBase`
 
 **Name it:** `BP_MyEnemyController`
 
-This comes with all SEC components pre-wired: `SECCombatControllerComponent`, `MovementEvaluatorComponent`, `ActionEvaluationComponent`, `ThreatDetectionComponent`, `BotStateTreeAIComponent`, and a helper `BehaviorTreeComponent`.
+This comes with all SEC components pre-wired:
+- `SECCombatControllerComponent` (core combat plumbing)
+- `MovementEvaluatorComponent` (tactical positioning)
+- `ActionEvaluationComponent` (action selection and execution)
+- `ThreatDetectionComponent` (player attention tracking, disabled by default)
+- `BotStateTreeAIComponent` (StateTree runner)
+- Helper `BehaviorTreeComponent` (for action BT sequences)
 
 **Option B: Use Any AAIController + SECCombatControllerComponent**
 
-Create or open your existing AI Controller Blueprint. In the Components panel, add **SEC Combat Controller** (`SECCombatControllerComponent`). Then add whichever SEC components you need (e.g., `MovementEvaluatorComponent`, `ActionEvaluationComponent`). Everything wires up automatically on possession, including threat-to-movement response if both `ThreatDetectionComponent` and `MovementEvaluatorComponent` are present.
+Create or open your existing AI Controller Blueprint. In the Components panel, add **SEC Combat Controller** (`SECCombatControllerComponent`). Then add whichever SEC components you need (e.g., `MovementEvaluatorComponent`, `ActionEvaluationComponent`). Everything wires up automatically on possession.
 
-**AI Config**
+#### 4. Create AI Config
 
-**Right-click** → Miscellaneous → Data Asset → 
-
-`BP_EnemyAIConfigBase` for a preset or `AI Config` for a fresh start 
+**Right-click** > Miscellaneous > Data Asset > **EnemyAIConfig**
 
 **Name it:** `DA_MyAIConfig`
 
-Go to `BP_MyEnemy`, set **AIConfig** property to `DA_MyAIConfig`
+In your enemy pawn `BP_MyEnemy`, set the **AIConfig** property to `DA_MyAIConfig`.
 
-> **Note:** AIConfig is resolved in this order: (1) SECCombatControllerComponent's cached config, (2) Pawn implementing IEnemyAIConfigProvider. Set it on the pawn for per-enemy configs, or on the SECCombatControllerComponent's `DefaultAIConfig` for all units sharing a controller.
+> **There are two ways to provide an AIConfig.** If your pawn implements `IEnemyAIConfigProvider` (which `EnemyCharacterBase` does), the controller reads the config from the pawn on possession. This is useful for per-enemy configs. If the pawn does not implement the interface, the controller falls back to its own `DefaultAIConfig` property. This is useful when many enemies share a single controller class and config.
 
-**Add your first action:**
+#### 5. Create ActionSet Data Asset
 
-**Controller->ActionEvaluationComponent Settings:**
-```
-CurrentActionSet: (create in next step)
-bDebugLog: true           // See decisions in Output Log
-```
-
-> If using a custom controller (Option B), add an `ActionEvaluationComponent` manually in the Components panel.
-
-#### 4. Create ActionSet Data Asset
-
-**Right-click** → Miscellaneous → Data Asset → `ActionSet`
+**Right-click** > Miscellaneous > Data Asset > **ActionSet**
 
 **Name it:** `DA_MyEnemyActions`
 
@@ -126,28 +130,24 @@ bDebugLog: true           // See decisions in Output Log
 
 | Field | Value |
 |-------|-------|
-| **Id** | `LightAttack` |
-| **AbilityTag** | `SEC.Action.LightAttack` |
-| **AbilityEndTag** | `SEC.Action.End` |
-| **ExecutionMode** | `GameplayAbility` |
-| **Distance → OptimalMin** | `100` |
-| **Distance → OptimalMax** | `250` |
-| **Distance → MaxValue** | `400` |
-| **Angle → OptimalMax** | `30` |
-| **Cooldown → Duration** | `2.0` |
-| **BaseWeight** | `1.0` |
+| **ActionId** | `LightAttack` |
+| **AbilityClass** | `GA_LightAttack` (create in next step) |
+| **DistanceEval > OptimalMin** | `100` |
+| **DistanceEval > OptimalMax** | `250` |
+| **DistanceEval > MaxValue** | `500` |
+| **AngleEval > OptimalMax** | `30` |
+| **Cooldown > Duration** | `2.0` |
+| **SelectionWeight** | `1.0` |
 
-#### 5. Create Gameplay Ability
+> `AbilityTag` and `AbilityEndTag` are set automatically when you assign an `AbilityClass`. You can override them manually if needed.
 
-**Right-click** → Blueprint Class → `GameplayAbilityBase`
+#### 6. Create Gameplay Ability
 
-This is a SEC Gameplay Ability, if you want your ability begin/end to be detected by the action system automatically, you have to use this base class. Alternatively, you can inspect the content of the class in C++, and call the necessary events yourself.
+**Right-click** > Blueprint Class > `GameplayAbilityBase`
 
 **Name it:** `GA_LightAttack`
 
-**Setup:**
-1. Class Defaults → Ability Tags → Add `Action.LightAttack`
-2. Class Defaults → Ability End Tag → Add `Action.LightAttack.End`
+This is the SEC base ability class. If you want ability start/end to be detected by the action system automatically, use this class. Alternatively, inspect the class in C++ and call the necessary events yourself.
 
 **Event Graph:**
 ```
@@ -158,32 +158,32 @@ PlayMontageAndWait (YourAttackMontage)
 EndAbility
 ```
 
-> ActionEvaluationComponent listens for ability end tag to know the action completed. Without it, the AI gets stuck until the timeout is over.
+> The `ActionEvaluationComponent` listens for the ability end tag to know the action completed. Without it, the AI will be stuck in the "executing" state until the timeout expires.
 
-#### 6. Assign StateTree and ActionSet to AIConfig
+#### 7. Configure AI Config
 
-In `DA_MyAIConfig` → **StateTree** → Set to `StateTree_SEC_Core`
+In `DA_MyAIConfig`:
+- **DefaultStateTree** > Set to `StateTree_SEC_Core` (found in `Showcase/AI/StateTree/`)
+- **RoleActionSets** > Add an entry, leave the Role empty (acts as default), and set the ActionSet to `DA_MyEnemyActions`
 
-In `DA_MyAIConfig` → **Default Action Set** → Set to `DA_MyEnemyActions`
+#### 8. Configure Character
 
-#### 7. Configure Character
+In `BP_MyEnemy` > Class Defaults > **AI Controller Class** > Set to `BP_MyEnemyController`
 
-In `BP_MyEnemy` → Class Defaults → **AI Controller Class** → Set to `BP_MyEnemyController`
-
-#### 8. Place and Test
+#### 9. Place and Test
 
 1. Drag `BP_MyEnemy` into your level
 2. Register the player as a combat target:
-   - In your Player Pawn **BeginPlay**, get the **AICombatRoleSubsystem**
+   - In your Player Pawn's **BeginPlay**, get the **AICombatRoleSubsystem**
    - Call **RegisterCombatTarget** with `Self` as the target actor
-   - Check `BP_Dummy` for a working Example
+   - See `BP_Dummy` in the Showcase for a working example
 3. Click Play
 4. Watch Output Log for action selection debug messages
 
 **Expected behavior:**
-- Enemy approaches to ideal distance (150-300cm)
-- Executes light attack when in range
-- Waits for cooldown, positions itself by the movement behavior configuration
+- Enemy approaches to ideal distance (100-250 cm based on your DistanceEval)
+- Executes light attack when in range and facing the target
+- Waits for cooldown, then repositions
 - Repeats
 
 

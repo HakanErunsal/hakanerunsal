@@ -18,31 +18,36 @@ parent: "SoulslikeCombatDocs"
 
 The plugin separates **strategic thinking** from **tactical execution**. This avoids the common pitfall of a single massive Behavior Tree that mixes strategy and execution logic.
 
-**StateTree (The Brain)** - High-level decision making:
-```
-┌─────────────────────────────────────┐
-│ StateTree: Strategic Layer          │
-├─────────────────────────────────────┤
-│ • Evaluates combat context          │
-│ • Scores available actions          │
-│ • Manages state transitions         │
-│ • Controls movement strategy        │
-│ • Handles target acquisition        │
-└─────────────────────────────────────┘
-          ↓
-┌─────────────────────────────────────┐
-│ Action Execution: Tactical Layer    │
-├─────────────────────────────────────┤
-│ Option A: Gameplay Ability          │
-│   → Simple: Play montage, apply dmg │
-│                                     │
-│ Option B: Behavior Tree Sequence    │
-│   → Complex: Multi-step, branching  │
-└─────────────────────────────────────┘
-```
+**StateTree (The Brain)** handles high-level decisions. **Actions (The Hands)** handle tactical execution. The two layers communicate through components, never directly.
 
-> **When to Use Each Execution Mode:**
-> Use Gameplay Abilities for simple attacks (play montage → damage). Use Behavior Tree sequences for complex multi-step actions with conditional branches (charge attack → check stamina → branch to heavy or light version).
+<ArchitectureDiagram
+  layers={[
+    {
+      label: "StateTree: Strategic Layer",
+      icon: "brain",
+      color: "blue",
+      items: [
+        "Evaluates combat context",
+        "Scores available actions",
+        "Manages state transitions",
+        "Controls movement strategy",
+        "Handles target acquisition"
+      ]
+    },
+    {
+      label: "Action Execution: Tactical Layer",
+      icon: "zap",
+      color: "green",
+      items: [
+        "Option A: Gameplay Ability (simple: play montage, apply damage)",
+        "Option B: Behavior Tree Sequence (complex: multi-step, branching)"
+      ]
+    }
+  ]}
+  caption="The StateTree drives decisions. Actions are executed through Gameplay Abilities or Behavior Tree sequences."
+/>
+
+> **When to use each execution mode:** Use Gameplay Abilities for straightforward attacks (play montage, apply damage). Use Behavior Tree sequences for complex multi-step actions that need conditional branches (charge attack, check stamina, branch to heavy or light version).
 
 ---
 
@@ -57,12 +62,18 @@ A pre-configured AI controller that creates all common SEC components as default
 ```
 AEnemyControllerBase (convenience wrapper)
 ├── SECCombatControllerComponent   ← handles AIConfig, combat roles, sync
-├── MovementEvaluatorComponent
-├── ThreatDetectionComponent
-├── ActionEvaluationComponent
-├── BehaviorTreeComponent (helper)
-└── BotStateTreeAIComponent
+├── MovementEvaluatorComponent     ← tactical positioning
+├── ActionEvaluationComponent      ← action scoring and execution
+├── ThreatDetectionComponent       ← player attention tracking
+├── BotStateTreeAIComponent        ← StateTree runner
+└── BehaviorTreeComponent (helper) ← for action BT sequences
 ```
+
+On top of the component setup, `EnemyControllerBase` also provides:
+- **Smooth focus rotation** with interpolation (`SmoothFocusInterpSpeed`)
+- **Rotation lock** for committed attacks (`LockRotation`, `UnlockRotation`, `ForceUnlockRotation`)
+- **Team ID** via `ISECTeamInterface` and Unreal's `IGenericTeamAgentInterface` (integrates with AI Perception and EQS)
+- **K2 Blueprint events** forwarded from the combat component (`OnCombatRoleAssigned`, `OnCombatTargetLost`)
 
 ### Option B: Custom AAIController + SECCombatControllerComponent
 
@@ -75,12 +86,18 @@ YourCustomAIController
 └── (pick which SEC components you need)
 ```
 
-`SECCombatControllerComponent` is the **single source of truth** for all combat system integration. It handles:
-- AIConfig resolution (from component or pawn)
-- Combat role registration/unregistration
+> **When to use which:** Use `EnemyControllerBase` for new projects where you want everything pre-wired. Use a custom controller + component when integrating into an existing project or when you need a different controller hierarchy.
+
+---
+
+## SECCombatControllerComponent
+
+This is the **single source of truth** for all combat system integration. It handles:
+- AIConfig resolution (from pawn via `IEnemyAIConfigProvider`, or from its own `DefaultAIConfig`)
+- Combat role registration and unregistration with `AICombatRoleSubsystem`
 - Role-based sync of action sets and movement profiles
 - Action execution state delegation for replication
-- Threat-to-movement auto-wiring (if `ThreatDetectionComponent` and `MovementEvaluatorComponent` are present)
+- Threat-to-movement auto-wiring (if both `ThreatDetectionComponent` and `MovementEvaluatorComponent` are present on the same controller)
 
 All SEC subsystems and StateTree tasks communicate through this component. If an AI controller has it, the full combat system works.
 
@@ -89,42 +106,63 @@ All SEC subsystems and StateTree tasks communicate through this component. If an
 You can subclass `SECCombatControllerComponent` in Blueprint and override these functions:
 
 | Function | Purpose |
-|----------|----------|
+|----------|---------|
 | `SyncStateForCombatRole` | Called when role changes. Override to add custom sync logic (animation sets, VFX, StateTree swaps). Call parent to keep default action set and movement profile sync. |
-| `HandleCombatTargetLost` | Called when combat target is destroyed/unregistered. Override to add custom fallback behavior (patrol, aggro switch). |
+| `HandleCombatTargetLost` | Called when combat target is destroyed or unregistered. Override to add custom fallback behavior (patrol, aggro switch). |
 
 **Blueprint-Callable API:**
 
 | Function | Purpose |
-|----------|----------|
-| `ApplyLocalCombatRole` | Adopt a combat role locally without subsystem registration. Syncs ActionSet and MovementProfile exactly like a subsystem-assigned role, but doesn't consume slots or participate in coordination. Designed for boss AI. |
+|----------|---------|
+| `ApplyLocalCombatRole` | Adopt a combat role locally without subsystem registration. Syncs ActionSet and MovementProfile exactly like a subsystem-assigned role, but does not consume slots or participate in coordination. Designed for boss AI or solo enemies. |
 
 **Delegates:**
 
-| Delegate | Purpose |
-|----------|----------|
+| Delegate | When |
+|----------|------|
 | `OnCombatRoleChanged` | Fires when the combat role changes (from subsystem assignment or local apply). Provides new and old role tags. |
 | `OnCombatTargetLost` | Fires when the combat target is destroyed or unregistered. |
 | `OnCombatRoleSystemReady` | Fires after successful registration with `AICombatRoleSubsystem`. Safe to call `ForceAssignRole` or read the initial role in this handler. |
 
-> **When to use which:** Use `EnemyControllerBase` for new projects where you want everything pre-wired. Use a custom controller + component when integrating into an existing project or when you need a different controller hierarchy.
+---
+
+## BotStateTreeAIComponent
+
+This component extends Unreal's `UStateTreeAIComponent` and adds automatic StateTree initialization on possession.
+
+**How initialization works:**
+
+1. Controller possesses a pawn
+2. Component resolves AIConfig (via `SECCombatControllerComponent` if present, or fallback)
+3. Loads the StateTree from `AIConfig.DefaultStateTree`
+4. Falls back to `FallbackStateTree` if no AIConfig or no StateTree is set
+
+| Property | Purpose |
+|----------|---------|
+| `bAutoInitializeFromConfig` | If true (default), automatically loads StateTree from AIConfig on possession. Disable for manual control. |
+| `FallbackStateTree` | StateTree to use when no AIConfig is available. Useful for custom controller setups that do not use `EnemyAIConfig`. |
+
+| Function | Purpose |
+|----------|---------|
+| `InitializeFromAIConfig` | Manually initialize StateTree from an AIConfig asset. Call this if `bAutoInitializeFromConfig` is disabled. |
+| `AddLinkedStateTreeOverride` | Add a linked StateTree override for a specific gameplay tag. Useful for swapping sub-trees per enemy variant. |
 
 ---
 
 ## System Flow
 
-1. **StateTree** polls `ActionEvaluationComponent` each tick
-2. **Component** gathers context: distance, angle, health, threat, tags
+1. **StateTree** drives the AI behavior loop using `BotStateTreeAIComponent`
+2. **ActionEvaluationComponent** gathers context: distance, angle, health, threat, tags
 3. **ActionSet** scores all available actions using:
-   - Distance and angle evaluations
+   - Distance and angle evaluations (`FRangeEval`)
    - Health-based modifiers
    - Cooldown status
    - Context tags (player blocking, low health, etc.)
    - Novelty decay (anti-repetition)
 4. **Best action selected** and executed as:
-   - **Gameplay Ability** (via AbilitySystemComponent), OR
-   - **Behavior Tree sequence** (via temporary BT component)
-5. **Movement system** evaluates 16 directions simultaneously:
+   - **Gameplay Ability** (via AbilitySystemComponent), or
+   - **Behavior Tree sequence** (via the helper BT component)
+5. **MovementEvaluatorComponent** evaluates directions simultaneously:
    - Scores each for distance, angle, avoidance
    - Blends pathfinding with direct input
    - Applies strafing, retreat, or approach behavior
@@ -143,9 +181,9 @@ You can subclass `SECCombatControllerComponent` in Blueprint and override these 
 - Action scoring and execution framework
 - Multi-enemy coordination with role-based behavior
 - Multiplayer support (listen server and dedicated server)
-- Modular component system — mix and match for different enemy types
+- Modular component system: mix and match for different enemy types
 - Data-driven configuration with full Blueprint support
-- Working demo enemy to study and extend
+- Working showcase enemy to study and extend
 
 **What you still need:**
 - UI/HUD (health bars, lock-on indicators, damage numbers)

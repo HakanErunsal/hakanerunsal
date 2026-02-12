@@ -20,12 +20,12 @@ parent: "SoulslikeCombatDocs"
 
 ## When to Use This
 
-- Any game with multiple enemies at once that shouldn't all attack simultaneously
+- Any game with multiple enemies that should not all attack simultaneously
 - Soulslike encounters where enemies take turns
 - Group tactics with specialized roles (tank, flanker, support)
 - Dynamic difficulty by adjusting how many attackers are allowed
 
-> This system can be used independently of the other plugin systems.
+> This system can be used independently from the other plugin systems.
 
 ---
 
@@ -43,100 +43,115 @@ Instead of all enemies rushing the player, each gets assigned a **role**:
 | **Supporter** | Stays back, buffs/debuffs | Ranged attacks, healing allies |
 | **Elite** | Priority attacker, ignores some limits | Boss-tier behavior |
 
-Roles are **dynamic**. Enemies swap based on distance, fitness scores, and availability.
+Roles are **dynamic**. Enemies swap based on distance, fitness scores, and slot availability. Roles use Gameplay Tags (`SEC.Role.*`), so you can define custom roles beyond the built-in ones via **Project Settings > Gameplay Tags**.
 
 ### Slot Management
 
-The subsystem limits how many enemies can attack at once:
+The subsystem limits how many enemies can hold each role simultaneously. Slot limits are configured per-role using a `TMap<FGameplayTag, int32>` called `RoleLimits`:
 
-```cpp
-// In your AIConfig:
-MaxAttackers = 2;        // Only 2 enemies attack at a time
-MaxTotalCombatants = 5;  // Only 5 enemies engage at all
+```
+// In Project Settings > Plugins > Soulslike Enemy Combat:
+RoleLimits:
+  SEC.Role.Attacker  →  2    // Only 2 enemies attack at a time
+  SEC.Role.Flanker   →  1    // One flanker
+  // Unlisted roles are unlimited
 ```
 
-When one Attacker finishes or dies, a Waiter can take its place.
+When an Attacker finishes or dies, a Waiter can take its place. Roles not listed in `RoleLimits` have no cap.
 
 ### Fitness Evaluation
 
-"Who should be the next Attacker?" is decided by **Fitness Evaluators**. These are scoring functions that run on each AI:
+"Who should be the next Attacker?" is decided by **Role Evaluators** (`URoleEvaluator` subclasses). These are instanced UObjects that score each AI on a 0.0-1.0 scale:
 
 ```cpp
 // Built-in evaluators:
-DistanceEvaluator     // Closer = higher fitness
-HealthEvaluator       // Healthier = higher fitness  
-RandomEvaluator       // Adds unpredictability
-CooldownEvaluator     // Fewer actions on cooldown = higher fitness
+UDistanceRoleEvaluator    // Scores based on distance to target
+UCooldownRoleEvaluator    // Scores based on action cooldown state (fatigue system)
 ```
+
+Each evaluator has a `RoleWeights` map that controls how strongly it influences each role. For example, a distance evaluator can strongly affect Attacker scoring while barely influencing Waiter scoring. Evaluators also support a `ScoreMode` toggle (`HigherIsBetter` or `LowerIsBetter`) to invert the scoring direction.
 
 The AI with the highest combined fitness score gets priority for open slots.
 
 ### Role-Based ActionSets
 
-Each role can have a different ActionSet:
+Each role can have a different ActionSet, configured in the `EnemyAIConfig` data asset:
 
 ```
-Attacker  → DA_ActionSet_Aggressive (fast attacks, short cooldowns)
-Flanker   → DA_ActionSet_Flanking (side-specific attacks)
-Waiter    → DA_ActionSet_Patient (defensive, occasional pokes)
-Supporter → DA_ActionSet_Ranged (projectiles, buffs)
+// In EnemyAIConfig:
+DefaultActionSet:  DA_ActionSet_Attacker   // Fallback for unlisted roles
+RoleActionSets:
+  SEC.Role.Waiter   → DA_ActionSet_Patient
+  SEC.Role.Flanker  → DA_ActionSet_Flanking
 ```
 
-When an AI's role changes, its ActionSet automatically swaps to match.
+When an AI's role changes, the `SECCombatRoleSyncLibrary` swaps its ActionSet and MovementProfile to match the new role.
 
 ---
 
 ## Quick Setup
 
-### 1. Create an AICombatConfig
+### 1. Create an EnemyAIConfig
 
-Right-click → Miscellaneous → Data Asset → **AICombatConfig**
+Right-click > Miscellaneous > Data Asset > **EnemyAIConfig**
 
-### 2. Configure Roles
+### 2. Configure Role Registration
 
-```cpp
-// Example configuration:
-AutoRegisterForCombatRoles: true
+In the `RoleRegistrationParams` section of the config:
 
-AllowedRoles:
-  - SEC.Role.Attacker
-  - SEC.Role.Flanker  
-  - SEC.Role.Waiter
-
-Priority: 0              // Lower = higher priority for slots
-PreferredRole: SEC.Role.Attacker
-```
+| Property | Value | Notes |
+|----------|-------|-------|
+| **AllowedRoles** | (empty) | Leave empty for flexibility (any role). Add specific tags to restrict. |
+| **Priority** | `0` | Higher = higher priority for slots. 0 = standard, 50 = elite, 100 = mini-boss. |
+| **PreferredRole** | `SEC.Role.Attacker` | System tries this role first if a slot is available. |
 
 ### 3. Set Up Fitness Evaluators
 
-Add evaluators to determine role assignment priority:
+Add evaluators to the `FitnessEvaluators` array in `RoleRegistrationParams`:
 
 ```cpp
 FitnessEvaluators:
-  - DistanceEvaluator (Weight: 1.0)
-  - HealthEvaluator (Weight: 0.5)
-  - RandomEvaluator (Weight: 0.2)
+  - DistanceEvaluator
+      RoleWeights: { SEC.Role.Attacker: 1.0, SEC.Role.Flanker: 0.5 }
+      IdealDistance: 0          // Closer is better
+      EffectiveRange: 2000     // Score drops to 0 at 2000cm
+      ScoreMode: HigherIsBetter
+
+  - CooldownEvaluator
+      RoleWeights: { SEC.Role.Attacker: 1.0 }
+      CurrentRolePenaltyMultiplier: 0.5  // Penalize staying in Attacker when on cooldown
 ```
 
-Evaluators are instanced UObjects. You can create custom ones by inheriting from `URoleEvaluator`.
+If no evaluators are configured, the subsystem falls back to simple distance-based scoring.
 
 ### 4. Map Roles to ActionSets
 
+In the **Action Sets** section of the config:
+
 ```cpp
-ManageActionSetsAutomatically: true
-DefaultActionSet: DA_ActionSet_Attacker
+bManageActionSetsAutomatically: true
+DefaultActionSet: DA_ActionSet_Default
 
 RoleActionSets:
-  SEC.Role.Waiter   → DA_ActionSet_Patient
-  SEC.Role.Flanker  → DA_ActionSet_Flanking
-  SEC.Role.Supporter → DA_ActionSet_Ranged
+  SEC.Role.Attacker  → DA_ActionSet_Aggressive
+  SEC.Role.Waiter    → DA_ActionSet_Patient
+  SEC.Role.Flanker   → DA_ActionSet_Flanking
+```
+
+You can also map roles to MovementProfiles in the **Movement Profiles** section:
+
+```cpp
+bManageMovementProfilesAutomatically: true
+DefaultMovementProfile: DA_MovementProfile_Default
+
+RoleMovementProfiles:
+  SEC.Role.Attacker → DA_MovementProfile_Aggressive
+  SEC.Role.Waiter   → DA_MovementProfile_Passive
 ```
 
 ### 5. Assign to Enemy
 
-In your Enemy Blueprint → **AIConfig** → Set to your AICombatConfig
-
-See [Configuration Reference](/docs/soulslike-combat/configuration#combat-config) for the complete structure.
+In your Enemy Blueprint > **AIConfig** > Set to your EnemyAIConfig.
 
 ---
 
@@ -144,76 +159,87 @@ See [Configuration Reference](/docs/soulslike-combat/configuration#combat-config
 
 ```
 1. Enemy spawns, controller possesses pawn
-2. SECCombatControllerComponent resolves AIConfig and registers with AICombatRoleSubsystem
-3. Subsystem evaluates all registered enemies
-4. Fitness scores calculated for each
-5. Roles assigned based on:
-   - Slot availability (MaxAttackers limit)
+2. SECCombatControllerComponent resolves AIConfig
+3. If bAutoRegisterForCombatRoles is true, registers with AICombatRoleSubsystem
+4. Subsystem evaluates all registered enemies for each target pool
+5. Fitness scores calculated per-evaluator, weighted per-role, combined via average
+6. Roles assigned based on:
+   - Slot availability (RoleLimits)
    - Fitness scores
-   - Distance priority
+   - Priority (tiebreaker)
    - Preferred role
-6. Each enemy's ActionSet/MovementProfile updated via SECCombatControllerComponent
-7. Re-evaluation happens when:
-   - An enemy dies
-   - An Attacker finishes their attack
-   - Periodic tick (configurable)
+   - Hysteresis (MinTimeInRole prevents rapid swapping)
+7. ActionSet and MovementProfile synced via SECCombatRoleSyncLibrary
+8. Re-evaluation happens on a timer (RoleReassignmentInterval)
 ```
 
 ---
 
 ## Custom Fitness Evaluators
 
-Create your own scoring logic:
+Create your own scoring logic by subclassing `URoleEvaluator`:
 
 ```cpp
-UCLASS()
-class UMyCustomEvaluator : public URoleEvaluator
+UCLASS(BlueprintType, meta = (DisplayName = "Visibility Evaluator"))
+class UVisibilityRoleEvaluator : public URoleEvaluator
 {
     GENERATED_BODY()
-    
+
 public:
-    virtual float EvaluateFitness(const FRoleEvaluationContext& Context) override
+    virtual float EvaluateFitness_Implementation(
+        const FRoleEvaluationContext& Context) const override
     {
-        // Return 0.0 - 1.0
-        // Higher = more fit for the role
-        
-        // Example: Prioritize enemies the player can't see
-        if (!PlayerCanSeeMe(Context.Pawn))
-            return 1.0f;
+        // Context provides: Controller, Role, CurrentRole, TimeInCurrentRole
+        // Access pawn via Context.Controller->GetPawn()
+        // Return 0.0 (unfit) to 1.0 (perfect fit)
+
+        if (!PlayerCanSeeMe(Context.Controller->GetPawn()))
+            return 1.0f;  // Great flanker candidate
         return 0.3f;
     }
 };
 ```
 
-Add it to your AICombatConfig's FitnessEvaluators array.
+The `FRoleEvaluationContext` contains:
+- `Controller` - The AI controller being evaluated (access pawn, components, etc. through this)
+- `Role` - The role being considered
+- `CurrentRole` - Currently assigned role
+- `TimeInCurrentRole` - Seconds spent in current role (useful for stability bonuses)
+
+**Setting up your evaluator:**
+- `RoleWeights` - TMap of role tag to influence weight. Roles not listed use `InfluenceOnUnlistedRoles`.
+- `ScoreMode` - `HigherIsBetter` (default) or `LowerIsBetter` to invert the score.
+
+Add it to your EnemyAIConfig's `RoleRegistrationParams > FitnessEvaluators` array. You can also create evaluators entirely in Blueprint by making a Blueprint class that inherits from `URoleEvaluator` and overriding `EvaluateFitness`.
 
 ---
 
 ## Runtime Control & API
 
-You can control the role system dynamically during gameplay using the **AI Combat Role Subsystem**. This is great for boss fights, cutscenes, or changing difficulty on the fly.
+You can control the role system dynamically during gameplay using the **AICombatRoleSubsystem**. This is useful for boss fights, cutscenes, or changing difficulty on the fly.
 
 ### Blueprint Functions
 
-<BlueprintUE 
-  id="ixz62sjp" 
+<BlueprintUE
+  id="ixz62sjp"
   title="Runtime Control API"
   height="460px"
 />
 
 **Configuration Overrides:**
-*   **Set Reassignment Interval**: Change how often the system re-evaluates roles.
-*   **Set Min Time In Role**: Stop enemies from switching roles too quickly (hysteresis).
-*   **Set Role Limit Override**: Change the max number of actors allowed in a role.
-    *   *Example:* Allow 3 Attackers instead of 1 for a "Enrage" phase.
-*   **Clear Role Limit Override**: Reset limits back to project settings.
-*   **Update Config**: Swap the entire configuration struct at runtime.
+*   **SetReassignmentInterval**: Change how often the system re-evaluates roles.
+*   **SetMinTimeInRole**: Stop enemies from switching roles too quickly (hysteresis).
+*   **SetRoleLimitOverride**: Change the max number of actors allowed in a role.
+    *   *Example:* Allow 3 Attackers instead of 1 for an "Enrage" phase.
+*   **ClearRoleLimitOverride** / **ClearAllRoleLimitOverrides**: Reset limits back to project settings.
+*   **UpdateConfig**: Swap the entire configuration struct at runtime (with optional `bLimitAttritionEnabled` for soft updates).
 
 **Manual Control:**
-*   **Force Assign Role**: Lock an AI into a specific role.
+*   **ForceAssignRole**: Lock an AI into a specific role. Pass `bLockRole = true` to prevent the evaluation system from reassigning it.
     *   *Useful for:* Scripted events where an enemy must wait or taunt.
-*   **Unlock Role**: Return the AI to the automatic pool.
-*   **Force Reassignment**: Trigger an immediate re-evaluation of all AI.
+*   **UnlockRole**: Return the AI to the automatic evaluation pool.
+*   **ForceReassignment**: Trigger an immediate re-evaluation of all AI.
+*   **PauseReassignment** / **ResumeReassignment**: Freeze role changes during cutscenes or special sequences.
 
 ```cpp
 // Example: Enrage phase - Allow more attackers
@@ -222,41 +248,58 @@ RoleSys->SetRoleLimitOverride(FGameplayTag::RequestGameplayTag("SEC.Role.Attacke
 RoleSys->ForceReassignment();
 ```
 
+### Multi-Target API
+
+The subsystem supports multiple combat targets. Each target maintains its own independent pool of combatants with separate role limits.
+
+| Function | Purpose |
+|----------|---------|
+| `RegisterCombatTarget` | Register a new combat target (player, objective, etc.) |
+| `UnregisterCombatTarget` | Remove a target and orphan its combatants |
+| `AssignCombatantToTarget` | Move an AI to a specific target's pool |
+| `TransferCombatantsToTarget` | Move all combatants from one target to another |
+| `BalanceCombatantsAcrossTargets` | Round-robin redistribute combatants evenly |
+| `ReevaluateAllTargets` | Re-run each AI's `TargetSelector` |
+| `SetPrimaryTargetAndAssignAll` | High-priority target override (e.g., boss VIP) |
+| `GetCombatantsForTarget` | Query which AI are assigned to a target |
+
+**Per-AI target selection** is configured via the `TargetSelector` property on `EnemyAIConfig`. Built-in selectors: `FirstTargetSelector`, `ClosestTargetSelector`, `RandomTargetSelector`, `BalancedTargetSelector`.
+
+### Delegates
+
+The subsystem fires several delegates for global listeners:
+
+| Delegate | Parameters | Fires When |
+|----------|------------|------------|
+| `OnCombatRoleChanged` | Controller, NewRole, OldRole | Any combatant's role changes |
+| `OnCombatRoleChangedForTarget` | Controller, Target, NewRole, OldRole | Role changes with target info |
+| `OnCombatantRegistered` | Controller | New AI enters combat |
+| `OnCombatantUnregistered` | Controller | AI leaves combat or dies |
+| `OnCombatTargetRegistered` | NewTarget | New target registered |
+| `OnCombatTargetUnregistered` | OldTarget | Target removed |
+| `OnCombatTargetChanged` | NewTarget, OldTarget | Default target switches |
+| `OnCombatantsOrphaned` | LostTarget, OrphanedControllers | Combatants lose their target |
+
+> `OnCombatantsOrphaned` fires when a target unregisters. The orphaned combatants have their roles reset to `SEC.Role.None`. Bind to this delegate to reassign them to a new target.
+
 ---
 
 ## Role Syncing
 
 When an enemy's role changes (e.g., from *Waiter* to *Attacker*), their abilities and movement behavior need to update to match.
 
-### Automatic Syncing
-If your AI controller has a **`SECCombatControllerComponent`** (included by default in `AEnemyControllerBase`), this happens automatically. The component monitors role changes and updates ActionSets and MovementProfiles for you.
+### Automatic Syncing (Default)
 
-**Customizing Sync Behavior:** You can subclass `SECCombatControllerComponent` in Blueprint and override `SyncStateForCombatRole` to add custom logic when roles change (e.g., switch animation sets, trigger visual effects, load a different StateTree, or notify other systems). Call the parent function to preserve the default action set and movement profile sync.
+If you use the included `StateTree_SEC_Core`, role syncing happens automatically. The StateTree tasks query the current role and resolve the appropriate ActionSet and MovementProfile from the `EnemyAIConfig`.
 
-```cpp
-// Override in your Blueprint subclass of SECCombatControllerComponent:
-void UMyCombatController::SyncStateForCombatRole_Implementation(const FGameplayTag& RoleTag)
-{
-    // Call parent to keep default ActionSet + MovementProfile sync
-    Super::SyncStateForCombatRole_Implementation(RoleTag);
+### Manual Syncing (Custom Controllers)
 
-    // Your custom sync logic here
-    if (RoleTag.MatchesTag(FGameplayTag::RequestGameplayTag("SEC.Role.Attacker")))
-    {
-        // Switch to aggressive animation blueprint, trigger FX, etc.
-    }
-}
-```
+If you are building a fully custom controller or StateTree, use the **SECCombatRoleSyncLibrary**. It handles the logic of finding the correct asset for the role from the AIConfig.
 
-Similarly, you can override `HandleCombatTargetLost` to customize behavior when a target is destroyed or unregistered.
-
-### Manual Syncing (Custom Controllers without SECCombatControllerComponent)
-If you are building a fully custom controller without `SECCombatControllerComponent`, use the **SEC Combat Role Sync Library**. It handles the complex logic of finding the right asset for the role.
-
-**Nodes:**
-*   **Sync All For Combat Role**: Updates both ActionSets and Movement profiles.
-*   **Sync Action Set For Role**: Updates only abilities.
-*   **Sync Movement Profile For Role**: Updates only movement.
+**Functions:**
+*   **SyncAllForCombatRole**: Updates both ActionSets and MovementProfiles.
+*   **SyncActionSetForRole**: Updates only the action set on the pawn's `SECActionSetComponent`.
+*   **SyncMovementProfileForRole**: Updates only the movement profile on the controller's `MovementEvaluatorComponent`.
 
 ```cpp
 // Inside your Custom Controller: On Role Changed Event
@@ -268,71 +311,18 @@ USECCombatRoleSyncLibrary::SyncAllForCombatRole(
 );
 ```
 
-> **Recommended:** Use `SECCombatControllerComponent` on your controller instead of manual syncing. It can be added to any `AAIController` Blueprint and handles all of this automatically.
-
 ---
 
-## Boss AI & Local Roles
+## Bosses and Non-Coordinated AI
 
-For bosses or scripted AI that should adopt a combat role **without participating in the subsystem's slot coordination**, use `ApplyLocalCombatRole` on the `SECCombatControllerComponent`.
+For enemies that should not participate in the subsystem's slot coordination (bosses, ambient wildlife, scripted AI):
 
-### Why Local Roles?
+1. Set `bAutoRegisterForCombatRoles` to `false` on the enemy's `EnemyAIConfig`
+2. The AI will not be registered with the subsystem and will not consume any role slots
+3. It can still use ActionSets and MovementProfiles, just not through role-based switching
+4. Use `ForceAssignRole` with `bLockRole = true` if you still want to assign a role to a boss that is registered (e.g., for ActionSet/MovementProfile resolution), without the subsystem ever reassigning it
 
-The subsystem enforces slot limits (e.g., max 2 Attackers). A boss shouldn't consume one of those slots — it should always behave as an Attacker regardless of what the other enemies are doing. Local roles give the boss:
-
-- ✅ Role-based ActionSet and MovementProfile sync (identical to subsystem-assigned roles)
-- ✅ `OnCombatRoleChanged` delegate fires normally
-- ✅ Pawn's `SECCombatRoleComponent` updates for client replication
-- ❌ Does **not** consume subsystem slots
-- ❌ Does **not** participate in role redistribution
-
-### Setup
-
-1. Set `bAutoRegisterForCombatRoles` to `false` on the boss controller's `SECCombatControllerComponent` (or in its `EnemyAIConfig`)
-2. Call `ApplyLocalCombatRole` when the boss should start fighting:
-
-```cpp
-// In your Boss AI Controller or Blueprint:
-USECCombatControllerComponent* CombatComp = FindComponentByClass<USECCombatControllerComponent>();
-CombatComp->ApplyLocalCombatRole(FGameplayTag::RequestGameplayTag("SEC.Role.Attacker"));
-```
-
-Or in Blueprint: call **Apply Local Combat Role** on the component with the desired role tag.
-
-### Combining With the Subsystem
-
-If you call `ApplyLocalCombatRole` on an AI that **is** registered with the subsystem, a warning will be logged. The subsystem's next evaluation cycle may overwrite the locally applied role. To avoid this, either:
-- Don't register the AI (`bAutoRegisterForCombatRoles = false`)
-- Or unregister it first, then apply the local role
-
-### OnCombatRoleSystemReady Delegate
-
-If you need to call `ForceAssignRole` immediately after spawning (for AI that *does* register), bind to `OnCombatRoleSystemReady`. This delegate fires after the subsystem accepts the registration, guaranteeing it's safe to call subsystem APIs:
-
-```cpp
-CombatComp->OnCombatRoleSystemReady.AddDynamic(this, &AMyController::OnReadyForCombat);
-
-void AMyController::OnReadyForCombat(AAIController* Controller)
-{
-    UAICombatRoleSubsystem* Sub = GetWorld()->GetSubsystem<UAICombatRoleSubsystem>();
-    Sub->ForceAssignRole(Controller, FGameplayTag::RequestGameplayTag("SEC.Role.Attacker"));
-}
-```
-
----
-
-## Debug Tools
-
-**Console Commands:**
-```
-SEC.Debug.Roles.ShowAssignments 1   // Display current role assignments
-SEC.Debug.Roles.LogTransitions 1    // Log role changes
-```
-
-**In AICombatConfig:**
-```cpp
-bDebugLogRoleChanges: true
-```
+> For enemies with `bIgnoreTargetRedistribution = true` on their config, the subsystem will not re-run their `TargetSelector` during periodic re-evaluation. This is useful for bosses or scripted AI that should always fight the same target.
 
 ---
 
@@ -344,7 +334,7 @@ This component sits on the enemy pawn and replicates the currently assigned role
 
 ### Setup
 
-`EnemyCharacterBase` adds this component by default. If you're using a custom character class, just add it:
+`EnemyCharacterBase` adds this component by default. If you are using a custom character class, add it manually:
 
 ```cpp
 // In your custom character constructor:
@@ -355,10 +345,11 @@ Or add it in Blueprint via the Components panel. Search for "SEC Combat Role".
 
 ### How It Works
 
-1. The server-side AI controller's `SECCombatControllerComponent` receives a role change from the subsystem
-2. The component calls `SetCombatRole()` on the pawn's `USECCombatRoleComponent`
-3. The role tag replicates to all clients
-4. Clients receive `OnCombatRoleChanged` delegate
+1. The server-side `AICombatRoleSubsystem` assigns a new role to a combatant
+2. The subsystem notifies the AI controller via the `OnCombatRoleChanged` delegate
+3. The controller (or StateTree) writes the role to the pawn's `SECCombatRoleComponent` via `SetCombatRole()`
+4. The role tag replicates to all clients
+5. Clients receive the `OnCombatRoleChanged` delegate on the component
 
 ### Reading on Clients
 
@@ -394,7 +385,7 @@ void UMyWidget::OnRoleChanged(FGameplayTag NewRole, FGameplayTag OldRole)
 
 ---
 
-<DocNav 
-  prev={{ title: "Action System", href: "/docs/soulslike-combat/action-system" }} 
-  next={{ title: "Targeting System", href: "/docs/soulslike-combat/targeting-system" }} 
+<DocNav
+  prev={{ title: "Action System", href: "/docs/soulslike-combat/action-system" }}
+  next={{ title: "Targeting System", href: "/docs/soulslike-combat/targeting-system" }}
 />

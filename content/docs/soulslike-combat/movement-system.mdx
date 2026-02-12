@@ -14,7 +14,7 @@ parent: "SoulslikeCombatDocs"
     { label: "Movement System" }
 ]} />
 
-> Smart positioning that makes AI feel alive. Approaching, strafing, retreating, and avoiding obstacles without looking robotic.
+> Intelligent positioning that makes AI feel alive. Approaching, strafing, retreating, and avoiding obstacles without looking robotic.
 
 ## When to Use This
 
@@ -38,42 +38,42 @@ Every tick, the system evaluates **16 directions** around the AI and scores each
 
 Each direction gets a score based on:
 
-- **Distance to target**: Does moving here get us closer to ideal range?
+- **Distance to target**: Does moving here get us closer to the ideal range?
 - **Angle to target**: Are we facing the target?
 - **Avoidance**: Is there a wall or another pawn in this direction?
-- **Positioning Rules**: Custom modifiers you define
+- **Positioning Rules**: Custom modifiers you define (see below)
 
-The highest-scoring direction wins. The result is movement that *feels* intelligent because it considers multiple factors simultaneously.
+The highest-scoring direction wins. The result is movement that looks intelligent because it considers multiple factors at the same time.
 
 ### Distance Maintenance
 
-The AI tries to stay within an **ideal distance range**:
+The AI tries to stay within a **tolerance zone** around a single desired distance:
 
 ```
-Too Close    Ideal Range    Too Far
-   |---------|============|---------|
-   0        Min          Max       ∞
-          (approach)    (hold)    (retreat)
+Too Close      Comfort Zone      Too Far
+   |-----------|=============|-----------|
+   0        -tolerance    distance    +tolerance     inf
+          (approach)     (strafe)     (retreat)
 ```
 
-Configure this via `DesiredMinDistance` and `DesiredMaxDistance`, or use a [MovementBehaviorProfile](/docs/soulslike-combat/configuration#movement-profiles).
+Configure this via `DesiredDistance` and `DistanceTolerance` (percentage of desired distance). For example, `DesiredDistance = 400` with `DistanceTolerance = 0.2` means the AI is comfortable anywhere between 320 and 480 cm.
 
 ### Strafing
 
 The AI naturally circles the target while maintaining distance:
 
-- **AutoStrafeSwap**: Randomly changes direction to avoid predictability
-- **Strafe Fatigue**: After strafing too long, the AI rests briefly
-- **Threat-Triggered Swap**: If the player stares at the AI, it swaps direction. Configured per `MovementBehaviorProfile` (requires [Threat Detection](/docs/soulslike-combat/threat-detection))
+- **AutoStrafeSwap**: Automatically changes direction when the opposite side scores significantly better
+- **Strafe Fatigue**: After continuous strafing, the AI rests briefly (broadcasts `OnStrafeResting`)
+- **Threat-Triggered Swap**: If configured, the AI swaps direction when the player stares at it. Set per `MovementBehaviorProfile` (requires [Threat Detection](/docs/soulslike-combat/threat-detection))
 
-### Hybrid Navigation
+### Movement Layers
 
-The system intelligently switches between two movement modes:
+The system operates in two layers, switching automatically based on distance:
 
-| Mode | When | How |
-|------|------|-----|
-| **Pathfinding** | Target is far away | Uses NavMesh for navigation |
-| **Direct Input** | Target is close | Direct movement input for responsiveness |
+| Layer | When | How |
+|-------|------|-----|
+| **Tactical** | Target is within `HybridSwitchDistance` | Direct movement input for responsive strafing and positioning |
+| **Strategic** | Target is far away or path-blocked | NavMesh pathfinding to navigate around obstacles |
 
 The switch happens at `HybridSwitchDistance` (default: 800 units). This gives you the reliability of pathfinding at range and the snappy feel of direct control up close.
 
@@ -89,15 +89,17 @@ MovementEvaluator->ApplyBehaviorConfig(FMovementBehaviorConfig::MakeAttacker());
 ```
 
 **Available presets:**
-- `MakeAttacker()`: Close-range aggressive
-- `MakeWaiter()`: Mid-range patient
-- `MakeFlanker()`: Wide circling
-- `MakeCoward()`: Maintains distance, retreats when approached
+- `MakeDefault()`: Balanced defaults (400 cm, moderate rest)
+- `MakeAttacker()`: Close-range aggressive (300 cm, minimal rest)
+- `MakeWaiter()`: Far-range passive (600 cm, frequent rest)
+- `MakeFlanker()`: Medium distance repositioning (400 cm, quick pauses)
+- `MakeSupporter()`: Medium-far range (500 cm, moderate rest)
+- `MakeElite()`: Aggressive, relentless pressure (350 cm, very short rest)
 
 ### Option 2: Use a Data Asset
 
-1. Create a [MovementBehaviorProfile](/docs/soulslike-combat/configuration#movement-profiles) data asset
-2. Configure desired distances, strafing, and positioning rules
+1. Create a `MovementBehaviorProfile` data asset (Right-click, Miscellaneous, Data Asset, **MovementBehaviorProfile**)
+2. Configure desired distance, rest times, threat response, and positioning rules
 3. Apply it:
 
 ```cpp
@@ -107,20 +109,20 @@ MovementEvaluator->ApplyBehaviorProfile(MyProfile);
 ### Option 3: Configure at Runtime
 
 ```cpp
-MovementEvaluator->SetDesiredDistance(200.f, 350.f);
+MovementEvaluator->SetDesiredDistance(350.f);
 MovementEvaluator->SetStrafeSide(1);  // 1 = right, -1 = left
 ```
 
 ### Option 4: Role-Based (Recommended)
-This is the most automated way. The movement profile is determined by the AI's current combat role.
+The most automated path. The movement profile is determined by the AI's current combat role.
 
 1. Configure your **EnemyAIConfig** data asset.
 2. Assign profiles to roles (e.g., *Attacker* gets Aggressive, *Waiter* gets Passive).
 3. The `SECCombatControllerComponent` syncs automatically when the role changes.
 
 ```cpp
-// Called by SECCombatControllerComponent automatically when role changes
-MovementEvaluator->SyncForCombatRole(CurrentRole, MyAIConfig);
+// Called by SECCombatControllerComponent automatically when role changes:
+MovementEvaluator->SyncForCombatRole(RoleTag, MyAIConfig);
 ```
 
 ---
@@ -130,14 +132,20 @@ MovementEvaluator->SyncForCombatRole(CurrentRole, MyAIConfig);
 | Property | Default | Purpose |
 |----------|---------|---------|
 | `NumSamples` | 16 | Directions to evaluate per tick |
-| `DesiredMinDistance` | 200 | Closest the AI wants to be |
-| `DesiredMaxDistance` | 400 | Farthest before approaching |
-| `EnableAvoidance` | true | Avoid other pawns |
-| `AvoidanceRadius` | 125 | How far to stay from others |
-| `EnableHybridMovement` | true | Switch between pathfinding and direct |
-| `HybridSwitchDistance` | 800 | Distance to switch modes |
-| `AutoStrafeSwap` | true | Randomly change strafe direction |
-| `StrafeTimeLimit` | 5.0 | Seconds before fatigue rest |
+| `DesiredDistance` | 400 | Ideal distance to maintain (cm) |
+| `DistanceTolerance` | 0.2 | Comfort zone as percentage of desired distance |
+| `bEnableAvoidance` | true | Avoid other AI pawns |
+| `AvoidanceRadius` | 100 | How far to stay from other pawns (cm) |
+| `bEnableHybridMovement` | true | Switch between pathfinding and direct input |
+| `HybridSwitchDistance` | 800 | Distance to switch between Tactical and Strategic |
+| `bAutoStrafeSwap` | true | Automatically swap strafe direction |
+| `StrafeSwapThreshold` | 3.0 | Score ratio required to trigger auto-swap |
+| `StrafeTimeLimit` | 5.0 | Base seconds before forcing a strafe direction swap |
+| `bEnableStrafeRest` | true | Enable fatigue rest after continuous strafing |
+| `StrafeRestTimeLimit` | 10.0 | Seconds of strafing before forced rest |
+| `StrafeRestDuration` | 1.5 | Duration of forced rest (seconds) |
+| `DirectionBlendCount` | 3 | Top-scoring directions to blend (1 = pick best, 2-3 = smooth) |
+| `bEnableStuckDetection` | true | Detect when AI is stuck and cannot make progress |
 
 See [Configuration Reference](/docs/soulslike-combat/configuration#movement-profiles) for the complete list.
 
@@ -149,40 +157,99 @@ See [Configuration Reference](/docs/soulslike-combat/configuration#movement-prof
 // Main tick function - call from StateTree or Blueprint
 EMovementEvaluatorResult EvaluateAndMove();
 
+// Same as above, but with an explicit distance override
+EMovementEvaluatorResult EvaluateAndMoveToDistance(float Distance);
+
 // Apply a preset configuration
 void ApplyBehaviorConfig(const FMovementBehaviorConfig& Config);
 
 // Apply a data asset profile
-void ApplyBehaviorProfile(UMovementBehaviorProfile* Profile);
+void ApplyBehaviorProfile(const UMovementBehaviorProfile* Profile);
+
+// Sync with AI Config (role-based switch)
+bool SyncForCombatRole(const FGameplayTag& RoleTag, UEnemyAIConfig* AIConfig);
 
 // Runtime adjustments
-void SetDesiredDistance(float Min, float Max);
-void SetStrafeSide(int Side);  // 1, -1, or 0 for auto
+void SetDesiredDistance(float NewDistance);
+void SetStrafeSide(int32 NewSide);  // 1 = right, -1 = left
 void SwapStrafeSide();
+void SetDistanceMultiplier(float Multiplier);  // E.g., from threat detection
 
-// Sync with AI Config (Role-based switch)
-bool SyncForCombatRole(FGameplayTag Role, UEnemyAIConfig* Config);
+// Movement suspension
+void SuspendMovement(float Duration);
+bool IsMovementSuspended();
+
+
+// Queries
+bool IsAtDesiredDistance();
+bool IsStrafing();
+float GetCurrentDistanceToTarget();
+EMovementLayer GetCurrentMovementLayer();
 ```
 
 ---
 
 ## Positioning Rules
 
-For advanced control, create custom **Positioning Rules**. These are UObjects that modify direction scores:
+For advanced control, create custom **Positioning Rules**. These are instanced UObjects that modify direction scores during evaluation.
 
 ```cpp
-UCLASS()
-class UAvoidCornersRule : public UPositioningRule
+UCLASS(Blueprintable)
+class UMyFlankingRule : public UPositioningRule
 {
-    virtual float EvaluateDirection(const FPositioningContext& Context) override
+    GENERATED_BODY()
+
+    virtual float EvaluateDirection_Implementation(
+        const FDirectionEvaluationContext& Context) const override
     {
-        // Return 0.0 to 1.0 multiplier
-        // Lower values make this direction less desirable
+        // Return -1.0 to +1.0
+        //  +1.0 = strongly encourage this direction
+        //   0.0 = no preference
+        //  -1.0 = strongly discourage this direction
     }
 };
 ```
 
-Add rules to your MovementBehaviorProfile. They stack, so all rules are evaluated and their scores are multiplied together.
+Add rules to your `MovementBehaviorProfile`'s `PositioningRules` array. Each rule has a `Weight` (0-1) that controls how much influence it has on the final score. Multiple rules stack additively.
+
+**Built-in rule:** `UAnglePreferenceRule` pushes the AI toward (or away from) a specific angle relative to the target's facing direction:
+- `PreferredAngle = 0` - frontal assault
+- `PreferredAngle = 90` - flanking (side attacks)
+- `PreferredAngle = 180` - backstab positioning
+- `bAvoidInstead = true` - invert the rule to avoid the angle instead
+
+---
+
+## Events
+
+The component broadcasts delegates you can bind to in Blueprint or C++:
+
+| Event | When |
+|-------|------|
+| `OnStrafeStarted` | AI begins strafing (includes strafe side) |
+| `OnStrafeEnded` | AI stops strafing |
+| `OnStrafeSwapped` | Direction changes (includes new side) |
+| `OnStrafeResting` | Strafe fatigue rest begins |
+| `OnMovementSuspended` | Movement suspended (includes duration) |
+| `OnMovementResumed` | Suspension ends |
+| `OnArrivedAtDesiredDistance` | AI enters the comfort zone |
+| `OnDepartedDesiredDistance` | AI leaves the comfort zone |
+| `OnMovementLayerChanged` | Layer switches (Tactical, Strategic) |
+| `OnSwitchToPathfinding` | Switched to Strategic layer |
+| `OnSwitchToDirectInput` | Switched to Tactical layer |
+| `OnPathfindingFailed` | Pathfinding blocked or unreachable |
+
+---
+
+## Behavior Tree Tasks
+
+The plugin includes BT tasks for movement scenarios that fall outside the main evaluation loop:
+
+| Task | Purpose |
+|------|---------|
+| **Move Until Distance** | Pathfind toward a blackboard target until within a specified distance. Supports timeout, max chase distance, and debug visualization. |
+| **Make Distance** | Retreat from a target using direct movement input until reaching a target distance. Includes stuck detection and timeout. |
+| **Debug SEC Values** | Logs all `SEC_` blackboard values (target, distance, action ID) to output log and screen. Useful for debugging. |
 
 ---
 
@@ -192,12 +259,20 @@ Add rules to your MovementBehaviorProfile. They stack, so all rules are evaluate
 ```
 SEC.Debug.Movement.DrawScoring 1      // Visualize direction scores
 SEC.Debug.Movement.DrawAvoidance 1    // Show avoidance radii
-SEC.Debug.Movement.LogStrafeState 1   // Log strafe decisions
+SEC.Debug.Movement.LogMovement 1      // Log basic movement state
+SEC.Debug.Movement.LogStrafeSwap 1    // Log strafe swap decisions
+SEC.Debug.Movement.LogStrafeState 1   // Log strafe state changes
 ```
 
-**Blueprint/C++:**
+**Per-Instance (Blueprint/C++):**
 ```cpp
-MovementEvaluator->bDebugLog = true;
+MovementEvaluator->bDebugDrawScoring = true;
+MovementEvaluator->bDebugDrawAvoidance = true;
+MovementEvaluator->bDebugLogMovement = true;
+MovementEvaluator->bDebugLogScoring = true;
+MovementEvaluator->bDebugLogAvoidance = true;
+MovementEvaluator->bDebugLogStrafeSwap = true;
+MovementEvaluator->bDebugLogStrafeState = true;
 ```
 
 ---
@@ -208,7 +283,7 @@ MovementEvaluator->bDebugLog = true;
 |--------|---------------------|
 | [Threat Detection](/docs/soulslike-combat/threat-detection) | `SECCombatControllerComponent` auto-wires delegates; threat response behavior (`bSwapStrafeOnHighThreat`, `bAdjustDistanceByThreat`) is configured per `MovementBehaviorProfile` and switches automatically with combat role |
 | [Combat Roles](/docs/soulslike-combat/combat-roles) | Different roles apply different MovementBehaviorProfiles |
-| [Action System](/docs/soulslike-combat/action-system) | Actions can temporarily override movement (e.g., lunging) |
+| [Action System](/docs/soulslike-combat/action-system) | Actions can use Attack Approach to close distance before executing |
 
 ---
 

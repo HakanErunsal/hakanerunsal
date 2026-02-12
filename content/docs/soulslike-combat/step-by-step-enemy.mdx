@@ -14,12 +14,12 @@ parent: "SoulslikeCombatDocs"
     { label: "Step-by-Step Enemy" }
 ]} />
 
-This section provides comprehensive instructions for creating a complete enemy from scratch, including weapons, animations, and advanced features.
+This guide walks through creating a complete enemy from scratch, including weapons, animations, and full AI behavior.
 
 ## Prerequisites
 
 Before starting, ensure you have:
-- Character skeletal mesh with animations
+- Character skeletal mesh with attack animations
 - Attack animation montages with hit frames identified
 - Basic understanding of Gameplay Ability System
 - Unreal Engine 5.6+ installed
@@ -31,28 +31,22 @@ Before starting, ensure you have:
 **Create Blueprint:** `BP_DetailedEnemy` (inherits `AEnemyCharacterBase`)
 
 **In Components Panel:**
-1. Select **SkeletalMesh** component
-   - Set your character mesh
-   - Configure materials
+1. Select **SkeletalMesh** component and set your character mesh
+2. Select **CapsuleComponent** and adjust radius/height to fit mesh
+3. Select **CharacterMovement** component and adjust if needed
 
-2. Select **CapsuleComponent**
-   - Adjust radius to fit mesh
-   - Set height appropriately
+**What the base class provides automatically:**
+- `USECMeleeTraceComponent` for hit detection
+- `UAbilitySystemComponent` (configured)
+- `IAbilitySystemInterface` (implemented)
+- `USECActionSetComponent` for action set resolution and replicated action state
+- `USECCombatRoleComponent` for replicated combat role
 
-3. Select **CharacterMovement** component
+**Set AIConfig:** In the Details Panel, set `AIConfig` to `DA_AIConfig_EnemyDefault` (included with the plugin) or your own `UEnemyAIConfig` data asset.
 
-Adjust movement component settings if you want.
+> The controller's `SECCombatControllerComponent` checks the pawn for an AIConfig first. If none is set on the pawn, the component uses its own `DefaultAIConfig` fallback. If neither is set, there will be no AI behavior.
 
-**What You Get Automatically:**
-- `USECMeleeTraceComponent` - Already added by base class
-- `UAbilitySystemComponent` - Already configured
-- `IAbilitySystemInterface` - Already implemented
-- `USECActionSetComponent` - Action set resolution and replicated action state
-- `USECCombatRoleComponent` - Replicated combat role for client visibility
-
-- `AIConfig` -> Set it to your AI Config or the `DA_SEC_Enemy_AIConfig_Default`
-
->AIConfig will be acquired from the pawn by the controller's `SECCombatControllerComponent` if it's set here. If it is not set in the pawn, the component will use its own `DefaultAIConfig`. If neither is set, there will be no AI behavior.
+> **Not inheriting from EnemyCharacterBase?** Add `SECMeleeTraceComponent`, `SECActionSetComponent`, and `SECCombatRoleComponent` manually. Implement `IAbilitySystemInterface` and set up your own `AbilitySystemComponent`. The system only requires these components to be present on the pawn.
 
 ---
 
@@ -64,148 +58,107 @@ Adjust movement component settings if you want.
 
 **What the base class provides:**
 ```cpp
-// These components are automatically added:
+// These components are created as default subobjects:
 USECCombatControllerComponent*  // Combat system integration (AIConfig, roles, sync)
-UMovementEvaluatorComponent*    // Tactical movement
+UMovementEvaluatorComponent*    // Tactical movement direction selection
+UActionEvaluationComponent*     // Action scoring and execution
 UThreatDetectionComponent*      // Player attention tracking
-UActionEvaluationComponent*     // Action scoring & execution
-UBehaviorTreeComponent*         // For BT sequence execution
-UBotStateTreeAIComponent*       // StateTree AI behavior
+UBotStateTreeAIComponent*       // StateTree AI runner
+UBehaviorTreeComponent*         // Helper BT for action sequences (not the BrainComponent)
 ```
+
+Additional features: smooth focus rotation with `LockRotation`/`UnlockRotation`, team ID via `ISECTeamInterface`, and K2 Blueprint events for role changes and target loss.
 
 ### Option B: Use Any AAIController + Components
 
 If you have an existing AI controller, add `SECCombatControllerComponent` in the Components panel. Then add whichever other SEC components you need (`MovementEvaluatorComponent`, `ActionEvaluationComponent`, etc.). Everything connects automatically on possession.
 
-Threat-to-movement response is auto-wired if both `ThreatDetectionComponent` and `MovementEvaluatorComponent` are present. Configure `bSwapStrafeOnHighThreat` and `bAdjustDistanceByThreat` on the `SECCombatControllerComponent`.
+Threat-to-movement response is auto-wired if both `ThreatDetectionComponent` and `MovementEvaluatorComponent` are present. Configure `bSwapStrafeOnHighThreat` and `bAdjustDistanceByThreat` on the `MovementEvaluatorComponent` (or through a `MovementBehaviorProfile`).
 
-For advanced customization, subclass `SECCombatControllerComponent` in Blueprint and override `SyncStateForCombatRole` (custom role-change behavior) or `HandleCombatTargetLost` (custom target-loss fallback). Subclass `ActionEvaluationComponent` and override `CanExecuteAction` or `ModifyActionScore` for custom action gating and scoring.
+> **Customization hooks:** Subclass `SECCombatControllerComponent` in Blueprint and override `SyncStateForCombatRole` (custom role-change behavior) or `HandleCombatTargetLost` (custom target-loss fallback). Subclass `ActionEvaluationComponent` and override `CanExecuteAction` for custom action gating.
 
-**Configure Movement:**
-
-Open `BP_DetailedEnemyController` → Details Panel → **Movement Evaluator:**
-
-```
-Movement Evaluator:
-
-There are a lot of movement related settings. 
-Default values on `BP_SEC_EnemyController` work well for a smooth and realistic looking enemy. 
-You can configure these settings further.
-  
-Debug:
-  bDebugLog: false (enable to see movement decisions)
-```
-
-**Configure Action Evaluation:**
-
-Details Panel → **Action Evaluation:**
-
-```
-CurrentActionSet: DA_DetailedEnemyActions (create next)
-bDebugLog: true (enable to see action scoring)
-```
-
->ActionSet is updated by the StateTree depending on the current role. This is defined inside the AIConfig.
+**Movement settings** are on the `MovementEvaluatorComponent`. The defaults from the showcase controller work well for smooth, realistic movement. Enable `bDebugLog` to see movement decisions in the output log.
 
 ---
 
-## Step 3: Create Comprehensive ActionSet
+## Step 3: Create an ActionSet
 
 **Create Data Asset:** `DA_DetailedEnemyActions` (type: `ActionSet`)
 
-**Add Multiple Actions for Variety:**
+Add actions to the `Actions` array. Each entry is an `FActionSpec`.
 
 ### Action 1: Light Attack (Close Range)
 
 | Property | Value | Notes |
 |----------|-------|-------|
-| Id | `LightAttack` | Unique identifier |
-| DisplayName | `Light Attack` | Editor display |
-| ExecutionMode | `GameplayAbility` | Simple ability execution |
-| AbilityTag | `SEC.Action.LightAttack` | Triggers GA_LightAttack |
-| AbilityEndTag | `SEC.Action.End` | Completion signal |
-| **Distance** | | |
+| **ActionId** | `LightAttack` | Unique identifier for chaining and cooldowns |
+| **ExecutionMode** | `GameplayAbility` | Simple ability execution |
+| **AbilityClass** | `GA_LightAttack` | `AbilityTag` and `AbilityEndTag` are auto-generated from the class |
+| **DistanceEval** | | |
 | ↳ MinValue | `0` | Valid from 0cm |
 | ↳ OptimalMin | `100` | Score = 1.0 starts |
 | ↳ OptimalMax | `250` | Score = 1.0 ends |
-| ↳ MaxValue | `400` | Invalid beyond |
-| **Angle** | | |
-| ↳ MinValue | `0` | Must face target |
-| ↳ OptimalMin | `0` | Perfect facing |
-| ↳ OptimalMax | `30` | Up to 30° good |
-| ↳ MaxValue | `90` | Don't use >90° |
+| ↳ MaxValue | `400` | Score = 0 beyond this |
+| **AngleEval** | | |
+| ↳ OptimalMax | `30` | Up to 30 degrees is ideal |
+| ↳ MaxValue | `90` | Not used beyond 90 degrees |
 | **Cooldown** | | |
 | ↳ Duration | `2.0` | 2 second cooldown |
-| ↳ WarmupCooldown | `1.0` | Can't use first 1s |
-| BaseWeight | `1.0` | Selection priority |
-| bRequireLOS | `true` | Need line of sight |
+| ↳ InitialCooldown | `1.0` | Cannot use during first second after spawn |
+| **SelectionWeight** | `1.0` | Base selection weight |
 
 ### Action 2: Heavy Attack (Medium Range)
 
 | Property | Value | Notes |
 |----------|-------|-------|
-| Id | `HeavyAttack` | |
-| ExecutionMode | `GameplayAbility` | |
-| AbilityTag | `SEC.Action.HeavyAttack` | |
-| AbilityEndTag | `SEC.Action.End` | |
-| Distance: OptimalMin | `150` | Slightly farther |
-| Distance: OptimalMax | `300` | |
+| **ActionId** | `HeavyAttack` | |
+| **ExecutionMode** | `GameplayAbility` | |
+| **AbilityClass** | `GA_HeavyAttack` | |
+| DistanceEval: OptimalMin | `150` | Slightly farther than light |
+| DistanceEval: OptimalMax | `300` | |
 | Cooldown: Duration | `4.0` | Longer cooldown |
-| BaseWeight | `0.8` | Lower priority |
-| **Chain From** | `LightAttack` | Can combo after light |
-| **Chain Bonus** | `0.5` | +50% score if chaining |
+| **SelectionWeight** | `0.8` | Lower base weight |
+| **RiskPenalty** | `1.5` | Divides score, making it less frequent |
+
+To make this combo from a light attack, set `PreferredNextActionId` to `HeavyAttack` on the **LightAttack** action, and set `ChainBonusMultiplier` to `1.5` for a 50% score boost when chaining.
 
 ### Action 3: Defensive Retreat (When Too Close)
 
 | Property | Value | Notes |
 |----------|-------|-------|
-| Id | `QuickRetreat` | |
-| ExecutionMode | `BehaviorTreeSequence` | Uses BT for movement |
-| BehaviorTrees | `[BT_QuickBackstep]` | Array of BTs to run |
-| Distance: OptimalMin | `0` | Use when very close |
-| Distance: OptimalMax | `100` | |
+| **ActionId** | `QuickRetreat` | |
+| **ExecutionMode** | `BehaviorTreeSequence` | Uses a BT for movement logic |
+| **BehaviorTreeSequence** | `[BT_QuickBackstep]` | Array of BTs to run in order |
+| DistanceEval: OptimalMin | `0` | Best when very close |
+| DistanceEval: OptimalMax | `100` | |
 | Cooldown: Duration | `3.0` | |
-| BaseWeight | `1.5` | Higher priority |
-| **Context Modifiers:** | | |
-| ↳ Tag: `Player.Attacking` | Multiplier: `2.0` | Much higher score if player attacking |
+| **SelectionWeight** | `1.5` | Higher priority when in range |
+| **TagScoreMultipliers** | | |
+| ↳ `State.PlayerAttacking` | `2.0` | Doubles score when player is attacking |
+
+> `TagScoreMultipliers` is a map of `FGameplayTag` to `float`. If the target or AI has a matching tag, the score is multiplied by that value. Use tags like `State.Stunned` (2.0), `State.Blocking` (0.3), `Self.Enraged` (1.5) to create context-aware behavior.
 
 ---
 
 ## Step 4: Create Gameplay Abilities
 
-For each action using `GameplayAbility` execution mode, create an ability Blueprint inheriting from **GameplayAbilityBase**.
+For each action using `GameplayAbility` execution mode, create an ability Blueprint.
 
-**Example: GA_LightAttack**
+**Recommended:** Inherit from `GameplayAbilityBase` (included in the plugin). This base class automatically sends the `AbilityEndTag` event when the ability ends, even if interrupted. If you do not use this base class, you must send the end tag manually or the AI will get stuck.
 
-**Class Defaults:**
-- Ability Tags: `SEC.Action.LightAttack`
-
-**Event Graph Implementation:**
+**Example: GA_LightAttack (inheriting from GameplayAbilityBase)**
 
 ```
 Event ActivateAbility
   ↓
-[Branch: Check if montage valid]
-  ↓ True
 Play Montage and Wait
   • Montage: AM_LightAttack
   • Rate: 1.0
-  ↓ On Completed
-Send Gameplay Event to Actor
-  • Target: Get Avatar Actor from Actor Info
-  • Event Tag: SEC.Action.End
-  • Payload: (optional ActionInfo)
-  ↓
-End Ability
-  • Cancel: false
-  
-  ↓ On Cancelled/Interrupted
-Send Gameplay Event to Actor (SEC.Action.End)
-  ↓
+  ↓ On Completed / On Cancelled / On Interrupted
 End Ability
 ```
 
->**Important:** All of this is covered inside the **GA_SEC_Attack**, if you choose to not derive from **GameplayAbilityBase**, always send the **ability end tag** event, even if interrupted. Otherwise, the AI gets stuck. Action evaluator needs to know when ability is done. This is automatically handled if you are using **GameplayAbilityBase** as your parent class for abilities.
+> **If not inheriting from GameplayAbilityBase:** You must call `SendGameplayEventToActor` with the `AbilityEndTag` in every exit path (completed, cancelled, interrupted). The `ActionEvaluationComponent` waits for this event to know the action finished. The built-in `GA_SEC_Attack` is a reference implementation that handles this correctly.
 
 ---
 
@@ -215,22 +168,20 @@ End Ability
 
 **Add Melee Trace Notify State:**
 
-1. Right-click timeline at attack's active frames
-2. Add Notify State → `SECMeleeTraceWindow`
-3. Duration: Cover the weapon swing (e.g., frames 10-25)
-4. Add MotionWarping notify state if you want chase behavior during the attacks in certain frames.
+1. Right-click the timeline at the attack's active frames
+2. Add Notify State ➜ `SECMeleeTraceWindow`
+3. Set the duration to cover the weapon swing (e.g., frames 10-25)
+4. Optionally add a MotionWarping notify state for chase behavior during specific frames
 
 <ZoomableImage
   src="../images/sec_animmontagenotifiers.jpg"
 />
 
-**Configure Notify State:**
+**Configure the Notify State:**
 
-Details Panel:
-```
-Socket IDs: ["Blade"]  // Must match weapon trace socket, 
-not the mesh socket, the trace socket that is registered on the SECMeleeTrace component
-```
+In the Details Panel of the `SECMeleeTraceWindow` notify:
+- **Socket IDs:** `["Blade"]` - This must match the trace socket ID registered on the weapon (see Step 6), not a skeleton socket name
+- **DamageConfig:** `DA_SwordDamage` - Assign the damage configuration data asset here
 
 **Timing Example:**
 ```
@@ -238,7 +189,6 @@ Frame:     0    10    20    30    40    50
 Animation: [━━━━][━━━━][━━━━][━━━━][━━━━]
            Windup Strike  Follow Recovery
 Trace:          [═════════]
-End Event:                          ▲
 ```
 
 ---
@@ -249,45 +199,38 @@ End Event:                          ▲
 
 **Class Defaults:**
 
-**Attachment:**
-```
-AttachSocket: "RightHandSocket"  // Socket on character skeleton
-AttackOffset: Relative offset that will be applied after attachment
-```
+| Property | Value | Notes |
+|----------|-------|-------|
+| `AttachSocket` | `hand_r` | Socket name on the character skeleton (default) |
+| `AttachOffset` | `FTransform::Identity` | Relative transform applied after attachment |
+| `AnimLayerToUse` | (optional) | Animation layer class to apply when equipped |
 
-**Trace Sockets Array:**
+**TraceSockets Array:**
 
-Add element [0]:
-```
-ID: "Blade"
-Shape: CapsuleTwoPoint
-SocketOrBoneName: "blade_start"    // Socket on weapon mesh
-EndSocketOrBoneName: "blade_end"   // Socket on weapon mesh
-Radius: 15.0
-TraceChannel: ECC_Pawn
-```
+Add an element:
 
-**Damage Configuration:**
-```
-DamageConfig: DA_SwordDamage  // Create data asset from `SECDamageConfig`
-```
+| Property | Value | Notes |
+|----------|-------|-------|
+| `ID` | `Blade` | Must match the Socket IDs in the montage notify |
+| `Shape` | `CapsuleTwoPoint` | Trace shape (Sphere, Capsule, CapsuleTwoPoint) |
+| `SocketOrBoneName` | `blade_start` | Socket on weapon mesh (start point) |
+| `EndSocketOrBoneName` | `blade_end` | Socket on weapon mesh (end point) |
+| `Radius` | `15.0` | Trace radius |
 
 **Weapon Mesh Setup:**
 
-1. Components → WeaponMesh → Set your sword static/skeletal mesh
-2. Add sockets to weapon mesh:
-   - `blade_start` at blade base
-   - `blade_end` at blade tip
+1. The base class does not add a mesh component by default. Add a `StaticMeshComponent` or `SkeletalMeshComponent` and set your mesh.
+2. Add sockets to the weapon mesh: `blade_start` at the blade base, `blade_end` at the blade tip
 3. Position sockets along the cutting edge
 
->For different types of weapons, there are multiple selections for how should the trace work, for example, a hammer can use Sphere instead of CapsuleTwoPoint. You can select what works the best for your case.
+> For different weapon types, select the trace shape that fits best. A hammer could use `Sphere`, a spear could use `CapsuleTwoPoint` with a longer radius. The `FSECTraceSocket` supports multiple shapes for different scenarios.
 
 **What Happens Automatically:**
-- On equip → Registers trace sockets with character's `MeleeTraceComponent`
-- During montage notify → Traces activate between sockets
-- On hit → Applies damage via DamageConfig
+- On equip: Registers trace sockets with the character's `SECMeleeTraceComponent`
+- During montage notify: Traces activate between sockets
+- On hit: Applies damage via the `SECDamageConfig` assigned on the notify state
 
->The Apply Damage function is called on the actor that has been hit, this function is from unreal. If you want to implement your own way of communicating the damage, you can just ignore this and implement it on top. Both SECMeleeTrace component has functions and delegates you can listen to easily.
+> The system calls Unreal's `ApplyDamage` on hit. If you need a custom damage pipeline, you can listen to the delegates on `SECMeleeTraceComponent` and handle damage your own way.
 
 ---
 
@@ -295,41 +238,43 @@ DamageConfig: DA_SwordDamage  // Create data asset from `SECDamageConfig`
 
 **Create Data Asset:** `DA_SwordDamage` (type: `SECDamageConfig`)
 
-```
-Damage: 25.0
-DamageType: UDamageType (or custom class)
+| Property | Default | Notes |
+|----------|---------|-------|
+| `Damage` | `10.0` | Base damage amount |
+| `DamageTypeClass` | `UDamageType` | Damage type passed to `ApplyDamage` |
+| `AttackTag` | (empty) | Optional gameplay tag for reactions/resistances |
+| `bCanBeBlocked` | `true` | Whether this attack can be blocked |
+| `bCanBeParried` | `true` | Whether this attack can be parried |
+| `StaggerStrength` | `10.0` | Poise damage (how much it breaks stance) |
+| `KnockbackStrength` | `0.0` | Knockback force on hit |
 
-SECDamageConfig comes with common use-case variables, like "CanBeBlocked", "CanBeParried". 
-If you need more, you can create a blueprint inheriting SECDamageConfig and extend the data.
-
-```
+> `SECDamageConfig` is `Blueprintable`. If you need additional properties (elemental types, status effects), create a Blueprint child class and add your custom fields.
 
 ---
 
 ## Step 8: Build StateTree Logic
 
->For this step, i highly recommend using "StateTree_SEC_Core" instead. For majority of the cases it will work as expected. Otherwise you can learn from it.
+> For most cases, use the included `StateTree_SEC_Core` instead of building from scratch. It handles the standard combat loop out of the box. The breakdown below is for learning or for situations where you need a fully custom tree.
 
 **Create StateTree:** `ST_DetailedEnemy`
 
-**Root State Configuration:**
-
 <ZoomableImage
   src = "../images/sec_statetree.jpg"
-  />
+/>
+
+**Core StateTree structure:**
 
 ```
-
 StateTree: (Core)
 
 ├─ Root State
 │  │
 │  ├─ Combat State
-│  │  • Condition: (Is Object Valid) AND (Not SEC.Role.None contains exactly PollCombatRole.OutCombatRole)
+│  │  • Condition: Target is valid AND role is not SEC.Role.None
 │  │  │
 │  │  ├─ Role State
-│  │  │  • Condition: SEC.Role.* contains exactly PollCombatRole.OutCombatRole
-│  │  │  └─ Linked Subtree: *_Subtree → StateTree_SEC_MoveAndAction
+│  │  │  • Condition: SEC.Role.* matches current role
+│  │  │  └─ Linked Subtree: → StateTree_SEC_MoveAndAction
 │  │
 │  └─ Idle State
 │     • Task: Delay 1.0
@@ -343,7 +288,6 @@ StateTree: StateTree_SEC_MoveAndAction
 │     • Tasks: PollTargetActor, Build Decision Context, Poll Action
 │     │
 │     ├─ Move State
-│     │  • Condition: ASC Has Tag
 │     │  • Task: AI Movement (Distance: 600)
 │     │  └─ Transition → Action State
 │     │
@@ -363,20 +307,18 @@ StateTree: StateTree_SEC_MoveAndAction
 
 **Place in Level:**
 
-1. Drag `BP_DetailedEnemy` into level
-2. Details Panel → Pawn → AI Controller Class → `BP_DetailedEnemyController`
+1. Drag `BP_DetailedEnemy` into the level
+2. In Details Panel ➜ Pawn ➜ AI Controller Class ➜ set to `BP_DetailedEnemyController`
 
 **Debug Configuration:**
 
-Enable logging in controller:
+Enable per-component logging:
 ```
-ActionEvaluation → bDebugLog: true
-MovementEvaluator → bDebugLog: true
+ActionEvaluationComponent → bDebugLog: true
+MovementEvaluatorComponent → bDebugLog: true
 ```
 
-**Play and Observe:**
-
-**Output Log Messages:**
+**Expected Output Log Messages:**
 ```
 LogEvaluation: Evaluating 3 actions for BP_DetailedEnemy_1...
 LogEvaluation: [LightAttack] Dist:180 Angle:15 Score:0.95 SELECTED
@@ -388,8 +330,8 @@ LogEvaluation: [QuickRetreat] Dist:180 Angle:15 Score:0.10 (too far)
 - Approaches to ideal distance range
 - Strafes around player
 - Executes light attack when in optimal range
-- Occasionally uses heavy attack
-- Retreats if player gets too close
+- Occasionally uses heavy attack with combo chaining
+- Retreats if player gets too close or is attacking
 
 ---
 
@@ -397,10 +339,11 @@ LogEvaluation: [QuickRetreat] Dist:180 Angle:15 Score:0.10 (too far)
 
 | Problem | Cause | Solution |
 |---------|-------|----------|
-| AI doesn't attack | Ability not activating | Check AbilityTag matches, verify ASC grants ability |
-| AI repeats same action | Only one action valid | Add more actions with different ranges |
-| AI doesn't move | Movement not enabled | Check STTask_AIMovement is ticking |
-| Weapon doesn't hit | Socket mismatch | Verify notify Socket IDs match weapon TraceSockets IDs |
+| AI does not attack | Ability not activating | Check `AbilityClass` is set on the action, verify ASC grants the ability |
+| AI repeats same action | Only one action scores well | Add more actions with different distance/angle ranges |
+| AI does not move | Movement not driven | Check `STTask_AIMovement` is present and ticking in the StateTree |
+| Weapon does not hit | Socket mismatch | Verify the notify state's Socket IDs match the weapon's `TraceSockets` ID |
+| AI gets stuck after attack | End tag not sent | Use `GameplayAbilityBase` or manually send the `AbilityEndTag` event |
 
 
 <DocNav prev={{ title: "Core Architecture", href: "/docs/soulslike-combat/architecture" }} next={{ title: "Movement System", href: "/docs/soulslike-combat/movement-system" }} />

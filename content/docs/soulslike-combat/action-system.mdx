@@ -1,12 +1,11 @@
 ---
 title: "Action System"
-description: "Intelligent action selection with scoring, cooldowns, and hybrid Ability/BehaviorTree execution."
-date: 2025-12-27
+description: "Intelligent action selection that scores every available move and picks the best one for the moment."
+date: 2026-02-12
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Actions"]
 parent: "SoulslikeCombatDocs"
 ---
-
 
 <Breadcrumb items={[
     { label: "Docs", href: "/docs" },
@@ -14,16 +13,16 @@ parent: "SoulslikeCombatDocs"
     { label: "Action System" }
 ]} />
 
-> The brain behind enemy decisions. Scoring every available action and picking the right one for the moment.
+> The brain behind enemy decisions. It doesn't just pick an attack — it *evaluates* the battlefield.
 
 <ActionFlowVisualizer />
 
 ## When to Use This
 
-- Any AI that chooses between multiple actions (attacks, abilities, retreats)
-- Enemies with varied movesets where you want intelligent selection
+- Any AI that needs to choose between multiple attacks or behaviors
+- Enemies with distance-dependent movesets (melee vs ranged)
 - Boss fights with phase-based action sets
-- Context-aware AI that reacts to player state (blocking, low health, etc.)
+- Group AI where different roles use different attack patterns
 
 > This system can be used independently of the other plugin systems.
 
@@ -31,437 +30,232 @@ parent: "SoulslikeCombatDocs"
 
 ## Core Concepts
 
-### The Scoring Formula
+### Scoring
 
-Every action in your ActionSet gets scored each evaluation:
+Every evaluation, all valid actions compete. The highest score wins.
 
 ```
-FinalScore = BaseWeight
-           × DistanceScore        // Are we at the right range?
-           × AngleScore           // Are we facing the target?
-           × HealthModifier       // Does our health affect this?
-           × NoveltyScore         // Have we used this recently?
-           × ChainBonus           // Does this combo from our last action?
-           × ContextModifiers     // Player blocking? Low health?
+Final Score = SelectionWeight 
+            × Range Score (Distance & Angle)
+            × Context Multipliers (Tags)
+            × Novelty Bonus (Variety)
+            × Chain Bonus (Combos)
 ```
 
-The highest-scoring action that's off cooldown and meets requirements wins.
+### Range & Angle Evaluation
 
-### Distance & Angle Evaluation
-
-Each action defines its ideal range using `FRangeEval`:
+Each action uses an `FRangeEval` curve that defines its **optimal** zone. An attack might be valid from 0–500cm, but its score peaks at 150–250cm.
 
 ```cpp
-// Example: Light attack is perfect at 150-250cm, valid up to 400cm
+// Light Attack: Perfect at mid-close range
 Distance.MinValue = 0;
-Distance.OptimalMin = 150;    // Score = 1.0 starts here
-Distance.OptimalMax = 250;    // Score = 1.0 ends here  
-Distance.MaxValue = 400;      // Invalid beyond this
-
-// Visualization:
-//   0    150      250      400
-//   |-----|========|--------|
-//  0.0   1.0     1.0      0.0
+Distance.OptimalMin = 100;   // Score ramps up to 1.0
+Distance.OptimalMax = 250;   // Score stays at 1.0
+Distance.MaxValue = 400;     // Score ramps down to 0.0
 ```
 
-Same concept applies to angle. Attacks that require facing the target score higher when aligned.
+**Available presets:**
+- `FRangeEval::MakeMeleeRange()` — Close-range attacks
+- `FRangeEval::MakeRangedRange()` — Long-range attacks
+- `FRangeEval::MakeFrontalAngle()` — Forward-facing cone
+- `FRangeEval::MakeLowHealthRange()` — Triggers at low health
+- `FRangeEval::MakeAlwaysOne()` — Always returns 1.0 (no range preference)
 
-### Cooldowns
+### Cooldowns & Variance
 
-Each action has independent cooldown tracking:
+| Property | Description |
+|----------|-------------|
+| `Duration` | Base time before the action can be reused. |
+| `InitialCooldown` | Cooldown applied on spawn (prevents instant nukes). |
+| `Randomization` | Adds ±% variance (e.g., `0.2` = ±20%). |
+| `SpawnCooldownChance` | Chance to start on cooldown (desyncs groups of enemies). |
+| `MaxConsecutiveUses` | Limit repeats before the AI must switch (e.g., `1` = can't use twice in a row). |
 
-| Property | Purpose |
-|----------|---------|
-| `Duration` | Time before action can be used again |
-| `WarmupCooldown` | Starting cooldown (prevents immediate use on spawn) |
-| `RandomDeviation` | Adds randomness to cooldown duration |
+### Novelty & Chains
+- **Novelty:** Recently used actions get a score penalty. This creates diverse behavior without rigid randomization.
+- **Chains:** Actions can define a `PreferredNextActionId`. After a "Light Attack", the "Heavy Finisher" gets a massive score boost — creating natural combos.
 
-### Novelty Decay
-
-To prevent repetitive behavior, recently-used actions get penalized:
-
-- Just used: Score heavily reduced
-- A few seconds ago: Score slightly reduced  
-- Long time ago: Full score
-
-This creates natural variety without explicit randomization.
-
-### Chain Bonuses
-
-Actions can combo into each other:
-
-```cpp
-// In your ActionSet:
-LightAttack.PreferredNextAction = "HeavyAttack";
-LightAttack.ChainBonusMultiplier = 0.5f;  // +50% score for HeavyAttack if chaining
-```
-
-After a LightAttack, HeavyAttack gets a scoring boost, encouraging combos.
+<Protip 
+  title="Organic Combos" 
+  description="You don't script 'Hit-Hit-Smash' — you make 'Smash' very likely after 'Hit'. If the player rolls out of range, the AI naturally breaks the combo instead of swinging at air." 
+/>
 
 ---
 
 ## Execution Modes
 
+Actions execute in one of two ways depending on complexity.
 
-
-Actions can execute in two ways:
-
-### Gameplay Ability Mode
-
-For simple actions: play a montage, apply damage, done.
+### Gameplay Ability (Simple)
+Activates a Gameplay Ability by tag and listens for the end tag.
 
 ```cpp
-FActionSpec LightAttack;
-LightAttack.Id = "LightAttack";
-LightAttack.ExecutionMode = EActionExecutionMode::GameplayAbility;
-LightAttack.AbilityTag = GameplayTag("SEC.Action.LightAttack");
-LightAttack.AbilityEndTag = GameplayTag("SEC.Action.End");
+ExecutionMode = EActionExecutionMode::GameplayAbility;
+AbilityTag = "SEC.Action.LightAttack";
+AbilityEndTag = "SEC.Action.End";
 ```
 
-The system activates the ability via AbilitySystemComponent and waits for the end tag.
+<Callout type="warning">
+  Your ability class **must** inherit from `UGameplayAbilityBase`. It handles the end-event handshake that tells the Action System when the ability finishes. Without it, the AI gets stuck waiting.
+</Callout>
 
-### Behavior Tree Mode
+`UGameplayAbilityBase` provides:
+- **Rotation Lock** (`bLockAIRotation`) — AI commits to the attack direction (no tracking mid-swing).
+- **Motion Warping** (`MotionWarpingTargetName`) — Automatically sets up a warp target from `AIController::GetFocusActor()`.
+- **Action Context** (`FActionAbilityContext`) — Passes target, distance, direction, magnitude, and context tags to the ability on activation.
 
-For complex multi-step actions with branching logic:
+### Behavior Tree (Complex)
+For multi-stage behaviors — circling, investigating, complex boss moves. Runs one or more Behavior Trees in sequence.
 
 ```cpp
-FActionSpec ChargeAttack;
-ChargeAttack.Id = "ChargeAttack";
-ChargeAttack.ExecutionMode = EActionExecutionMode::BehaviorTreeSequence;
-ChargeAttack.BehaviorTrees = { BT_ChargeWindup, BT_ChargeRelease };
-ChargeAttack.BehaviorTreeTimeout = 5.0f;
+ExecutionMode = EActionExecutionMode::BehaviorTreeSequence;
+BehaviorTreeSequence = { BT_ChargeWindup, BT_ChargeRelease };
+BehaviorTreeTimeout = 5.0f;
 ```
-
-The system runs each BT in sequence. Use this for:
-- Charge attacks with stamina checks
-- Multi-hit combos with conditional branches
-- Actions that need movement mid-execution
-
-**Auto-populated Blackboard Keys:**
-
-| Key | Type | Value |
-|-----|------|-------|
-| `SEC_TargetActor` | Object | Current focus actor |
-| `SEC_SelfActor` | Object | Controlled pawn |
-| `SEC_Distance` | Float | Distance to target |
-| `SEC_ActionId` | Name | ID of executing action |
 
 ---
 
-## Role-Based Switching (Advanced)
+## How Action Sets Are Managed
 
-To automatically swap ActionSets when roles change (e.g., from *Attacker* to *Supporter*), the **SECCombatControllerComponent** handles this automatically.
+The plugin uses a **push-based** architecture. When a combat role changes, the `SECCombatControllerComponent` on the controller automatically syncs everything.
 
-### How it Works
-1.  **AI Config:** Map roles to ActionSets in your `UEnemyAIConfig`.
-2.  **Component:** The `SECCombatControllerComponent` on your controller detects role changes from the subsystem.
-3.  **Syncing:** When the role changes, the component queries the correct ActionSet and pushes it to the `ActionEvaluationComponent` and `SECActionSetComponent` on the pawn.
+```
+AICombatRoleSubsystem assigns new role
+  → SECCombatControllerComponent::HandleCombatRoleAssigned()
+    → SyncStateForCombatRole()
+      → SECActionSetComponent::SyncForCombatRole()
+        → GetActionSetForRole()  // Resolution chain below
+        → ActionEvaluationComponent::SetActionSetAndResetState()
+```
 
-### Resolution Order
-The component decides which ActionSet to use based on this priority:
-1.  **Runtime Override** (Highest Priority - e.g., Boss entering Phase 2)
-2.  **Equipped Weapon** (If the weapon implements `ISECWeaponActionSetProvider`)
-3.  **AI Config Role** (Specific set for "Attacker", "Flanker", etc.)
-4.  **AI Config Default** (Fallback)
+### Resolution Priority
 
-> **Pro Tip:** This allows "Weapon-Driven" combat. If an enemy picks up a bow, the weapon can provide a Ranged ActionSet, instantly changing the AI's behavior.
+When `GetActionSetForRole()` is called, it walks this chain and returns the **first match**:
+
+1.  **Runtime Override** — `SetRuntimeOverride(ActionSet)`. Highest priority. Use for boss phase transitions.
+2.  **Equipped Weapon** — If the weapon actor implements `ISECWeaponActionSetProvider`, the system calls `GetWeaponActionSetForRole(RoleTag)` on it.
+3.  **Config Role** — Role-specific ActionSet from `EnemyAIConfig` (e.g., a different set for "Attacker" vs "Flanker").
+4.  **Config Default** — Fallback ActionSet from `EnemyAIConfig`.
+5.  **None** — No ActionSet found. AI will only move, never attack.
+
+Changes to weapon or override take effect **immediately** — no need to wait for a role change.
+
+<Protip 
+  title="Weapon-Driven AI" 
+  description="Because 'Equipped Weapon' outranks Config, you can change an enemy's entire brain just by giving them a different item. A skeleton with a Bow becomes a sniper. Disarm it, and it falls back to its Config set — becoming a brawler." 
+/>
+
+### Weapon Action Set Provider
+
+To make a weapon provide action sets, implement the `ISECWeaponActionSetProvider` interface on your weapon actor (Blueprint or C++). Override `GetWeaponActionSetForRole(RoleTag)` to return the appropriate `UActionSet*`.
+
+```cpp
+// Tell the pawn about the weapon:
+Pawn->ActionSetComponent->SetEquippedWeapon(WeaponActor);
+
+// Clear to revert to Config-based resolution:
+Pawn->ActionSetComponent->SetEquippedWeapon(nullptr);
+```
 
 ---
 
-## Dynamic Action Management
+## Dynamic Actions (Runtime)
 
-Sometimes you need to add or remove individual actions at runtime without swapping the entire ActionSet. For example, an enemy picks up a grenade and gains a "ThrowGrenade" action, or a boss loses a limb and can no longer use "SweepAttack".
-
-Granted actions live in a **separate runtime pool** that persists across role changes and ActionSet swaps. They participate in evaluation alongside the base ActionSet - same scoring, same cooldowns.
-
-### Grant / Revoke API
+Grant and revoke individual actions without changing the entire set.
 
 ```cpp
-// Grant a single action at runtime
-ActionEvaluationComponent->GrantAction(ThrowGrenadeSpec);
-
-// Grant all actions from a data asset
-ActionEvaluationComponent->GrantActionsFromSet(DA_BonusActions);
-
-// Revoke by ID
-ActionEvaluationComponent->RevokeAction("ThrowGrenade");
-
-// Revoke all actions from a data asset
-ActionEvaluationComponent->RevokeActionsFromSet(DA_BonusActions);
-
-// Clear everything granted at runtime
-ActionEvaluationComponent->ClearGrantedActions();
-
-// Query
-bool bHas = ActionEvaluationComponent->HasGrantedAction("ThrowGrenade");
-TArray<FName> Ids = ActionEvaluationComponent->GetGrantedActionIds();
+Pawn->ActionSetComponent->GrantAction(ThrowGrenadeSpec);
+Pawn->ActionSetComponent->RevokeAction("ThrowGrenade");
 ```
 
-### Delegates
+Granted actions **persist across role changes and action set swaps**. They participate in evaluation alongside the base ActionSet — same scoring, same cooldowns.
 
+For bulk operations:
 ```cpp
-// React to runtime action changes
-ActionEvaluationComponent->OnActionGranted.AddDynamic(this, &AMyClass::HandleGranted);
-ActionEvaluationComponent->OnActionRevoked.AddDynamic(this, &AMyClass::HandleRevoked);
-
-void AMyClass::HandleGranted(FName ActionId)  { /* update UI, etc. */ }
-void AMyClass::HandleRevoked(FName ActionId)  { /* clean up */ }
+Pawn->ActionSetComponent->GrantActionsFromSet(BonusActionSet);  // Add all from set
+Pawn->ActionSetComponent->RevokeActionsFromSet(BonusActionSet); // Remove all from set
+Pawn->ActionSetComponent->ClearGrantedActions();                // Remove all granted
 ```
-
-> **Delegates vs. Overridable Hooks:** Delegates let you *react to* events. For *modifying* behavior (gating which actions can execute, adjusting scores), use the `BlueprintNativeEvent` hooks described below.
-
-### Custom Action Gating & Scoring
-
-The `ActionEvaluationComponent` provides two `BlueprintNativeEvent` hooks you can override in a Blueprint subclass. These let you inject project-specific logic without understanding the built-in scoring pipeline.
-
-**CanExecuteAction** - Custom gate called after all built-in hard gates pass. Return `false` to veto an action.
-
-```cpp
-// Override in your Blueprint subclass of ActionEvaluationComponent:
-bool UMyActionEval::CanExecuteAction_Implementation(FName ActionId, const FDecisionContext& Context)
-{
-    // Block heavy attacks during boss phase 2
-    if (ActionId == "HeavyAttack" && Context.WorldTags.HasTag(Phase2Tag))
-    {
-        return false;
-    }
-    return true; // Allow by default
-}
-```
-
-**ModifyActionScore** - Called after the built-in scoring pipeline computes a score. Return a modified score.
-
-```cpp
-// Override in your Blueprint subclass:
-float UMyActionEval::ModifyActionScore_Implementation(FName ActionId, float BaseScore, const FDecisionContext& Context)
-{
-    // Boost defensive actions when health is low
-    if (ActionId == "Block" && Context.HealthPercentage < 0.3f)
-    {
-        return BaseScore * 2.0f;
-    }
-    return BaseScore; // No change by default
-}
-```
-
-These hooks are called during `EvaluateBestAction()` and work alongside the existing `GlobalMultiplier` and `ActionOverrides` runtime modifier API.
-
-### Pawn-Side Convenience
-
-`SECActionSetComponent` provides convenience wrappers that forward to the controller's `ActionEvaluationComponent`. This is useful when Blueprint code has a reference to the pawn but not the controller:
-
-```cpp
-// These do the same thing, just accessed from different places:
-Pawn->ActionSetComponent->GrantAction(Spec);
-Controller->ActionEvaluationComponent->GrantAction(Spec);
-```
-
-> Granted actions are independent from the base ActionSet. When the AI changes roles and gets a new ActionSet, all previously granted actions remain available.
 
 ---
 
-## Replicated Action State
+## Custom Scoring Hooks
 
-The **SECActionSetComponent** replicates key execution state to clients. This is useful for driving client-side visuals like enemy health bars showing the current attack, UI indicators, VFX triggers, etc.
+The `ActionEvaluationComponent` provides two `BlueprintNativeEvent` hooks for project-specific logic.
 
-### What Replicates
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `CurrentActionId` | `FName` | Currently executing action (NAME_None when idle) |
-| `bActionExecuting` | `bool` | True while an action is running |
-| `ActiveActionSet` | `UActionSet*` | The active ActionSet data asset |
-
-### Client-Side Delegates
+**CanExecuteAction** — Veto an action after all built-in gates pass.
 
 ```cpp
-// Fires on both server and clients when an action starts
-ActionSetComponent->OnActionExecutionStarted.AddDynamic(this, &UMyWidget::OnStarted);
-
-// Fires on both server and clients when an action completes
-ActionSetComponent->OnActionExecutionCompleted.AddDynamic(this, &UMyWidget::OnCompleted);
-
-// Fires when the active ActionSet changes (e.g., role swap)
-ActionSetComponent->OnActionSetChanged.AddDynamic(this, &UMyWidget::OnSetChanged);
+bool CanExecuteAction(FName ActionId, const FDecisionContext& Context);
+// Return false to block the action.
 ```
 
-### Reading State from Clients
+**ModifyActionScore** — Adjust the score after the pipeline computes it.
 
 ```cpp
-// Blueprint-friendly getters (work on server and clients):
-FName ActionId = ActionSetComponent->GetCurrentActionId();
-bool bBusy = ActionSetComponent->IsActionExecuting();
-UActionSet* Set = ActionSetComponent->GetActiveActionSet();
+float ModifyActionScore(FName ActionId, float BaseScore, const FDecisionContext& Context);
+// Return a modified score. Return BaseScore for no change.
 ```
 
-> The controller pushes execution state to `SECActionSetComponent` automatically. You don't need to do anything special for replication to work - just read the values on clients.
-
----
-
-## SEC Play Montage And Wait (Ability Task)
-
-The plugin includes a custom Ability Task called **SEC Play Montage And Wait** - a drop-in replacement for `PlayMontageAndWait` with additional output pins for anim notify callbacks.
-
-### Why?
-
-Standard `PlayMontageAndWait` gives you OnCompleted, OnBlendOut, OnInterrupted, OnCancelled. But if you want to react to specific moments *during* the montage (spawn a projectile at a specific frame, trigger a VFX on impact, etc.), you need custom notify handling.
-
-This task adds **OnNotifyBegin** and **OnNotifyEnd** pins that fire when `PlayMontageNotify` or `PlayMontageNotifyWindow` notify states are hit.
-
-### Output Pins
-
-| Pin | When It Fires | NotifyName Value |
-|-----|---------------|-----------------|
-| **OnCompleted** | Montage played to the end | `NAME_None` |
-| **OnBlendedIn** | Montage finished blending in | `NAME_None` |
-| **OnBlendOut** | Montage started blending out | `NAME_None` |
-| **OnInterrupted** | Interrupted by another montage | `NAME_None` |
-| **OnCancelled** | Task cancelled externally | `NAME_None` |
-| **OnNotifyBegin** | A `PlayMontageNotify` or `PlayMontageNotifyWindow` begin | The notify's FName |
-| **OnNotifyEnd** | A `PlayMontageNotifyWindow` end | The notify's FName |
-
-### Usage
-
-In your Gameplay Ability Blueprint:
-1. Replace `PlayMontageAndWait` with **SEC Play Montage And Wait**
-2. Add `PlayMontageNotify` notifies to your montage timeline with descriptive names (e.g., "SpawnProjectile", "ImpactVFX")
-3. Wire up `OnNotifyBegin` and switch on `NotifyName` to handle each event
-
-```
-SEC Play Montage And Wait (AM_RangedAttack)
-  ↓
-OnNotifyBegin → Switch on NotifyName
-  • "SpawnProjectile" → Spawn and launch projectile
-  • "WindupVFX" → Play windup particle effect
-OnCompleted → End Ability
-OnInterrupted → End Ability (cancelled)
-```
-
-> This task supports full GAS replication. Montage plays replicate to simulated proxies the same way standard GAS montages do.
+Override these in a Blueprint or C++ subclass of `UActionEvaluationComponent`.
 
 ---
 
 ## Quick Setup
 
-### 1. Create an ActionSet
-
-Right-click → Miscellaneous → Data Asset → **ActionSet**
-
-### 2. Add Actions
-
-| Field | Example Value |
-|-------|---------------|
-| Id | `LightAttack` |
-| ExecutionMode | `GameplayAbility` |
-| AbilityTag | `SEC.Action.LightAttack` |
-| AbilityEndTag | `SEC.Action.End` |
-| Distance.OptimalMin | `100` |
-| Distance.OptimalMax | `250` |
-| Cooldown.Duration | `2.0` |
-| BaseWeight | `1.0` |
-
-See [Configuration Reference](/docs/soulslike-combat/configuration#action-sets) for the complete FActionSpec structure.
-
-### 3. Assign to Controller
+1.  **Create Asset:** Right-click → **Miscellaneous** → **Data Asset** → **ActionSet**.
+2.  **Define Actions:** Each entry needs an `ActionId`, `SelectionWeight`, `DistanceEval`, `AngleEval`, and an execution mode.
+3.  **Assign:** Drop the ActionSet into your `EnemyAIConfig`, or set it directly for testing:
 
 ```cpp
-// In AI Controller:
-ActionEvaluationComponent->SetActionSet(MyActionSet);
+ActionEvaluationComponent->ActiveActionSet = MyActionSet;
 ```
 
-Or configure in the [AICombatConfig](/docs/soulslike-combat/configuration#combat-config) for automatic role-based switching.
-
-### 4. Create the Gameplay Ability
-
-Inherit from `GameplayAbilityBase` (required for end detection):
-
-```
-Event ActivateAbility
-    ↓
-PlayMontageAndWait
-    ↓
-EndAbility  // Automatically sends end event
-```
-
-`GameplayAbilityBase` works with **any AAIController**, not just `EnemyControllerBase`. It uses `AAIController::GetFocusActor()` to build the action context (target, distance, direction). If the controller is an `EnemyControllerBase`, it also provides rotation lock during abilities for committed attacks.
-
-> **Important:** Always use `GameplayAbilityBase` as your parent class. It handles the end event automatically. Otherwise, the AI gets stuck waiting.
+See [Configuration Reference](/docs/soulslike-combat/configuration) for the complete `EnemyAIConfig` structure.
 
 ---
 
-## Key Functions
+## Key API
 
-```cpp
-// Evaluate all actions, return the best one
-FChosenAction EvaluateBestAction(const FDecisionContext& Context, float GameTimeSeconds);
+| Component | Location | Role |
+|-----------|----------|------|
+| `ActionEvaluationComponent` | Controller | Scoring, evaluation, execution |
+| `SECActionSetComponent` | Pawn | Resolution, replication, weapon/override management |
+| `SECCombatControllerComponent` | Controller | Orchestrates sync on role changes |
 
-// Execute a chosen action
-bool ExecuteAction(FName ActionId);
+**ActionEvaluationComponent (Controller)**
+- `EvaluateBestAction(Context, Time, OutChosen)` — Run the scoring pipeline.
+- `ExecuteAction(ActionId)` — Force-execute a specific action.
+- `SetActionOverride(ActionId, Multiplier)` — Runtime buff/nerf a specific action's score.
+- `CanExecuteAction()` / `ModifyActionScore()` — Override hooks (see above).
 
-// Swap action set at runtime (e.g., boss phase 2)
-void SetActionSet(UActionSet* NewSet);
-
-// Is an action currently running?
-bool IsActionExecuting();
-
-// Runtime score modifiers
-void SetActionOverride(FName ActionId, float ScoreMultiplier);
-void ClearAllOverrides();
-
-// Dynamic Action Management
-bool GrantAction(const FActionSpec& Action);
-int32 GrantActionsFromSet(const UActionSet* ActionSet);
-bool RevokeAction(FName ActionId);
-int32 RevokeActionsFromSet(const UActionSet* ActionSet);
-void ClearGrantedActions();
-bool HasGrantedAction(FName ActionId);
-TArray<FName> GetGrantedActionIds();
-```
-
----
-
-## Context Tags
-
-Actions can require or block based on gameplay tags:
-
-```cpp
-// Only use this action if player is attacking
-LightCounterAttack.RequiredTags = {"Player.Attacking"};
-
-// Never use this action if we're enraged
-DefensiveRetreat.BlockedTags = {"Self.Enraged"};
-
-// Add these tags while action is active
-HeavyAttack.AddTags = {"Self.SuperArmor"};
-```
+**SECActionSetComponent (Pawn)**
+- `SetEquippedWeapon(Actor)` — Weapon-driven action set override.
+- `SetRuntimeOverride(ActionSet)` / `ClearRuntimeOverride()` — Boss phase override.
+- `GrantAction()` / `RevokeAction()` — Runtime action management.
+- `OnActionExecutionStarted` / `OnActionExecutionCompleted` — Replicated delegates for client UI/FX.
+- `OnActionSetChanged` — Fires when the active ActionSet changes (replicated).
 
 ---
 
 ## Debug Tools
 
-**Enable Logging:**
 ```cpp
-ActionEvaluationComponent->bDebugLogDecisions = true;
-```
-
-**Output:**
-```
-LogEvaluation: Evaluating 3 actions for BP_Enemy_1...
-LogEvaluation: [LightAttack] Dist:180 Angle:15 Score:0.95 SELECTED
-LogEvaluation: [HeavyAttack] Dist:180 Angle:15 Score:0.60 (cooldown:1.2s)
-LogEvaluation: [Retreat] Dist:180 Angle:15 Score:0.10 (out of range)
+// On ActionEvaluationComponent:
+ActionEvalComp->bDebugLogDecisions = true;  // Log scoring breakdown
+ActionEvalComp->bDebugLogExecution = true;  // Log execution flow
 ```
 
 ---
 
 ## Integration Points
 
-| System | How Actions Uses It |
-|--------|---------------------|
-| [Movement System](/docs/soulslike-combat/movement-system) | Provides distance/angle context for scoring |
-| [Combat Roles](/docs/soulslike-combat/combat-roles) | Swaps ActionSets based on current role |
-| [Threat Detection](/docs/soulslike-combat/threat-detection) | Threat level can modify action scores |
-| [Multiplayer](/docs/soulslike-combat/multiplayer) | Action state replicates to clients via SECActionSetComponent |
+| System | How It Connects |
+|--------|-----------------|
+| [Movement System](/docs/soulslike-combat/movement-system) | Provides distance/angle for scoring context |
+| [Combat Roles](/docs/soulslike-combat/combat-roles) | Role changes trigger automatic ActionSet swaps |
+| [Threat Detection](/docs/soulslike-combat/threat-detection) | Threat level feeds into `FDecisionContext` |
+| [Multiplayer](/docs/soulslike-combat/multiplayer) | Action state replicates to clients via `SECActionSetComponent` |
 
 ---
 
