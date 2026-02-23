@@ -63,11 +63,20 @@ Root (Always Active)
 - DefaultAggressionLevel
 - WindowIdIntervalSeconds
 
+**Attribute Inputs (Optional):**
+- HealthAttribute (FGameplayAttribute)
+- MaxHealthAttribute (FGameplayAttribute)
+- StaminaAttribute (FGameplayAttribute)
+- MaxStaminaAttribute (FGameplayAttribute)
+
+Point these at your GAS AttributeSet properties (e.g. `UMyAttributeSet::GetHealthAttribute()`). When set, the task reads live values from the pawn's ASC every tick. When left empty, it falls back to `BasicHealthComponent` (if present) or safe defaults (health percentage 1.0, max health 100).
+
 **Outputs:**
 - OutDecisionContext (FDecisionContext struct)
 
 **What it does:**
 - Calculates distance and angle to target
+- Reads health and stamina from GAS attributes (or BasicHealthComponent fallback)
 - Evaluates health percentages
 - Gathers gameplay tags from target
 

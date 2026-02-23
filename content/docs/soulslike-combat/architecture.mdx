@@ -151,6 +151,18 @@ This component extends Unreal's `UStateTreeAIComponent` and adds automatic State
 
 ## System Flow
 
+### Component Lifecycle Convention
+
+All controller-side components (`SECCombatControllerComponent`, `BotStateTreeAIComponent`, `ActionEvaluationComponent`, `MovementEvaluatorComponent`, `ThreatDetectionComponent`) follow the same lifecycle pattern:
+
+1. **`OnRegister`** — Subscribe to `AAIController::OnPossessedPawnChanged`. If the controller already has a pawn, handle it immediately.
+2. **`OnPossessedPawnChanged` callback** — Cache pawn reference, resolve ASC (if needed), initialize actions/state for the new pawn.
+3. **`OnUnregister`** — Unsubscribe from `OnPossessedPawnChanged`.
+
+This convention ensures components work correctly regardless of when the controller possesses the pawn relative to `BeginPlay`. It also handles re-possession (pawn swaps) cleanly.
+
+> **Why not BeginPlay?** Controller components' `BeginPlay` can fire before the controller possesses a pawn. Using `OnRegister` + the possession delegate guarantees the pawn is available when the component initializes.
+
 1. **StateTree** drives the AI behavior loop using `BotStateTreeAIComponent`
 2. **ActionEvaluationComponent** gathers context: distance, angle, health, threat, tags
 3. **ActionSet** scores all available actions using:

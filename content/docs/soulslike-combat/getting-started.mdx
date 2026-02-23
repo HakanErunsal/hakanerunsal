@@ -86,7 +86,7 @@ Navigate to `Content/SoulslikeEnemyCombat/Showcase/Maps/LVL_SEC_Showcase` and op
 
 It also implements `IAbilitySystemInterface` and `IEnemyAIConfigProvider`. You can set the `AIConfig` property directly on the pawn.
 
-> **Alternative:** You do not have to inherit from `EnemyCharacterBase`. Any `ACharacter` works. Implement `IEnemyAIConfigProvider` on your pawn so the controller can query for per-pawn AI settings. Add the components you need manually.
+> **Alternative:** You do not have to inherit from `EnemyCharacterBase`. Any `ACharacter` works. Implement `IEnemyAIConfigProvider` on your pawn so the controller can query for per-pawn AI settings. Add the components you need manually. If you want ability-based actions (the most common case), your character **must also implement `IAbilitySystemInterface`** and return a valid `UAbilitySystemComponent` from `GetAbilitySystemComponent()`. Without this, `ActionEvaluationComponent` cannot find the ASC and ability-based actions will not work.
 
 #### 3. Create AI Controller
 

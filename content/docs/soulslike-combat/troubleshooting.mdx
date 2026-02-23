@@ -65,12 +65,25 @@ Melee.Debug.DrawTracing 0-1
 - AbilityTag mismatch, update ability tags on the DataAssets if you changed them somewhere else.
 - Action on cooldown, check your cooldowns and cooldown randomization
 - No valid actions in ActionSet
+- **Custom character class missing `IAbilitySystemInterface`** - if your pawn doesn't implement this interface, `ActionEvaluationComponent` cannot find the ASC and all ability-based actions will silently fail.
+- **ByEvent mode: Ability missing Trigger entry** - when using `ActivationMode = ByEvent`, the ability class must have a **Trigger** entry in its class defaults with the matching tag and source set to **Gameplay Event**. Without it, `HandleGameplayEvent` fires but no ability reacts.
 
 **Solutions:**
 - Check ASC grants ability with correct tag
 - Verify ActionSet AbilityTag matches ability's tags
 - Enable bDebugLog to see why action isn't selected
 - Check distance/angle ranges in ActionSet
+- If using a custom character class, ensure it implements `IAbilitySystemInterface` and returns a valid `UAbilitySystemComponent` from `GetAbilitySystemComponent()`. See the [Getting Started](/docs/soulslike-combat/getting-started) guide for details.
+- For ByEvent abilities, open the ability class defaults, go to **Triggers**, add an entry with your event tag and set **Trigger Source** to **Gameplay Event**.
+
+---
+
+### ByEvent activation silently falls back to ByTag (BehaviorTree mode)
+
+**Cause:** The `SEC_ActivationMode` key is missing from your Blackboard Data Asset. When the Action System writes `"ByEvent"` to this key and the key does not exist in the asset, the write is silently ignored. The BT task reads an empty value and falls back to ByTag.
+
+**Solution:**
+Open your Blackboard Data Asset and add a **Name** key called `SEC_ActivationMode`. Also verify that all other `SEC_` keys exist: `SEC_ActionId` (Name), `SEC_AbilityTag` (String), `SEC_AbilityEndTag` (String), `SEC_TargetActor` (Object), `SEC_SelfActor` (Object), `SEC_Distance` (Float).
 
 ---
 
