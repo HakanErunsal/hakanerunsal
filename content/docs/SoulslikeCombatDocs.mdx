@@ -11,7 +11,7 @@ tags: ["Documentation", "Unreal Engine", "AI", "Tutorial"]
 
 **SoulslikeEnemyCombat** is a production-ready AI combat plugin for Unreal Engine 5.6+. It provides intelligent, tactical enemy behavior for souls-like and action RPG games through a modular component system. Supports single-player, listen server, and dedicated server configurations.
 
-The plugin consists of **5 systems** that work together seamlessly: Movement, Actions, Combat Roles, Threat Detection, and Melee Trace. Each system can also be used independently if you only need specific functionality.
+The plugin consists of **6 systems** that work together seamlessly: Movement, Actions, Reactions, Combat Roles, Threat Detection, and Melee Trace. Each system can also be used independently if you only need specific functionality.
 
 ### What's Included
 
@@ -80,6 +80,11 @@ Each system is independent and can be used standalone. Click to learn how each w
 <a href="/docs/soulslike-combat/action-system" className="doc-card rounded-lg border border-border hover:border-primary/50 transition-all duration-300 bg-card block p-6">
   <h3 className="text-lg font-semibold mb-2">⚔️ Action System</h3>
   <p className="text-sm text-muted-foreground">Scoring-based action selection, cooldowns, Ability/BT execution.</p>
+</a>
+
+<a href="/docs/soulslike-combat/reaction-system" className="doc-card rounded-lg border border-border hover:border-primary/50 transition-all duration-300 bg-card block p-6">
+  <h3 className="text-lg font-semibold mb-2">🛡️ Reaction System</h3>
+  <p className="text-sm text-muted-foreground">Event-driven parry, dodge, and counter reactions to game stimuli.</p>
 </a>
 
 <a href="/docs/soulslike-combat/combat-roles" className="doc-card rounded-lg border border-border hover:border-primary/50 transition-all duration-300 bg-card block p-6">
@@ -174,13 +179,6 @@ Check out the [public Trello roadmap](https://trello.com/b/gN7Fxryx/soulslike-en
 
 ### Shipped
 - ✅ **Multiplayer Support**: Server-authoritative AI with replicated state for listen and dedicated servers
-
-### 2026 Q1
-- 🔮 **Player Combat Component**: Combat system for player characters
-- 🔮 **Example Player Character**: Pre-configured with attacks, dodges, blocks
-
-### 2026 Q3
-- 🔮 **Group Tactics** (Experimental): Coordinated multi-enemy attacks, formations
 
 ---
 

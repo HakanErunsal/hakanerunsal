@@ -1,0 +1,273 @@
+---
+title: "Reaction System"
+description: "Event-driven AI reactions - parry, dodge, counter - that respond to game events in real time."
+date: 2026-02-26
+published: true
+tags: ["Documentation", "Unreal Engine", "AI", "Reactions"]
+parent: "SoulslikeCombatDocs"
+---
+
+<Breadcrumb items={[
+    { label: "Docs", href: "/docs" },
+    { label: "SoulslikeCombat", href: "/docs/SoulslikeCombatDocs" },
+    { label: "Reaction System" }
+]} />
+
+> The flip side of actions. Actions are *polled* - reactions are *event-driven*.
+
+<ReactionFlowVisualizer />
+
+## When to Use This
+
+- AI that parries incoming attacks
+- Dodge-rolls triggered by projectile detection
+- Counter-attacks after blocking
+- Any "respond to this stimulus" behavior
+
+> The system doesn't decide **when** to react - you do. It decides **what** to react with and whether the reaction is allowed.
+
+---
+
+## Core Concepts
+
+### Actions vs Reactions
+
+| | Actions | Reactions |
+|---|---------|-----------|
+| **Trigger** | Polled on a timer via StateTree | Event-driven from your Blueprint/C++ |
+| **Selection** | Score-based (distance, angle, context) | Priority + weighted random |
+| **Component** | `ActionEvaluationComponent` | `ReactionEvaluationComponent` |
+| **Data Asset** | `ActionSet` | `ReactionSet` |
+| **When to use** | "What should I do next?" | "Something happened - how do I respond?" |
+
+### How It Works
+
+1. **Something happens** - your code detects a stimulus (damage, projectile, proximity)
+2. **Ask the system** - call `EvaluateBestReaction()` with an optional category filter
+3. **System evaluates** - checks gates (enabled, cooldown, BlockReactions tag, RequiresTags, BlockTags), groups by priority, picks weighted random winner
+4. **You fire it** - call `ExecuteReaction()` with the chosen reaction ID and a context payload
+5. **Lifecycle managed** - the system handles ability activation, tag management, cooldowns, timeout, and completion
+
+---
+
+## ReactionSet (Data Asset)
+
+Create via **Right-click → Miscellaneous → Data Asset → ReactionSet**.
+
+Each entry is an `FReactionSpec`:
+
+### Identity
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `bEnabled` | `bool` | Toggle without removing |
+| `ReactionId` | `FName` | Unique name: `"Parry"`, `"DodgeLeft"`, `"Counter"` |
+| `ReactionCategory` | `FGameplayTag` | Grouping tag for `EvaluateBestReaction()` |
+
+### Execution
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `AbilityClass` | `TSubclassOf<UGameplayAbility>` | Ability to activate (auto-granted to ASC) |
+| `ActivationMode` | `EAbilityActivationMode` | `ByEvent` (default) or `ByTag` |
+| `AbilityTag` | `FGameplayTag` | Tag for activation |
+| `AbilityEndTag` | `FGameplayTag` | Tag to listen for on ability completion |
+| `AbilityTimeout` | `float` | Max seconds to wait (0 = infinite) |
+
+### Tags
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `AddTags` | `FGameplayTagContainer` | Applied to ASC while reaction is active |
+| `RequiresTags` | `FGameplayTagContainer` | All must be present to allow this reaction |
+| `BlockTags` | `FGameplayTagContainer` | If any are present, this reaction is blocked |
+
+### Scoring
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `Priority` | `int32` | Higher value = chosen first |
+| `SelectionWeight` | `float` | Random tiebreak among equal-priority reactions |
+| `Cooldown` | `FActionCooldown` | Same cooldown struct as actions |
+
+### Action Interaction
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `bCancelCurrentAction` | `bool` | Cancel running action when reaction fires (default: true) |
+
+<Protip 
+  title="Block actions via tags" 
+  description="To prevent new actions during a reaction, add SEC.Action.BlockActions to AddTags. This is checked in PassesHardGates() on the action side, so blocked actions won't even be evaluated." 
+/>
+
+---
+
+## Selection Logic
+
+```
+EvaluateBestReaction(CategoryTag):
+  1. Filter by CategoryTag (skip if empty)
+  2. Gate checks per reaction:
+     - Is enabled?
+     - Off cooldown?
+     - Under MaxConsecutiveUses?
+     - SEC.Reaction.BlockReactions not on ASC?
+     - All RequiresTags present?
+     - No BlockTags present?
+  3. Group survivors by Priority (highest first)
+  4. Weighted random pick among top-priority group
+  → FChosenReaction { ReactionId, AbilityTag, Priority, Weight }
+```
+
+---
+
+## ReactionEvaluationComponent
+
+Lives on the **AIController** alongside `ActionEvaluationComponent`.
+
+### Core API
+
+| Function | Description |
+|----------|-------------|
+| `SetReactionSet(UReactionSet*)` | Swap reaction sets at runtime. Re-grants abilities, resets cooldowns. |
+| `CanReact(FName ReactionId)` | Quick gate check without executing. |
+| `EvaluateBestReaction(FGameplayTag CategoryTag)` | Find best available reaction. Returns `FChosenReaction`. |
+| `ExecuteReaction(FName ReactionId, FSECExecutionContext Context)` | Fire a reaction with full context. |
+| `StopCurrentReaction(bool bSuccess)` | Manually stop the running reaction. |
+| `IsReactionExecuting()` | True while a reaction is active. |
+| `GetCurrentReactionId()` | Name of the currently running reaction. |
+
+### Delegates
+
+| Delegate | Parameters | When |
+|----------|------------|------|
+| `OnReactionStarted` | `FName ReactionId, FSECExecutionContext Context` | Reaction begins |
+| `OnReactionCompleted` | `FName ReactionId, bool bSuccess, FSECExecutionContext Context` | Reaction finishes (success or timeout) |
+
+<Callout type="warning">
+  Your reaction ability **must** inherit from `UGameplayAbilityBase`. It handles the end-event handshake that tells the system when the ability finishes. Without it, the AI gets stuck waiting until timeout.
+</Callout>
+
+---
+
+## Execution Flow
+
+```
+ExecuteReaction("Parry", Context)
+  ├── 1. Validate gates (enabled, cooldown, BlockReactions, RequiresTags, BlockTags)
+  ├── 2. Cancel current action (if bCancelCurrentAction)
+  ├── 3. Apply AddTags to ASC
+  ├── 4. Pack FSECExecutionContext into FGameplayEventData
+  │      ├── Auto-populate InstigatorTags from instigator ASC
+  │      ├── Auto-populate TargetTags from target ASC
+  │      └── TargetData passed through directly
+  ├── 5. Activate ability (ByEvent or ByTag)
+  ├── 6. Start cooldown, record use
+  ├── 7. Fire OnReactionStarted
+  └── Listen for: AbilityEndTag event OR AbilityTimeout
+       └── CompleteExecution
+           ├── Remove AddTags from ASC
+           └── Fire OnReactionCompleted
+```
+
+---
+
+## Reaction-to-Reaction Blocking
+
+No dedicated flag needed. Use `AddTags` and `BlockTags` for full control:
+
+```
+Reaction A (Parry):
+  AddTags:   [SEC.State.ReactionActive]
+  BlockTags: []
+
+Reaction B (Dodge):
+  AddTags:   [SEC.State.ReactionActive]
+  BlockTags: [SEC.State.ReactionActive]   ← can't fire while Parry is active
+```
+
+To block **all** reactions globally (e.g., during stun), apply the `SEC.Reaction.BlockReactions` tag to the ASC. This is checked inside `PassesReactionGates()` before any per-reaction tag check.
+
+---
+
+## FSECExecutionContext
+
+Both actions and reactions share the same unified context struct:
+
+| Field | Type | Filled By |
+|-------|------|-----------|
+| `Target` | `TWeakObjectPtr<AActor>` | Caller |
+| `OptionalObject` | `TWeakObjectPtr<UObject>` | Caller |
+| `Magnitude` | `float` | Caller |
+| `EventTag` | `FGameplayTag` | Caller |
+| `ContextTags` | `FGameplayTagContainer` | Caller |
+| `TargetData` | `FGameplayAbilityTargetDataHandle` | Caller |
+| `DistanceToTarget` | `float` | System (auto) |
+| `DirectionToTarget` | `FVector` | System (auto) |
+| `InstigatorTags` | `FGameplayTagContainer` | System (auto from ASC) |
+| `TargetTags` | `FGameplayTagContainer` | System (auto from ASC) |
+
+Use `USECTargetDataLibrary` to pack spatial data (directions, locations, transforms) into `TargetData`.
+
+---
+
+## Quick Setup
+
+1. **Create Asset:** Right-click → Miscellaneous → Data Asset → ReactionSet
+2. **Define Reactions:** Fill in ReactionId, AbilityClass, AbilityTag, AbilityEndTag
+3. **Add Component:** Add `ReactionEvaluationComponent` to your AIController
+4. **Assign:** Set `ActiveReactionSet` on the component
+5. **Trigger from your logic:**
+
+```cpp
+// In your Blueprint or C++ (e.g., OnDamageReceived):
+FSECExecutionContext Context;
+Context.Target = DamageInstigator;
+Context.Magnitude = DamageAmount;
+Context.EventTag = SEC_Stimulus_MeleeHit;
+Context.TargetData = USECTargetDataLibrary::MakeTargetDataFromDirection(HitDirection);
+
+FChosenReaction Chosen = ReactionComp->EvaluateBestReaction(SEC_Reaction_Defensive);
+if (Chosen.IsValid())
+{
+    ReactionComp->ExecuteReaction(Chosen.ReactionId, Context);
+}
+```
+
+<Protip 
+  title="Context reuse" 
+  description="FSECExecutionContext is the same struct used by actions. If you're already familiar with ExecuteActionWithContext(), reaction context works identically - same fields, same auto-population, same TargetData library." 
+/>
+<Protip 
+  title="Working example included" 
+  description="Open BP_SEC_EnemyCharacter and check its ApplyDamage interface implementation to see exactly how reactions are triggered from damage events. The included DA_ReactionSet data asset is pre-configured with example reactions you can experiment with and use as a starting point." 
+/>
+---
+
+## Gameplay Tags
+
+| Tag | Purpose |
+|-----|---------|
+| `SEC.Reaction.End` | Default end tag for reactions |
+| `SEC.Reaction.BlockReactions` | Blocks ALL reactions when present on ASC |
+| `SEC.Action.BlockActions` | Blocks ALL actions when present on ASC |
+| `SEC.State.ReactionActive` | Convenience tag for reaction-to-reaction blocking |
+
+---
+
+## Integration Points
+
+| System | How It Connects |
+|--------|-----------------|
+| [Action System](/docs/soulslike-combat/action-system) | Reactions can cancel actions and block new ones via AddTags |
+| [Melee Trace](/docs/soulslike-combat/melee-trace) | `OnMeleeHitResponse` delegate triggers reactions on attack; `ISECDamageable` returns parry/block results |
+| [Threat Detection](/docs/soulslike-combat/threat-detection) | ThreatLevel can inform which reaction category to evaluate |
+| [Multiplayer](/docs/soulslike-combat/multiplayer) | Reactions execute server-side via ASC; cosmetics use Gameplay Cues |
+
+---
+
+<DocNav 
+  prev={{ title: "Action System", href: "/docs/soulslike-combat/action-system" }} 
+  next={{ title: "Combat Roles", href: "/docs/soulslike-combat/combat-roles" }} 
+/>

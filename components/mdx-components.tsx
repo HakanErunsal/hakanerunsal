@@ -9,6 +9,7 @@ import { Breadcrumb } from "./breadcrumb";
 import { DocNav } from "./doc-nav";
 import MovementVisualizer from '@/components/MovementVisualizer';
 import ActionFlowVisualizer from '@/components/ActionFlowVisualizer';
+import ReactionFlowVisualizer from '@/components/ReactionFlowVisualizer';
 import CombatRoleVisualizer from '@/components/CombatRoleVisualizer';
 import ThreatVisualizer from '@/components/ThreatVisualizer';
 import MeleeTraceVisualizer from '@/components/MeleeTraceVisualizer';
@@ -33,6 +34,7 @@ const components = {
   DocNav,
   MovementVisualizer,
   ActionFlowVisualizer,
+  ReactionFlowVisualizer,
   CombatRoleVisualizer,
   ThreatVisualizer,
   MeleeTraceVisualizer,

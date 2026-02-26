@@ -64,6 +64,7 @@ AEnemyControllerBase (convenience wrapper)
 ├── SECCombatControllerComponent   ← handles AIConfig, combat roles, sync
 ├── MovementEvaluatorComponent     ← tactical positioning
 ├── ActionEvaluationComponent      ← action scoring and execution
+├── ReactionEvaluationComponent    ← event-driven reaction selection
 ├── ThreatDetectionComponent       ← player attention tracking
 ├── BotStateTreeAIComponent        ← StateTree runner
 └── BehaviorTreeComponent (helper) ← for action BT sequences
@@ -155,9 +156,9 @@ This component extends Unreal's `UStateTreeAIComponent` and adds automatic State
 
 All controller-side components (`SECCombatControllerComponent`, `BotStateTreeAIComponent`, `ActionEvaluationComponent`, `MovementEvaluatorComponent`, `ThreatDetectionComponent`) follow the same lifecycle pattern:
 
-1. **`OnRegister`** — Subscribe to `AAIController::OnPossessedPawnChanged`. If the controller already has a pawn, handle it immediately.
-2. **`OnPossessedPawnChanged` callback** — Cache pawn reference, resolve ASC (if needed), initialize actions/state for the new pawn.
-3. **`OnUnregister`** — Unsubscribe from `OnPossessedPawnChanged`.
+1. **`OnRegister`** - Subscribe to `AAIController::OnPossessedPawnChanged`. If the controller already has a pawn, handle it immediately.
+2. **`OnPossessedPawnChanged` callback** - Cache pawn reference, resolve ASC (if needed), initialize actions/state for the new pawn.
+3. **`OnUnregister`** - Unsubscribe from `OnPossessedPawnChanged`.
 
 This convention ensures components work correctly regardless of when the controller possesses the pawn relative to `BeginPlay`. It also handles re-possession (pawn swaps) cleanly.
 
