@@ -13,6 +13,12 @@ tags: ["Documentation", "Unreal Engine", "AI", "Tutorial"]
 
 The plugin consists of **6 systems** that work together seamlessly: Movement, Actions, Reactions, Combat Roles, Threat Detection, and Melee Trace. Each system can also be used independently if you only need specific functionality.
 
+### How the Components Connect
+
+The plugin splits work between **controller-side** components (decisions, server-only) and **pawn-side** components (data resolution, replicated to clients). Click any node to see its resolution chain and injection points.
+
+<SystemArchitectureVisualizer />
+
 ### What's Included
 
 - ✅ Complete C++ source code

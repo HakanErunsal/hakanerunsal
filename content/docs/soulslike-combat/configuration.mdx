@@ -80,6 +80,11 @@ bool ManageActionSetsAutomatically;   // Swap ActionSets based on role
 UActionSet* DefaultActionSet;         // Fallback ActionSet
 TMap<FGameplayTag, FRoleActionSetMapping> RoleActionSets;  // Per-role ActionSets
 
+// Reaction Set Management
+bool bManageReactionSetsAutomatically; // Swap ReactionSets based on role
+UReactionSet* DefaultReactionSet;     // Fallback ReactionSet
+TMap<FGameplayTag, FRoleReactionSetMapping> RoleReactionSets; // Per-role ReactionSets
+
 // Movement Profile Management
 bool ManageMovementProfilesAutomatically; // Swap Movement Profiles based on role
 UMovementBehaviorProfile* DefaultMovementProfile; // Fallback Profile
@@ -119,6 +124,14 @@ RoleActionSets
   SEC.Role.Waiter   → DA_SEC_ActionSet_Waiter
   SEC.Role.Flanker  → DA_SEC_ActionSet_Flanker
   SEC.Role.Supporter → DA_SEC_ActionSet_Ranged
+
+ReactionSets
+  bManageReactionSetsAutomatically: true
+  DefaultReactionSet: DA_SEC_ReactionSet_Default
+
+RoleReactionSets
+  SEC.Role.Attacker → DA_SEC_ReactionSet_Aggressive
+  SEC.Role.Waiter   → DA_SEC_ReactionSet_Defensive
 
 MovementProfiles
   ManageMovementProfilesAutomatically: true

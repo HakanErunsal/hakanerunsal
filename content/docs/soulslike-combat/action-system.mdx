@@ -230,9 +230,12 @@ When `GetActionSetForRole()` is called, it walks this chain and returns the **fi
 2.  **Equipped Weapon** - If the weapon actor implements `ISECWeaponActionSetProvider`, the system calls `GetWeaponActionSetForRole(RoleTag)` on it.
 3.  **Config Role** - Role-specific ActionSet from `EnemyAIConfig` (e.g., a different set for "Attacker" vs "Flanker").
 4.  **Config Default** - Fallback ActionSet from `EnemyAIConfig`.
-5.  **None** - No ActionSet found. AI will only move, never attack.
+5.  **Component Default** - `SECActionSetComponent → DefaultActionSet` property (set in Blueprint on the pawn).
+6.  **None** - No ActionSet found. AI will only move, never attack.
 
 Changes to weapon or override take effect **immediately** - no need to wait for a role change.
+
+> This is the same resolution chain used by `SECReactionSetComponent` for reaction sets. Learn one, know both.
 
 <Protip 
   title="Weapon-Driven AI" 

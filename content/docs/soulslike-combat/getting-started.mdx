@@ -80,7 +80,8 @@ Navigate to `Content/SoulslikeEnemyCombat/Showcase/Maps/LVL_SEC_Showcase` and op
 
 `EnemyCharacterBase` comes with these components pre-created:
 - `AbilitySystemComponent` for ability execution
-- `SECActionSetComponent` for action set syncing and replication
+- `SECActionSetComponent` for action set resolution and replication
+- `SECReactionSetComponent` for reaction set resolution and replication
 - `SECCombatRoleComponent` for role replication to clients
 - `SECMeleeTraceComponent` for melee hit detection
 
@@ -165,6 +166,7 @@ EndAbility
 In `DA_MyAIConfig`:
 - **DefaultStateTree** > Set to `StateTree_SEC_Core` (found in `Showcase/AI/StateTree/`)
 - **RoleActionSets** > Add an entry, leave the Role empty (acts as default), and set the ActionSet to `DA_MyEnemyActions`
+- (Optional) **DefaultReactionSet** > If you created a `ReactionSet` data asset, assign it here. See [Reaction System](/docs/soulslike-combat/reaction-system) for details.
 
 #### 8. Configure Character
 

@@ -130,7 +130,7 @@ Lives on the **AIController** alongside `ActionEvaluationComponent`.
 
 | Function | Description |
 |----------|-------------|
-| `SetReactionSet(UReactionSet*)` | Swap reaction sets at runtime. Re-grants abilities, resets cooldowns. |
+| `SetReactionSet(UReactionSet*)` | **Deprecated.** Use `SECReactionSetComponent` for reaction set management. This function still works but bypasses the resolution chain. |
 | `CanReact(FName ReactionId)` | Quick gate check without executing. |
 | `EvaluateBestReaction(FGameplayTag CategoryTag)` | Find best available reaction. Returns `FChosenReaction`. |
 | `ExecuteReaction(FName ReactionId, FSECExecutionContext Context)` | Fire a reaction with full context. |
@@ -212,13 +212,94 @@ Use `USECTargetDataLibrary` to pack spatial data (directions, locations, transfo
 
 ---
 
+## SECReactionSetComponent (Pawn)
+
+Mirrors `SECActionSetComponent` for actions. Lives on the **pawn**, handles reaction set resolution, replication, and runtime overrides.
+
+`EnemyCharacterBase` creates this component automatically. If you use a custom pawn, add it manually.
+
+### Resolution Priority
+
+When `GetReactionSetForRole()` is called, it walks this chain and returns the **first match**:
+
+1.  **Runtime Override** — `SetRuntimeOverride(ReactionSet)`. Highest priority. Use for boss phase transitions.
+2.  **Equipped Weapon** — If the weapon actor implements `ISECWeaponReactionSetProvider`, calls `GetWeaponReactionSetForRole(RoleTag)`.
+3.  **Config Role** — Role-specific ReactionSet from `EnemyAIConfig → RoleReactionSets[CurrentRole]`.
+4.  **Config Default** — Fallback from `EnemyAIConfig → DefaultReactionSet`.
+5.  **Component Default** — `SECReactionSetComponent → DefaultReactionSet` property (set in Blueprint).
+6.  **None** — No ReactionSet found. AI cannot react.
+
+> This is the same resolution chain as `SECActionSetComponent`. Learn one, know both.
+
+### Swap Modes
+
+When a reaction set swap is triggered while a reaction is already executing:
+
+| Mode | Behavior |
+|------|----------|
+| `ESECReactionSetSwapMode::Immediate` | Cancel the current reaction and swap immediately. |
+| `ESECReactionSetSwapMode::WaitForCompletion` | Queue the swap. It applies automatically when the current reaction completes. |
+
+Set via the `SwapMode` property on the component, or pass it to `SetRuntimeOverride()`.
+
+### Replicated State
+
+These properties replicate to all clients for UI, VFX, and animation purposes:
+
+| Property | Type | Purpose |
+|----------|------|---------|
+| `CurrentReactionId` | `FName` | Name of the currently executing reaction |
+| `bReactionExecuting` | `bool` | True while a reaction is active |
+| `ActiveReactionSet` | `UReactionSet*` | The currently resolved reaction set |
+
+### Delegates
+
+| Delegate | Parameters | When |
+|----------|------------|------|
+| `OnReactionExecutionStarted` | `FName ReactionId` | Reaction begins (replicated) |
+| `OnReactionExecutionCompleted` | `FName ReactionId, bool bSuccess` | Reaction finishes (replicated) |
+| `OnReactionSetChanged` | `UReactionSet* NewSet` | Active ReactionSet changes (replicated) |
+
+### Weapon Reaction Set Provider
+
+To make a weapon provide reaction sets, implement `ISECWeaponReactionSetProvider` on your weapon actor:
+
+```cpp
+// Your weapon actor implements ISECWeaponReactionSetProvider
+UReactionSet* GetWeaponReactionSetForRole(FGameplayTag RoleTag) override
+{
+    // Return a role-specific reaction set, or a single set for all roles
+    return MyWeaponReactionSet;
+}
+```
+
+```cpp
+// Tell the pawn about the weapon:
+Pawn->ReactionSetComponent->SetEquippedWeapon(WeaponActor);
+
+// Clear to revert to Config-based resolution:
+Pawn->ReactionSetComponent->SetEquippedWeapon(nullptr);
+```
+
+### Key API
+
+| Function | Description |
+|----------|-------------|
+| `SetEquippedWeapon(AActor*)` | Set weapon for reaction set resolution via `ISECWeaponReactionSetProvider`. |
+| `SetRuntimeOverride(UReactionSet*)` | Override resolution chain. Takes effect immediately or queued based on SwapMode. |
+| `ClearRuntimeOverride()` | Remove override, fall back to normal resolution. |
+| `SyncForCombatRole(FGameplayTag Role, UEnemyAIConfig* Config)` | Called by controller on role change. Resolves and applies the correct set. |
+
+---
+
 ## Quick Setup
 
 1. **Create Asset:** Right-click → Miscellaneous → Data Asset → ReactionSet
 2. **Define Reactions:** Fill in ReactionId, AbilityClass, AbilityTag, AbilityEndTag
-3. **Add Component:** Add `ReactionEvaluationComponent` to your AIController
-4. **Assign:** Set `ActiveReactionSet` on the component
-5. **Trigger from your logic:**
+3. **Assign to Config:** Set `DefaultReactionSet` on your `EnemyAIConfig`, or add role-specific sets to `RoleReactionSets`
+4. **Pawn Component:** If using `EnemyCharacterBase`, `SECReactionSetComponent` is already created. Otherwise, add it to your pawn.
+5. **Controller Component:** Add `ReactionEvaluationComponent` to your AIController (already present on `EnemyControllerBase`)
+6. **Trigger from your logic:**
 
 ```cpp
 // In your Blueprint or C++ (e.g., OnDamageReceived):
@@ -260,10 +341,11 @@ if (Chosen.IsValid())
 
 | System | How It Connects |
 |--------|-----------------|
-| [Action System](/docs/soulslike-combat/action-system) | Reactions can cancel actions and block new ones via AddTags |
+| [Action System](/docs/soulslike-combat/action-system) | Reactions can cancel actions and block new ones via AddTags. Resolution chain mirrors `SECActionSetComponent`. |
+| [Combat Roles](/docs/soulslike-combat/combat-roles) | Role changes trigger automatic ReactionSet swaps via `SECReactionSetComponent` |
 | [Melee Trace](/docs/soulslike-combat/melee-trace) | `OnMeleeHitResponse` delegate triggers reactions on attack; `ISECDamageable` returns parry/block results |
 | [Threat Detection](/docs/soulslike-combat/threat-detection) | ThreatLevel can inform which reaction category to evaluate |
-| [Multiplayer](/docs/soulslike-combat/multiplayer) | Reactions execute server-side via ASC; cosmetics use Gameplay Cues |
+| [Multiplayer](/docs/soulslike-combat/multiplayer) | Reaction state replicates to clients via `SECReactionSetComponent`. Cosmetics use Gameplay Cues. |
 
 ---
 

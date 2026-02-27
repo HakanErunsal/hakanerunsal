@@ -96,8 +96,8 @@ YourCustomAIController
 This is the **single source of truth** for all combat system integration. It handles:
 - AIConfig resolution (from pawn via `IEnemyAIConfigProvider`, or from its own `DefaultAIConfig`)
 - Combat role registration and unregistration with `AICombatRoleSubsystem`
-- Role-based sync of action sets and movement profiles
-- Action execution state delegation for replication
+- Role-based sync of action sets, reaction sets, and movement profiles
+- Action and reaction execution state delegation to pawn components for replication
 - Threat-to-movement auto-wiring (if both `ThreatDetectionComponent` and `MovementEvaluatorComponent` are present on the same controller)
 
 All SEC subsystems and StateTree tasks communicate through this component. If an AI controller has it, the full combat system works.
@@ -192,6 +192,8 @@ This convention ensures components work correctly regardless of when the control
 - Enemy AI decision-making and tactical movement
 - Melee combat hit detection (can also be used for player characters)
 - Action scoring and execution framework
+- Event-driven reaction evaluation and execution
+- Pawn-side resolution components (`SECActionSetComponent`, `SECReactionSetComponent`) with full replication
 - Multi-enemy coordination with role-based behavior
 - Multiplayer support (listen server and dedicated server)
 - Modular component system: mix and match for different enemy types
