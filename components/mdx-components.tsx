@@ -44,6 +44,10 @@ const components = {
   BlueprintUE,
   ArchitectureDiagram,
   SystemArchitectureVisualizer,
+  // Prevent hydration errors from block elements nested inside <p>
+  p: ({ children, ...props }: React.HTMLAttributes<HTMLParagraphElement>) => (
+    <div className="mb-4 leading-7" {...props}>{children}</div>
+  ),
 };
 
 interface MdxProps {

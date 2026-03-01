@@ -10,21 +10,20 @@ export default function Home() {
 
   return (
     <div className="max-w-5xl mx-auto px-6">
-      <div className="">
         {/* Hero section */}
-        <div className="flex flex-col justify-center items-center md:items-end lg:items-center h-80 p-8">
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
+        <div className="flex flex-col justify-center items-center h-64 py-8">
+          <h1 className="text-4xl md:text-5xl font-heading font-bold tracking-tight">
             Projects
           </h1>
-          <p className="mt-4 text-lg text-muted-foreground font-mono">
+          <p className="mt-4 text-base text-muted-foreground">
             Things I&apos;ve built & shipped
           </p>
         </div>
 
-        <hr className="size-5 border-gray-600 w-full" />
+        <hr className="border-border/50 mb-8" />
 
         {/* Grid for displaying latest posts */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-12">
           {/* Mapping over latest posts and rendering MediaCard for each */}
           {latestProjects.map((project) => (
             <div key={project.slug}>
@@ -38,7 +37,6 @@ export default function Home() {
             </div>
           ))}
         </div>
-      </div>
     </div>
   );
 }

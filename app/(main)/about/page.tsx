@@ -61,7 +61,7 @@ export default async function AboutPage() {
           </p>
 
           <p className="text-muted-foreground text-lg py-4">
-            Game Engines: Unreal Engine (8 years), Unity (2 years)
+            Game Engines: Unreal Engine (9 years), Unity (2 years)
           </p>
 
           <div className="py-4">
