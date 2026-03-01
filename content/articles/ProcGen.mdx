@@ -1,0 +1,85 @@
+---
+title: "Procedural Room Generation System for Vengeance Blade"
+image: "./../images/psychobrothers_header.jpg"
+description: "A robust room and corridor generation system built for the first-person roguelike game Vengeance Blade, featuring dynamic layouts, segment validation, and PCG-driven prop placement."
+date: 2025-08-06
+developer: "Hakan Erünsal"
+published: false
+---
+
+## Procedural Generation System
+
+<ZoomableImage
+  src="../images/psychobrothers_header.jpg"
+/>
+
+<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start', marginTop: '20px' }}>
+  <div style={{ width: 'auto', height: 'auto', WStextAlign: 'left', marginRight: '40px' }}>
+    <h3 style={{ textAlign: 'left' }}>Features</h3>
+    <ul>
+      <li>Pre-authored Room and Corridor Segments</li>
+      <li>Runtime Segment Chaining Based on Entry/Exit Points</li>
+      <li>Overlap Validation and Regeneration</li>
+      <li>PCG-Based Prop and Encounter Spawning</li>
+      <li>Dynamic LED and Light Reaction to Music</li>
+    </ul>
+  </div>
+</div>
+
+### Overview
+
+This system powers the level layout in *Vengeance Blade*. It combines authored content with runtime generation to create diverse and reactive dungeon layouts. The generator progressively spawns segments as the player moves, and uses gameplay tags, strength budgets, and enemy definitions to populate rooms in context-aware ways.
+
+### Segment Structure
+
+Each segment includes a corridor and a room, connected via matching exit directions. These segments are defined in data tables and include metadata like room type (e.g. boss, loot, combat swarm), strength rating, and preferred spawn conditions.
+
+<ZoomableImage
+  src="../images/psychobrothers_header.jpg"
+/>
+
+<ul>
+<li><strong>Corridors:</strong> Spawned first, define the path and serve as logical buffers.</li>
+<li><strong>Rooms:</strong> Spawned at corridor exits, contain gameplay content.</li>
+<li><strong>Direction Matching:</strong> Ensures all segments align with world space orientation.</li>
+</ul>
+
+### Placement Validation
+
+<ZoomableImage
+  src="../images/psychobrothers_header.jpg"
+/>
+
+Each segment runs a collision-based overlap test before being finalized. If overlap fails, the segment is discarded and retried with a different configuration using a seeded random stream. Previous segments may also be invalidated and regenerated recursively if needed.
+
+### Room Content and Prop Spawning
+
+<ZoomableImage
+  src="../images/psychobrothers_header.jpg"
+/>
+
+Rooms are populated using PCG Graphs that reference gameplay tags, ensuring props, enemies, and effects match room types and difficulty levels. Enemy spawns are scored based on available spawn points and their tag compatibility, falling back to defaults when no matches are found.
+
+### Generation Flow
+
+<ZoomableImage
+  src="../images/psychobrothers_header.jpg"
+/>
+
+<ul>
+<li><strong>FloorsManager:</strong> Tracks overall dungeon state, player progression, and budget balance.</li>
+<li><strong>RoomGenerationComponent:</strong> Spawns, validates, and manages current and next segments.</li>
+<li><strong>Dynamic Cleanup:</strong> Previous segments are culled based on distance or progression triggers.</li>
+</ul>
+
+### Lighting and Atmosphere
+
+//<VideoLoop src="../videos/led_dynamic_lights.mp4" className="w-full h-auto rounded-none shadow-lg" />
+
+Room elements such as LED strips and lights respond to music bass in real time. This adds dynamic atmosphere and helps guide the player through the procedural layout.
+
+### Conclusion
+
+This procedural generation system allows *Vengeance Blade* to balance authored detail with infinite variety. By combining data-driven segment chaining with runtime validation and contextual spawning, it creates highly replayable and reactive dungeon levels.
+
+---
