@@ -30,14 +30,6 @@ export async function generateMetadata({
         return {};
     }
 
-    const ogSearchParams = new URLSearchParams();
-    ogSearchParams.set("title", doc.title);
-
-    // Use the document's image if available, otherwise fall back to dynamic OG
-    const ogImage = doc.image?.src
-        ? doc.image.src
-        : `/api/og?${ogSearchParams.toString()}`;
-
     return {
         title: doc.title,
         description: doc.description,
@@ -47,20 +39,11 @@ export async function generateMetadata({
             description: doc.description,
             type: "article",
             url: doc.slug,
-            images: [
-                {
-                    url: ogImage,
-                    width: 1200,
-                    height: 630,
-                    alt: doc.title,
-                },
-            ],
         },
         twitter: {
-            card: "summary_large_image",
+            card: "summary",
             title: doc.title,
             description: doc.description,
-            images: [ogImage],
         },
     };
 }

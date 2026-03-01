@@ -31,14 +31,6 @@ export async function generateMetadata({
     return {};
   }
 
-  const ogSearchParams = new URLSearchParams();
-  ogSearchParams.set("title", project.title);
-
-  // Use the project's image if available, otherwise fall back to dynamic OG
-  const ogImage = project.image?.src
-    ? project.image.src
-    : `/api/og?${ogSearchParams.toString()}`;
-
   return {
     title: project.title,
     description: project.description,
@@ -48,20 +40,11 @@ export async function generateMetadata({
       description: project.description,
       type: "article",
       url: project.slug,
-      images: [
-        {
-          url: ogImage,
-          width: 1200,
-          height: 630,
-          alt: project.title,
-        },
-      ],
     },
     twitter: {
-      card: "summary_large_image",
+      card: "summary",
       title: project.title,
       description: project.description,
-      images: [ogImage],
     },
   };
 }
