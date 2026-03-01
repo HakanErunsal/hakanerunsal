@@ -5,7 +5,7 @@ async function generate() {
     const width = 1200;
     const height = 630;
     const logoSize = 340;
-    const logoOpacity = 0.07; // very subtle watermark
+    const logoOpacity = 0.35; // clearly visible
 
     // Load elephant logo and make it a ghost watermark
     // Extract alpha channel, tint it to a subtle color, then reduce opacity
@@ -19,11 +19,11 @@ async function generate() {
     const { data, info } = logoRaw;
     const ghostBuf = Buffer.alloc(data.length);
     for (let i = 0; i < data.length; i += 4) {
-        // Tint towards the accent teal color
-        ghostBuf[i] = Math.round(data[i] * 0.5 + 79 * 0.5);     // R blend with teal
-        ghostBuf[i + 1] = Math.round(data[i + 1] * 0.5 + 168 * 0.5); // G
-        ghostBuf[i + 2] = Math.round(data[i + 2] * 0.5 + 142 * 0.5); // B
-        ghostBuf[i + 3] = Math.round(data[i + 3] * logoOpacity); // A - dramatically reduce
+        // Keep most of original color, slight teal tint
+        ghostBuf[i] = Math.round(data[i] * 0.8 + 79 * 0.2);     // R - mostly original
+        ghostBuf[i + 1] = Math.round(data[i + 1] * 0.8 + 168 * 0.2); // G
+        ghostBuf[i + 2] = Math.round(data[i + 2] * 0.8 + 142 * 0.2); // B
+        ghostBuf[i + 3] = Math.round(data[i + 3] * logoOpacity); // A
     }
 
     const ghostLogo = await sharp(ghostBuf, {
