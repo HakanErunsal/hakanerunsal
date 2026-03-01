@@ -333,6 +333,8 @@ See [Configuration Reference](/docs/soulslike-combat/configuration) for the comp
 - `GrantAction()` / `RevokeAction()` - Runtime action management.
 - `OnActionExecutionStarted` / `OnActionExecutionCompleted` - Replicated delegates for client UI/FX.
 - `OnActionSetChanged` - Fires when the active ActionSet changes (replicated).
+- `OnActionCooldownStarted(ActionId, Duration)` / `OnActionCooldownExpired(ActionId)` - Cooldown lifecycle delegates (replicated).
+- `GetRemainingCooldown(ActionId)` / `IsActionOnCooldown(ActionId)` / `GetAllActiveCooldowns()` - Query current cooldown state.
 
 ---
 

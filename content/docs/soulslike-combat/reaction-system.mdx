@@ -259,6 +259,8 @@ These properties replicate to all clients for UI, VFX, and animation purposes:
 | `OnReactionExecutionStarted` | `FName ReactionId` | Reaction begins (replicated) |
 | `OnReactionExecutionCompleted` | `FName ReactionId, bool bSuccess` | Reaction finishes (replicated) |
 | `OnReactionSetChanged` | `UReactionSet* NewSet` | Active ReactionSet changes (replicated) |
+| `OnReactionCooldownStarted` | `FName ReactionId, float Duration` | Cooldown begins (replicated) |
+| `OnReactionCooldownExpired` | `FName ReactionId` | Cooldown expires (replicated) |
 
 ### Weapon Reaction Set Provider
 
@@ -289,6 +291,9 @@ Pawn->ReactionSetComponent->SetEquippedWeapon(nullptr);
 | `SetRuntimeOverride(UReactionSet*)` | Override resolution chain. Takes effect immediately or queued based on SwapMode. |
 | `ClearRuntimeOverride()` | Remove override, fall back to normal resolution. |
 | `SyncForCombatRole(FGameplayTag Role, UEnemyAIConfig* Config)` | Called by controller on role change. Resolves and applies the correct set. |
+| `GetRemainingCooldown(ReactionId)` | Returns remaining cooldown seconds (0 if not cooling down). |
+| `IsReactionOnCooldown(ReactionId)` | Returns true if the reaction is on cooldown. |
+| `GetAllActiveCooldowns()` | Returns array of all active `FSECCooldownEntry` structs. |
 
 ---
 

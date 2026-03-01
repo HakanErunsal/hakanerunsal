@@ -46,7 +46,8 @@ These components live on the pawn and replicate automatically:
 
 | Component | What Replicates |
 |-----------|-----------------|
-| `SECActionSetComponent` | Current action ID, execution state, active ActionSet reference |
+| `SECActionSetComponent` | Current action ID, execution state, active ActionSet reference, cooldown state |
+| `SECReactionSetComponent` | Current reaction ID, execution state, active ReactionSet reference, cooldown state |
 | `SECCombatRoleComponent` | Current combat role tag |
 | `BasicHealthComponent` | Current health value |
 | `SECWeaponBase` | Actor replication (attachment, visibility) |
@@ -110,6 +111,28 @@ ActionSetComponent->NotifyActionCompleted("HeavyAttack", true);
 ActionSetComponent->OnActionExecutionStarted.AddDynamic(...);
 ActionSetComponent->OnActionExecutionCompleted.AddDynamic(...);
 ActionSetComponent->OnActionSetChanged.AddDynamic(...);
+
+// Cooldown tracking (for ability cooldown UI):
+ActionSetComponent->OnActionCooldownStarted.AddDynamic(...);  // (ActionId, Duration)
+ActionSetComponent->OnActionCooldownExpired.AddDynamic(...);  // (ActionId)
+float Remaining = ActionSetComponent->GetRemainingCooldown("HeavyAttack");
+bool bOnCD = ActionSetComponent->IsActionOnCooldown("HeavyAttack");
+```
+
+### Reaction State (SECReactionSetComponent)
+
+The same bridge pattern applies to reactions. The `SECCombatControllerComponent` pushes reaction events to the pawn's `SECReactionSetComponent`:
+
+```cpp
+// Client-side (read in widgets, HUD, etc.):
+ReactionSetComponent->OnReactionExecutionStarted.AddDynamic(...);
+ReactionSetComponent->OnReactionExecutionCompleted.AddDynamic(...);
+ReactionSetComponent->OnReactionSetChanged.AddDynamic(...);
+
+// Cooldown tracking:
+ReactionSetComponent->OnReactionCooldownStarted.AddDynamic(...);
+ReactionSetComponent->OnReactionCooldownExpired.AddDynamic(...);
+float Remaining = ReactionSetComponent->GetRemainingCooldown("BlockReaction");
 ```
 
 ### Combat Role (SECCombatRoleComponent)
