@@ -11,32 +11,32 @@ export default function Home() {
 
   return (
     <div className="max-w-5xl mx-auto px-6">
-        {/* Hero section */}
-        <div className="flex flex-col justify-center items-center h-64 py-8">
-          <h1 className="text-4xl md:text-5xl font-heading font-bold tracking-tight">
-            Articles
-          </h1>
-          <p className="mt-4 text-base text-muted-foreground">
-            Thoughts, tutorials & deep dives
-          </p>
-        </div>
+      {/* Hero section */}
+      <div className="flex flex-col justify-center items-center h-64 py-8">
+        <h1 className="text-4xl md:text-5xl font-heading font-bold tracking-tight">
+          Articles
+        </h1>
+        <p className="mt-4 text-base text-muted-foreground">
+          Thoughts, tutorials & deep dives
+        </p>
+      </div>
 
-        <hr className="border-border/50 mb-8" />
+      <hr className="border-border/50 mb-8" />
 
-        {/* Grid for displaying latest posts */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-12">
-          {/* Mapping over latest posts and rendering MediaCard for each */}
-          {latestArticles.map((article) => (
-            <div key={article.slug}>
-              {/* MediaCard component */}
-              <MediaCard
-                slug={article.slug} // Slug of the post
-                image={article.image?.src || ''} // URL of the post image
-                title={article.title} // Title of the post
-              />
-            </div>
-          ))}
-        </div>
+      {/* Grid for displaying latest posts */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-12">
+        {/* Mapping over latest posts and rendering MediaCard for each */}
+        {latestArticles.map((article) => (
+          <div key={article.slug}>
+            {/* MediaCard component */}
+            <MediaCard
+              slug={article.slug} // Slug of the post
+              image={article.image?.src || ''} // URL of the post image
+              title={article.title} // Title of the post
+            />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
