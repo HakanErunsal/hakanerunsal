@@ -2,44 +2,44 @@ const sharp = require("sharp");
 const path = require("path");
 
 async function generate() {
-  const width = 1200;
-  const height = 630;
-  const logoSize = 340;
-  const logoOpacity = 0.07; // very subtle watermark
+    const width = 1200;
+    const height = 630;
+    const logoSize = 340;
+    const logoOpacity = 0.07; // very subtle watermark
 
-  // Load elephant logo and make it a ghost watermark
-  // Extract alpha channel, tint it to a subtle color, then reduce opacity
-  const logoRaw = await sharp(path.join(__dirname, "..", "public", "logos", "H_Logo.png"))
-    .resize(logoSize, logoSize, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
-    .ensureAlpha()
-    .raw()
-    .toBuffer({ resolveWithObject: true });
+    // Load elephant logo and make it a ghost watermark
+    // Extract alpha channel, tint it to a subtle color, then reduce opacity
+    const logoRaw = await sharp(path.join(__dirname, "..", "public", "logos", "H_Logo.png"))
+        .resize(logoSize, logoSize, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
+        .ensureAlpha()
+        .raw()
+        .toBuffer({ resolveWithObject: true });
 
-  // Manually reduce alpha of every pixel to get true opacity control
-  const { data, info } = logoRaw;
-  const ghostBuf = Buffer.alloc(data.length);
-  for (let i = 0; i < data.length; i += 4) {
-    // Tint towards the accent teal color
-    ghostBuf[i] = Math.round(data[i] * 0.5 + 79 * 0.5);     // R blend with teal
-    ghostBuf[i + 1] = Math.round(data[i + 1] * 0.5 + 168 * 0.5); // G
-    ghostBuf[i + 2] = Math.round(data[i + 2] * 0.5 + 142 * 0.5); // B
-    ghostBuf[i + 3] = Math.round(data[i + 3] * logoOpacity); // A - dramatically reduce
-  }
-
-  const ghostLogo = await sharp(ghostBuf, {
-    raw: { width: info.width, height: info.height, channels: 4 }
-  }).png().toBuffer();
-
-  // Dark background
-  const bg = await sharp({
-    create: {
-      width, height, channels: 4,
-      background: { r: 13, g: 17, b: 23, alpha: 255 } // #0d1117
+    // Manually reduce alpha of every pixel to get true opacity control
+    const { data, info } = logoRaw;
+    const ghostBuf = Buffer.alloc(data.length);
+    for (let i = 0; i < data.length; i += 4) {
+        // Tint towards the accent teal color
+        ghostBuf[i] = Math.round(data[i] * 0.5 + 79 * 0.5);     // R blend with teal
+        ghostBuf[i + 1] = Math.round(data[i + 1] * 0.5 + 168 * 0.5); // G
+        ghostBuf[i + 2] = Math.round(data[i + 2] * 0.5 + 142 * 0.5); // B
+        ghostBuf[i + 3] = Math.round(data[i + 3] * logoOpacity); // A - dramatically reduce
     }
-  }).png().toBuffer();
 
-  // SVG overlay with text
-  const svgText = `
+    const ghostLogo = await sharp(ghostBuf, {
+        raw: { width: info.width, height: info.height, channels: 4 }
+    }).png().toBuffer();
+
+    // Dark background
+    const bg = await sharp({
+        create: {
+            width, height, channels: 4,
+            background: { r: 13, g: 17, b: 23, alpha: 255 } // #0d1117
+        }
+    }).png().toBuffer();
+
+    // SVG overlay with text
+    const svgText = `
   <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
     <!-- Subtle gradient overlay -->
     <defs>
@@ -70,26 +70,26 @@ async function generate() {
     <text x="80" y="572" fill="#484f58" font-family="Segoe UI, system-ui, sans-serif" font-size="15" letter-spacing="0.8">hakanerunsal.com</text>
   </svg>`;
 
-  // Compose: background + ghost logo + text
-  await sharp(bg)
-    .composite([
-      {
-        input: ghostLogo,
-        top: 145,
-        left: 790,
-        blend: "over",
-      },
-      {
-        input: Buffer.from(svgText),
-        top: 0,
-        left: 0,
-        blend: "over",
-      },
-    ])
-    .png()
-    .toFile(path.join(__dirname, "..", "app", "opengraph-image.png"));
+    // Compose: background + ghost logo + text
+    await sharp(bg)
+        .composite([
+            {
+                input: ghostLogo,
+                top: 145,
+                left: 790,
+                blend: "over",
+            },
+            {
+                input: Buffer.from(svgText),
+                top: 0,
+                left: 0,
+                blend: "over",
+            },
+        ])
+        .png()
+        .toFile(path.join(__dirname, "..", "public", "og-card.png"));
 
-  console.log("Generated opengraph-image.png (1200x630)");
+    console.log("Generated public/og-card.png (1200x630)");
 }
 
 generate().catch(console.error);
