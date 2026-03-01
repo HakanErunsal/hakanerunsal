@@ -6,7 +6,6 @@ import "@/styles/mdx.css";
 import { Metadata } from "next";
 import { siteConfig } from "@/config/site";
 import { Tag } from "@/components/tag";
-import { DocsSidebar } from "@/components/docs-sidebar";
 
 interface PostPageProps {
   params: {
@@ -79,18 +78,9 @@ export default async function PostPage({ params }: PostPageProps) {
   }
 
   return (
-    <div className="flex flex-col md:flex-row">
-      {/* Docs Sidebar - Table of Contents */}
-      <DocsSidebar />
-
-      {/* Spacer to account for fixed sidebar + logo area on large screens */}
-      <div className="flex-none w-0 lg:w-72"></div>
-
-      {/* Spacer for logo/nav area - matching articles page */}
-      <div className="flex-none w-[26rem] md:w-[10rem] lg:w-[10rem]"></div>
-
-      <div className="flex-1 mt-4 md:mt-0 mr-0 md:mr-8">
-        <article className="container py-6 prose dark:prose-invert max-w-7xl justify-start">
+    <div className="max-w-[58rem] mx-auto px-6">
+      <div className="">
+        <article className="py-6 prose dark:prose-invert max-w-none">
           <h1 className="mb-2">{project.title}</h1>
           <div className="flex gap-2 mb-2">
             {project.tags?.map((tag) => (

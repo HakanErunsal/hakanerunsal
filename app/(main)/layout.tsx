@@ -1,5 +1,5 @@
 import { SiteFooter } from "@/components/site-footer";
-import NavigationColumn from "@/components/site-navigation-column";
+import { SiteTreeSidebar } from "@/components/site-tree-sidebar";
 
 export default function MainLayout({
     children,
@@ -8,8 +8,9 @@ export default function MainLayout({
 }>) {
     return (
         <div className="flex flex-col min-h-screen bg-background">
-            <div className="flex flex-col flex-grow">
-                <NavigationColumn />
+            {/* Persistent sidebar across all sections */}
+            <SiteTreeSidebar />
+            <div className="flex flex-col flex-grow lg:ml-72">
                 <main className="flex-grow">{children}</main>
             </div>
             <SiteFooter />

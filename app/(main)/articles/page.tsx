@@ -10,11 +10,8 @@ export default function Home() {
 
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3">
-      {/* Left column */}
-      <div className=""></div>
-      {/* Right column */}
-      <div className="col-span-2 mt-4 md:mt-0 mr-0 md:mr-8">
+    <div className="max-w-5xl mx-auto px-6">
+      <div className="">
         {/* Hero section */}
         <div className="flex flex-col justify-center items-center md:items-end lg:items-center h-80 p-8">
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight">

@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default async function AboutPage() {
   return (
-    <div className="container max-w-6xl py-6 lg:py-10 mt-80">
+    <div className="container max-w-5xl py-6 lg:py-10 mx-auto px-6">
       <div className="flex flex-col items-start gap-4 md:flex-row md:justify-between md:gap-8">
         <div className="flex-1 space-x-4">
           <h1 className="inline-block font-black text-4xl lg:text-5xl">
@@ -30,7 +30,7 @@ export default async function AboutPage() {
             {siteConfig.author}
           </h2>
           <p className="text-muted-foreground text-center break-words">
-          Software Engineer & Game Developer
+            Software Engineer & Game Developer
           </p>
           <div className="flex justify-center space-x-3 mt-4">
             <a href="mailto:hakanerunsal2@gmail.com" className="cursor-pointer hover:text-primary transition-colors">
@@ -53,15 +53,15 @@ export default async function AboutPage() {
         </div>
         <div className="text-container">
           <p className="text-muted-foreground text-lg py-4">
-              I am an enthusiastic game developer, interested in every field of game development and open to learning more. I have made a bunch of successful mobile shooter games.
+            I am an enthusiastic game developer, interested in every field of game development and open to learning more. I have made a bunch of successful mobile shooter games.
           </p>
 
           <p className="text-muted-foreground text-lg py-4">
-              Coding Languages: C++, Unreal Blueprint, C#
+            Coding Languages: C++, Unreal Blueprint, C#
           </p>
 
           <p className="text-muted-foreground text-lg py-4">
-              Game Engines: Unreal Engine (8 years), Unity (2 years)
+            Game Engines: Unreal Engine (8 years), Unity (2 years)
           </p>
 
           <div className="py-4">
@@ -81,8 +81,8 @@ export default async function AboutPage() {
               </p>
             </div>
           </div>
-          
-      </div>
+
+        </div>
 
       </div>
     </div>

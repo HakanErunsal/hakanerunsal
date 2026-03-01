@@ -13,15 +13,17 @@ export const Protip = ({
   return (
     <div
       className={cn(
-        'flex flex-col text-sm p-6 bg-primary-100/30 dark:bg-purple-900/30 rounded-md',
+        'flex items-start gap-3 text-sm p-4 my-4 border border-border/50 border-l-4 border-l-primary bg-primary/5 rounded',
         className,
       )}
     >
-      {title ? <p className="m-0 text-lg font-semibold">{title}</p> : null}
-      <p className="flex gap-1 items-center my-2">
-        <SparklesIcon className="inline-block w-4 h-4 text-primary-500 dark:text-primary-400" />
-        {description}
-      </p>
+      <SparklesIcon className="inline-block w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+      <div className="flex-1 min-w-0">
+        {title ? <p className="m-0 text-base font-heading font-semibold text-foreground">{title}</p> : null}
+        <p className="m-0 mt-1 text-muted-foreground">
+          {description}
+        </p>
+      </div>
     </div>
   );
 };

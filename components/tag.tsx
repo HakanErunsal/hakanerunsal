@@ -10,7 +10,7 @@ export function Tag({ tag, current, count }: TagProps) {
     <span
       className={badgeVariants({
         variant: current ? "default" : "secondary",
-        className: "no-underline rounded-md cursor-default",
+        className: "no-underline rounded-sm cursor-default text-xs font-normal",
       })}
     >
       {tag} {count ? `(${count})` : null}

@@ -6,7 +6,8 @@ import "@/styles/mdx.css";
 import { Metadata } from "next";
 import { siteConfig } from "@/config/site";
 import { Tag } from "@/components/tag";
-import { DocsSidebar } from "@/components/docs-sidebar";
+import { DocsPageTOC } from "@/components/docs-page-toc";
+import { Breadcrumb } from "@/components/breadcrumb";
 interface DocPageProps {
     params: {
         slug: string[];
@@ -78,31 +79,40 @@ export default async function DocPage({ params }: DocPageProps) {
     }
 
     return (
-        <div className="flex flex-col md:flex-row">
-            {/* Docs Sidebar - Table of Contents */}
-            <DocsSidebar />
+        <div className="max-w-[76rem] mx-auto px-6 lg:px-10 flex gap-8">
+            {/* Content */}
+            <div className="flex-1 min-w-0 max-w-[58rem]">
+                {/* Breadcrumbs */}
+                <div className="pt-6">
+                    <Breadcrumb items={[
+                        { label: "Docs", href: "/docs" },
+                        ...(doc.parent
+                            ? [{
+                                label: docs.find(d => d.slugAsParams === doc.parent)?.title || doc.parent,
+                                href: "/" + (docs.find(d => d.slugAsParams === doc.parent)?.slug || "docs")
+                            }]
+                            : []),
+                        { label: doc.title },
+                    ]} />
+                </div>
 
-            {/* Spacer to account for fixed sidebar + logo area on large screens */}
-            <div className="flex-none w-0 lg:w-72"></div>
-
-            {/* Spacer for logo/nav area - matching articles page */}
-            <div className="flex-none w-[26rem] md:w-[10rem] lg:w-[10rem]"></div>
-
-            <div className="flex-1 mt-4 md:mt-0 mr-0 md:mr-8">
-                <article className="container py-6 prose dark:prose-invert max-w-5xl justify-start">
-                    <h1 className="mb-2">{doc.title}</h1>
+                <article className="py-6 prose dark:prose-invert max-w-none">
+                    <h1 className="font-heading mb-2">{doc.title}</h1>
                     <div className="flex gap-2 mb-2">
                         {doc.tags?.map((tag) => (
                             <Tag tag={tag} key={tag} />
                         ))}
                     </div>
                     {doc.description ? (
-                        <p className="text-xl mt-0 text-muted-foreground">{doc.description}</p>
+                        <p className="text-lg mt-0 text-muted-foreground">{doc.description}</p>
                     ) : null}
                     <hr className="my-4" />
                     <MDXContent code={doc.body} />
                 </article>
             </div>
+
+            {/* Right TOC — sticky, aligned with content */}
+            <DocsPageTOC />
         </div>
     );
 }

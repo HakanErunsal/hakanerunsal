@@ -1,9 +1,14 @@
+/* ── Code blocks (rehype-pretty-code) ────────────────────────── */
 [data-rehype-pretty-code-figure] pre {
-  @apply px-0;
+  @apply px-0 my-6;
+  background: hsl(var(--ue-code-bg)) !important;
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.25rem;
 }
 
 [data-rehype-pretty-code-figure] code {
-  @apply text-sm !leading-loose md:text-base border-0 p-0;
+  @apply text-sm !leading-relaxed md:text-base border-0 p-0;
+  font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
 }
 
 [data-rehype-pretty-code-figure] code[data-line-numbers] {
@@ -13,7 +18,8 @@
 [data-rehype-pretty-code-figure] code[data-line-numbers]>[data-line]::before {
   counter-increment: line;
   content: counter(line);
-  @apply mr-4 inline-block w-4 text-right text-gray-500;
+  @apply mr-4 inline-block w-4 text-right;
+  color: hsl(var(--muted-foreground));
 }
 
 [data-rehype-pretty-code-figure] [data-line] {
@@ -21,8 +27,8 @@
 }
 
 [data-rehype-pretty-code-figure] [data-highlighted-line] {
-  background: rgba(200, 200, 255, 0.1);
-  @apply border-l-blue-400;
+  background: rgba(42, 229, 178, 0.06);
+  border-left-color: hsl(var(--primary));
 }
 
 [data-rehype-pretty-code-figure] [data-highlighted-chars] {
@@ -31,19 +37,26 @@
 }
 
 [data-rehype-pretty-code-figure] [data-highlighted-chars] span {
-  color: rgb(239 68 68) !important;
-  /* text-red-500 */
+  color: hsl(var(--primary)) !important;
 }
 
 [data-rehype-pretty-code-figure] [data-chars-id] {
   @apply border-b-2 p-1 shadow-none;
 }
 
+/* ── Heading anchor links ────────────────────────────────────── */
 .subheading-anchor {
-  @apply no-underline hover:underline;
+  @apply no-underline;
+  color: inherit;
 }
 
-/* Doc card image styles */
+.subheading-anchor:hover {
+  text-decoration: underline;
+  text-decoration-color: hsl(var(--primary));
+  text-underline-offset: 4px;
+}
+
+/* ── Doc card image styles ───────────────────────────────────── */
 .doc-card-img {
   filter: grayscale(70%);
   transition: filter 0.3s ease;
@@ -51,4 +64,43 @@
 
 .doc-card:hover .doc-card-img {
   filter: grayscale(0%);
+}
+
+/* ── Prose overrides for UE docs style (scoped to article) ──── */
+article.prose h2 {
+  scroll-margin-top: 5rem;
+}
+
+article.prose h3 {
+  scroll-margin-top: 5rem;
+}
+
+article.prose>ul>li::marker {
+  color: hsl(var(--primary));
+}
+
+article.prose>ol>li::marker {
+  color: hsl(var(--muted-foreground));
+}
+
+/* Table row hover */
+article.prose table tbody tr {
+  transition: background-color 0.15s ease;
+}
+
+article.prose table tbody tr:hover {
+  background-color: hsl(var(--accent));
+}
+
+/* Inline code within table cells */
+article.prose table code {
+  font-size: 0.8em;
+}
+
+/* Image captions */
+article.prose figure figcaption {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.875rem;
+  text-align: center;
+  margin-top: 0.5rem;
 }

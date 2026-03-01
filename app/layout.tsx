@@ -1,14 +1,22 @@
 import type { Metadata, Viewport } from "next";
-import { Rubik } from "next/font/google";
+import { Inter, Inter_Tight } from "next/font/google";
 
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { Providers } from "@/components/providers";
 import { siteConfig } from "@/config/site";
 
-const rubik = Rubik({
+const inter = Inter({
   subsets: ["latin"],
   variable: "--font-sans",
+  display: "swap",
+  preload: true,
+});
+
+const interTight = Inter_Tight({
+  subsets: ["latin"],
+  variable: "--font-heading",
+  weight: ["500", "600", "700"],
   display: "swap",
   preload: true,
 });
@@ -67,7 +75,8 @@ export default function RootLayout({
       <body
         className={cn(
           "bg-background font-sans antialiased z-10",
-          rubik.variable
+          inter.variable,
+          interTight.variable
         )}
       >
         <Providers>

@@ -1,16 +1,12 @@
 import { NextRequest } from "next/server";
 import { ImageResponse } from "next/og";
 import { siteConfig } from "@/config/site";
-
-export const runtime = "edge";
-
-const interBold = fetch(
-  new URL("../../../assets/fonts/Inter-Bold.ttf", import.meta.url)
-).then((res) => res.arrayBuffer());
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 export async function GET(req: NextRequest) {
   try {
-    const fontBold = await interBold;
+    const fontBold = readFileSync(join(process.cwd(), "assets/fonts/Inter-Bold.ttf"));
 
     const { searchParams } = req.nextUrl;
     const title = searchParams.get("title");
@@ -24,34 +20,44 @@ export async function GET(req: NextRequest) {
 
     return new ImageResponse(
       (
-        <div tw="flex relative flex-col p-12 w-full h-full items-start text-black bg-white">
-          <div tw="flex items-center">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
+        <div
+          tw="flex relative flex-col p-16 w-full h-full"
+          style={{
+            background: "linear-gradient(145deg, #101318 0%, #161b22 50%, #101318 100%)",
+            fontFamily: "Inter",
+          }}
+        >
+          {/* Subtle top glow */}
+          <div
+            tw="absolute inset-0"
+            style={{
+              background: "radial-gradient(ellipse at top center, rgba(79,168,142,0.15) 0%, transparent 60%)",
+            }}
+          />
+
+          {/* Header with logo mark */}
+          <div tw="flex items-center relative">
+            <div
+              tw="flex items-center justify-center w-12 h-12 rounded-xl mr-4"
+              style={{ background: "rgba(79,168,142,0.12)", border: "1px solid rgba(79,168,142,0.25)" }}
             >
-              <path d="M4 11a9 9 0 0 1 9 9" />
-              <path d="M4 4a16 16 0 0 1 16 16" />
-              <circle cx="5" cy="19" r="1" />
-            </svg>
-            <p tw="ml-2 font-bold text-2xl">JollyBlog</p>
-          </div>
-          <div tw="flex flex-col flex-1 py-10">
-            <div tw="flex text-xl uppercase font-bold tracking-tight font-normal">
-              BLOG POST
+              <span tw="text-3xl font-bold" style={{ color: "#4fa88e" }}>H</span>
             </div>
-            <div tw="flex text-[80px] font-bold text-[50px]">{heading}</div>
+            <span tw="font-bold text-2xl text-white">{siteConfig.name}</span>
           </div>
-          <div tw="flex items-center w-full justify-between">
-            <div tw="flex text-xl">{siteConfig.url}</div>
-            <div tw="flex items-center text-xl">
-              <div tw="flex ml-2">{siteConfig.links.github}</div>
-            </div>
+
+          {/* Title */}
+          <div tw="flex flex-col flex-1 py-10 relative">
+            <div tw="flex text-[56px] font-bold text-white leading-tight">{heading}</div>
+          </div>
+
+          {/* Footer */}
+          <div
+            tw="flex items-center w-full justify-between relative"
+            style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: "24px" }}
+          >
+            <div tw="flex text-lg" style={{ color: "#4fa88e" }}>{siteConfig.url}</div>
+            <div tw="flex text-lg" style={{ color: "#555b64" }}>Game Developer &amp; Software Engineer</div>
           </div>
         </div>
       ),
