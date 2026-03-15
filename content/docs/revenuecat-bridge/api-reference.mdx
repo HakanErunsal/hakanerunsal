@@ -151,7 +151,7 @@ All output pins share the same signature: `TArray<FRevenueCatOffering> Offerings
 
 ### Purchase Package (Async)
 
-**Input:** `FRevenueCatPackage Package` — the package to purchase.
+**Input:** `FRevenueCatPackage Package` - the package to purchase.
 
 All output pins share the same signature: `FRevenueCatCustomerInfo CustomerInfo`, `int32 ErrorCode`, `FString ErrorMessage`.
 
@@ -190,7 +190,7 @@ All output pins share the same signature: `FRevenueCatCustomerInfo CustomerInfo`
 
 ### Log In (Async)
 
-**Input:** `FString AppUserID` — the custom user ID.
+**Input:** `FString AppUserID` - the custom user ID.
 
 All output pins share the same signature: `FRevenueCatCustomerInfo CustomerInfo`, `int32 ErrorCode`, `FString ErrorMessage`.
 
@@ -353,7 +353,7 @@ This means you can:
 - Compile and test C++ code without a device
 - Run PIE without crashes
 
-`ConfigureSDK` is the exception — it sets `IsConfigured() = true` and fires `OnConfigured` on stubs, so your initialization flow works in the editor. Other async operations (FetchOfferings, PurchasePackage, etc.) will not fire their callbacks on unsupported platforms.
+`ConfigureSDK` is the exception - it sets `IsConfigured() = true` and fires `OnConfigured` on stubs, so your initialization flow works in the editor. Other async operations (FetchOfferings, PurchasePackage, etc.) will not fire their callbacks on unsupported platforms.
 
 
 <DocNav
