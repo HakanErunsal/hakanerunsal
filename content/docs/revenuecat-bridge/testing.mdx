@@ -237,6 +237,26 @@ Tests the real-world flow: player opens your game, and you need to know immediat
 
 ---
 
+### Phase 15 - Paywall
+
+Tests the native paywall UI. Requires iOS 16+ or Android with Compose.
+
+| # | Test | Expected | Log to check |
+|---|------|----------|--------------|
+| 15.1 | Call `PresentPaywall()` with empty OfferingID | Native paywall appears showing the current offering | - |
+| 15.2 | Complete a purchase through the paywall | `OnPaywallCompleted` fires with `Purchased` result and updated `CustomerInfo` | `[RevenueCat] Paywall completed` |
+| 15.3 | Check `IsEntitlementActive()` after paywall purchase | Returns `true` | - |
+| 15.4 | Dismiss the paywall without purchasing | `OnPaywallCompleted` fires with `Cancelled` result | - |
+| 15.5 | Tap "Restore" in the paywall | `OnPaywallCompleted` fires with `RestoreCompleted` result | - |
+| 15.6 | Call `PresentPaywall("specific_offering")` | Paywall appears showing the specified offering's products | - |
+| 15.7 | Call `PresentPaywallIfNeeded("pro")` without entitlement | Paywall appears | - |
+| 15.8 | Call `PresentPaywallIfNeeded("pro")` with active entitlement | Nothing happens, no paywall shown | - |
+| 15.9 | Use the **Present Paywall (Async)** Blueprint node | Output pins fire correctly (OnPurchased / OnCancelled / OnRestored / OnFailure) | - |
+| 15.10 | Verify paywall on Android | Compose-based paywall renders correctly | Check Logcat for Compose errors |
+| 15.11 | Verify paywall on iOS | SwiftUI-based paywall renders correctly | Check Xcode console |
+
+---
+
 ## Edge Cases
 
 Run these after the happy path is done.
@@ -287,6 +307,18 @@ Run these after the happy path is done.
 | E20 | Google Play "acknowledge" flow | Android | Auto-acknowledged by RevenueCat SDK, no 3-day refund |
 | E21 | Sandbox tester purchase | iOS | Quick completion, `bIsSandbox = true` |
 | E22 | StoreKit 2 dialog | iOS 15+ | Modern purchase sheet appears |
+
+### Paywall Edge Cases
+
+| # | Test | Expected |
+|---|------|----------|
+| E23 | Call `PresentPaywall()` on Win64 editor | Stub log message, no crash |
+| E24 | Call `PresentPaywall()` on iOS < 16.0 | Graceful fallback or warning, no crash |
+| E25 | Call `PresentPaywall("nonexistent_offering")` | Error result or falls back to current offering |
+| E26 | Call `PresentPaywall()` while another paywall is already showing | No duplicate paywall, no crash |
+| E27 | Call `PresentPaywallIfNeeded("")` (empty entitlement) | Warning log, no crash |
+| E28 | Paywall appears, player switches apps, returns | Paywall still visible or result fires |
+| E29 | No network, present paywall | Error fires or cached data shown |
 
 ---
 

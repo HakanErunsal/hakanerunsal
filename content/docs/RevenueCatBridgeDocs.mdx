@@ -7,7 +7,7 @@ published: true
 tags: ["Documentation", "Unreal Engine", "IAP", "Subscriptions", "Mobile"]
 ---
 
-> **v1.0.0** - This is the initial release. Some edge cases may not be covered yet. If you run into any issues or have a feature request, reach out to me directly and I'll get it fixed or added in an update.
+> **v1.1.0** — Added native paywall UI support (iOS 16+, Android with Compose). Design your paywall in the RevenueCat dashboard and present it with a single call. If you run into any issues or have a feature request, reach out to me directly and I'll get it fixed or added in an update.
 
 ## Overview
 
@@ -16,10 +16,12 @@ tags: ["Documentation", "Unreal Engine", "IAP", "Subscriptions", "Mobile"]
 **Platform support:** Android and iOS at runtime. Win64 editor builds compile and run with stub implementations for iteration.
 
 **Included SDKs:**
-- Android: RevenueCat v9.25.0 (Gradle, pulled at build time)
-- iOS: RevenueCat v5.63.0 (xcframework, bundled)
+- Android: RevenueCat v9.25.0 + purchases-ui v9.25.0 (Gradle, pulled at build time)
+- iOS: RevenueCat v5.63.0 + RevenueCatUI v5.63.0 (xcframeworks, bundled)
 
-> The plugin does not include a storefront UI, does not handle server-side logic, and does not run on desktop at runtime.
+**Native Paywall UI:** Present RevenueCat's dashboard-configured paywall with a single Blueprint node or C++ call. Design and iterate on your paywall remotely — no app update required.
+
+> The plugin does not handle server-side logic and does not run on desktop at runtime.
 
 ---
 
@@ -67,6 +69,18 @@ IsEntitlementActive("pro")
   -> true if the player has an active purchase
 ```
 
+**Alternative: Native Paywall**
+
+Instead of building your own purchase UI, you can present RevenueCat's native paywall:
+
+```
+Player hits paywall
+  -> PresentPaywall()  (or PresentPaywallIfNeeded("pro"))
+  -> Native paywall UI appears (designed in RevenueCat dashboard)
+  -> Player purchases, restores, or dismisses
+  -> OnPaywallCompleted fires with result
+```
+
 ---
 
 ## Architecture
@@ -83,6 +97,10 @@ Your Game (Blueprints / C++)
       |                |
   RevenueCat SDK   RevenueCat SDK
   v9.25.0 (AAR)   v5.63.0 (xcframework)
+      |                |
+  purchases-ui     RevenueCatUI
+  v9.25.0          v5.63.0
+  (Compose)        (SwiftUI)
       |                |
   Google Play      App Store
 ```
@@ -102,6 +120,8 @@ Your Game (Blueprints / C++)
 | **RevenueCat account** | Free tier at [revenuecat.com](https://www.revenuecat.com/) |
 | **Store setup** | Google Play Console and/or App Store Connect with products configured |
 | **RevenueCat dashboard** | Products linked, offerings created, entitlements configured |
+| **Paywall (iOS)** | iOS 16.0+ required for native paywall UI |
+| **Paywall (Android)** | Jetpack Compose support (included automatically via Gradle) |
 
 ---
 

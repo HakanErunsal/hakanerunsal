@@ -112,6 +112,15 @@ All attribution functions are fire-and-forget. No callback. Verify the values in
 |----------|-------------|
 | `ShowManageSubscriptions()` | Open the platform's subscription management page (Play Store or App Store). No-op on unsupported platforms. |
 
+### Paywall
+
+These functions present RevenueCat's native paywall UI, designed and configured in the RevenueCat dashboard. Requires iOS 16+ or Android with Compose.
+
+| Function | Returns | Description |
+|----------|---------|-------------|
+| `PresentPaywall(OfferingID)` | `void` | Present the native paywall UI. Pass an empty string to show the current offering. Results through `OnPaywallCompleted`. |
+| `PresentPaywallIfNeeded(EntitlementID)` | `void` | Only present the paywall if the given entitlement is not active. If the entitlement is already active, does nothing. |
+
 ---
 
 ## Events (Delegates)
@@ -129,6 +138,7 @@ RC->OnPurchaseCompleted.AddDynamic(this, &UMyClass::HandlePurchase);
 | `OnPurchaseCompleted` | `ERevenueCatPurchaseResult Result`, `FRevenueCatCustomerInfo CustomerInfo` | A purchase flow finished (success, cancel, error, or already owned). |
 | `OnPurchasesRestored` | `FRevenueCatCustomerInfo CustomerInfo` | Restore purchases completed. |
 | `OnCustomerInfoUpdated` | `FRevenueCatCustomerInfo CustomerInfo` | Customer info changed (login, logout, fetch, or automatic SDK update). |
+| `OnPaywallCompleted` | `ERevenueCatPaywallResult Result`, `FRevenueCatCustomerInfo CustomerInfo` | The native paywall was dismissed. Check the result for what happened (purchased, cancelled, restored, or error). |
 | `OnError` | `FRevenueCatError Error` | Any error occurred. Check `ErrorCode` and `ErrorMessage`. |
 
 ---
@@ -193,6 +203,18 @@ Search for the node name in the Blueprint action palette (they are in the **Reve
 
 > **Note:** These async actions bind to the subsystem's existing delegates internally. Avoid running multiple instances of the same async action type simultaneously.
 
+### Present Paywall (Async)
+
+Presents RevenueCat's native paywall UI. The paywall layout is configured in the RevenueCat dashboard.
+
+| Pin | Type | Description |
+|-----|------|-------------|
+| **OfferingID** (input) | `FString` | Offering to display. Leave empty for the current offering. |
+| **OnPurchased** | `FRevenueCatCustomerInfo` | Fired when the player completes a purchase through the paywall |
+| **OnCancelled** | — | Fired when the player dismisses the paywall without purchasing |
+| **OnRestored** | `FRevenueCatCustomerInfo` | Fired when the player restores purchases through the paywall |
+| **OnFailure** | `FRevenueCatError` | Fired on error |
+
 ---
 
 ## Data Types
@@ -208,6 +230,15 @@ Search for the node name in the Blueprint action palette (they are in the **Reve
 | `Error` | Purchase failed. Check `OnError` for details. |
 | `AlreadyOwned` | User already owns this product. |
 | `PendingPurchase` | Purchase is pending (e.g. parental approval, slow payment method). |
+
+#### `ERevenueCatPaywallResult`
+
+| Value | Meaning |
+|-------|--------|
+| `Purchased` | Player completed a purchase through the paywall. |
+| `Cancelled` | Player dismissed the paywall without purchasing. |
+| `RestoreCompleted` | Player restored purchases through the paywall. |
+| `Error` | Something went wrong. Check `OnError` for details. |
 
 #### `ERevenueCatProductType`
 

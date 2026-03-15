@@ -163,6 +163,26 @@ Add a "Restore Purchases" button somewhere accessible (required by both Google a
 1. Search for **Restore Purchases (Async)**
 2. On **On Success**, re-check entitlements and update your UI
 
+### Alternative: Use the Native Paywall
+
+Instead of building steps 5a–5c yourself, you can use RevenueCat's native paywall UI. This displays a paywall screen designed in the RevenueCat dashboard — no custom UMG widgets needed.
+
+1. Search for **Present Paywall (Async)** in the action palette
+2. Leave **OfferingID** empty to show the current offering
+3. Connect the output pins:
+   - **OnPurchased** — purchase completed, check entitlements
+   - **OnCancelled** — player dismissed the paywall
+   - **OnRestored** — player restored purchases
+   - **OnFailure** — something went wrong
+
+Or use **Present Paywall If Needed** from the subsystem — it only shows the paywall if the given entitlement is not already active:
+
+1. Get the **RevenueCat Subsystem**
+2. Call **Present Paywall If Needed** with your entitlement ID (e.g. `"pro"`)
+3. If the player already has the entitlement, nothing happens. Otherwise, the paywall appears.
+
+> **Requirements:** iOS 16+ and Android with Compose support. The paywall UI is designed and managed in the [RevenueCat dashboard](https://app.revenuecat.com/) under Paywalls.
+
 ---
 
 ## Step 5 (Alternative): C++ Setup
@@ -215,6 +235,44 @@ void UMyClass::HandlePurchase(ERevenueCatPurchaseResult Result,
         {
             // Unlock premium content
         }
+    }
+}
+```
+
+**Alternative: Native Paywall (C++)**
+
+```cpp
+// Present the current offering's paywall
+RC->PresentPaywall();
+
+// Or present a specific offering
+RC->PresentPaywall(TEXT("premium_offering"));
+
+// Only show if entitlement is not active
+RC->PresentPaywallIfNeeded(TEXT("pro"));
+
+// Handle the result
+RC->OnPaywallCompleted.AddDynamic(this, &UMyClass::HandlePaywall);
+```
+
+```cpp
+void UMyClass::HandlePaywall(ERevenueCatPaywallResult Result,
+    const FRevenueCatCustomerInfo& CustomerInfo)
+{
+    switch (Result)
+    {
+    case ERevenueCatPaywallResult::Purchased:
+        // Player bought something, check entitlements
+        break;
+    case ERevenueCatPaywallResult::RestoreCompleted:
+        // Player restored purchases
+        break;
+    case ERevenueCatPaywallResult::Cancelled:
+        // Player dismissed the paywall
+        break;
+    case ERevenueCatPaywallResult::Error:
+        // Something went wrong
+        break;
     }
 }
 ```
