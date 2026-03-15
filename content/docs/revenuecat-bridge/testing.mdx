@@ -1,0 +1,370 @@
+---
+title: "Testing & Troubleshooting"
+description: "14-phase test plan, edge cases, logging tips, and common issues for RevenueCat Bridge."
+date: 2026-03-14
+published: true
+tags: ["Documentation", "Unreal Engine", "Testing", "Troubleshooting"]
+parent: "RevenueCatBridgeDocs"
+---
+
+
+<Breadcrumb items={[
+    { label: "Docs", href: "/docs" },
+    { label: "RevenueCat Bridge", href: "/docs/RevenueCatBridgeDocs" },
+    { label: "Testing & Troubleshooting" }
+]} />
+
+## Before You Start Testing
+
+Make sure all of this is in place:
+
+- [ ] RevenueCat dashboard: project created, API keys generated
+- [ ] Google Play Console: app created, internal testing track set up, license testers added
+- [ ] App Store Connect (if iOS): sandbox testers created in Users & Access
+- [ ] Products created in the store console AND linked in RevenueCat dashboard
+- [ ] At least one Offering with packages configured in RevenueCat
+- [ ] Entitlement(s) configured and linked to products (e.g. `"pro"`)
+- [ ] Plugin settings filled: `AndroidApiKey`, `IosApiKey`, `EntitlementIdentifiers`
+- [ ] `bEnableDebugLogs` = true in Project Settings > Plugins > RevenueCat
+- [ ] Build deployed to the device via internal testing track (Android) or TestFlight/Xcode (iOS)
+
+> Purchases don't work on emulators or in the editor. You need a real device.
+
+---
+
+## Quick Smoke Test
+
+If you're short on time, run these in order for a minimal confidence check:
+
+1. App launches, SDK configures (check logs for `[RevenueCat] SDK configured successfully.`)
+2. Fetch offerings, verify products show up with correct prices
+3. Purchase a subscription, verify entitlement becomes active
+4. Cancel a purchase, verify the cancelled callback fires
+5. Fetch customer info
+6. Kill app, relaunch, verify entitlement persists without re-purchasing
+7. Clear app data, restore purchases
+8. Airplane mode, verify error handling
+9. Log in / log out cycle
+
+If all 9 pass, you're in good shape.
+
+---
+
+## Full Test Plan
+
+### Phase 1 - SDK Initialization
+
+Launch the app from a cold start (first install or cleared data).
+
+| # | Test | Expected | Log to check |
+|---|------|----------|--------------|
+| 1.1 | App launches on device | No crash, game loads | `[RevenueCat] SDK configured successfully.` |
+| 1.2 | Check `IsConfigured()` after launch | Returns `true` | - |
+| 1.3 | Check `GetAppUserID()` | Returns a non-empty anonymous ID (starts with `$RCAnonymousID:`) | Log the returned string |
+| 1.4 | Check `IsAnonymous()` | Returns `true` | - |
+
+**If it goes wrong:**
+- SDK configured log never appears - wrong API key, no internet, or `ConfigureSDK` not being called
+- Crash on startup - JNI or Obj-C bridge issue, check Logcat or Xcode console for native exceptions
+
+---
+
+### Phase 2 - Fetch Offerings
+
+| # | Test | Expected | Log to check |
+|---|------|----------|--------------|
+| 2.1 | Call `FetchOfferings()` | `OnSuccess` fires | `[RevenueCat] Fetched N offerings.` where N > 0 |
+| 2.2 | Inspect returned offerings | At least one offering exists | Log `OfferingID`, `DisplayName`, package count |
+| 2.3 | Check `bIsCurrent` flag | Exactly one offering has `bIsCurrent = true` | - |
+| 2.4 | Inspect packages | Each package has a non-empty `PackageID`, `PackageType`, and valid `Product` | Log each package's ID and type |
+| 2.5 | Inspect product details | `ProductID`, `Title`, `PriceString`, `PriceMicros`, `CurrencyCode` all populated | Log all fields |
+| 2.6 | Check subscription fields | `SubscriptionPeriod` populated for subs (e.g. `"P1M"`), empty for one-time purchases | - |
+| 2.7 | Call `GetCachedOfferings()` after fetch | Returns the same data as the delegate | - |
+| 2.8 | Call `GetCurrentOffering()` | Returns `true` and matches the one with `bIsCurrent` | - |
+
+**If it goes wrong:**
+- 0 offerings - products not linked to an offering in RevenueCat dashboard, or store products not approved yet
+- Product fields empty - store listing incomplete (title/description not set in the store console)
+- `OnFailure` fires - network error, invalid API key, or products misconfigured
+
+---
+
+### Phase 3 - Purchase (Subscription)
+
+Pick the monthly subscription package from the current offering.
+
+| # | Test | Expected | Log to check |
+|---|------|----------|--------------|
+| 3.1 | Call `PurchasePackage()` with monthly package | Store purchase dialog appears | - |
+| 3.2 | Complete the purchase (use test card) | `OnSuccess` fires with `FRevenueCatCustomerInfo` | `[RevenueCat] Purchase completed with result: 0` (Success) |
+| 3.3 | Inspect `CustomerInfo.ActiveEntitlements` | Contains your entitlement (e.g. `"pro"`) with `bIsActive = true` | Log entitlement ID and active status |
+| 3.4 | Check `IsEntitlementActive("pro")` | Returns `true` | - |
+| 3.5 | Inspect entitlement details | `ProductID` matches, `ExpirationDate` in the future, correct `Store`, `bIsSandbox = true` | Log all fields |
+| 3.6 | Check `ActiveSubscriptions` | Contains the subscription product ID | - |
+
+---
+
+### Phase 4 - Purchase (One-Time / Non-Consumable)
+
+If you have a lifetime unlock or non-consumable product.
+
+| # | Test | Expected |
+|---|------|----------|
+| 4.1 | Call `PurchasePackage()` with the lifetime package | Store dialog appears |
+| 4.2 | Complete the purchase | `OnSuccess` fires |
+| 4.3 | Inspect entitlement | `bIsActive = true`, `ExpirationDate` empty (lifetime), `bWillRenew = false` |
+| 4.4 | Try purchasing the same product again | `AlreadyOwned` result, or store shows "already owned" |
+
+---
+
+### Phase 5 - Purchase Cancellation
+
+| # | Test | Expected | Log to check |
+|---|------|----------|--------------|
+| 5.1 | Call `PurchasePackage()` | Store dialog appears | - |
+| 5.2 | Press Back / Cancel | `OnCancelled` fires (async node), or `OnPurchaseCompleted` with `UserCancelled` result | `[RevenueCat] Purchase completed with result: 1` |
+| 5.3 | Verify entitlements unchanged | Same as before the purchase attempt | - |
+
+---
+
+### Phase 6 - Restore Purchases
+
+Simulates the "I reinstalled the app" scenario.
+
+| # | Test | Expected | Log to check |
+|---|------|----------|--------------|
+| 6.1 | Make a purchase, then clear app data / reinstall | App starts fresh, `IsEntitlementActive()` returns `false` | - |
+| 6.2 | Call `RestorePurchases()` | `OnSuccess` fires | `[RevenueCat] Purchases restored.` |
+| 6.3 | Check `IsEntitlementActive()` | Returns `true` - entitlement recovered | - |
+
+---
+
+### Phase 7 - Sync Purchases
+
+| # | Test | Expected |
+|---|------|----------|
+| 7.1 | Call `SyncPurchases()` | `OnSuccess` fires with updated customer info |
+| 7.2 | Compare with `FetchCustomerInfo()` result | Should match |
+
+---
+
+### Phase 8 - Fetch Customer Info
+
+| # | Test | Expected |
+|---|------|----------|
+| 8.1 | Call `FetchCustomerInfo()` | `OnSuccess` fires |
+| 8.2 | Compare with `GetCachedCustomerInfo()` | Data matches |
+| 8.3 | Check `OriginalAppUserID` | Non-empty, matches `GetAppUserID()` for anonymous users |
+| 8.4 | Check `FirstSeen` | Non-empty ISO 8601 date |
+| 8.5 | Check `ManagementURL` | Non-empty if the user has active subscriptions |
+
+---
+
+### Phase 9 - User Identity (Log In / Log Out)
+
+| # | Test | Expected |
+|---|------|----------|
+| 9.1 | Call `LogIn("test_user_123")` | `OnSuccess` fires |
+| 9.2 | Check `GetAppUserID()` | Returns `"test_user_123"` |
+| 9.3 | Check `IsAnonymous()` | Returns `false` |
+| 9.4 | Check entitlements | Previous purchases are associated with this user ID |
+| 9.5 | Call `LogOut()` | `OnSuccess` fires with new anonymous customer info |
+| 9.6 | Check `GetAppUserID()` | Returns a new `$RCAnonymousID:...` |
+| 9.7 | Check `IsAnonymous()` | Returns `true` |
+
+---
+
+### Phase 10 - Subscriber Attributes
+
+These don't have callbacks. Verify the values in the **RevenueCat dashboard** under the customer's attributes.
+
+| # | Test | Where to verify |
+|---|------|-----------------|
+| 10.1 | `SetEmail("test@example.com")` | Dashboard > Customer > Attributes |
+| 10.2 | `SetDisplayName("TestPlayer")` | Dashboard |
+| 10.3 | `SetPhoneNumber("+1234567890")` | Dashboard |
+| 10.4 | `SetAttributes({"level": "42", "region": "EU"})` | Dashboard > Custom attributes |
+| 10.5 | `SetFirebaseAppInstanceId("...")` | Dashboard |
+| 10.6 | `CollectDeviceIdentifiers()` | Dashboard > GAID/IDFA populated |
+
+---
+
+### Phase 11 - Attribution
+
+Same as subscriber attributes - fire-and-forget, verify in the dashboard.
+
+| # | Test | Where to verify |
+|---|------|-----------------|
+| 11.1 | `SetMediaSource("facebook_ads")` | Dashboard |
+| 11.2 | `SetCampaign("summer_sale")` | Dashboard |
+| 11.3 | `SetAdGroup("group_a")` | Dashboard |
+| 11.4 | `SetCreative("banner_1")` | Dashboard |
+| 11.5 | `SetKeyword("rpg_game")` | Dashboard |
+
+---
+
+### Phase 12 - Subscription Management
+
+| # | Test | Expected |
+|---|------|----------|
+| 12.1 | Call `ShowManageSubscriptions()` after a subscription purchase | Opens Play Store or App Store subscription management page |
+| 12.2 | Call `ShowManageSubscriptions()` with no active subscription | No crash, may be a no-op |
+
+---
+
+### Phase 13 - Startup Entitlement Check (Cold Launch)
+
+Tests the real-world flow: player opens your game, and you need to know immediately if they're a subscriber.
+
+| # | Test | Expected |
+|---|------|----------|
+| 13.1 | Have an active subscription, force-close the app | - |
+| 13.2 | Launch the app | SDK configures, customer info updates on startup |
+| 13.3 | Check `IsEntitlementActive()` after `OnCustomerInfoUpdated` fires | Returns `true` without manual fetch |
+| 13.4 | Your UI reflects the subscription state | Pro features unlocked, no paywall shown |
+
+---
+
+### Phase 14 - Error Handling
+
+| # | Test | Expected |
+|---|------|----------|
+| 14.1 | Turn off WiFi + mobile data, call `FetchOfferings()` | `OnFailure` fires with a network error |
+| 14.2 | No network, call `PurchasePackage()` | `OnFailure` fires |
+| 14.3 | No network, call `FetchCustomerInfo()` | `OnFailure` fires or returns cached data |
+| 14.4 | No network, call `RestorePurchases()` | `OnFailure` fires |
+| 14.5 | Restore network, retry | `OnSuccess` fires normally |
+
+---
+
+## Edge Cases
+
+Run these after the happy path is done.
+
+### Purchase Edge Cases
+
+| # | Test | Expected |
+|---|------|----------|
+| E1 | Purchase while already subscribed (same product) | `AlreadyOwned` result or store handles it |
+| E2 | Purchase, then kill the app mid-transaction | On next launch, `SyncPurchases()` or startup listener recovers it |
+| E3 | Start a purchase, switch apps, come back | Dialog should still be there or result fires |
+| E4 | Rapidly tap the purchase button | Only one flow starts, no duplicates |
+| E5 | Purchase on a slow/unstable connection | Should succeed eventually or produce a clear error |
+| E6 | Google Play pending purchase (slow payment method) | `PendingPurchase` result, entitlement NOT active yet |
+
+### Subscription Lifecycle
+
+| # | Test | Expected |
+|---|------|----------|
+| E7 | Subscribe, cancel via store, wait for expiry | `bIsActive` becomes `false`, `UnsubscribeDetectedAt` populated |
+| E8 | Subscribe with intro price | `IntroPriceString` and `IntroPricePeriod` populated |
+| E9 | Subscribe with free trial | `FreeTrialPeriod` on product, `PeriodType = Trial` on entitlement |
+| E10 | Upgrade monthly to annual (Google Play proration) | Entitlement stays active, `ProductID` changes |
+| E11 | Downgrade annual to monthly | Entitlement stays active, change at renewal |
+
+### Identity
+
+| # | Test | Expected |
+|---|------|----------|
+| E12 | `LogIn("")` (empty string) | Warning log, no crash |
+| E13 | Log in as User A, purchase, log out, log in as User B | User B should NOT have User A's entitlements |
+| E14 | Log in with same ID on two devices | Both see the same entitlements |
+| E15 | Log in, log out, log in again (same user) | Entitlements restored |
+
+### Network / Timing
+
+| # | Test | Expected |
+|---|------|----------|
+| E16 | Call `FetchOfferings()` before SDK is configured | Warning log, no crash, no-op |
+| E17 | Call `PurchasePackage()` with an empty package | Store error or no-op, no crash |
+| E18 | Call two async actions of same type at once | Both complete without crash (may share results - known limitation) |
+| E19 | App goes to background during async operation | Completes normally when resumed |
+
+### Platform-Specific
+
+| # | Test | Platform | Expected |
+|---|------|----------|----------|
+| E20 | Google Play "acknowledge" flow | Android | Auto-acknowledged by RevenueCat SDK, no 3-day refund |
+| E21 | Sandbox tester purchase | iOS | Quick completion, `bIsSandbox = true` |
+| E22 | StoreKit 2 dialog | iOS 15+ | Modern purchase sheet appears |
+
+---
+
+## Logging
+
+### Android (Logcat)
+
+In Android Studio, filter Logcat:
+
+```
+tag~:Purchases|RevenueCat
+```
+
+This catches RevenueCat SDK logs (`Purchases` tag), the Java bridge (`RevenueCatBridge` tag), and C++ UE_LOG output (`LogRevenueCat` category).
+
+Using adb from a terminal:
+```
+adb logcat | grep -iE "Purchases|RevenueCat"
+```
+
+### iOS (Xcode)
+
+In the Xcode Console, filter by `RevenueCat`.
+
+### In-Game Debug
+
+Build a simple debug text overlay that calls each function and prints results to screen with timestamps. Useful for testing on device when you don't have a log viewer attached.
+
+### RevenueCat Dashboard
+
+The **Customer** page in the dashboard shows real-time subscription status, events, and attribute updates. When in doubt, check the dashboard.
+
+---
+
+## Common Issues
+
+### "SDK configured log never appears"
+
+- Wrong API key. Double-check Project Settings > Plugins > RevenueCat.
+- No internet on device.
+- If Android: check Logcat for Java exceptions during startup.
+
+### "FetchOfferings returns 0 offerings"
+
+- Products not linked to an Offering in the RevenueCat dashboard.
+- Store products not approved / not active yet.
+- Wrong API key for the platform (using iOS key on Android or vice versa).
+
+### "Purchase dialog never shows up"
+
+- Android: app not uploaded to at least the internal testing track in Play Console.
+- Android: your Google account is not a license tester.
+- iOS: sandbox account not set up in device Settings.
+- Building an unsigned or incorrectly signed build.
+
+### "IsEntitlementActive always returns false"
+
+- Entitlement not linked to the product in RevenueCat dashboard.
+- Typo in the entitlement ID string (it's case-sensitive).
+- Checking before `OnPurchaseCompleted` fires. The data is async - wait for the callback.
+
+### "OnError fires with a cryptic error code"
+
+- Check the [RevenueCat error codes reference](https://www.revenuecat.com/docs/error-handling) for what each code means.
+- Common ones: network errors, invalid API key, store configuration issues.
+
+### "Crashes on startup on Android/iOS"
+
+- Check the native logs (Logcat / Xcode Console), not just the UE log.
+- Make sure the RevenueCat SDK is being pulled in (Gradle dependency for Android, bundled xcframework for iOS). Check build logs for download/linking errors.
+- If it's a JNI error, the Java bridge class might not be getting packaged. Check that the UPL file is being picked up by the build system.
+
+### "Works on one platform but not the other"
+
+- Each platform is a completely separate code path (JNI vs Obj-C++). A bug on one doesn't necessarily affect the other.
+- Make sure both API keys are set. If only one is set, the other platform will fail to configure.
+
+
+<DocNav
+  prev={{ title: "API Reference", href: "/docs/revenuecat-bridge/api-reference" }}
+/>

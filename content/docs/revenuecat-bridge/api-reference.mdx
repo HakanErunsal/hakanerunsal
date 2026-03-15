@@ -1,0 +1,362 @@
+---
+title: "API Reference"
+description: "Complete reference for every function, delegate, async action, struct, and enum in RevenueCat Bridge."
+date: 2026-03-14
+published: true
+tags: ["Documentation", "Unreal Engine", "API", "Reference"]
+parent: "RevenueCatBridgeDocs"
+---
+
+
+<Breadcrumb items={[
+    { label: "Docs", href: "/docs" },
+    { label: "RevenueCat Bridge", href: "/docs/RevenueCatBridgeDocs" },
+    { label: "API Reference" }
+]} />
+
+Everything lives on `URevenueCatSubsystem`, a `GameInstanceSubsystem`. One instance per game session, accessible from anywhere.
+
+**In C++:**
+```cpp
+URevenueCatSubsystem* RC = GetGameInstance()->GetSubsystem<URevenueCatSubsystem>();
+```
+
+**In Blueprints:** search for "RevenueCat" in the action palette. All functions are in the **RevenueCat** category.
+
+---
+
+## Project Settings
+
+**Location:** Project Settings > Plugins > RevenueCat
+
+These are stored in `URevenueCatSettings` (a `DeveloperSettings` subclass) and saved to `DefaultGame.ini`.
+
+| Setting | Type | Description |
+|---------|------|-------------|
+| `AndroidApiKey` | `FString` | RevenueCat public API key for Android |
+| `IosApiKey` | `FString` | RevenueCat public API key for iOS |
+| `EntitlementIdentifiers` | `TArray<FString>` | Entitlement IDs to track (e.g. `"pro"`, `"premium"`) |
+| `bEnableDebugLogs` | `bool` | Verbose SDK logging. Turn on during development, turn off before shipping. |
+
+---
+
+## Functions
+
+### SDK Lifecycle
+
+| Function | Returns | Description |
+|----------|---------|-------------|
+| `ConfigureSDK(ApiKey)` | `void` | Initialize the SDK with an API key. Called automatically on startup using the key from Project Settings. You only need to call this manually if you want to override the key at runtime. |
+| `IsConfigured()` | `bool` | Whether the SDK has been configured. |
+
+### Offerings
+
+| Function | Returns | Description |
+|----------|---------|-------------|
+| `FetchOfferings()` | `void` | Fetch available offerings from RevenueCat. Results come back through `OnOfferingsFetched`. |
+| `GetCachedOfferings()` | `TArray<FRevenueCatOffering>` | Returns offerings from the last `FetchOfferings` call. Empty if you haven't fetched yet. |
+| `GetCurrentOffering(OutOffering)` | `bool` | Gets the offering marked "current" in the dashboard. Returns `false` if nothing is cached. |
+| `FindPackageByID(PackageID, OutPackage)` | `bool` | Find a package by its RevenueCat PackageID (e.g. `"$rc_monthly"`). Searches all cached offerings. |
+| `FindPackageByProductID(ProductID, OutPackage)` | `bool` | Find a package by the store product ID (e.g. `"com.yourapp.monthly_sub"`). Searches all cached offerings. |
+
+### Purchases
+
+| Function | Returns | Description |
+|----------|---------|-------------|
+| `PurchasePackage(Package)` | `void` | Trigger the native purchase flow for a package. Results come back through `OnPurchaseCompleted`. |
+| `RestorePurchases()` | `void` | Restore previous purchases (e.g. after reinstall). Results through `OnPurchasesRestored`. |
+| `SyncPurchases()` | `void` | Force-sync pending receipts with RevenueCat servers. Results through `OnCustomerInfoUpdated`. |
+
+### Customer Info
+
+| Function | Returns | Description |
+|----------|---------|-------------|
+| `FetchCustomerInfo()` | `void` | Fetch the latest customer info from RevenueCat. Results through `OnCustomerInfoUpdated`. |
+| `GetCachedCustomerInfo()` | `FRevenueCatCustomerInfo` | Returns cached customer info from the last fetch. |
+| `IsEntitlementActive(EntitlementID)` | `bool` | Check if a specific entitlement is active. Uses cached data - call `FetchCustomerInfo()` first if you need fresh data. |
+
+### User Identity
+
+| Function | Returns | Description |
+|----------|---------|-------------|
+| `LogIn(AppUserID)` | `void` | Identify a user with a custom ID. Links purchases to this ID across devices. Results through `OnCustomerInfoUpdated`. |
+| `LogOut()` | `void` | Revert to an anonymous RevenueCat ID. Results through `OnCustomerInfoUpdated`. |
+| `GetAppUserID()` | `FString` | Get the current RevenueCat App User ID (anonymous IDs start with `$RCAnonymousID:`). |
+| `IsAnonymous()` | `bool` | Whether the current user is anonymous. |
+
+### Subscriber Attributes
+
+| Function | Description |
+|----------|-------------|
+| `SetEmail(Email)` | Set subscriber's email (reserved attribute). |
+| `SetDisplayName(DisplayName)` | Set subscriber's display name (reserved attribute). |
+| `SetPhoneNumber(PhoneNumber)` | Set subscriber's phone number (reserved attribute). |
+| `SetAttributes(Attributes)` | Set arbitrary key-value pairs as subscriber attributes. Takes a `TMap<FString, FString>`. |
+| `SetFirebaseAppInstanceId(AppInstanceId)` | Set Firebase App Instance ID for RevenueCat's Firebase integration. This plugin does not depend on Firebase - get the ID from your own Firebase setup. |
+
+### Attribution
+
+| Function | Description |
+|----------|-------------|
+| `SetMediaSource(MediaSource)` | Set media source (e.g. `"facebook_ads"`). |
+| `SetCampaign(Campaign)` | Set campaign name. |
+| `SetAdGroup(AdGroup)` | Set ad group. |
+| `SetCreative(Creative)` | Set creative name. |
+| `SetKeyword(Keyword)` | Set keyword. |
+| `CollectDeviceIdentifiers()` | Auto-collect GAID (Android) / IDFA (iOS) and send to RevenueCat. |
+
+All attribution functions are fire-and-forget. No callback. Verify the values in the RevenueCat dashboard under the customer's attributes.
+
+### Subscription Management
+
+| Function | Description |
+|----------|-------------|
+| `ShowManageSubscriptions()` | Open the platform's subscription management page (Play Store or App Store). No-op on unsupported platforms. |
+
+---
+
+## Events (Delegates)
+
+Bind these in Blueprints via the **Assign** node from the subsystem's Events section, or in C++:
+
+```cpp
+RC->OnPurchaseCompleted.AddDynamic(this, &UMyClass::HandlePurchase);
+```
+
+| Delegate | Parameters | When It Fires |
+|----------|-----------|---------------|
+| `OnConfigured` | *(none)* | SDK initialization completed. |
+| `OnOfferingsFetched` | `TArray<FRevenueCatOffering> Offerings` | Offerings fetched from RevenueCat. |
+| `OnPurchaseCompleted` | `ERevenueCatPurchaseResult Result`, `FRevenueCatCustomerInfo CustomerInfo` | A purchase flow finished (success, cancel, error, or already owned). |
+| `OnPurchasesRestored` | `FRevenueCatCustomerInfo CustomerInfo` | Restore purchases completed. |
+| `OnCustomerInfoUpdated` | `FRevenueCatCustomerInfo CustomerInfo` | Customer info changed (login, logout, fetch, or automatic SDK update). |
+| `OnError` | `FRevenueCatError Error` | Any error occurred. Check `ErrorCode` and `ErrorMessage`. |
+
+---
+
+## Async Blueprint Actions
+
+These are latent Blueprint nodes that give you **output execution pins** (OnSuccess / OnFailure / OnCancelled) directly in the graph. No delegate binding needed.
+
+Search for the node name in the Blueprint action palette. They're all in the **RevenueCat** category.
+
+### Fetch Offerings (Async)
+
+All output pins share the same signature: `TArray<FRevenueCatOffering> Offerings`, `int32 ErrorCode`, `FString ErrorMessage`.
+
+| Pin | Description |
+|-----|-------------|
+| **On Success** | `Offerings` populated, `ErrorCode` = 0. |
+| **On Failure** | `Offerings` empty. `ErrorCode` and `ErrorMessage` describe the error. |
+
+### Purchase Package (Async)
+
+**Input:** `FRevenueCatPackage Package` — the package to purchase.
+
+All output pins share the same signature: `FRevenueCatCustomerInfo CustomerInfo`, `int32 ErrorCode`, `FString ErrorMessage`.
+
+| Pin | Description |
+|-----|-------------|
+| **On Success** | `CustomerInfo` populated. Purchase succeeded or already owned. |
+| **On Cancelled** | User dismissed the purchase dialog. `ErrorCode` = 0. |
+| **On Failure** | `ErrorCode` and `ErrorMessage` describe the error. |
+
+### Restore Purchases (Async)
+
+All output pins share the same signature: `FRevenueCatCustomerInfo CustomerInfo`, `int32 ErrorCode`, `FString ErrorMessage`.
+
+| Pin | Description |
+|-----|-------------|
+| **On Success** | `CustomerInfo` populated with restored data. |
+| **On Failure** | `ErrorCode` and `ErrorMessage` describe the error. |
+
+### Sync Purchases (Async)
+
+All output pins share the same signature: `FRevenueCatCustomerInfo CustomerInfo`, `int32 ErrorCode`, `FString ErrorMessage`.
+
+| Pin | Description |
+|-----|-------------|
+| **On Success** | `CustomerInfo` populated with synced data. |
+| **On Failure** | `ErrorCode` and `ErrorMessage` describe the error. |
+
+### Fetch Customer Info (Async)
+
+All output pins share the same signature: `FRevenueCatCustomerInfo CustomerInfo`, `int32 ErrorCode`, `FString ErrorMessage`.
+
+| Pin | Description |
+|-----|-------------|
+| **On Success** | `CustomerInfo` populated with latest data. |
+| **On Failure** | `ErrorCode` and `ErrorMessage` describe the error. |
+
+### Log In (Async)
+
+**Input:** `FString AppUserID` — the custom user ID.
+
+All output pins share the same signature: `FRevenueCatCustomerInfo CustomerInfo`, `int32 ErrorCode`, `FString ErrorMessage`.
+
+| Pin | Description |
+|-----|-------------|
+| **On Success** | `CustomerInfo` populated for the identified user. |
+| **On Failure** | `ErrorCode` and `ErrorMessage` describe the error. |
+
+### Log Out (Async)
+
+All output pins share the same signature: `FRevenueCatCustomerInfo CustomerInfo`, `int32 ErrorCode`, `FString ErrorMessage`.
+
+| Pin | Description |
+|-----|-------------|
+| **On Success** | `CustomerInfo` populated for the new anonymous user. |
+| **On Failure** | `ErrorCode` and `ErrorMessage` describe the error. |
+
+> Don't run multiple instances of the same async action type at the same time. They bind to the same underlying delegate, so results can cross.
+
+---
+
+## Data Types
+
+### Enums
+
+#### `ERevenueCatPurchaseResult`
+
+| Value | Meaning |
+|-------|---------|
+| `Success` | Purchase completed. |
+| `UserCancelled` | User dismissed the purchase dialog. |
+| `Error` | Purchase failed. Check `OnError` for details. |
+| `AlreadyOwned` | User already owns this product. |
+| `PendingPurchase` | Purchase is pending (e.g. parental approval, slow payment method). |
+
+#### `ERevenueCatProductType`
+
+| Value | Meaning |
+|-------|---------|
+| `Subscription` | Auto-renewing subscription. |
+| `NonConsumable` | One-time purchase, permanent. |
+| `Consumable` | Consumable (can be bought again). |
+| `Unknown` | Type not determined. |
+
+#### `ERevenueCatPeriodType`
+
+| Value | Meaning |
+|-------|---------|
+| `Normal` | Standard billing period. |
+| `Intro` | Introductory offer period. |
+| `Trial` | Free trial period. |
+
+#### `ERevenueCatStore`
+
+| Value | Meaning |
+|-------|---------|
+| `AppStore` | Apple App Store |
+| `PlayStore` | Google Play Store |
+| `Amazon` | Amazon Appstore |
+| `Stripe` | Stripe (web) |
+| `Promotional` | Granted via RevenueCat dashboard |
+| `Unknown` | Unknown store |
+
+---
+
+### Structs
+
+#### `FRevenueCatProduct`
+
+Represents a single store product (a subscription, one-time purchase, etc.).
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `ProductID` | `FString` | Store product identifier (e.g. `"com.yourapp.monthly"`) |
+| `Title` | `FString` | Localized product title |
+| `Description` | `FString` | Localized product description |
+| `PriceString` | `FString` | Formatted price with currency symbol (e.g. `"$4.99"`) |
+| `PriceMicros` | `int64` | Price in micros (4990000 = $4.99) |
+| `CurrencyCode` | `FString` | ISO 4217 currency code (e.g. `"USD"`) |
+| `ProductType` | `ERevenueCatProductType` | Subscription, NonConsumable, Consumable, or Unknown |
+| `SubscriptionPeriod` | `FString` | ISO 8601 duration (e.g. `"P1M"` for monthly, `"P1Y"` for annual). Empty for non-subscriptions. |
+| `IntroPriceString` | `FString` | Formatted intro price (e.g. `"$0.99"`) |
+| `IntroPriceMicros` | `int64` | Intro price in micros |
+| `IntroPricePeriod` | `FString` | ISO 8601 intro period (e.g. `"P1W"`) |
+| `IntroPriceCycles` | `int32` | Number of intro billing cycles |
+| `FreeTrialPeriod` | `FString` | ISO 8601 trial period (e.g. `"P7D"` for 7 days). Empty if no trial. |
+
+#### `FRevenueCatPackage`
+
+A package is a product wrapped in an offering context. This is what you pass to `PurchasePackage`.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `PackageID` | `FString` | RevenueCat package identifier (e.g. `"$rc_monthly"`) |
+| `PackageType` | `FString` | `MONTHLY`, `ANNUAL`, `LIFETIME`, `WEEKLY`, `CUSTOM`, etc. |
+| `Product` | `FRevenueCatProduct` | The store product in this package |
+
+#### `FRevenueCatOffering`
+
+A group of packages. You configure these in the RevenueCat dashboard.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `OfferingID` | `FString` | RevenueCat offering identifier |
+| `DisplayName` | `FString` | Description you set in the dashboard |
+| `bIsCurrent` | `bool` | Whether this is the "current" offering |
+| `Packages` | `TArray<FRevenueCatPackage>` | Available packages in this offering |
+
+#### `FRevenueCatEntitlement`
+
+Represents access to a feature or content. This is what you check to gate premium content.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `EntitlementID` | `FString` | The entitlement identifier (e.g. `"pro"`) |
+| `bIsActive` | `bool` | Whether this entitlement is currently active |
+| `ProductID` | `FString` | Product that unlocked this entitlement |
+| `ExpirationDate` | `FString` | ISO 8601 expiration date. Empty if it's a lifetime purchase. |
+| `bWillRenew` | `bool` | Whether the subscription will auto-renew |
+| `PeriodType` | `ERevenueCatPeriodType` | Normal, Intro, or Trial |
+| `Store` | `ERevenueCatStore` | Which store the purchase came from |
+| `bIsSandbox` | `bool` | Whether this was purchased in sandbox/test mode |
+| `PurchaseDate` | `FString` | ISO 8601 original purchase date |
+| `LatestPurchaseDate` | `FString` | ISO 8601 latest purchase/renewal date |
+| `UnsubscribeDetectedAt` | `FString` | ISO 8601 date unsubscribe was detected. Empty if still subscribed. |
+| `BillingIssueDetectedAt` | `FString` | ISO 8601 date a billing issue was detected. Empty if no issues. |
+
+#### `FRevenueCatCustomerInfo`
+
+The full picture of a customer's purchases and subscriptions.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `OriginalAppUserID` | `FString` | The original RevenueCat App User ID |
+| `ActiveEntitlements` | `TArray<FRevenueCatEntitlement>` | Currently active entitlements |
+| `AllPurchasedProductIDs` | `TArray<FString>` | Every product ID ever purchased |
+| `FirstSeen` | `FString` | ISO 8601 date the user was first seen |
+| `ManagementURL` | `FString` | URL to manage subscriptions. Can be empty. |
+| `ActiveSubscriptions` | `TArray<FString>` | Product IDs with active subscriptions |
+
+#### `FRevenueCatError`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `ErrorCode` | `int32` | RevenueCat error code |
+| `ErrorMessage` | `FString` | Human-readable error message |
+
+---
+
+## Editor Stubs (Win64)
+
+On non-mobile platforms (Win64 editor), every function in the subsystem compiles and runs. Instead of calling the native SDK (which doesn't exist on desktop), it logs a message like:
+
+```
+[RevenueCat] FetchOfferings stub — unsupported platform.
+```
+
+This means you can:
+- Build and iterate on your Blueprint purchase flow in the editor
+- Compile and test C++ code without a device
+- Run PIE without crashes
+
+`ConfigureSDK` is the exception — it sets `IsConfigured() = true` and fires `OnConfigured` on stubs, so your initialization flow works in the editor. Other async operations (FetchOfferings, PurchasePackage, etc.) will not fire their callbacks on unsupported platforms.
+
+
+<DocNav
+  prev={{ title: "Getting Started", href: "/docs/revenuecat-bridge/getting-started" }}
+  next={{ title: "Testing & Troubleshooting", href: "/docs/revenuecat-bridge/testing" }}
+/>

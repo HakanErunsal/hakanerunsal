@@ -1,0 +1,286 @@
+---
+title: "Getting Started with RevenueCat Bridge"
+description: "Install the plugin, set up RevenueCat, configure your API keys, and make your first purchase."
+date: 2026-03-14
+published: true
+tags: ["Documentation", "Unreal Engine", "IAP", "Tutorial"]
+parent: "RevenueCatBridgeDocs"
+---
+
+
+<Breadcrumb items={[
+    { label: "Docs", href: "/docs" },
+    { label: "RevenueCat Bridge", href: "/docs/RevenueCatBridgeDocs" },
+    { label: "Getting Started" }
+]} />
+
+## Prerequisites
+
+Before you start, you need:
+
+1. **A RevenueCat account** - sign up free at [revenuecat.com](https://www.revenuecat.com/)
+2. **A Google Play Console account** (for Android) and/or **App Store Connect** (for iOS)
+3. **Products created in your store console** (subscriptions, one-time purchases, etc.)
+4. **Products linked in the RevenueCat dashboard** with at least one Offering and one Entitlement
+
+If you haven't done the RevenueCat dashboard setup yet, follow their [Getting Started guide](https://www.revenuecat.com/docs/getting-started) first. It walks you through creating a project, adding your store credentials, and linking products. Come back here once you have API keys and at least one offering configured.
+
+---
+
+## Step 1: Install the Plugin
+
+### From Fab Marketplace
+
+1. Purchase **RevenueCat Bridge** on [Fab Marketplace](https://www.fab.com/)
+2. In the Epic Games Launcher or Fab, click **Add to Project**
+3. Select your Unreal Engine project
+4. Restart the editor if prompted
+
+### Manual Installation
+
+1. Copy the `RevenueCatBridge` folder into your project's `Plugins/` directory
+2. Your folder structure should look like:
+   ```
+   YourProject/
+     Plugins/
+       RevenueCatBridge/
+         RevenueCatBridge.uplugin
+         Source/
+   ```
+3. Open your project in Unreal Editor
+4. Go to **Edit > Plugins**, search for "RevenueCat Bridge", and make sure it's enabled
+5. Restart the editor
+
+### Verify Installation
+
+After restarting, go to **Project Settings > Plugins**. You should see a **RevenueCat** section. If it's there, the plugin is installed correctly.
+
+---
+
+## Step 2: Get Your API Keys
+
+1. Log into the [RevenueCat dashboard](https://app.revenuecat.com/)
+2. Select your project (or create one)
+3. Go to **API Keys** in the left sidebar
+4. Copy the **Public API key** for each platform:
+   - Android: the key labeled "Google Play" or "Android"
+   - iOS: the key labeled "App Store" or "iOS"
+
+> These are *public* API keys. They are safe to include in your app binary. RevenueCat designed them that way - they can only be used to read offerings and make purchases, not to modify your account.
+
+---
+
+## Step 3: Configure the Plugin
+
+1. In Unreal Editor, go to **Project Settings > Plugins > RevenueCat**
+2. Fill in:
+
+| Setting | What to put |
+|---------|-------------|
+| **Android Api Key** | Your RevenueCat public API key for Android |
+| **iOS Api Key** | Your RevenueCat public API key for iOS |
+| **Entitlement Identifiers** | The entitlement IDs you created in RevenueCat (e.g. `"pro"`, `"premium"`) |
+| **Enable Debug Logs** | Check this during development. Uncheck before shipping. |
+
+3. Save
+
+The plugin reads these settings on startup and auto-configures the SDK. You don't need to call `ConfigureSDK` manually unless you want to override the key at runtime.
+
+---
+
+## Step 4: Set Up Your Store (if you haven't already)
+
+### Android (Google Play)
+
+1. Create your app in [Google Play Console](https://play.google.com/console)
+2. Go to **Monetize > Products > Subscriptions** (or In-app products)
+3. Create your products (monthly sub, annual sub, lifetime unlock, etc.)
+4. Set up an **Internal Testing track** and add yourself as a tester
+5. Upload a signed build to the internal testing track (you need this even for local testing of purchases)
+
+### iOS (App Store)
+
+1. Create your app in [App Store Connect](https://appstoreconnect.apple.com/)
+2. Go to the app > **In-App Purchases** or **Subscriptions**
+3. Create your products
+4. Create a **Sandbox tester** in Users & Access > Sandbox
+
+### RevenueCat Dashboard
+
+1. In your RevenueCat project, go to **Products**
+2. Add your store product IDs and link them to the right store
+3. Go to **Entitlements** and create your entitlements (e.g. `"pro"`)
+4. Link products to entitlements
+5. Go to **Offerings** and create an offering with packages (e.g. a Monthly package using your monthly subscription product)
+6. Mark one offering as **Current**
+
+---
+
+## Step 5: Your First Purchase Flow (Blueprint)
+
+Here's a minimal Blueprint setup that fetches offerings, shows the price, and lets the player buy.
+
+### 5a: Fetch Offerings on Game Start
+
+In your HUD or game mode Blueprint:
+
+1. Search for **Fetch Offerings (Async)** in the action palette
+2. Drag it into your Event Graph
+3. Connect **Event BeginPlay** to the node's input
+4. From the **On Success** pin, you get a `TArray<FRevenueCatOffering>` - these are your products
+
+### 5b: Display Products
+
+From the offerings array:
+
+1. Use a **For Each Loop** to iterate through offerings
+2. Find the one where `bIsCurrent` is `true` (this is the offering you marked as Current in the dashboard)
+3. Loop through its `Packages` array
+4. Each package has a `Product` with `Title`, `PriceString` (e.g. "$4.99"), and `Description`
+5. Display these in your UI however you want (UMG widgets, text, etc.)
+
+### 5c: Purchase a Package
+
+When the player taps "Buy":
+
+1. Search for **Purchase Package (Async)** in the action palette
+2. Pass in the `FRevenueCatPackage` the player selected
+3. **On Success** - purchase went through. Check entitlements.
+4. **On Cancelled** - player dismissed the dialog. Do nothing.
+5. **On Failure** - something went wrong. Show an error message.
+
+### 5d: Check Entitlements
+
+After a purchase (or on game start to check returning subscribers):
+
+1. Get the **RevenueCat Subsystem** (search "Get RevenueCatSubsystem")
+2. Call **Is Entitlement Active** with your entitlement ID (e.g. `"pro"`)
+3. If `true`, unlock premium content. If `false`, show the paywall.
+
+### 5e: Restore Purchases
+
+Add a "Restore Purchases" button somewhere accessible (required by both Google and Apple guidelines):
+
+1. Search for **Restore Purchases (Async)**
+2. On **On Success**, re-check entitlements and update your UI
+
+---
+
+## Step 5 (Alternative): C++ Setup
+
+If you prefer C++, here's the equivalent:
+
+```cpp
+// Get the subsystem from anywhere
+URevenueCatSubsystem* RC = GetGameInstance()->GetSubsystem<URevenueCatSubsystem>();
+
+// Bind to events
+RC->OnOfferingsFetched.AddDynamic(this, &UMyClass::HandleOfferings);
+RC->OnPurchaseCompleted.AddDynamic(this, &UMyClass::HandlePurchase);
+RC->OnError.AddDynamic(this, &UMyClass::HandleError);
+
+// Fetch offerings
+RC->FetchOfferings();
+```
+
+```cpp
+void UMyClass::HandleOfferings(const TArray<FRevenueCatOffering>& Offerings)
+{
+    for (const FRevenueCatOffering& Offering : Offerings)
+    {
+        if (Offering.bIsCurrent)
+        {
+            for (const FRevenueCatPackage& Package : Offering.Packages)
+            {
+                UE_LOG(LogTemp, Log, TEXT("Product: %s - %s"),
+                    *Package.Product.Title,
+                    *Package.Product.PriceString);
+            }
+        }
+    }
+}
+```
+
+```cpp
+// When the player wants to buy something
+RC->PurchasePackage(SelectedPackage);
+```
+
+```cpp
+void UMyClass::HandlePurchase(ERevenueCatPurchaseResult Result,
+    const FRevenueCatCustomerInfo& CustomerInfo)
+{
+    if (Result == ERevenueCatPurchaseResult::Success)
+    {
+        if (RC->IsEntitlementActive("pro"))
+        {
+            // Unlock premium content
+        }
+    }
+}
+```
+
+---
+
+## Step 6: Test on a Real Device
+
+Purchases don't work in the editor or on emulators. You need a real phone.
+
+### Android
+
+1. Build and deploy to your device. The app must be signed with the same key as your Play Console upload.
+2. Your Google account must be listed as a **license tester** in Play Console > Settings > License testing.
+3. The app must be published to at least the **Internal Testing** track.
+4. On device, make sure you're signed into the Google account that's a license tester.
+
+### iOS
+
+1. Build and run on a real device via Xcode or your build pipeline.
+2. On device, go to Settings > App Store > Sandbox Account and sign in with your sandbox tester credentials.
+3. Alternatively, the sandbox login prompt will appear when you try to make a purchase.
+
+### What to look for
+
+- `[RevenueCat] SDK configured successfully.` in the log on startup
+- `FetchOfferings` returns your products with correct prices
+- Tapping "Buy" opens the native store dialog
+- After purchase, `IsEntitlementActive` returns `true`
+
+If anything goes wrong, check the [Testing & Troubleshooting](/docs/revenuecat-bridge/testing) page.
+
+---
+
+## Common Pitfalls
+
+**"FetchOfferings returns 0 offerings"**
+- Products not linked to an offering in the RevenueCat dashboard
+- Store products not approved / not active yet
+- Wrong API key (check you're using the right platform key)
+
+**"Purchase dialog never appears"**
+- App not published to internal testing track (Android)
+- Not signed in as a license tester (Android)
+- Sandbox account not configured (iOS)
+- Building a debug/development configuration that isn't signed correctly
+
+**"IsEntitlementActive always returns false after purchase"**
+- Entitlement not linked to the product in RevenueCat dashboard
+- Typo in the entitlement ID string
+- Not waiting for `OnPurchaseCompleted` before checking (the data is async)
+
+**"Works on Android but crashes on iOS" (or vice versa)**
+- Check the platform-specific logs (Logcat for Android, Xcode Console for iOS)
+- Make sure both API keys are set in Project Settings
+
+---
+
+## Next Steps
+
+- [API Reference](/docs/revenuecat-bridge/api-reference) - every function, delegate, struct, and enum
+- [Testing & Troubleshooting](/docs/revenuecat-bridge/testing) - the full 14-phase test plan, edge cases, and logging tips
+
+
+<DocNav
+  prev={{ title: "Overview", href: "/docs/RevenueCatBridgeDocs" }}
+  next={{ title: "API Reference", href: "/docs/revenuecat-bridge/api-reference" }}
+/>

@@ -1,0 +1,116 @@
+---
+title: "RevenueCat Bridge"
+image: "./../images/RevenueCatThumbnail.png"
+description: "Setup, API reference, testing, and troubleshooting for the RevenueCat Bridge Unreal Engine plugin."
+date: 2026-03-14
+published: true
+tags: ["Documentation", "Unreal Engine", "IAP", "Subscriptions", "Mobile"]
+---
+
+## Overview
+
+**RevenueCat Bridge** wraps RevenueCat's native Android and iOS SDKs behind a single `UGameInstanceSubsystem`. One instance lives for the entire game session — accessible from Blueprints, C++, or async action nodes.
+
+**Platform support:** Android and iOS at runtime. Win64 editor builds compile and run with stub implementations for iteration.
+
+**Included SDKs:**
+- Android: RevenueCat v9.25.0 (Gradle, pulled at build time)
+- iOS: RevenueCat v5.63.0 (xcframework, bundled)
+
+> The plugin does not include a storefront UI, does not handle server-side logic, and does not run on desktop at runtime.
+
+---
+
+## Documentation
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8 p-6 not-prose">
+
+<a href="/docs/revenuecat-bridge/getting-started" className="doc-card rounded-lg border border-border hover:border-primary/50 transition-all duration-300 bg-card block p-6">
+  <h3 className="text-lg font-semibold mb-2">Getting Started</h3>
+  <p className="text-sm text-muted-foreground">Install, configure API keys, and make your first purchase.</p>
+</a>
+
+<a href="/docs/revenuecat-bridge/api-reference" className="doc-card rounded-lg border border-border hover:border-primary/50 transition-all duration-300 bg-card block p-6">
+  <h3 className="text-lg font-semibold mb-2">API Reference</h3>
+  <p className="text-sm text-muted-foreground">Functions, delegates, async actions, structs, and enums.</p>
+</a>
+
+<a href="/docs/revenuecat-bridge/testing" className="doc-card rounded-lg border border-border hover:border-primary/50 transition-all duration-300 bg-card block p-6">
+  <h3 className="text-lg font-semibold mb-2">Testing & Troubleshooting</h3>
+  <p className="text-sm text-muted-foreground">Test plan, edge cases, common issues, and logging.</p>
+</a>
+
+</div>
+
+---
+
+## Typical Flow
+
+The plugin auto-initializes on startup using the API keys from Project Settings. Here's the basic sequence:
+
+```
+Game Starts
+  -> SDK auto-configures
+  -> OnConfigured fires
+
+FetchOfferings()
+  -> OnOfferingsFetched fires with your products
+
+Player taps "Buy"
+  -> PurchasePackage(SelectedPackage)
+  -> Native store dialog appears
+  -> OnPurchaseCompleted fires
+
+IsEntitlementActive("pro")
+  -> true if the player has an active purchase
+```
+
+---
+
+## Architecture
+
+```
+Your Game (Blueprints / C++)
+        |
+  URevenueCatSubsystem (GameInstanceSubsystem)
+        |
+   Platform Bridge (compile-time)
+      /           \
+  Android          iOS
+  (JNI -> Java)    (Obj-C++ -> Swift)
+      |                |
+  RevenueCat SDK   RevenueCat SDK
+  v9.25.0 (AAR)   v5.63.0 (xcframework)
+      |                |
+  Google Play      App Store
+```
+
+- **Android:** JNI calls a Java bridge class → RevenueCat SDK. Callbacks return via JNI native methods, marshalled onto the game thread.
+- **iOS:** Obj-C++ calls the RevenueCat SDK directly. Callbacks dispatched to the game thread via `AsyncTask`.
+- **Win64 editor:** All functions are stubbed. `ConfigureSDK` fires `OnConfigured` so initialization logic works. Other async operations won't fire callbacks.
+
+---
+
+## Requirements
+
+| Requirement | Details |
+|-------------|---------|
+| **Engine** | Unreal Engine 5.5+ |
+| **Platforms** | Android, iOS (editor stubs for Win64) |
+| **RevenueCat account** | Free tier at [revenuecat.com](https://www.revenuecat.com/) |
+| **Store setup** | Google Play Console and/or App Store Connect with products configured |
+| **RevenueCat dashboard** | Products linked, offerings created, entitlements configured |
+
+---
+
+## Support
+
+<div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '16px', marginBottom: '24px' }}>
+  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px', backgroundColor: 'rgba(128, 128, 128, 0.1)', color: '#888', textDecoration: 'none', borderRadius: '8px', fontWeight: '500', border: '1px solid rgba(128, 128, 128, 0.3)', fontSize: '14px', cursor: 'default' }}>
+    Fab Marketplace (coming soon)
+  </span>
+</div>
+
+Updates will be delivered through Fab Marketplace.
+
+This plugin is not affiliated with or endorsed by RevenueCat, Inc., Google LLC, or Apple Inc.
