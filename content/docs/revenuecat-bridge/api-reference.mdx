@@ -88,11 +88,11 @@ These are stored in `URevenueCatSettings` (a `DeveloperSettings` subclass) and s
 
 | Function | Description |
 |----------|-------------|
+| `SetFirebaseAppInstanceId(AppInstanceId)` | Set Firebase App Instance ID for RevenueCat's Firebase integration. This plugin does not depend on Firebase - get the ID from your own Firebase setup. |
+| `SetAttributes(Attributes)` | Set arbitrary key-value pairs as subscriber attributes. Takes a `TMap<FString, FString>`. |
 | `SetEmail(Email)` | Set subscriber's email (reserved attribute). |
 | `SetDisplayName(DisplayName)` | Set subscriber's display name (reserved attribute). |
 | `SetPhoneNumber(PhoneNumber)` | Set subscriber's phone number (reserved attribute). |
-| `SetAttributes(Attributes)` | Set arbitrary key-value pairs as subscriber attributes. Takes a `TMap<FString, FString>`. |
-| `SetFirebaseAppInstanceId(AppInstanceId)` | Set Firebase App Instance ID for RevenueCat's Firebase integration. This plugin does not depend on Firebase - get the ID from your own Firebase setup. |
 
 ### Attribution
 
@@ -103,7 +103,7 @@ These are stored in `URevenueCatSettings` (a `DeveloperSettings` subclass) and s
 | `SetAdGroup(AdGroup)` | Set ad group. |
 | `SetCreative(Creative)` | Set creative name. |
 | `SetKeyword(Keyword)` | Set keyword. |
-| `CollectDeviceIdentifiers()` | Auto-collect GAID (Android) / IDFA (iOS) and send to RevenueCat. |
+| `CollectDeviceIdentifiers()` | Auto-collect GAID (Android) / IDFA (iOS) and send to RevenueCat. Called automatically on SDK initialization — you only need to call this manually if you want to refresh identifiers later. |
 
 All attribution functions are fire-and-forget. No callback. Verify the values in the RevenueCat dashboard under the customer's attributes.
 
@@ -136,79 +136,63 @@ RC->OnPurchaseCompleted.AddDynamic(this, &UMyClass::HandlePurchase);
 
 ## Async Blueprint Actions
 
-These are latent Blueprint nodes that give you **output execution pins** (OnSuccess / OnFailure / OnCancelled) directly in the graph. No delegate binding needed.
+These latent nodes derive from `UBlueprintAsyncActionBase` and provide **output execution pins** (OnSuccess / OnFailure / OnCancelled) directly in the Blueprint graph — no manual delegate binding needed.
 
-Search for the node name in the Blueprint action palette. They're all in the **RevenueCat** category.
+Search for the node name in the Blueprint action palette (they are in the **RevenueCat** category).
 
 ### Fetch Offerings (Async)
 
-All output pins share the same signature: `TArray<FRevenueCatOffering> Offerings`, `int32 ErrorCode`, `FString ErrorMessage`.
-
-| Pin | Description |
-|-----|-------------|
-| **On Success** | `Offerings` populated, `ErrorCode` = 0. |
-| **On Failure** | `Offerings` empty. `ErrorCode` and `ErrorMessage` describe the error. |
+| Pin | Type | Description |
+|-----|------|-------------|
+| **OnSuccess** | `TArray<FRevenueCatOffering>` | Fired with the fetched offerings |
+| **OnFailure** | `FRevenueCatError` | Fired on error |
 
 ### Purchase Package (Async)
 
-**Input:** `FRevenueCatPackage Package` - the package to purchase.
-
-All output pins share the same signature: `FRevenueCatCustomerInfo CustomerInfo`, `int32 ErrorCode`, `FString ErrorMessage`.
-
-| Pin | Description |
-|-----|-------------|
-| **On Success** | `CustomerInfo` populated. Purchase succeeded or already owned. |
-| **On Cancelled** | User dismissed the purchase dialog. `ErrorCode` = 0. |
-| **On Failure** | `ErrorCode` and `ErrorMessage` describe the error. |
+| Pin | Type | Description |
+|-----|------|-------------|
+| **Package** (input) | `FRevenueCatPackage` | The package to purchase |
+| **OnSuccess** | `FRevenueCatCustomerInfo` | Fired when purchase succeeds or is already owned |
+| **OnCancelled** | — | Fired when the user cancels the purchase flow |
+| **OnFailure** | `FRevenueCatError` | Fired on error or pending purchase |
 
 ### Restore Purchases (Async)
 
-All output pins share the same signature: `FRevenueCatCustomerInfo CustomerInfo`, `int32 ErrorCode`, `FString ErrorMessage`.
-
-| Pin | Description |
-|-----|-------------|
-| **On Success** | `CustomerInfo` populated with restored data. |
-| **On Failure** | `ErrorCode` and `ErrorMessage` describe the error. |
+| Pin | Type | Description |
+|-----|------|-------------|
+| **OnSuccess** | `FRevenueCatCustomerInfo` | Fired with restored customer info |
+| **OnFailure** | `FRevenueCatError` | Fired on error |
 
 ### Sync Purchases (Async)
 
-All output pins share the same signature: `FRevenueCatCustomerInfo CustomerInfo`, `int32 ErrorCode`, `FString ErrorMessage`.
-
-| Pin | Description |
-|-----|-------------|
-| **On Success** | `CustomerInfo` populated with synced data. |
-| **On Failure** | `ErrorCode` and `ErrorMessage` describe the error. |
+| Pin | Type | Description |
+|-----|------|-------------|
+| **OnSuccess** | `FRevenueCatCustomerInfo` | Fired with synced customer info |
+| **OnFailure** | `FRevenueCatError` | Fired on error |
 
 ### Fetch Customer Info (Async)
 
-All output pins share the same signature: `FRevenueCatCustomerInfo CustomerInfo`, `int32 ErrorCode`, `FString ErrorMessage`.
-
-| Pin | Description |
-|-----|-------------|
-| **On Success** | `CustomerInfo` populated with latest data. |
-| **On Failure** | `ErrorCode` and `ErrorMessage` describe the error. |
+| Pin | Type | Description |
+|-----|------|-------------|
+| **OnSuccess** | `FRevenueCatCustomerInfo` | Fired with the latest customer info |
+| **OnFailure** | `FRevenueCatError` | Fired on error |
 
 ### Log In (Async)
 
-**Input:** `FString AppUserID` - the custom user ID.
-
-All output pins share the same signature: `FRevenueCatCustomerInfo CustomerInfo`, `int32 ErrorCode`, `FString ErrorMessage`.
-
-| Pin | Description |
-|-----|-------------|
-| **On Success** | `CustomerInfo` populated for the identified user. |
-| **On Failure** | `ErrorCode` and `ErrorMessage` describe the error. |
+| Pin | Type | Description |
+|-----|------|-------------|
+| **AppUserID** (input) | `FString` | The custom user ID to log in with |
+| **OnSuccess** | `FRevenueCatCustomerInfo` | Fired with the identified customer info |
+| **OnFailure** | `FRevenueCatError` | Fired on error |
 
 ### Log Out (Async)
 
-All output pins share the same signature: `FRevenueCatCustomerInfo CustomerInfo`, `int32 ErrorCode`, `FString ErrorMessage`.
+| Pin | Type | Description |
+|-----|------|-------------|
+| **OnSuccess** | `FRevenueCatCustomerInfo` | Fired with the anonymous customer info |
+| **OnFailure** | `FRevenueCatError` | Fired on error |
 
-| Pin | Description |
-|-----|-------------|
-| **On Success** | `CustomerInfo` populated for the new anonymous user. |
-| **On Failure** | `ErrorCode` and `ErrorMessage` describe the error. |
-
-> Don't run multiple instances of the same async action type at the same time. They bind to the same underlying delegate, so results can cross.
+> **Note:** These async actions bind to the subsystem's existing delegates internally. Avoid running multiple instances of the same async action type simultaneously.
 
 ---
 
