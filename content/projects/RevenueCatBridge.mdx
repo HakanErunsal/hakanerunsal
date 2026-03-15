@@ -1,0 +1,63 @@
+---
+title: "RevenueCat Bridge"
+image: "./../images/RevenueCatThumbnail.png"
+description: "Unreal Engine plugin for in-app purchases and subscriptions via RevenueCat. Single Blueprint/C++ API for Android and iOS."
+date: 2026-03-14
+developer: "Hakan Erünsal"
+published: true
+tags: ["Unreal Engine", "Plugin", "IAP", "Subscriptions", "Mobile", "Android", "iOS"]
+---
+
+## RevenueCat Bridge
+
+<ZoomableImage
+  src="../images/RevenueCatThumbnail.png"
+  alt="RevenueCat Bridge Plugin"
+/>
+
+An Unreal Engine plugin that wraps RevenueCat's native Android and iOS SDKs behind a single `UGameInstanceSubsystem`. Handles purchases, subscriptions, entitlement checks, restore flows, user identity, and subscriber attributes — all from Blueprints or C++.
+
+<div style={{ display: 'flex', justifyContent: 'center', gap: '24px', marginTop: '24px', marginBottom: '40px', flexWrap: 'wrap' }}>
+  <div style={{ width: '280px', padding: '24px', backgroundColor: 'rgba(250, 92, 92, 0.1)', borderRadius: '12px', border: '1px solid rgba(250, 92, 92, 0.3)' }}>
+    <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Get the Plugin</h3>
+    <ul style={{ margin: '0 0 20px 0', paddingLeft: '20px', fontSize: '14px', lineHeight: '1.8' }}>
+      <li>Engine: UE 5.5+</li>
+      <li>Platform: Android, iOS</li>
+      <li>Editor stubs for Win64</li>
+    </ul>
+    <span style={{ display: 'block', padding: '12px 24px', backgroundColor: '#888', color: 'white', borderRadius: '8px', fontWeight: '600', textAlign: 'center', fontSize: '14px', cursor: 'default' }}>
+      Fab Marketplace (coming soon)
+    </span>
+  </div>
+  <div style={{ width: '280px', padding: '24px', backgroundColor: 'rgba(29, 106, 206, 0.1)', borderRadius: '12px', border: '1px solid rgba(29, 106, 206, 0.3)' }}>
+    <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Documentation</h3>
+    <ul style={{ margin: '0 0 20px 0', paddingLeft: '20px', fontSize: '14px', lineHeight: '1.8' }}>
+      <li>Getting Started Guide</li>
+      <li>Full API Reference</li>
+      <li>Testing & Troubleshooting</li>
+    </ul>
+    <a href="/docs/RevenueCatBridgeDocs" style={{ display: 'block', padding: '12px 24px', backgroundColor: '#1d6ace', color: 'white', textDecoration: 'none', borderRadius: '8px', fontWeight: '600', textAlign: 'center', fontSize: '14px' }}>
+      Full Documentation
+    </a>
+  </div>
+</div>
+
+## What It Does
+
+- Fetches product offerings from RevenueCat
+- Triggers native purchase dialogs (Google Play / App Store)
+- Checks entitlements to gate premium content
+- Restores purchases after reinstalls
+- Manages user identity across devices
+- Sets subscriber attributes and attribution data
+
+## Technical Details
+
+| | |
+|---|---|
+| **Architecture** | `UGameInstanceSubsystem` — one instance per session |
+| **Android SDK** | RevenueCat v9.25.0 (Gradle, pulled at build time) |
+| **iOS SDK** | RevenueCat v5.63.0 (xcframework, bundled) |
+| **Blueprint** | 7 async action nodes, 6 event delegates |
+| **C++** | Full source included |
+| **Editor** | Win64 stubs for iteration without a device |
