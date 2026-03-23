@@ -316,7 +316,7 @@ export default function PurchaseFlowVisualizer() {
                     <div className={nodeStyle(isManual('entitlement'), "border-green-500 bg-green-500/10 text-green-500")}>
                         <ShieldCheck className="h-5 w-5 shrink-0" />
                         <div>
-                            <div className="text-sm font-semibold font-mono">IsEntitlementActive("pro")</div>
+                            <div className="text-sm font-semibold font-mono">IsEntitlementActive(&quot;pro&quot;)</div>
                             <div className="text-xs opacity-75">→ true — unlock premium content</div>
                         </div>
                     </div>
@@ -331,7 +331,7 @@ export default function PurchaseFlowVisualizer() {
                         <Layout className="h-5 w-5 shrink-0" />
                         <div>
                             <div className="text-sm font-semibold font-mono">PresentPaywall()</div>
-                            <div className="text-xs opacity-75">or PresentPaywallIfNeeded("pro")</div>
+                            <div className="text-xs opacity-75">or PresentPaywallIfNeeded(&quot;pro&quot;)</div>
                         </div>
                     </div>
 
