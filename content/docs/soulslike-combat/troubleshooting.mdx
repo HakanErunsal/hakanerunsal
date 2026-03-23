@@ -56,7 +56,7 @@ Melee.Debug.DrawTracing 0-1
 
 ## Common Issues
 
->Majority of the times, logs will tell you what is wrong, but if you have a specific case;
+> Logs handle most issues. For specific cases:
 
 ### AI doesn't attack
 
@@ -133,15 +133,15 @@ Open your Blackboard Data Asset and add a **Name** key called `SEC_ActivationMod
 
 ### Can I use this with my existing character?
 
-Yes. Add `SECCombatControllerComponent` to your AI controller and the necessary pawn components to your character. Create an ActionSet, configure an AIConfig, and set up a StateTree. The plugin is designed to integrate with existing projects without requiring you to inherit from `EnemyControllerBase` or `EnemyCharacterBase`.
+Yes. Add `SECCombatControllerComponent` to your AI controller and the necessary pawn components to your character. Create an ActionSet, configure an AIConfig, and set up a StateTree. The plugin integrates with existing projects without requiring inheritance from `EnemyControllerBase` or `EnemyCharacterBase`.
 
 ### Does this work with multiplayer?
 
-Yes. The plugin supports both listen server and dedicated server configurations. AI logic runs on the server, and key state (health, action execution, combat roles, active ActionSet) replicates to clients automatically. See the [Multiplayer](/docs/soulslike-combat/multiplayer) docs for details.
+Yes. The plugin supports both listen server and dedicated server configurations. AI logic runs on the server, and key state (health, action execution, combat roles, active ActionSet) replicates to clients. See the [Multiplayer](/docs/soulslike-combat/multiplayer) docs for details.
 
 ### Can I use this without Gameplay Ability System?
 
-The melee trace system can work standalone, but action execution relies on GAS. Implementing a non-GAS execution mode is possible with only using behavior tree execution, but i would highly recommend to explore GAS if you didn't yet.
+The melee trace system works standalone, but action execution relies on GAS. A non-GAS path works with Behavior Tree execution only. GAS unlocks ability blocking, tagging, and cooldown integration, so it is worth exploring if you haven't already.
 
 ### What Unreal Engine versions are supported?
 
@@ -153,11 +153,21 @@ Yes. The system scales well. Use ActionSets with phase-specific actions, swap se
 
 ### How do I make ranged enemies?
 
-There is already an example for Supporter role. Pay attention to how they execute their ranged ability. It is quite simple to implement your own by looking at it.
+There is already an example for Supporter role. Study the Supporter role example and adapt the ranged ability to your needs.
 
 ### Is source code included?
 
 Yes. Full C++ source is included under MIT license.
+
+### How do I handle death (ragdoll, weapon drop, dissolve)?
+
+Call `HandleDeath()` on the `SECCombatControllerComponent` when the AI should die. This shuts down all SEC combat systems in the correct order and broadcasts the `OnDeath` delegate.
+
+**Weapon drop** is automatic — `HandleDeath` unequips the weapon with `bSimulatePhysics = true` in the unequip context. Override `K2_OnUnequipped` on your weapon Blueprint to enable physics on the mesh and apply an impulse. Set `bDropWeaponOnDeath` to `false` on the combat controller if you want to handle the drop manually (e.g. from a death montage AnimNotify).
+
+**Ragdoll** can be enabled in the `OnDeath` delegate or `K2_OnDeath` Blueprint event on your controller — all combat systems are already shut down at that point, so it's safe to call `SetSimulatePhysics` on the character mesh.
+
+**Dissolve/destroy** — use `SetLifeSpan` or a timer in your `K2_OnDeath` handler to delay actor destruction, giving time for a material dissolve effect.
 
 ---
 

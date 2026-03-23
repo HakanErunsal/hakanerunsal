@@ -16,13 +16,13 @@ parent: "SoulslikeCombatDocs"
 
 ## Overview
 
-The Soulslike Enemy Combat plugin is highly optimized for performance. All calculations are primarily simple vector math, resulting in negligible overhead even with large numbers of enemies.
+At 150 enemies, the plugin consumes less than 4% of a 60fps frame budget. Calculations are simple vector math: direction samples, dot products, and distance checks.
 
 ---
 
 ## Benchmark Results
 
-Use the interactive tool below to see how the performance scales with enemy count.
+The chart below shows how cost scales with enemy count.
 Benchmarks are performed on a **Ryzen 9950x**.
 
 <PerformanceVisualizer />

@@ -5,7 +5,7 @@ export default function DocsLayout({
 }>) {
     return (
         <div className="relative">
-            {/* Radial gradient light effect from top — like UE docs */}
+            {/* Radial gradient light effect from top - like UE docs */}
             <div
                 className="pointer-events-none absolute inset-x-0 top-0 h-[40vh] z-0"
                 style={{

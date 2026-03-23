@@ -89,7 +89,7 @@ export default async function PostPage({ params }: PostPageProps) {
         </article>
       </div>
 
-      {/* Right TOC — sticky, aligned with content */}
+      {/* Right TOC - sticky, aligned with content */}
       <DocsPageTOC />
     </div>
   );

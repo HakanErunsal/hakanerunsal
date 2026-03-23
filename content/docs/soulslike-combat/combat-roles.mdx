@@ -33,7 +33,7 @@ parent: "SoulslikeCombatDocs"
 
 ### The Role System
 
-Instead of all enemies rushing the player, each gets assigned a **role**:
+Enemies don't all attack at once. Each gets assigned a **role**:
 
 | Role | Behavior | Typical Actions |
 |------|----------|-----------------|
@@ -61,7 +61,7 @@ When an Attacker finishes or dies, a Waiter can take its place. Roles not listed
 
 ### Fitness Evaluation
 
-"Who should be the next Attacker?" is decided by **Role Evaluators** (`URoleEvaluator` subclasses). These are instanced UObjects that score each AI on a 0.0-1.0 scale:
+**Role Evaluators** (`URoleEvaluator` subclasses) decide who becomes the next Attacker. These are instanced UObjects that score each AI on a 0.0-1.0 scale:
 
 ```cpp
 // Built-in evaluators:
@@ -280,7 +280,7 @@ The subsystem fires several delegates for global listeners:
 | `OnCombatTargetChanged` | NewTarget, OldTarget | Default target switches |
 | `OnCombatantsOrphaned` | LostTarget, OrphanedControllers | Combatants lose their target |
 
-> `OnCombatantsOrphaned` fires when a target unregisters. The orphaned combatants have their roles reset to `SEC.Role.None`. Bind to this delegate to reassign them to a new target.
+> `OnCombatantsOrphaned` fires when a target unregisters. The subsystem resets orphaned combatants to `SEC.Role.None`. Bind to this delegate to reassign them to a new target.
 
 ---
 

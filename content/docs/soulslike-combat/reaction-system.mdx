@@ -13,7 +13,7 @@ parent: "SoulslikeCombatDocs"
     { label: "Reaction System" }
 ]} />
 
-> The flip side of actions. Actions are *polled* - reactions are *event-driven*.
+> Actions poll on a timer. Reactions fire from events.
 
 <ReactionFlowVisualizer />
 
@@ -24,7 +24,7 @@ parent: "SoulslikeCombatDocs"
 - Counter-attacks after blocking
 - Any "respond to this stimulus" behavior
 
-> The system doesn't decide **when** to react - you do. It decides **what** to react with and whether the reaction is allowed.
+> The system doesn't decide **when** to react: you do. It decides **what** to react with and whether the reaction is allowed.
 
 ---
 
@@ -222,12 +222,12 @@ Mirrors `SECActionSetComponent` for actions. Lives on the **pawn**, handles reac
 
 When `GetReactionSetForRole()` is called, it walks this chain and returns the **first match**:
 
-1.  **Runtime Override** — `SetRuntimeOverride(ReactionSet)`. Highest priority. Use for boss phase transitions.
-2.  **Equipped Weapon** — If the weapon actor implements `ISECWeaponReactionSetProvider`, calls `GetWeaponReactionSetForRole(RoleTag)`.
-3.  **Config Role** — Role-specific ReactionSet from `EnemyAIConfig → RoleReactionSets[CurrentRole]`.
-4.  **Config Default** — Fallback from `EnemyAIConfig → DefaultReactionSet`.
-5.  **Component Default** — `SECReactionSetComponent → DefaultReactionSet` property (set in Blueprint).
-6.  **None** — No ReactionSet found. AI cannot react.
+1.  **Runtime Override** - `SetRuntimeOverride(ReactionSet)`. Highest priority. Use for boss phase transitions.
+2.  **Equipped Weapon** - If the weapon actor implements `ISECWeaponReactionSetProvider`, calls `GetWeaponReactionSetForRole(RoleTag)`.
+3.  **Config Role** - Role-specific ReactionSet from `EnemyAIConfig → RoleReactionSets[CurrentRole]`.
+4.  **Config Default** - Fallback from `EnemyAIConfig → DefaultReactionSet`.
+5.  **Component Default** - `SECReactionSetComponent → DefaultReactionSet` property (set in Blueprint).
+6.  **None** - No ReactionSet found. AI cannot react.
 
 > This is the same resolution chain as `SECActionSetComponent`. Learn one, know both.
 
@@ -323,11 +323,11 @@ if (Chosen.IsValid())
 
 <Protip 
   title="Context reuse" 
-  description="FSECExecutionContext is the same struct used by actions. If you're already familiar with ExecuteActionWithContext(), reaction context works identically - same fields, same auto-population, same TargetData library." 
+  description="FSECExecutionContext is the same struct used by actions. If you're already familiar with ExecuteActionWithContext(), reaction context works identically: same fields, same auto-population, same TargetData library." 
 />
 <Protip 
   title="Working example included" 
-  description="Open BP_SEC_EnemyCharacter and check its ApplyDamage interface implementation to see exactly how reactions are triggered from damage events. The included DA_ReactionSet data asset is pre-configured with example reactions you can experiment with and use as a starting point." 
+  description="Open BP_SEC_EnemyCharacter and inspect the ApplyDamage interface implementation for a real example of reaction triggering. DA_ReactionSet ships with pre-configured reactions you can experiment with as a starting point." 
 />
 ---
 

@@ -1,5 +1,5 @@
 /*
- * Add orange border — rounded TOP corners, square BOTTOM corners (Fab card style)
+ * Add orange border - rounded TOP corners, square BOTTOM corners (Fab card style)
  * 
  * File → Scripts → Browse → select this file
  */
@@ -16,7 +16,7 @@
 
     // --- CONFIG ---
     var BORDER = 28;            // border thickness (4K)
-    var CORNER_RADIUS = 102;    // top corner radius (4K) — ~28px at 1080p, matches Fab card roundness
+    var CORNER_RADIUS = 102;    // top corner radius (4K) - ~28px at 1080p, matches Fab card roundness
     var COLOR = [208, 124, 38]; // #d07c26
     var ARC_STEPS = 24;         // smoothness of rounded corners
     // --------------

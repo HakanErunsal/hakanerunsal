@@ -54,7 +54,7 @@ Frame 1 position ═══════════════► Frame 2 positi
             Continuous trace catches the hit
 ```
 
-This works identically at 30 FPS or 144 FPS.
+Behavior is identical at 30 FPS or 144 FPS.
 
 ### Trace Sockets
 
@@ -247,9 +247,7 @@ This draws the trace volumes in real-time. Very useful for tuning socket positio
 
 ## Integration Points
 
-When used with the full plugin, the melee trace integrates automatically. Weapons register on equip and animation notifies trigger tracing.
-
-For standalone use (player characters, destructibles), just add `USECMeleeTraceComponent` to your actor and call `StartTracing()`/`StopTracing()` manually.
+Weapons register on equip and animation notifies trigger tracing. For standalone use (player characters, destructibles), add `USECMeleeTraceComponent` to your actor and call `StartTracing()`/`StopTracing()` manually.
 
 ### Multiplayer
 

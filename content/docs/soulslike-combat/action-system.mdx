@@ -13,7 +13,7 @@ parent: "SoulslikeCombatDocs"
     { label: "Action System" }
 ]} />
 
-> The brain behind enemy decisions. It doesn't just pick an attack - it *evaluates* the battlefield.
+> The brain behind enemy decisions. It scores every action against live battlefield data: distance, angle, health, threat, and context tags.
 
 <ActionFlowVisualizer />
 
@@ -32,7 +32,7 @@ parent: "SoulslikeCombatDocs"
 
 ### Scoring
 
-Every evaluation, all valid actions compete. The highest score wins.
+On every evaluation, all valid actions compete. The highest score wins.
 
 ```
 Final Score = SelectionWeight 
@@ -77,7 +77,7 @@ Distance.MaxValue = 400;     // Score ramps down to 0.0
 
 <Protip 
   title="Organic Combos" 
-  description="You don't script 'Hit-Hit-Smash' - you make 'Smash' very likely after 'Hit'. If the player rolls out of range, the AI naturally breaks the combo instead of swinging at air." 
+  description="You don't script 'Hit-Hit-Smash': you make 'Smash' very likely after 'Hit'. If the player rolls out of range, the AI breaks the combo instead of swinging at air." 
 />
 
 ---
@@ -211,7 +211,7 @@ The system maps the context as follows:
 
 ## How Action Sets Are Managed
 
-The plugin uses a **push-based** architecture. When a combat role changes, the `SECCombatControllerComponent` on the controller automatically syncs everything.
+The plugin uses a **push-based** architecture. Combat role changes trigger `SECCombatControllerComponent` to sync everything.
 
 ```
 AICombatRoleSubsystem assigns new role
@@ -233,13 +233,13 @@ When `GetActionSetForRole()` is called, it walks this chain and returns the **fi
 5.  **Component Default** - `SECActionSetComponent → DefaultActionSet` property (set in Blueprint on the pawn).
 6.  **None** - No ActionSet found. AI will only move, never attack.
 
-Changes to weapon or override take effect **immediately** - no need to wait for a role change.
+Changes to weapon or override take effect **immediately**, with no role change required.
 
 > This is the same resolution chain used by `SECReactionSetComponent` for reaction sets. Learn one, know both.
 
 <Protip 
   title="Weapon-Driven AI" 
-  description="Because 'Equipped Weapon' outranks Config, you can change an enemy's entire brain just by giving them a different item. A skeleton with a Bow becomes a sniper. Disarm it, and it falls back to its Config set - becoming a brawler." 
+  description="Because 'Equipped Weapon' outranks Config, you can change an enemy's entire brain by giving them a different item. A skeleton with a Bow becomes a sniper. Disarm it, and it falls back to its Config set, becoming a brawler." 
 />
 
 ### Weapon Action Set Provider
@@ -265,7 +265,7 @@ Pawn->ActionSetComponent->GrantAction(ThrowGrenadeSpec);
 Pawn->ActionSetComponent->RevokeAction("ThrowGrenade");
 ```
 
-Granted actions **persist across role changes and action set swaps**. They participate in evaluation alongside the base ActionSet - same scoring, same cooldowns.
+Granted actions **persist across role changes and action set swaps**. They participate in evaluation alongside the base ActionSet: same scoring, same cooldowns.
 
 For bulk operations:
 ```cpp
@@ -356,7 +356,7 @@ ActionEvalComp->bDebugLogExecution = true;  // Log execution flow
 | [Combat Roles](/docs/soulslike-combat/combat-roles) | Role changes trigger automatic ActionSet swaps |
 | [Threat Detection](/docs/soulslike-combat/threat-detection) | Threat level feeds into `FDecisionContext` |
 | [Multiplayer](/docs/soulslike-combat/multiplayer) | Action state replicates to clients via `SECActionSetComponent` |
-> **Custom character classes:** `ActionEvaluationComponent` resolves the `AbilitySystemComponent` from the possessed pawn via `IAbilitySystemInterface` on controller possession. If your pawn does not implement this interface, ability-based actions will silently fail. See [Getting Started](/docs/soulslike-combat/getting-started) for setup details.
+> **Custom character classes:** `ActionEvaluationComponent` resolves the `AbilitySystemComponent` from the possessed pawn via `IAbilitySystemInterface` on possession. Pawns that do not implement this interface cause ability-based actions to silently fail. See [Getting Started](/docs/soulslike-combat/getting-started) for setup details.
 ---
 
 <DocNav 

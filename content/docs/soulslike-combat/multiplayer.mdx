@@ -14,13 +14,13 @@ parent: "SoulslikeCombatDocs"
     { label: "Multiplayer" }
 ]} />
 
-> The plugin works in both listen server and dedicated server configurations. AI decisions run on the server, and relevant state replicates to clients automatically.
+> The plugin works in listen server and dedicated server configurations. AI decisions run on the server; relevant state replicates to clients.
 
 ## Overview
 
-AI in Unreal Engine is inherently server-authoritative. AI controllers only exist on the server, and all decision-making happens there. The challenge for multiplayer is making sure clients have enough information to display what the AI is doing (animations, VFX, UI indicators) without duplicating the logic.
+AI in Unreal Engine is server-authoritative. AI controllers only exist on the server, and all decision-making happens there. The challenge is giving clients enough information to display what the AI is doing (animations, VFX, UI indicators) without duplicating logic.
 
-SoulslikeCombat handles this by **replicating output state**, not logic. The server runs the full decision pipeline, and lightweight replicated components on the pawn broadcast the results to clients.
+The approach: **replicate output state**, not logic. The server runs the full decision pipeline, and lightweight replicated components on the pawn broadcast the results to clients.
 
 ---
 

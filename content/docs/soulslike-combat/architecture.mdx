@@ -16,7 +16,7 @@ parent: "SoulslikeCombatDocs"
 
 ## The StateTree + Behavior Tree Hybrid
 
-The plugin separates **strategic thinking** from **tactical execution**. This avoids the common pitfall of a single massive Behavior Tree that mixes strategy and execution logic.
+The plugin separates **strategic thinking** from **tactical execution**. A single massive Behavior Tree mixing strategy and execution logic quickly becomes unmaintainable.
 
 **StateTree (The Brain)** handles high-level decisions. **Actions (The Hands)** handle tactical execution. The two layers communicate through components, never directly.
 
@@ -110,6 +110,7 @@ You can subclass `SECCombatControllerComponent` in Blueprint and override these 
 |----------|---------|
 | `SyncStateForCombatRole` | Called when role changes. Override to add custom sync logic (animation sets, VFX, StateTree swaps). Call parent to keep default action set and movement profile sync. |
 | `HandleCombatTargetLost` | Called when combat target is destroyed or unregistered. Override to add custom fallback behavior (patrol, aggro switch). |
+| `HandleDeath` | Shuts down all combat systems in order: blocks action evaluation → stops brain logic → cancels actions/reactions → stops melee traces → drops weapon (if `bDropWeaponOnDeath`) → disables threat detection → unregisters from role subsystem → clears focus → broadcasts `OnDeath`. Override to insert custom teardown steps. |
 
 **Blueprint-Callable API:**
 
@@ -124,6 +125,7 @@ You can subclass `SECCombatControllerComponent` in Blueprint and override these 
 | `OnCombatRoleChanged` | Fires when the combat role changes (from subsystem assignment or local apply). Provides new and old role tags. |
 | `OnCombatTargetLost` | Fires when the combat target is destroyed or unregistered. |
 | `OnCombatRoleSystemReady` | Fires after successful registration with `AICombatRoleSubsystem`. Safe to call `ForceAssignRole` or read the initial role in this handler. |
+| `OnDeath` | Fires at the end of `HandleDeath()`. All SEC systems are already shut down. Safe to enable ragdoll, spawn VFX, or destroy the actor. |
 
 ---
 
@@ -160,9 +162,9 @@ All controller-side components (`SECCombatControllerComponent`, `BotStateTreeAIC
 2. **`OnPossessedPawnChanged` callback** - Cache pawn reference, resolve ASC (if needed), initialize actions/state for the new pawn.
 3. **`OnUnregister`** - Unsubscribe from `OnPossessedPawnChanged`.
 
-This convention ensures components work correctly regardless of when the controller possesses the pawn relative to `BeginPlay`. It also handles re-possession (pawn swaps) cleanly.
+Components work correctly regardless of when the controller possesses the pawn, and handle re-possession cleanly.
 
-> **Why not BeginPlay?** Controller components' `BeginPlay` can fire before the controller possesses a pawn. Using `OnRegister` + the possession delegate guarantees the pawn is available when the component initializes.
+> **Why not BeginPlay?** Controller components' `BeginPlay` fires before possession. `OnRegister` + the possession delegate guarantees the pawn exists when the component initializes.
 
 1. **StateTree** drives the AI behavior loop using `BotStateTreeAIComponent`
 2. **ActionEvaluationComponent** gathers context: distance, angle, health, threat, tags

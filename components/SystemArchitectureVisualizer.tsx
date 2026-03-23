@@ -161,7 +161,7 @@ const nodes: NodeDef[] = [
             'Lives on: Pawn (via IAbilitySystemInterface)',
             'Abilities auto-granted from active ActionSet and ReactionSet',
             'Used by: ActionEvaluationComponent and ReactionEvaluationComponent',
-            'Customize: Standard GAS workflow — create UGameplayAbilityBase subclasses',
+            'Customize: Standard GAS workflow - create UGameplayAbilityBase subclasses',
         ],
     },
 ];
@@ -468,7 +468,7 @@ export default function SystemArchitectureVisualizer() {
                                                     {i + 1}
                                                 </span>
                                                 <span className={cn("text-xs font-semibold", step.color)}>{step.label}</span>
-                                                <span className="text-[10px] text-foreground/40">— {step.desc}</span>
+                                                <span className="text-[10px] text-foreground/40">- {step.desc}</span>
                                             </div>
                                         ))}
                                     </div>
@@ -491,7 +491,7 @@ export default function SystemArchitectureVisualizer() {
                                                     {i + 1}
                                                 </span>
                                                 <span className={cn("text-xs font-semibold", step.color)}>{step.label}</span>
-                                                <span className="text-[10px] text-foreground/40">— {step.desc}</span>
+                                                <span className="text-[10px] text-foreground/40">- {step.desc}</span>
                                             </div>
                                         ))}
                                     </div>

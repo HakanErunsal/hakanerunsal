@@ -14,7 +14,7 @@ parent: "SoulslikeCombatDocs"
     { label: "Step-by-Step Enemy" }
 ]} />
 
-This guide walks through creating a complete enemy from scratch, including weapons, animations, and full AI behavior.
+Create a complete enemy from scratch: weapons, animations, and full AI behavior.
 
 ## Prerequisites
 
@@ -35,7 +35,7 @@ Before starting, ensure you have:
 2. Select **CapsuleComponent** and adjust radius/height to fit mesh
 3. Select **CharacterMovement** component and adjust if needed
 
-**What the base class provides automatically:**
+**What the base class provides:**
 - `USECMeleeTraceComponent` for hit detection
 - `UAbilitySystemComponent` (configured)
 - `IAbilitySystemInterface` (implemented)
@@ -44,7 +44,7 @@ Before starting, ensure you have:
 
 **Set AIConfig:** In the Details Panel, set `AIConfig` to `DA_AIConfig_EnemyDefault` (included with the plugin) or your own `UEnemyAIConfig` data asset.
 
-> The controller's `SECCombatControllerComponent` checks the pawn for an AIConfig first. If none is set on the pawn, the component uses its own `DefaultAIConfig` fallback. If neither is set, there will be no AI behavior.
+> The controller's `SECCombatControllerComponent` checks the pawn for an AIConfig first. If none is set on the pawn, the component uses its own `DefaultAIConfig` fallback. If neither is set, the AI has no behavior.
 
 > **Not inheriting from EnemyCharacterBase?** Add `SECMeleeTraceComponent`, `SECActionSetComponent`, and `SECCombatRoleComponent` manually. Implement `IAbilitySystemInterface` and set up your own `AbilitySystemComponent`. The system only requires these components to be present on the pawn.
 
@@ -71,13 +71,13 @@ Additional features: smooth focus rotation with `LockRotation`/`UnlockRotation`,
 
 ### Option B: Use Any AAIController + Components
 
-If you have an existing AI controller, add `SECCombatControllerComponent` in the Components panel. Then add whichever other SEC components you need (`MovementEvaluatorComponent`, `ActionEvaluationComponent`, etc.). Everything connects automatically on possession.
+If you have an existing AI controller, add `SECCombatControllerComponent` in the Components panel. Then add whichever other SEC components you need (`MovementEvaluatorComponent`, `ActionEvaluationComponent`, etc.). All components connect on possession.
 
 Threat-to-movement response is auto-wired if both `ThreatDetectionComponent` and `MovementEvaluatorComponent` are present. Configure `bSwapStrafeOnHighThreat` and `bAdjustDistanceByThreat` on the `MovementEvaluatorComponent` (or through a `MovementBehaviorProfile`).
 
 > **Customization hooks:** Subclass `SECCombatControllerComponent` in Blueprint and override `SyncStateForCombatRole` (custom role-change behavior) or `HandleCombatTargetLost` (custom target-loss fallback). Subclass `ActionEvaluationComponent` and override `CanExecuteAction` for custom action gating.
 
-**Movement settings** are on the `MovementEvaluatorComponent`. The defaults from the showcase controller work well for smooth, realistic movement. Enable `bDebugLog` to see movement decisions in the output log.
+**Movement settings** are on the `MovementEvaluatorComponent`. The showcase controller defaults produce smooth, realistic movement. Enable `bDebugLog` to see movement decisions in the output log.
 
 ---
 
@@ -231,6 +231,18 @@ Add an element:
 - On hit: Applies damage via the `SECDamageConfig` assigned on the notify state
 
 > The system calls Unreal's `ApplyDamage` on hit. If you need a custom damage pipeline, you can listen to the delegates on `SECMeleeTraceComponent` and handle damage your own way.
+
+**Weapon Drop on Death:**
+
+When an AI dies, `HandleDeath` automatically unequips the weapon using an `FSECUnequipContext` with `bSimulatePhysics = true`. The weapon detaches from the character and is available for physics simulation. This is controlled by the `bDropWeaponOnDeath` property on `SECCombatControllerComponent` (defaults to `true`).
+
+To apply physics and lifetime after the drop, override `K2_OnUnequipped` in your weapon Blueprint:
+1. Check the `Context.bSimulatePhysics` flag
+2. Enable `SetSimulatePhysics` on the weapon mesh
+3. Optionally apply `Context.PhysicsDropImpulse` as an impulse
+4. Call `SetLifeSpan(Context.PhysicsDropLifetime)` to auto-destroy
+
+If you need the weapon to drop mid-animation (e.g. from an AnimNotify during a death montage), set `bDropWeaponOnDeath` to `false` and trigger the unequip yourself from Blueprint.
 
 ---
 

@@ -198,7 +198,7 @@ export default function ReactionFlowVisualizer() {
             </div>
 
             <div className="mt-6 text-center text-sm text-muted-foreground">
-                Reactions are <span className="text-yellow-500">event-driven</span> — your code decides <em>when</em>, the system decides <em>what</em>.
+                Reactions are <span className="text-yellow-500">event-driven</span> - your code decides <em>when</em>, the system decides <em>what</em>.
                 <span className="text-red-500"> Every 3rd cycle shows a blocked reaction.</span>
             </div>
         </div>

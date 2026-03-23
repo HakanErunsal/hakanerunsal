@@ -14,7 +14,7 @@ parent: "SoulslikeCombatDocs"
     { label: "Targeting System" }
 ]} />
 
-> Intelligent multi-target support for co-op, versus, and dynamic combat scenarios. AI automatically selects, switches, and redistributes targets.
+> Multi-target support for co-op, versus, and dynamic combat scenarios. AI selects, switches, and redistributes targets on its own.
 
 <TargetingVisualizer />
 
@@ -25,7 +25,7 @@ parent: "SoulslikeCombatDocs"
 - **Dynamic encounters** where targets spawn or die mid-combat
 - **Boss fights** where specific AI should ignore player-switching
 
-> Works seamlessly with single-player. Zero configuration needed. AI auto-assigns to the first registered target.
+> Single-player works out of the box. Zero configuration needed. AI assigns to the first registered target.
 
 ---
 
@@ -33,7 +33,7 @@ parent: "SoulslikeCombatDocs"
 
 ### Multi-Target Architecture
 
-Instead of a single "player" reference, the system tracks **multiple combat targets**:
+The system tracks **multiple combat targets** rather than a single "player" reference:
 
 ```cpp
 // Register multiple targets (players, destructibles, objectives)
@@ -55,11 +55,11 @@ When an AI needs a target (at spawn, on target death, or during re-evaluation), 
 | **BalancedTargetSelector** | Picks target with fewest combatants (with stickiness) | Fair distribution |
 | **RandomTargetSelector** | Random distribution | Unpredictable encounters |
 
-Selectors are **data-driven** and can be configured per-AI via `EnemyAIConfig` or project-wide.
+Selectors are **data-driven**. Configure them per-AI via `EnemyAIConfig` or project-wide defaults.
 
 ### Lazy Target Acquisition
 
-AI spawning before targets exist? Not a problem:
+Enemies can spawn before any target exists:
 
 ```
 1. Enemy spawns -> No target available -> Waits (unassigned)
@@ -67,7 +67,7 @@ AI spawning before targets exist? Not a problem:
 3. Each AI runs its TargetSelector -> Gets assigned
 ```
 
-This solves the classic "AI spawns before player" race condition. Use `RegisterCombatTarget(Player, /*bAutoAssignUnassigned=*/ true)` to trigger immediate assignment of waiting AI.
+The lazy acquisition pattern handles the classic "AI spawns before player" race condition. Use `RegisterCombatTarget(Player, /*bAutoAssignUnassigned=*/ true)` to trigger immediate assignment of waiting AI.
 
 ---
 

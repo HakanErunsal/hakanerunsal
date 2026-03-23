@@ -66,7 +66,7 @@ After restarting, go to **Project Settings > Plugins**. You should see a **Reven
    - Android: the key labeled "Google Play" or "Android"
    - iOS: the key labeled "App Store" or "iOS"
 
-> These are *public* API keys. They are safe to include in your app binary. RevenueCat designed them that way - they can only be used to read offerings and make purchases, not to modify your account.
+> These are *public* API keys, safe to ship in your binary. RevenueCat scopes them to client operations: reading offerings and processing purchases.
 
 ---
 
@@ -117,7 +117,7 @@ The plugin reads these settings on startup and auto-configures the SDK. You don'
 
 ## Step 5: Your First Purchase Flow (Blueprint)
 
-Here's a minimal Blueprint setup that fetches offerings, shows the price, and lets the player buy.
+The Blueprint steps below fetch offerings, display prices, and handle purchases.
 
 ### 5a: Fetch Offerings on Game Start
 
@@ -165,17 +165,17 @@ Add a "Restore Purchases" button somewhere accessible (required by both Google a
 
 ### Alternative: Use the Native Paywall
 
-Instead of building steps 5a–5c yourself, you can use RevenueCat's native paywall UI. This displays a paywall screen designed in the RevenueCat dashboard — no custom UMG widgets needed.
+RevenueCat's native paywall UI handles steps 5a–5c for you. It displays a screen configured in the RevenueCat dashboard, with no custom UMG widgets needed.
 
 1. Search for **Present Paywall (Async)** in the action palette
 2. Leave **OfferingID** empty to show the current offering
 3. Connect the output pins:
-   - **OnPurchased** — purchase completed, check entitlements
-   - **OnCancelled** — player dismissed the paywall
-   - **OnRestored** — player restored purchases
-   - **OnFailure** — something went wrong
+   - **OnPurchased** - purchase completed, check entitlements
+   - **OnCancelled** - player dismissed the paywall
+   - **OnRestored** - player restored purchases
+   - **OnFailure** - something went wrong
 
-Or use **Present Paywall If Needed** from the subsystem — it only shows the paywall if the given entitlement is not already active:
+Or use **Present Paywall If Needed** from the subsystem. It skips the paywall if the entitlement is already active:
 
 1. Get the **RevenueCat Subsystem**
 2. Call **Present Paywall If Needed** with your entitlement ID (e.g. `"pro"`)
@@ -281,7 +281,7 @@ void UMyClass::HandlePaywall(ERevenueCatPaywallResult Result,
 
 ## Step 6: Test on a Real Device
 
-Purchases don't work in the editor or on emulators. You need a real phone.
+Purchases require a real device. They don't work in the editor or on emulators.
 
 ### Android
 

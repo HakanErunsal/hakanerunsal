@@ -37,6 +37,7 @@ Set the config on the pawn for per-enemy customization, or on the `SECCombatCont
 | `DefaultAIConfig` | AI\|SEC | `nullptr` | Fallback AI Config when pawn doesn't provide one |
 | `bAutoRegisterForCombatRoles` | Combat Role | `true` | Auto-register with the role subsystem on possession |
 | `bEnableThreatDetection` | Threat Response | `true` | Enable `ThreatDetectionComponent` on BeginPlay |
+| `bDropWeaponOnDeath` | AI\|SEC\|Weapon | `true` | Auto-drop equipped weapon with physics on death. Set to `false` to handle weapon drop manually (e.g. via AnimNotify or `K2_OnDeath`). |
 
 ### SECCombatControllerComponent Delegates
 
@@ -45,6 +46,7 @@ Set the config on the pawn for per-enemy customization, or on the `SECCombatCont
 | `OnCombatRoleChanged` | Broadcast when combat role changes (new role, old role) |
 | `OnCombatTargetLost` | Broadcast when assigned combat target is destroyed/unregistered |
 | `OnCombatRoleSystemReady` | Broadcast after successful registration with the role subsystem. Safe to call `ForceAssignRole` here. |
+| `OnDeath` | Broadcast at the end of `HandleDeath()`, after all combat systems are shut down. Safe to enable ragdoll, play death VFX, or destroy the actor here. |
 
 ### MovementBehaviorProfile Threat Response
 
@@ -346,7 +348,7 @@ CriticalChance: 0.1
 
 ### Usage
 
-Assigned to weapons via the `DamageConfig` property. Automatically applied during melee traces.
+Assigned to weapons via the `DamageConfig` property. Applied during melee traces.
 
 ```cpp
 // In weapon Blueprint:

@@ -14,7 +14,7 @@ parent: "SoulslikeCombatDocs"
     { label: "Movement System" }
 ]} />
 
-> Intelligent positioning that makes AI feel alive. Approaching, strafing, retreating, and avoiding obstacles without looking robotic.
+> Tactical positioning that considers distance, angle, pawn avoidance, and custom rules on every tick.
 
 ## When to Use This
 
@@ -75,7 +75,7 @@ The system operates in two layers, switching automatically based on distance:
 | **Tactical** | Target is within `HybridSwitchDistance` | Direct movement input for responsive strafing and positioning |
 | **Strategic** | Target is far away or path-blocked | NavMesh pathfinding to navigate around obstacles |
 
-The switch happens at `HybridSwitchDistance` (default: 800 units). This gives you the reliability of pathfinding at range and the snappy feel of direct control up close.
+The switch happens at `HybridSwitchDistance` (default: 800 units). Pathfinding handles range. Direct movement input handles proximity.
 
 ---
 
@@ -114,7 +114,7 @@ MovementEvaluator->SetStrafeSide(1);  // 1 = right, -1 = left
 ```
 
 ### Option 4: Role-Based (Recommended)
-The most automated path. The movement profile is determined by the AI's current combat role.
+The most automated path. Combat role determines the movement profile.
 
 1. Configure your **EnemyAIConfig** data asset.
 2. Assign profiles to roles (e.g., *Attacker* gets Aggressive, *Waiter* gets Passive).

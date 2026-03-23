@@ -14,7 +14,7 @@ parent: "RevenueCatBridgeDocs"
     { label: "API Reference" }
 ]} />
 
-Everything lives on `URevenueCatSubsystem`, a `GameInstanceSubsystem`. One instance per game session, accessible from anywhere.
+Everything lives on `URevenueCatSubsystem`, a `GameInstanceSubsystem` with one instance per game session, accessible from anywhere.
 
 **In C++:**
 ```cpp
@@ -87,7 +87,7 @@ These are stored in `URevenueCatSettings` (a `DeveloperSettings` subclass) and s
 
 | Function | Description |
 |----------|-------------|
-| `SetFirebaseAppInstanceId(AppInstanceId)` | Set Firebase App Instance ID for RevenueCat's Firebase integration. This plugin does not depend on Firebase - get the ID from your own Firebase setup. |
+| `SetFirebaseAppInstanceId(AppInstanceId)` | Set Firebase App Instance ID for RevenueCat's Firebase integration. This plugin has no Firebase dependency; get the ID from your own Firebase setup. |
 | `SetAttributes(Attributes)` | Set arbitrary key-value pairs as subscriber attributes. Takes a `TMap<FString, FString>`. |
 | `SetEmail(Email)` | Set subscriber's email (reserved attribute). |
 | `SetDisplayName(DisplayName)` | Set subscriber's display name (reserved attribute). |
@@ -102,7 +102,7 @@ These are stored in `URevenueCatSettings` (a `DeveloperSettings` subclass) and s
 | `SetAdGroup(AdGroup)` | Set ad group. |
 | `SetCreative(Creative)` | Set creative name. |
 | `SetKeyword(Keyword)` | Set keyword. |
-| `CollectDeviceIdentifiers()` | Auto-collect GAID (Android) / IDFA (iOS) and send to RevenueCat. Called automatically on SDK initialization — you only need to call this manually if you want to refresh identifiers later. |
+| `CollectDeviceIdentifiers()` | Auto-collect GAID (Android) / IDFA (iOS) and send to RevenueCat. Called automatically on SDK initialization - you only need to call this manually if you want to refresh identifiers later. |
 
 All attribution functions are fire-and-forget. No callback. Verify the values in the RevenueCat dashboard under the customer's attributes.
 
@@ -145,7 +145,7 @@ RC->OnPurchaseCompleted.AddDynamic(this, &UMyClass::HandlePurchase);
 
 ## Async Blueprint Actions
 
-These latent nodes derive from `UBlueprintAsyncActionBase` and provide **output execution pins** (OnSuccess / OnFailure / OnCancelled) directly in the Blueprint graph — no manual delegate binding needed.
+These latent nodes derive from `UBlueprintAsyncActionBase` and provide **output execution pins** (OnSuccess / OnFailure / OnCancelled) directly in the Blueprint graph - no manual delegate binding needed.
 
 Search for the node name in the Blueprint action palette (they are in the **RevenueCat** category).
 
@@ -162,7 +162,7 @@ Search for the node name in the Blueprint action palette (they are in the **Reve
 |-----|------|-------------|
 | **Package** (input) | `FRevenueCatPackage` | The package to purchase |
 | **OnSuccess** | `FRevenueCatCustomerInfo` | Fired when purchase succeeds or is already owned |
-| **OnCancelled** | — | Fired when the user cancels the purchase flow |
+| **OnCancelled** | - | Fired when the user cancels the purchase flow |
 | **OnFailure** | `FRevenueCatError` | Fired on error or pending purchase |
 
 ### Restore Purchases (Async)
@@ -211,7 +211,7 @@ Presents RevenueCat's native paywall UI. The paywall layout is configured in the
 |-----|------|-------------|
 | **OfferingID** (input) | `FString` | Offering to display. Leave empty for the current offering. |
 | **OnPurchased** | `FRevenueCatCustomerInfo` | Fired when the player completes a purchase through the paywall |
-| **OnCancelled** | — | Fired when the player dismisses the paywall without purchasing |
+| **OnCancelled** | - | Fired when the player dismisses the paywall without purchasing |
 | **OnRestored** | `FRevenueCatCustomerInfo` | Fired when the player restores purchases through the paywall |
 | **OnFailure** | `FRevenueCatError` | Fired on error |
 
@@ -359,15 +359,15 @@ The full picture of a customer's purchases and subscriptions.
 On non-mobile platforms (Win64 editor), every function in the subsystem compiles and runs. Instead of calling the native SDK (which doesn't exist on desktop), it logs a message like:
 
 ```
-[RevenueCat] FetchOfferings stub — unsupported platform.
+[RevenueCat] FetchOfferings stub - unsupported platform.
 ```
 
-This means you can:
+You can:
 - Build and iterate on your Blueprint purchase flow in the editor
 - Compile and test C++ code without a device
 - Run PIE without crashes
 
-`ConfigureSDK` is the exception - it sets `IsConfigured() = true` and fires `OnConfigured` on stubs, so your initialization flow works in the editor. Other async operations (FetchOfferings, PurchasePackage, etc.) will not fire their callbacks on unsupported platforms.
+`ConfigureSDK` is the exception: it sets `IsConfigured() = true` and fires `OnConfigured` on stubs, so your initialization flow works in the editor. Other async operations (FetchOfferings, PurchasePackage, etc.) will not fire their callbacks on unsupported platforms.
 
 
 <DocNav

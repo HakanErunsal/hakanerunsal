@@ -7,21 +7,21 @@ published: true
 tags: ["Documentation", "Unreal Engine", "IAP", "Subscriptions", "Mobile"]
 ---
 
-> **v1.1.0** — Added native paywall UI support (iOS 16+, Android with Compose). Design your paywall in the RevenueCat dashboard and present it with a single call. If you run into any issues or have a feature request, reach out to me directly and I'll get it fixed or added in an update.
+> **v1.1.0** — Native paywall UI support (iOS 16+, Android with Compose). Design your paywall in the RevenueCat dashboard and present it with a single call. For issues or feature requests, contact me.
 
 ## Overview
 
-**RevenueCat Bridge** wraps RevenueCat's native Android and iOS SDKs behind a single `UGameInstanceSubsystem`. One instance lives for the entire game session - accessible from Blueprints, C++, or async action nodes.
+**RevenueCat Bridge** wraps RevenueCat's native Android and iOS SDKs behind a single `UGameInstanceSubsystem`. One instance lives for the entire game session, accessible from Blueprints, C++, or async action nodes.
 
-**Platform support:** Android and iOS at runtime. Win64 editor builds compile and run with stub implementations for iteration.
+**Platforms:** Android and iOS at runtime. Win64 editor builds compile and run with stub implementations for iteration.
 
 **Included SDKs:**
 - Android: RevenueCat v9.25.0 + purchases-ui v9.25.0 (Gradle, pulled at build time)
 - iOS: RevenueCat v5.63.0 + RevenueCatUI v5.63.0 (xcframeworks, bundled)
 
-**Native Paywall UI:** Present RevenueCat's dashboard-configured paywall with a single Blueprint node or C++ call. Design and iterate on your paywall remotely — no app update required.
+**Native Paywall UI:** Present RevenueCat's dashboard-configured paywall with a single Blueprint node or C++ call. Design and iterate on your paywall remotely. No app update required.
 
-> The plugin does not handle server-side logic and does not run on desktop at runtime.
+> The plugin handles client-side purchases only. No server-side logic, no desktop runtime.
 
 ---
 
@@ -50,60 +50,46 @@ tags: ["Documentation", "Unreal Engine", "IAP", "Subscriptions", "Mobile"]
 
 ## Typical Flow
 
-The plugin auto-initializes on startup using the API keys from Project Settings. Here's the basic sequence:
-
-```
-Game Starts
-  -> SDK auto-configures
-  -> OnConfigured fires
-
-FetchOfferings()
-  -> OnOfferingsFetched fires with your products
-
-Player taps "Buy"
-  -> PurchasePackage(SelectedPackage)
-  -> Native store dialog appears
-  -> OnPurchaseCompleted fires
-
-IsEntitlementActive("pro")
-  -> true if the player has an active purchase
-```
-
-**Alternative: Native Paywall**
-
-Instead of building your own purchase UI, you can present RevenueCat's native paywall:
-
-```
-Player hits paywall
-  -> PresentPaywall()  (or PresentPaywallIfNeeded("pro"))
-  -> Native paywall UI appears (designed in RevenueCat dashboard)
-  -> Player purchases, restores, or dismisses
-  -> OnPaywallCompleted fires with result
-```
+<PurchaseFlowVisualizer />
 
 ---
 
 ## Architecture
 
-```
-Your Game (Blueprints / C++)
-        |
-  URevenueCatSubsystem (GameInstanceSubsystem)
-        |
-   Platform Bridge (compile-time)
-      /           \
-  Android          iOS
-  (JNI -> Java)    (Obj-C++ -> Swift)
-      |                |
-  RevenueCat SDK   RevenueCat SDK
-  v9.25.0 (AAR)   v5.63.0 (xcframework)
-      |                |
-  purchases-ui     RevenueCatUI
-  v9.25.0          v5.63.0
-  (Compose)        (SwiftUI)
-      |                |
-  Google Play      App Store
-```
+<ArchitectureDiagram
+  layers={[
+    {
+      label: "Your Game",
+      items: ["Blueprints", "C++", "Blueprint Async Actions"],
+      icon: "brain",
+      color: "blue"
+    },
+    {
+      label: "URevenueCatSubsystem",
+      items: ["GameInstanceSubsystem — one instance per session", "Accessible from Blueprints, C++, and async nodes"],
+      icon: "zap",
+      color: "green"
+    },
+    {
+      label: "Platform Bridge",
+      items: ["Android: JNI → Java bridge → callbacks to game thread", "iOS: Obj-C++ → Swift → AsyncTask to game thread", "Win64: Stubs — ConfigureSDK fires OnConfigured"],
+      icon: "workflow",
+      color: "orange"
+    },
+    {
+      label: "RevenueCat SDK",
+      items: ["Android: v9.25.0 + purchases-ui v9.25.0 (Gradle)", "iOS: v5.63.0 + RevenueCatUI v5.63.0 (xcframework)"],
+      icon: "shield",
+      color: "purple"
+    },
+    {
+      label: "App Stores",
+      items: ["Google Play", "Apple App Store"],
+      icon: "target",
+      color: "cyan"
+    }
+  ]}
+/>
 
 - **Android:** JNI calls a Java bridge class → RevenueCat SDK. Callbacks return via JNI native methods, marshalled onto the game thread.
 - **iOS:** Obj-C++ calls the RevenueCat SDK directly. Callbacks dispatched to the game thread via `AsyncTask`.
@@ -125,14 +111,17 @@ Your Game (Blueprints / C++)
 
 ---
 
-## Support
+## Support and Resources
 
 <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '16px', marginBottom: '24px' }}>
-  <a href="mailto:hakanerunsal.dev@gmail.com" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px', backgroundColor: 'rgba(128, 128, 128, 0.1)', color: 'inherit', textDecoration: 'none', borderRadius: '8px', fontWeight: '500', border: '1px solid rgba(128, 128, 128, 0.3)', fontSize: '14px' }}>
-    Email me at hakanerunsal.dev@gmail.com
+  <a href="https://www.fab.com/listings/2079b69b-fbe5-49ad-86e1-95454310d727" target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px', backgroundColor: 'rgba(250, 92, 92, 0.1)', color: '#fa5c5c', textDecoration: 'none', borderRadius: '8px', fontWeight: '500', border: '1px solid rgba(250, 92, 92, 0.3)', fontSize: '14px' }}>
+    🛒 Get on Fab Marketplace
+  </a>
+  <a href="https://discord.com/invite/CbRcTsYQcz" target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px', backgroundColor: 'rgba(88, 101, 242, 0.1)', color: '#5865F2', textDecoration: 'none', borderRadius: '8px', fontWeight: '500', border: '1px solid rgba(88, 101, 242, 0.3)', fontSize: '14px' }}>
+    💬 Discord Support
   </a>
 </div>
 
-Updates will be delivered through Fab Marketplace.
+---
 
-This plugin is not affiliated with or endorsed by RevenueCat, Inc., Google LLC, or Apple Inc.
+**RevenueCat Bridge** is built by **Hakan Erunsal**. Not affiliated with or endorsed by RevenueCat, Inc., Google LLC, or Apple Inc.

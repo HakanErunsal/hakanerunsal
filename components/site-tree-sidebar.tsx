@@ -339,7 +339,7 @@ export function SiteTreeSidebar() {
                 )}
             </nav>
 
-            {/* Bottom link — context-aware */}
+            {/* Bottom link - context-aware */}
             <div className="px-4 py-3 border-t border-border/50">
                 {section === "docs" ? (
                     <Link

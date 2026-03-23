@@ -94,7 +94,7 @@ export default async function DocPage({ params }: DocPageProps) {
                 </article>
             </div>
 
-            {/* Right TOC — sticky, aligned with content */}
+            {/* Right TOC - sticky, aligned with content */}
             <DocsPageTOC />
         </div>
     );

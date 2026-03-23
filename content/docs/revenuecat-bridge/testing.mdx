@@ -16,7 +16,7 @@ parent: "RevenueCatBridgeDocs"
 
 ## Before You Start Testing
 
-Make sure all of this is in place:
+Verify all of this is in place before testing:
 
 - [ ] RevenueCat dashboard: project created, API keys generated
 - [ ] Google Play Console: app created, internal testing track set up, license testers added
@@ -34,7 +34,7 @@ Make sure all of this is in place:
 
 ## Quick Smoke Test
 
-If you're short on time, run these in order for a minimal confidence check:
+For a quick confidence check, run these in order:
 
 1. App launches, SDK configures (check logs for `[RevenueCat] SDK configured successfully.`)
 2. Fetch offerings, verify products show up with correct prices
@@ -214,7 +214,7 @@ Same as subscriber attributes - fire-and-forget, verify in the dashboard.
 
 ### Phase 13 - Startup Entitlement Check (Cold Launch)
 
-Tests the real-world flow: player opens your game, and you need to know immediately if they're a subscriber.
+The real-world flow: the game launches and you need subscriber status immediately.
 
 | # | Test | Expected |
 |---|------|----------|
@@ -259,7 +259,7 @@ Tests the native paywall UI. Requires iOS 16+ or Android with Compose.
 
 ## Edge Cases
 
-Run these after the happy path is done.
+Run these once the happy path passes.
 
 ### Purchase Edge Cases
 

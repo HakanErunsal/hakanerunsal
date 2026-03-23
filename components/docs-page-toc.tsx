@@ -73,7 +73,7 @@ export function DocsPageTOC() {
     return (
         <nav className="hidden xl:block w-52 flex-shrink-0 pt-24">
             <div className="sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto">
-                {/* ON THIS PAGE header — matches UE docs */}
+                {/* ON THIS PAGE header - matches UE docs */}
                 <div className="mb-3">
                     <h4 className="text-xs font-heading font-semibold uppercase tracking-wider text-muted-foreground">
                         On This Page

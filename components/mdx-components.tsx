@@ -18,6 +18,7 @@ import TargetingVisualizer from '@/components/TargetingVisualizer';
 import BlueprintUE from '@/components/BlueprintUE';
 import ArchitectureDiagram from '@/components/ArchitectureDiagram';
 import SystemArchitectureVisualizer from '@/components/SystemArchitectureVisualizer';
+import PurchaseFlowVisualizer from '@/components/PurchaseFlowVisualizer';
 
 const useMDXComponent = (code: string) => {
   const fn = new Function(code);
@@ -44,6 +45,7 @@ const components = {
   BlueprintUE,
   ArchitectureDiagram,
   SystemArchitectureVisualizer,
+  PurchaseFlowVisualizer,
   // Prevent hydration errors from block elements nested inside <p>
   p: ({ children, ...props }: React.HTMLAttributes<HTMLParagraphElement>) => (
     <div className="mb-4 leading-7" {...props}>{children}</div>

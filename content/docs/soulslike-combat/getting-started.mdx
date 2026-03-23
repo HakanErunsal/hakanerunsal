@@ -16,7 +16,7 @@ parent: "SoulslikeCombatDocs"
 
 ## Overview
 
-**SoulslikeCombat** is an AI combat plugin for Unreal Engine 5.6+. It provides intelligent, tactical enemy behavior for souls-like and action RPG games through a modular component system. Supports both single-player and multiplayer (listen server and dedicated server) out of the box.
+**SoulslikeCombat** is an AI combat plugin for Unreal Engine 5.6+. It provides tactical enemy behavior for souls-like and action RPG games through a modular component system. Supports single-player and multiplayer (listen server and dedicated server).
 
 ---
 
@@ -27,7 +27,7 @@ parent: "SoulslikeCombatDocs"
 1. Purchase **SoulslikeCombat** on [Fab Marketplace](https://www.fab.com/)
 2. In the Epic Games Launcher or Fab, click **Add to Project**
 3. Select your Unreal Engine project
-4. The plugin will be automatically installed with all binaries
+4. The plugin installs with all binaries
 
 ### Step 2: Enable the Plugin
 
@@ -60,8 +60,6 @@ In **Edit > Plugins**, ensure these are also enabled. The plugin depends on them
 ## Quick Start Guide
 
 ### Your First Enemy in 10 Minutes
-
-This guide gets you from zero to a functional AI enemy as fast as possible.
 
 #### 1. Study the Showcase
 
@@ -109,7 +107,7 @@ This comes with all SEC components pre-wired:
 
 **Option B: Use Any AAIController + SECCombatControllerComponent**
 
-Create or open your existing AI Controller Blueprint. In the Components panel, add **SEC Combat Controller** (`SECCombatControllerComponent`). Then add whichever SEC components you need (e.g., `MovementEvaluatorComponent`, `ActionEvaluationComponent`). Everything wires up automatically on possession.
+Create or open your existing AI Controller Blueprint. In the Components panel, add **SEC Combat Controller** (`SECCombatControllerComponent`). Then add whichever SEC components you need (e.g., `MovementEvaluatorComponent`, `ActionEvaluationComponent`). All components initialize on possession.
 
 #### 4. Create AI Config
 
@@ -119,7 +117,7 @@ Create or open your existing AI Controller Blueprint. In the Components panel, a
 
 In your enemy pawn `BP_MyEnemy`, set the **AIConfig** property to `DA_MyAIConfig`.
 
-> **There are two ways to provide an AIConfig.** If your pawn implements `IEnemyAIConfigProvider` (which `EnemyCharacterBase` does), the controller reads the config from the pawn on possession. This is useful for per-enemy configs. If the pawn does not implement the interface, the controller falls back to its own `DefaultAIConfig` property. This is useful when many enemies share a single controller class and config.
+> **AIConfig resolution:** If your pawn implements `IEnemyAIConfigProvider` (which `EnemyCharacterBase` does), the controller reads the config from the pawn on possession, supporting per-enemy configs. Without the interface, the controller falls back to its own `DefaultAIConfig` property, useful when many enemies share a single controller class and config.
 
 #### 5. Create ActionSet Data Asset
 
