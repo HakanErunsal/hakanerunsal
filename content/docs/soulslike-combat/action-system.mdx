@@ -276,6 +276,31 @@ Pawn->ActionSetComponent->ClearGrantedActions();                // Remove all gr
 
 ---
 
+## World State Tags
+
+`WorldTags` carries global game state into AI scoring. Push them through `USECWorldTagSubsystem` (or the one-node `USECWorldTagLibrary` helper); the build task copies them into `FDecisionContext::WorldTags` each tick. Use them for boss phases, weather, arena state, or any condition that affects multiple enemies at once.
+
+The plugin ships three example world tags: `SEC.World.Combat.Active`, `SEC.World.Boss.Active`, and `SEC.World.Boss.Casting`. Use them as starters or define your own under any namespace.
+
+```cpp
+// Server BP, anywhere
+USECWorldTagLibrary::AddWorldTag(this, SEC.World.Combat.Active);
+USECWorldTagLibrary::AddWorldTagForDuration(this, SEC.World.Boss.Casting, 3.0f);
+USECWorldTagLibrary::AddWorldTagUntil(this, SEC.World.Boss.Active, {YourGame.Boss.Defeated});
+```
+
+| Variant | Behavior |
+|---|---|
+| `AddWorldTag` | Permanent until `RemoveWorldTag`. |
+| `AddWorldTagForDuration` | Removes after N seconds. Re-adding refreshes the timer. |
+| `AddWorldTagUntil` | Removes when any sentinel tag is added. |
+
+Mutators run on the server only (`BlueprintAuthorityOnly`); client calls no-op silently.
+
+**Client-side reads** (UI, audio): drop `USECWorldTagComponent` on `GameState`. The component replicates the subsystem's tags and broadcasts `OnTagsChanged` on clients. Without the component, `USECWorldTagLibrary::GetWorldTags` returns empty on clients and warns once.
+
+---
+
 ## Custom Scoring Hooks
 
 The `ActionEvaluationComponent` provides two `BlueprintNativeEvent` hooks for project-specific logic.

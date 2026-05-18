@@ -136,7 +136,7 @@ To make this combo from a light attack, set `PreferredNextActionId` to `HeavyAtt
 | **TagScoreMultipliers** | | |
 | ↳ `State.PlayerAttacking` | `2.0` | Doubles score when player is attacking |
 
-> `TagScoreMultipliers` is a map of `FGameplayTag` to `float`. If the target or AI has a matching tag, the score is multiplied by that value. Use tags like `State.Stunned` (2.0), `State.Blocking` (0.3), `Self.Enraged` (1.5) to create context-aware behavior.
+> `TagScoreMultipliers` maps `FGameplayTag` to `float`. If a key tag appears on the AI (`SelfTags`), the target (`TargetTags`), or the world (`WorldTags`, set by your code), its value multiplies the score. Examples: `State.Stunned` (2.0) on the target, `Self.Enraged` (1.5) on the AI, `World.Phase.BossPhase2` (1.3) for late-fight aggression.
 
 ---
 

@@ -76,9 +76,9 @@ Point these at your GAS AttributeSet properties (e.g. `UMyAttributeSet::GetHealt
 
 **What it does:**
 - Calculates distance and angle to target
-- Reads health and stamina from GAS attributes (or BasicHealthComponent fallback)
+- Reads health and stamina from GAS attributes (or `BasicHealthComponent` fallback)
 - Evaluates health percentages
-- Gathers gameplay tags from target
+- Gathers tags from the AI's ASC (`SelfTags`), the target's ASC (`TargetTags`), and `USECWorldTagSubsystem` (`WorldTags`)
 
 ---
 
