@@ -79,6 +79,8 @@ After restarting, go to **Project Settings > Plugins**. You should see a **Reven
 |---------|-------------|
 | **Android Api Key** | Your RevenueCat public API key for Android |
 | **iOS Api Key** | Your RevenueCat public API key for iOS |
+| **Auto Fetch Offerings** | On by default. After the SDK configures, the subsystem calls `FetchOfferings()` once so `GetCachedOfferings` has data before you ask. |
+| **Auto Fetch Customer Info** | On by default (v1.3.0+). After the SDK configures, the subsystem calls `FetchCustomerInfo()` once to populate the customer-info cache. Safety net for cold launches where the native SDK doesn't populate it. Bind `OnCustomerInfoUpdated` to apply entitlements. Bind `OnError` on failure. |
 | **Enable Debug Logs** | Check this during development. Uncheck before shipping. |
 
 3. Save
