@@ -35,6 +35,8 @@ These are stored in `URevenueCatSettings` (a `DeveloperSettings` subclass) and s
 |---------|------|-------------|
 | `AndroidApiKey` | `FString` | RevenueCat public API key for Android |
 | `IosApiKey` | `FString` | RevenueCat public API key for iOS |
+| `bAutoFetchOfferings` | `bool` | Fetch offerings once after configure (default `true`). |
+| `bAutoFetchCustomerInfo` | `bool` | Fetch customer info once after configure (default `true`) so `IsEntitlementActive` is truthful on cold launch. |
 | `bEnableDebugLogs` | `bool` | Verbose SDK logging. Turn on during development, turn off before shipping. |
 
 ---
@@ -70,7 +72,7 @@ These are stored in `URevenueCatSettings` (a `DeveloperSettings` subclass) and s
 
 | Function | Returns | Description |
 |----------|---------|-------------|
-| `FetchCustomerInfo()` | `void` | Fetch the latest customer info from RevenueCat. Results through `OnCustomerInfoUpdated`. |
+| `FetchCustomerInfo(FetchPolicy)` | `void` | Fetch customer info from RevenueCat. Results through `OnCustomerInfoUpdated`. `FetchPolicy` defaults to `Default` (cached); pass `FetchCurrent` to force a live read, for example on foreground to catch an expiry. |
 | `GetCachedCustomerInfo()` | `FRevenueCatCustomerInfo` | Returns cached customer info from the last fetch. |
 | `IsEntitlementActive(EntitlementID)` | `bool` | Check if a specific entitlement is active. Uses cached data - call `FetchCustomerInfo()` first if you need fresh data. |
 
@@ -111,6 +113,7 @@ All attribution functions are fire-and-forget. No callback. Verify the values in
 | Function | Description |
 |----------|-------------|
 | `ShowManageSubscriptions()` | Open the platform's subscription management page (Play Store or App Store). No-op on unsupported platforms. |
+| `PresentCodeRedemptionSheet()` | iOS only. Open the App Store offer-code redemption sheet (iOS 14+). No-op on other platforms. |
 
 ### Paywall
 
@@ -119,7 +122,7 @@ These functions present RevenueCat's native paywall UI, designed and configured 
 | Function | Returns | Description |
 |----------|---------|-------------|
 | `PresentPaywall(OfferingID)` | `void` | Present the native paywall UI. Pass an empty string to show the current offering. Results through `OnPaywallCompleted`. |
-| `PresentPaywallIfNeeded(EntitlementID)` | `void` | Only present the paywall if the given entitlement is not active. If the entitlement is already active, does nothing. |
+| `PresentPaywallIfNeeded(EntitlementID)` | `void` | Present the paywall only when the entitlement is inactive. Checks live entitlement state and honors a cached entitlement when offline. Results through `OnPaywallCompleted`. |
 
 ---
 
@@ -137,7 +140,7 @@ RC->OnPurchaseCompleted.AddDynamic(this, &UMyClass::HandlePurchase);
 | `OnOfferingsFetched` | `TArray<FRevenueCatOffering> Offerings` | Offerings fetched from RevenueCat. |
 | `OnPurchaseCompleted` | `ERevenueCatPurchaseResult Result`, `FRevenueCatCustomerInfo CustomerInfo` | A purchase flow finished (success, cancel, error, or already owned). |
 | `OnPurchasesRestored` | `FRevenueCatCustomerInfo CustomerInfo` | Restore purchases completed. |
-| `OnCustomerInfoUpdated` | `FRevenueCatCustomerInfo CustomerInfo` | Customer info changed (login, logout, fetch, or automatic SDK update). |
+| `OnCustomerInfoUpdated` | `FRevenueCatCustomerInfo CustomerInfo` | Customer info changed: purchase, restore, login, logout, fetch, or a background SDK update. Treat as idempotent; it can fire more than once for one change. |
 | `OnPaywallCompleted` | `ERevenueCatPaywallResult Result`, `FRevenueCatCustomerInfo CustomerInfo` | The native paywall was dismissed. Check the result for what happened (purchased, cancelled, restored, or error). |
 | `OnError` | `FRevenueCatError Error` | Any error occurred. Check `ErrorCode` and `ErrorMessage`. |
 
@@ -183,6 +186,7 @@ Search for the node name in the Blueprint action palette (they are in the **Reve
 
 | Pin | Type | Description |
 |-----|------|-------------|
+| **FetchPolicy** (input) | `ERevenueCatCacheFetchPolicy` | Cache vs network policy (default `Default`); pass `FetchCurrent` to force a live read |
 | **OnSuccess** | `FRevenueCatCustomerInfo` | Fired with the latest customer info |
 | **OnFailure** | `FRevenueCatError` | Fired on error |
 
@@ -201,7 +205,7 @@ Search for the node name in the Blueprint action palette (they are in the **Reve
 | **OnSuccess** | `FRevenueCatCustomerInfo` | Fired with the anonymous customer info |
 | **OnFailure** | `FRevenueCatError` | Fired on error |
 
-> **Note:** These async actions bind to the subsystem's existing delegates internally. Avoid running multiple instances of the same async action type simultaneously.
+> **Note:** These async actions bind to the subsystem's delegates internally. The customer-info actions (Fetch Customer Info, Log In, Log Out, Sync Purchases) complete only on their own operation's result, not on a background SDK update. Avoid running two instances of the same action type at once, since they share a completion signal.
 
 ### Present Paywall (Async)
 
@@ -267,6 +271,15 @@ Presents RevenueCat's native paywall UI. The paywall layout is configured in the
 | `Stripe` | Stripe (web) |
 | `Promotional` | Granted via RevenueCat dashboard |
 | `Unknown` | Unknown store |
+
+#### `ERevenueCatCacheFetchPolicy`
+
+| Value | Meaning |
+|-------|---------|
+| `Default` | Serve cached info if present, else fetch. Fast and offline-friendly (the SDK default). |
+| `NotStaleCachedOrFetched` | Serve cached info while it is fresh, else fetch from the network. |
+| `FetchCurrent` | Always fetch from the network, bypassing the cache. Use to catch a mid-session expiry. |
+| `FromCacheOnly` | Serve cached info only; never hit the network. |
 
 ---
 
@@ -339,7 +352,7 @@ The full picture of a customer's purchases and subscriptions.
 | Field | Type | Description |
 |-------|------|-------------|
 | `OriginalAppUserID` | `FString` | The original RevenueCat App User ID |
-| `ActiveEntitlements` | `TArray<FRevenueCatEntitlement>` | Currently active entitlements |
+| `ActiveEntitlements` | `TArray<FRevenueCatEntitlement>` | Currently active entitlements (active only, mirroring RevenueCat's `entitlements.active`) |
 | `AllPurchasedProductIDs` | `TArray<FString>` | Every product ID ever purchased |
 | `FirstSeen` | `FString` | ISO 8601 date the user was first seen |
 | `ManagementURL` | `FString` | URL to manage subscriptions. Can be empty. |
@@ -354,20 +367,26 @@ The full picture of a customer's purchases and subscriptions.
 
 ---
 
+## Upgrading to 1.4.0
+
+The 1.4.0 update is drop-in: no nodes or pins were removed or renamed, so existing Blueprints keep working after you refresh nodes. A few behaviors changed:
+
+- **`Fetch Customer Info` gained a `Fetch Policy` input pin** (and the function gained an optional parameter). It defaults to `Default`, which matches the old behavior. Pass `FetchCurrent` to force a live read.
+- **Bind `OnError` for purchase failures.** A failed purchase no longer reports through `OnPurchaseCompleted` with an `Error` result; it comes through `OnError` only. The Purchase Package async node already routes failures to `OnFailure`, so node users need no change.
+- **Keep your `OnCustomerInfoUpdated` handler idempotent.** It now also fires after purchases and restores, and can fire more than once for a single change. Set state from `IsEntitlementActive` rather than granting additively.
+- **`ActiveEntitlements` now lists active entitlements only.** If you looped over it expecting expired entries, they are gone. `IsEntitlementActive` is unchanged.
+- **A cancelled or failed purchase no longer clears cached entitlements.** If you re-fetched after a cancel to work around that, you can remove it.
+
 ## Editor Stubs (Win64)
 
-On non-mobile platforms (Win64 editor), every function in the subsystem compiles and runs. Instead of calling the native SDK (which doesn't exist on desktop), it logs a message like:
-
-```
-[RevenueCat] FetchOfferings stub - unsupported platform.
-```
+On non-mobile platforms (Win64 editor), every function in the subsystem compiles and runs. Instead of calling the native SDK (which doesn't exist on desktop), it logs a message and completes deterministically.
 
 You can:
 - Build and iterate on your Blueprint purchase flow in the editor
 - Compile and test C++ code without a device
 - Run PIE without crashes
 
-`ConfigureSDK` is the exception: it sets `IsConfigured() = true` and fires `OnConfigured` on stubs, so your initialization flow works in the editor. Other async operations (FetchOfferings, PurchasePackage, etc.) will not fire their callbacks on unsupported platforms.
+The editor configures a stub on startup, so `IsConfigured()` returns `true` and `OnConfigured` fires. Every async operation completes its node instead of hanging: fetches return an empty result, and Purchase and Paywall report cancelled. There is no store, so no real entitlement is granted.
 
 
 <DocNav
