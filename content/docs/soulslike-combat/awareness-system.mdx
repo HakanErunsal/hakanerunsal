@@ -54,7 +54,7 @@ Sight does not jump to Detected. Each target carries a `0..1` **perception meter
 - Fill rate scales with **distance** and **angle**. A centred, close target fills fast; one at the cone edge and far away trickles up. Shape this with `DistanceRateCurve` and `AngleRateCurve` (flat by default).
 - Cross `SuspicionThreshold` and the target becomes **Suspicious**, so the AI investigates.
 - Reach `1.0` and the target becomes **Detected**, so the AI engages.
-- **Hearing** raises the meter to at least `SuspicionThreshold` (using `HearingBump` when it is higher), so sound always reaches Suspicious but never confirms a target on its own.
+- **Hearing** raises the meter to at least `SuspicionThreshold` (or `HearingBump` if higher), so sound reaches Suspicious but not Detected.
 - **Damage** reveals the attacker at once (straight to Detected).
 
 > Prefer the old instant-on-sight behavior? Set `bGradualEscalation = false`.
