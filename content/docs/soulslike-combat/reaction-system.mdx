@@ -171,6 +171,8 @@ ExecuteReaction("Parry", Context)
            └── Fire OnReactionCompleted
 ```
 
+The reaction commits its cooldown only after the ability activates (step 6 follows step 5), so a `CanActivateAbility` that refuses the activation leaves the reaction off cooldown. That override can read the hydrated `GetActionContext()` payload to make its decision. See [Gate Before Activation](/docs/soulslike-combat/action-system#3-gate-before-activation) in the Action System.
+
 ---
 
 ## Reaction-to-Reaction Blocking

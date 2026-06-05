@@ -129,6 +129,43 @@ Open your Blackboard Data Asset and add a **Name** key called `SEC_ActivationMod
 
 ---
 
+### AI walks off ledges or into hazards
+
+**Possible Causes:**
+- No NavMesh over the combat area, so navmesh-aware sampling stays inert
+- NavMesh extends past the visual edge, so the AI reads the drop as walkable
+- `bEnableNavAwareSampling` disabled, or `NavScoreWeight` set to 0
+- Hazard painted as a high-cost area with no Hazard Areas entry (cost alone does not stop close-range strafing)
+
+**Solutions:**
+- Press P in viewport and confirm the NavMesh stops before the ledge
+- Enable `SEC.Debug.Movement.DrawNav 1` (blue spheres mark blocked directions)
+- Lower `NavProbeDistance` (~60) in tight spaces; raise it for fast enemies
+- For a hazard the AI should still cross, mark a Nav Modifier Volume with a NavArea subclass and add it to the component's Hazard Areas (see [Movement System](/docs/soulslike-combat/movement-system#hazard-areas))
+
+---
+
+### AI grinds against a wall instead of going around it
+
+The target slipped behind a wall or around a corner. The AI sits close to it in a straight line but a long walk away on the navmesh, so it strafes into the wall trying to reach a target it cannot orbit to.
+
+**Possible Causes:**
+- `bEnableDetourEscalation` disabled on the movement component
+- No NavMesh over the area, so there is no route to measure
+- The target is just past a tight corner, so the route is barely longer than the straight line and the ratio test can't see it. This is the reactive (stall) case: if `bDetourEscalateOnStall` is off or `DetourStallSpeed` is too low, the grind isn't caught
+- `DetourEnterRatio` or `DetourMinExcess` set too high, so a longer detour reads as minor
+- The target has no complete path (walled off, or on a separate navmesh island), so the AI stays tactical rather than walking to a dead end
+
+**Solutions:**
+- Confirm `bEnableDetourEscalation` is on (movement component, **Hybrid Movement > Detour**)
+- Press P in viewport and confirm a NavMesh routes around the obstacle
+- For a tight corner: keep `bDetourEscalateOnStall` on and raise `DetourStallSpeed` so a slow grind counts as stalled
+- For a longer detour: lower `DetourEnterRatio` (try 1.4) or `DetourMinExcess`
+- Enable `SEC.Debug.Movement.LogMovement 1` and watch for `Detour escalation ENGAGED` / `CLEARED` (it notes `(stalled at cover)` when the tight-corner path fired)
+- See [Detour Escalation](/docs/soulslike-combat/movement-system#detour-escalation-around-corners) for the full tuning guide
+
+---
+
 ## FAQ
 
 ### Can I use this with my existing character?
@@ -163,11 +200,11 @@ Yes. Full C++ source is included under MIT license.
 
 Call `HandleDeath()` on the `SECCombatControllerComponent` when the AI should die. This shuts down all SEC combat systems in the correct order and broadcasts the `OnDeath` delegate.
 
-**Weapon drop** is automatic — `HandleDeath` unequips the weapon with `bSimulatePhysics = true` in the unequip context. Override `K2_OnUnequipped` on your weapon Blueprint to enable physics on the mesh and apply an impulse. Set `bDropWeaponOnDeath` to `false` on the combat controller if you want to handle the drop manually (e.g. from a death montage AnimNotify).
+**Weapon drop** is automatic: `HandleDeath` unequips the weapon with `bSimulatePhysics = true` in the unequip context. Override `K2_OnUnequipped` on your weapon Blueprint to enable physics on the mesh and apply an impulse. Set `bDropWeaponOnDeath` to `false` on the combat controller to handle the drop manually (e.g. from a death montage AnimNotify).
 
-**Ragdoll** can be enabled in the `OnDeath` delegate or `K2_OnDeath` Blueprint event on your controller — all combat systems are already shut down at that point, so it's safe to call `SetSimulatePhysics` on the character mesh.
+**Ragdoll**: enable it in the `OnDeath` delegate or the `K2_OnDeath` Blueprint event on your controller. By then all combat systems are shut down, so it's safe to call `SetSimulatePhysics` on the character mesh.
 
-**Dissolve/destroy** — use `SetLifeSpan` or a timer in your `K2_OnDeath` handler to delay actor destruction, giving time for a material dissolve effect.
+**Dissolve/destroy**: use `SetLifeSpan` or a timer in your `K2_OnDeath` handler to delay actor destruction, giving time for a material dissolve effect.
 
 ---
 

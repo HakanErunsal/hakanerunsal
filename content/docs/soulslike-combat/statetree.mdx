@@ -71,6 +71,12 @@ Root (Always Active)
 
 Point these at your GAS AttributeSet properties (e.g. `UMyAttributeSet::GetHealthAttribute()`). When set, the task reads live values from the pawn's ASC every tick. When left empty, it falls back to `BasicHealthComponent` (if present) or safe defaults (health percentage 1.0, max health 100).
 
+**Line of Sight (Optional):**
+- `LineOfSightTraceChannel` (Collision Channel) - the channel for the LOS trace. Defaults to `Visibility`; point it at a dedicated channel if your project has one.
+- `bLineOfSightTraceComplex` (bool) - trace against complex (per-poly) collision. Off uses simple collision, which is faster.
+
+The task traces from the AI's view point to the target's view point each tick and writes the result to `FDecisionContext::bHasLOS`. Actions flagged **Require Line Of Sight** use it as a hard gate.
+
 **Outputs:**
 - OutDecisionContext (FDecisionContext struct)
 
@@ -79,6 +85,7 @@ Point these at your GAS AttributeSet properties (e.g. `UMyAttributeSet::GetHealt
 - Reads health and stamina from GAS attributes (or `BasicHealthComponent` fallback)
 - Evaluates health percentages
 - Gathers tags from the AI's ASC (`SelfTags`), the target's ASC (`TargetTags`), and `USECWorldTagSubsystem` (`WorldTags`)
+- Traces line of sight from the AI's eyes to the target and writes `bHasLOS`
 
 ---
 

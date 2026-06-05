@@ -1,7 +1,7 @@
 ---
 title: "Movement System"
-description: "Tactical AI positioning with direction sampling, distance maintenance, strafing, and pawn avoidance."
-date: 2025-12-27
+description: "Tactical AI positioning with direction sampling, distance maintenance, strafing, navmesh awareness, and pawn avoidance."
+date: 2026-06-05
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Movement"]
 parent: "SoulslikeCombatDocs"
@@ -14,7 +14,7 @@ parent: "SoulslikeCombatDocs"
     { label: "Movement System" }
 ]} />
 
-> Tactical positioning that considers distance, angle, pawn avoidance, and custom rules on every tick.
+> Tactical positioning that considers distance, angle, navmesh walkability, pawn avoidance, and custom rules on every tick.
 
 ## When to Use This
 
@@ -24,7 +24,7 @@ parent: "SoulslikeCombatDocs"
 - Group AI where pawns need to avoid each other
 - Boss fights with phase-based positioning changes
 
-> This system can be used independently of the other plugin systems.
+> Works independently of the other plugin systems.
 
 ---
 
@@ -36,18 +36,19 @@ Every tick, the system evaluates **16 directions** around the AI and scores each
 
 <MovementVisualizer />
 
-Each direction gets a score based on:
+Each direction gets a score from:
 
-- **Distance to target**: Does moving here get us closer to the ideal range?
-- **Angle to target**: Are we facing the target?
-- **Avoidance**: Is there a wall or another pawn in this direction?
-- **Positioning Rules**: Custom modifiers you define (see below)
+- **Distance to target**: how well the move serves the ideal range
+- **Angle to target**: whether it faces the target
+- **Pawn avoidance**: whether another AI sits in this direction
+- **Navmesh walkability**: whether it leads off a ledge, into a wall, or onto a hazard (see [Navmesh-Aware Sampling](#navmesh-aware-sampling))
+- **Positioning Rules**: custom modifiers you define (see below)
 
-The highest-scoring direction wins. The result is movement that looks intelligent because it considers multiple factors at the same time.
+The highest-scoring direction wins.
 
 ### Distance Maintenance
 
-The AI tries to stay within a **tolerance zone** around a single desired distance:
+The AI holds a **tolerance zone** around its desired distance:
 
 ```
 Too Close      Comfort Zone      Too Far
@@ -56,26 +57,78 @@ Too Close      Comfort Zone      Too Far
           (approach)     (strafe)     (retreat)
 ```
 
-Configure this via `DesiredDistance` and `DistanceTolerance` (percentage of desired distance). For example, `DesiredDistance = 400` with `DistanceTolerance = 0.2` means the AI is comfortable anywhere between 320 and 480 cm.
+Set `DesiredDistance` and `DistanceTolerance` (a percentage of it). `DesiredDistance = 400` with `DistanceTolerance = 0.2` gives a comfort band of 320-480 cm.
 
 ### Strafing
 
-The AI naturally circles the target while maintaining distance:
+The AI circles the target while holding distance:
 
-- **AutoStrafeSwap**: Automatically changes direction when the opposite side scores significantly better
-- **Strafe Fatigue**: After continuous strafing, the AI rests briefly (broadcasts `OnStrafeResting`)
-- **Threat-Triggered Swap**: If configured, the AI swaps direction when the player stares at it. Set per `MovementBehaviorProfile` (requires [Threat Detection](/docs/soulslike-combat/threat-detection))
+- **AutoStrafeSwap**: changes direction when the opposite side scores better
+- **Strafe Fatigue**: the AI rests after continuous strafing (broadcasts `OnStrafeResting`)
+- **Threat-Triggered Swap**: swaps direction when the player stares, if configured. Set per `MovementBehaviorProfile` (requires [Threat Detection](/docs/soulslike-combat/threat-detection))
 
 ### Movement Layers
 
-The system operates in two layers, switching automatically based on distance:
+Two layers switch automatically by distance:
 
 | Layer | When | How |
 |-------|------|-----|
 | **Tactical** | Target is within `HybridSwitchDistance` | Direct movement input for responsive strafing and positioning |
 | **Strategic** | Target is far away or path-blocked | NavMesh pathfinding to navigate around obstacles |
 
-The switch happens at `HybridSwitchDistance` (default: 800 units). Pathfinding handles range. Direct movement input handles proximity.
+The switch happens at `HybridSwitchDistance` (default 800).
+
+### Detour Escalation (Around Corners)
+
+A target that rounds a corner sits close in a straight line but a long walk away on the navmesh, so the tactical layer strafes into the wall trying to reach it. **Detour Escalation** hands the AI off to Strategic pathfinding to round the corner, then resumes strafing the moment it regains the angle. It reuses the distance switch's pathfinding, so the return to combat is seamless.
+
+On by default. It acts only inside `HybridSwitchDistance` (beyond that, the distance switch already pathfinds), stays inert with no navmesh, and leaves the AI tactical when the target has no complete route (walled off, or on a separate navmesh island) instead of walking it to a dead end.
+
+It escalates two ways:
+
+- **Far detour (predictive):** the route is much longer than the straight line. It engages when `route / straight-line` exceeds `DetourEnterRatio` (1.6) **and** `route - straight-line` exceeds `DetourMinExcess` (200 cm). The second gate lets the AI strafe past a thin pillar instead of pathfinding around it.
+- **Tight corner (reactive):** the target is just past a corner, so the route is barely longer than straight and the ratio can't see it, yet local steering still can't round the corner and grinds the wall. When the AI wants to close on a target it can't see but isn't gaining ground (closing slower than `DetourStallSpeed`, 60 cm/s), it escalates. A pillar never trips this, because the AI keeps closing past it.
+
+It returns to strafing the moment it rounds the corner and regains sight, or once pathfinding has closed it back into strafe range. There is no ratio-based release: a tight corner keeps a low ratio the whole way, so progress, not geometry, ends the detour.
+
+Built for crowds: the route query is throttled to `DetourRecheckInterval` (0.5s) and staggered across the pack. `bDetourUseLineOfSightPreGate` (on) skips the query while the AI can see its target, so open-field fights cost one cheap trace. Turning the pre-gate off adds a query each interval and catches see-over-but-walk-blocking geometry like railings.
+
+> **Tuning:** if it paths around minor bumps, raise `DetourEnterRatio` or `DetourMinExcess`; if it still grinds a tight corner, raise `DetourStallSpeed` so a slower grind counts as stalled; if it pathfinds during a normal slow approach, lower `DetourStallSpeed`. `SEC.Debug.Movement.LogMovement 1` logs `Detour escalation ENGAGED` / `CLEARED`, noting `(stalled at cover)` when the reactive path fired. Works under the StateTree, a Behavior Tree, or standalone, with no extra wiring.
+
+### Navmesh-Aware Sampling
+
+In the tactical layer, each sampled direction gets a soft navmesh walkability score, so enemies stop strafing, circling, or backing off ledges and into walls during a fight. It is a preference, not a veto, so a boxed-in AI still picks its safest direction instead of freezing. A forward probe also eases speed down at a rim, so momentum does not carry the AI over the edge.
+
+On by default; inert with no navmesh, so existing setups are unchanged.
+
+Built for crowds: the check caches per navmesh poly, refreshes at 10Hz, and staggers across enemies, so a pack stays in budget. Each validates against its own nav agent, so large-agent archetypes read the navmesh built for them.
+
+> **Tuning tip:** lower `NavProbeDistance` (try ~60) for tight arenas and corridors, where a long probe over-reports edges.
+
+#### Hazard Areas
+
+To make enemies avoid a patch they can still walk on (lava, spikes, a fire zone):
+
+1. Create a Blueprint subclass of `NavArea` (e.g. `NavArea_Lava`) and give it a distinct draw color.
+2. Drop a **Nav Modifier Volume** over the patch, set its **Area Class** to your hazard area, and rebuild navigation (press **P** to verify it tints).
+3. On the movement component, add the area to **Hazard Areas** with an avoidance strength from 0 to 1: `0` ignores it, `1` treats it like a wall, `~0.75` routes around it but crosses when cornered.
+
+The patch stays walkable: the AI routes around it but crosses when it has no better option. Raise the area's **Default Cost** too, so the long-range pathfinder also avoids it.
+
+> A patch authored as `NavArea_Null` carves a hole in the navmesh, so the AI treats it as an impassable wall without a Hazard Areas entry. Use a walkable hazard area only when the AI should be able to cross it.
+
+### Evaluate-Only Mode (Root Motion)
+
+Set `bApplyMovementInput = false` and the component publishes a movement direction each tick without driving the pawn. Feed it to a root-motion locomotion graph:
+
+```cpp
+// Read the chosen direction for a locomotion blendspace:
+FVector   Dir   = MovementEvaluator->GetCurrentDirection();
+float     Angle = MovementEvaluator->GetCurrentDirectionAngle();   // signed yaw: 0 ahead, +90 right, +/-180 behind
+FVector2D Local = MovementEvaluator->GetCurrentDirectionLocal();   // (forward, right)
+```
+
+In this mode the component stays tactical-only and issues no path-following moves.
 
 ---
 
@@ -114,7 +167,7 @@ MovementEvaluator->SetStrafeSide(1);  // 1 = right, -1 = left
 ```
 
 ### Option 4: Role-Based (Recommended)
-The most automated path. Combat role determines the movement profile.
+The most automated path: combat role picks the profile.
 
 1. Configure your **EnemyAIConfig** data asset.
 2. Assign profiles to roles (e.g., *Attacker* gets Aggressive, *Waiter* gets Passive).
@@ -138,6 +191,13 @@ MovementEvaluator->SyncForCombatRole(RoleTag, MyAIConfig);
 | `AvoidanceRadius` | 100 | How far to stay from other pawns (cm) |
 | `bEnableHybridMovement` | true | Switch between pathfinding and direct input |
 | `HybridSwitchDistance` | 800 | Distance to switch between Tactical and Strategic |
+| `bEnableDetourEscalation` | true | Pathfind around a corner or wall the AI can't reach the target through by steering |
+| `DetourEnterRatio` | 1.6 | Route-to-straight ratio that engages the far-detour (predictive) escalation |
+| `DetourMinExcess` | 200 | Extra walk over the straight line required alongside the ratio; ignores thin obstacles (cm) |
+| `bDetourEscalateOnStall` | true | Also escalate at a tight corner where the AI grinds the wall without gaining ground |
+| `DetourStallSpeed` | 60 | Closing speed below which a blocked approach counts as stalled, not progressing (cm/s) |
+| `DetourRecheckInterval` | 0.5 | How often the route is re-measured (seconds) |
+| `bDetourUseLineOfSightPreGate` | true | Skip the route query while the AI can see its target |
 | `bAutoStrafeSwap` | true | Automatically swap strafe direction |
 | `StrafeSwapThreshold` | 3.0 | Score ratio required to trigger auto-swap |
 | `StrafeTimeLimit` | 5.0 | Base seconds before forcing a strafe direction swap |
@@ -146,6 +206,13 @@ MovementEvaluator->SyncForCombatRole(RoleTag, MyAIConfig);
 | `StrafeRestDuration` | 1.5 | Duration of forced rest (seconds) |
 | `DirectionBlendCount` | 3 | Top-scoring directions to blend (1 = pick best, 2-3 = smooth) |
 | `bEnableStuckDetection` | true | Detect when AI is stuck and cannot make progress |
+| `bApplyMovementInput` | true | Drive the pawn with direct input. Set false for Evaluate-Only (root motion) |
+| `bEnableNavAwareSampling` | true | Gate sample directions by the navmesh (ledges, walls, hazards) |
+| `NavProbeDistance` | 120 | How far ahead each direction is checked against the navmesh (cm) |
+| `NavScoreWeight` | 1.0 | Strength of the navmesh term (0 = off) |
+| `NavBlockedFloor` | 0.05 | Residual score for blocked directions, so a boxed-in AI never dead-stops |
+| `bGuardLedgeDrops` | true | Ease speed down at a true ledge instead of crawling over it |
+| `HazardAreaAvoidance` | (empty) | Map of NavArea classes the AI avoids stepping into (0-1 strength) |
 
 See [Configuration Reference](/docs/soulslike-combat/configuration#movement-profiles) for the complete list.
 
@@ -185,13 +252,18 @@ bool IsAtDesiredDistance();
 bool IsStrafing();
 float GetCurrentDistanceToTarget();
 EMovementLayer GetCurrentMovementLayer();
+
+// Root-motion direction output (Evaluate-Only mode)
+FVector GetCurrentDirection();
+float GetCurrentDirectionAngle(bool bRelativeToControlRotation = false);
+FVector2D GetCurrentDirectionLocal();
 ```
 
 ---
 
 ## Positioning Rules
 
-For advanced control, create custom **Positioning Rules**. These are instanced UObjects that modify direction scores during evaluation.
+Custom **Positioning Rules** are instanced UObjects that modify direction scores during evaluation.
 
 ```cpp
 UCLASS(Blueprintable)
@@ -210,7 +282,7 @@ class UMyFlankingRule : public UPositioningRule
 };
 ```
 
-Add rules to your `MovementBehaviorProfile`'s `PositioningRules` array. Each rule has a `Weight` (0-1) that controls how much influence it has on the final score. Multiple rules stack additively.
+Add rules to your `MovementBehaviorProfile`'s `PositioningRules` array. Each rule has a `Weight` (0-1) controlling its influence on the final score. Multiple rules stack additively.
 
 **Built-in rule:** `UAnglePreferenceRule` pushes the AI toward (or away from) a specific angle relative to the target's facing direction:
 - `PreferredAngle = 0` - frontal assault
@@ -243,7 +315,7 @@ The component broadcasts delegates you can bind to in Blueprint or C++:
 
 ## Behavior Tree Tasks
 
-The plugin includes BT tasks for movement scenarios that fall outside the main evaluation loop:
+BT tasks for movement outside the main evaluation loop:
 
 | Task | Purpose |
 |------|---------|
@@ -259,6 +331,7 @@ The plugin includes BT tasks for movement scenarios that fall outside the main e
 ```
 SEC.Debug.Movement.DrawScoring 1      // Visualize direction scores
 SEC.Debug.Movement.DrawAvoidance 1    // Show avoidance radii
+SEC.Debug.Movement.DrawNav 1          // Show navmesh sample validity and the ledge guard
 SEC.Debug.Movement.LogMovement 1      // Log basic movement state
 SEC.Debug.Movement.LogStrafeSwap 1    // Log strafe swap decisions
 SEC.Debug.Movement.LogStrafeState 1   // Log strafe state changes
@@ -268,6 +341,7 @@ SEC.Debug.Movement.LogStrafeState 1   // Log strafe state changes
 ```cpp
 MovementEvaluator->bDebugDrawScoring = true;
 MovementEvaluator->bDebugDrawAvoidance = true;
+MovementEvaluator->bDebugDrawNav = true;
 MovementEvaluator->bDebugLogMovement = true;
 MovementEvaluator->bDebugLogScoring = true;
 MovementEvaluator->bDebugLogAvoidance = true;

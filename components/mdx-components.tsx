@@ -12,6 +12,7 @@ import ActionFlowVisualizer from '@/components/ActionFlowVisualizer';
 import ReactionFlowVisualizer from '@/components/ReactionFlowVisualizer';
 import CombatRoleVisualizer from '@/components/CombatRoleVisualizer';
 import ThreatVisualizer from '@/components/ThreatVisualizer';
+import AwarenessVisualizer from '@/components/AwarenessVisualizer';
 import MeleeTraceVisualizer from '@/components/MeleeTraceVisualizer';
 import PerformanceVisualizer from '@/components/PerformanceVisualizer';
 import TargetingVisualizer from '@/components/TargetingVisualizer';
@@ -39,6 +40,7 @@ const components = {
   ReactionFlowVisualizer,
   CombatRoleVisualizer,
   ThreatVisualizer,
+  AwarenessVisualizer,
   MeleeTraceVisualizer,
   PerformanceVisualizer,
   TargetingVisualizer,

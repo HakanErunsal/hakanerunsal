@@ -266,6 +266,22 @@ float AvoidanceRadius;            // Distance to maintain
 bool EnableHybridMovement;        // Switch pathfind/direct
 float HybridSwitchDistance;       // Distance threshold
 
+// Detour Escalation (pathfind around corners/walls)
+bool EnableDetourEscalation;      // Escalate when the route is a real detour
+float DetourEnterRatio;           // Route/straight ratio to engage a far detour (1.6)
+float DetourMinExcess;            // Extra walk required alongside the ratio, cm (200)
+bool DetourEscalateOnStall;       // Also escalate at a tight corner the ratio misses
+float DetourStallSpeed;           // Closing speed below which a blocked approach is stalled, cm/s (60)
+float DetourRecheckInterval;      // Seconds between route measurements (0.5)
+bool DetourUseLineOfSightPreGate; // Skip the query while the target is in sight
+
+// Navmesh Sampling
+bool EnableNavAwareSampling;      // Avoid ledges, walls, hazards
+float NavProbeDistance;           // How far ahead to check (cm)
+float NavScoreWeight;             // Strength of the navmesh term (0 = off)
+bool GuardLedgeDrops;             // Ease speed down at a true ledge
+TMap<TSubclassOf<UNavArea>, float> HazardAreaAvoidance;  // Hazard areas to avoid (0-1)
+
 // Custom Rules
 TArray<UPositioningRule*> PositioningRules;  // Custom direction modifiers
 ```

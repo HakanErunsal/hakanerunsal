@@ -1,0 +1,186 @@
+---
+title: "Awareness System"
+description: "Per-AI perception memory so enemies engage only the targets they have sensed."
+date: 2026-06-05
+published: true
+tags: ["Documentation", "Unreal Engine", "AI", "Awareness", "Perception"]
+parent: "SoulslikeCombatDocs"
+---
+
+
+<Breadcrumb items={[
+    { label: "Docs", href: "/docs" },
+    { label: "SoulslikeCombat", href: "/docs/SoulslikeCombatDocs" },
+    { label: "Awareness System" }
+]} />
+
+> Enemies fight only what they have sensed, not every target on the map.
+
+<AwarenessVisualizer />
+
+## When to Use This
+
+- Souls-like enemies that aggro on sight, not through walls
+- Stealth and horror games where the player can break line of sight
+- "Investigate the noise" behavior, where the AI heard you but has not seen you
+- Pack alerting: one enemy spots the player and warns nearby allies
+- Any AI that should remember a target for a grace window after losing it
+
+> This system is opt-in. Leave the config empty and behavior is unchanged.
+
+---
+
+## Core Concepts
+
+### Perception Memory
+
+The Awareness component sits on the AI controller and wraps Unreal's `UAIPerceptionComponent`. Unreal's senses report raw stimuli; the Awareness layer turns those into a remembered, per-target state and fires events you can bind to. It reads perception, it does not replace it.
+
+### The Five States
+
+Each target the AI has sensed holds one state, ordered from least to most aware:
+
+| State | Meaning |
+|-------|---------|
+| **Unknown** | Never sensed. No memory. |
+| **Forgotten** | Grace expired. Fires once, then the entry is dropped. |
+| **Suspicious** | Heard or half-glimpsed. Knows something is there, not locked on. |
+| **Lost** | Saw it, then lost sight. Still engages through the grace window. |
+| **Detected** | Sensed with confidence. Engaged. |
+
+### How a State Changes
+
+- A sense **raises** the state: sight and damage reach Detected, hearing reaches Suspicious.
+- **Losing all senses** drops Detected to Lost, the grace window.
+- **Losing sight while still hearing** drops Detected to Suspicious, so the AI investigates instead of staying locked on.
+- A **decay timer** ages Lost and Suspicious to Forgotten, then drops the entry.
+
+The component also records each target's **last-known location**, so you can drive "search where I last saw you" behavior.
+
+---
+
+## Quick Setup
+
+Getting "only fight what I have seen" takes two steps. **Both are required.**
+
+### Step 1: Give the enemy senses
+
+Create a `USECAwarenessConfig` data asset (Right-click, Miscellaneous, Data Asset, **SECAwarenessConfig**), set the sight and hearing ranges, and assign it to your enemy's `UEnemyAIConfig` → **AwarenessConfig**.
+
+### Step 2: Gate target selection (required)
+
+Set `UEnemyAIConfig` → **Target Selector** to an **Awareness Filtered Target Selector**. This is the step that makes the AI ignore targets it has not sensed.
+
+> **Without Step 2 the enemy senses targets but still engages everyone.** A config on its own records awareness; the filtered selector is what acts on it. The plugin logs a warning on possession if you set a config without the selector.
+
+### Perception: two ways to provide it
+
+**Let the config build it (default).** With `bAutoCreatePerceptionComponent` on, the component creates and configures a `UAIPerceptionComponent` from the config's sense settings. You tune sight radius and the rest in the data asset.
+
+**Bring your own.** Add a `UAIPerceptionComponent` to your controller Blueprint and configure the senses there. The Awareness component binds to it and reads its events without touching its settings. Set `bAutoCreatePerceptionComponent` to false so it does not build a second one. In this mode only the config's memory fields apply (grace, decay, stimulus map); the sense fields are ignored.
+
+> **Team setup matters.** Unreal's senses detect across teams only. Give the player a team id different from the enemy (`AEnemyControllerBase` defaults enemies to team 1). If the player shares the enemy's team, sight reports nothing and it looks like awareness is broken when the cause is the team config.
+
+---
+
+## Key Properties
+
+On the `USECAwarenessConfig` data asset:
+
+| Property | Default | Purpose |
+|----------|---------|---------|
+| `bAutoCreatePerceptionComponent` | true | Build a perception component from this config if the controller has none |
+| `SightRadius` | 1500 | How far the AI can see (cm) |
+| `LoseSightRadius` | 1800 | Distance at which an already-seen target is lost (cm) |
+| `PeripheralVisionHalfAngle` | 90 | Half-angle of the sight cone (90 = full 180 degrees) |
+| `HearingRange` | 1200 | How far the AI can hear (cm) |
+| `bEnableDamageSense` | true | A hit from behind reveals the attacker |
+| `GraceLossDuration` | 5.0 | Seconds a target stays Lost (still engaged) before it is Forgotten |
+| `SuspiciousDecayDuration` | 8.0 | Seconds a Suspicious target lingers before it is Forgotten |
+| `EvaluationInterval` | 0.1 | How often the decay check runs (s) |
+| `StimulusToStateMap` | (empty) | Remap a sense class to a state (e.g. hearing to Detected for an alert archetype) |
+
+On `UAwarenessFilteredTargetSelector`:
+
+| Property | Default | Purpose |
+|----------|---------|---------|
+| `MinRequiredState` | Lost | Minimum state a target needs to be selectable |
+| `InnerSelector` | closest | Selector that runs on the filtered list (null = closest target) |
+
+---
+
+## Key Functions
+
+```cpp
+// Query
+ESECAwarenessState GetAwarenessState(AActor* Target) const;
+bool GetLastKnownLocation(AActor* Target, FVector& OutLocation, float& OutAgeSeconds) const;
+void GetTargetsInState(ESECAwarenessState MinState, TArray<AActor*>& OutTargets) const;
+ESECAwarenessState GetHighestAwarenessState() const;
+
+// Scripted control (cutscene reveals, stealth callouts, alarm bells)
+void ForceAwareOf(AActor* Target, ESECAwarenessState State);
+void Forget(AActor* Target);
+void ClearAllAwareness();
+
+// Pack alerting
+void BroadcastAwarenessToAllies(float Radius);
+```
+
+---
+
+## Events
+
+Bind these in Blueprint or C++ for VO, animation cues, or an alert-eye UI:
+
+| Event | When |
+|-------|------|
+| `OnTargetSpotted` | A target first reaches Detected |
+| `OnTargetLost` | A Detected target drops to Lost (sight broken, grace window starts) |
+| `OnTargetForgotten` | A target ages out; the entry is dropped right after |
+| `OnTargetStateChanged` | Any state change (passes old and new state) |
+| `OnAlertLevelChanged` | The highest state across all targets changes |
+
+---
+
+## Pack Alerting
+
+`BroadcastAwarenessToAllies(Radius)` shares this enemy's Detected targets with same-team AI within the radius that have their own Awareness component. Each alerted ally gets a Detected entry, so it engages on the next update.
+
+It is a manual call, so you choose the trigger. Wiring `OnTargetSpotted` to it gives "one spots, the pack engages":
+
+```cpp
+// On the enemy controller:
+// Awareness.OnTargetSpotted  ->  Awareness.BroadcastAwarenessToAllies(1500)
+```
+
+For a softer "they heard there is something" alert, call `ForceAwareOf(Target, Suspicious)` on the allies yourself instead of the broadcast helper.
+
+---
+
+## Custom Stimulus Rules
+
+`ResolveStimulusState` is a BlueprintNativeEvent. Override it to apply game-specific rules without C++, for example to ignore a sight stimulus while the target carries an Invisibility tag. The default maps Sight and Damage to Detected and Hearing to Suspicious; anything unmapped falls back to Suspicious.
+
+---
+
+## Debug
+
+The awareness state is server-side. To watch it during play, bind `OnTargetStateChanged` to a print or on-screen log, or read `GetAwarenessState` / `GetHighestAwarenessState` on tick. Confirm the chain is live by binding `OnTargetSpotted` and walking into the enemy's sight cone: it fires when you enter and not when you are behind the enemy.
+
+---
+
+## Integration Points
+
+| System | How Awareness Connects |
+|--------|------------------------|
+| [Targeting System](/docs/soulslike-combat/targeting-system) | The Awareness Filtered Target Selector gates which targets pass to selection |
+| [Combat Roles](/docs/soulslike-combat/combat-roles) | Only sensed targets feed role assignment, since the selector filters first |
+| [Threat Detection](/docs/soulslike-combat/threat-detection) | Threat tracks player attention; Awareness tracks what the AI has perceived. Use both for "knows you are there and knows you are watching" |
+
+---
+
+<DocNav 
+  prev={{ title: "Threat Detection", href: "/docs/soulslike-combat/threat-detection" }} 
+  next={{ title: "Melee Trace", href: "/docs/soulslike-combat/melee-trace" }} 
+/>
