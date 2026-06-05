@@ -332,9 +332,19 @@ BT tasks for movement outside the main evaluation loop:
 SEC.Debug.Movement.DrawScoring 1      // Visualize direction scores
 SEC.Debug.Movement.DrawAvoidance 1    // Show avoidance radii
 SEC.Debug.Movement.DrawNav 1          // Show navmesh sample validity and the ledge guard
-SEC.Debug.Movement.LogMovement 1      // Log basic movement state
+SEC.Debug.Movement.LogMovement 1      // Log discrete movement events (layer change, suspend/resume, pathfinding, stuck, detour)
+SEC.Debug.Movement.LogTick 1          // Log the per-tick state dump (distance, error, speed)
+SEC.Debug.Movement.LogScoring 1       // Log direction scoring details
+SEC.Debug.Movement.LogAvoidance 1     // Log avoidance detection and scoring
 SEC.Debug.Movement.LogStrafeSwap 1    // Log strafe swap decisions
 SEC.Debug.Movement.LogStrafeState 1   // Log strafe state changes
+```
+
+`LogMovement` and `LogTick` are separate on purpose. The per-tick state dump fires every evaluation tick for every enemy, so leaving it on with `LogMovement` buries the discrete events you want to watch. Turn on `LogMovement` to follow events, and add `LogTick` only when you need the raw distance/error/speed stream.
+
+The tick stream also writes to its own log category, `LogMovementEvaluatorTick`. To watch events while one enemy floods the console, mute the category instead of the CVar:
+```
+Log LogMovementEvaluatorTick off
 ```
 
 **Per-Instance (Blueprint/C++):**
@@ -343,6 +353,7 @@ MovementEvaluator->bDebugDrawScoring = true;
 MovementEvaluator->bDebugDrawAvoidance = true;
 MovementEvaluator->bDebugDrawNav = true;
 MovementEvaluator->bDebugLogMovement = true;
+MovementEvaluator->bDebugLogTick = true;
 MovementEvaluator->bDebugLogScoring = true;
 MovementEvaluator->bDebugLogAvoidance = true;
 MovementEvaluator->bDebugLogStrafeSwap = true;

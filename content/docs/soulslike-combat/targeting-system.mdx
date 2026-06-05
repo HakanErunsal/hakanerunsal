@@ -54,8 +54,11 @@ When an AI needs a target (at spawn, on target death, or during re-evaluation), 
 | **ClosestTargetSelector** | Picks nearest target | Distance-based threat |
 | **BalancedTargetSelector** | Picks target with fewest combatants (with stickiness) | Fair distribution |
 | **RandomTargetSelector** | Random distribution | Unpredictable encounters |
+| **AwarenessFilteredTargetSelector** | Wraps another selector; only passes targets the AI has actually sensed | Stealth / "fights only what it has seen" |
 
 Selectors are **data-driven**. Configure them per-AI via `EnemyAIConfig` or project-wide defaults.
+
+> **AwarenessFilteredTargetSelector** pairs with the [Awareness System](/docs/soulslike-combat/awareness-system). Its `MinRequiredState` sets the disengage feel: **Detected** = break off and investigate the moment sight is lost (recommended for stealth/patrol enemies); **Lost** (default) = keep chasing through the grace window. It delegates to an `InnerSelector` (or nearest) once the list is filtered.
 
 ### Lazy Target Acquisition
 

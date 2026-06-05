@@ -27,8 +27,16 @@ parent: "SoulslikeCombatDocs"
 | `STTask_PollFocusActor` | Polls controller focus actor | Every tick, outputs target reference |
 | `STTask_SyncActionSet` | Syncs ActionSet from pawn's SECActionSetComponent | On entering role state |
 | `STTask_SyncMovementProfile` | Syncs MovementProfile for current role | On entering role state |
+| `STTask_PollLastKnownLocation` | Outputs a target's last-known location | Investigate / search states (move to where it was last seen) |
 
 > All StateTree tasks work with any `AAIController` that has a `SECCombatControllerComponent`. They use the component's static resolution helpers to find AIConfig and combat role data.
+
+## Available StateTree Conditions
+
+| Condition | Purpose | When to Use |
+|-----------|---------|-------------|
+| `STCondition_ASCHasTag` | Checks the pawn's ASC for gameplay tags | Gate states by ability/status tags |
+| `STCondition_AwarenessState` (**Awareness State At Least**) | Passes when a target's awareness state is ≥ a minimum | Branch Patrol / Investigate / Combat / Search on what the AI has perceived |
 
 ---
 
@@ -121,5 +129,38 @@ The task traces from the AI's view point to the target's view point each tick an
 - If BT: Runs behavior tree sequence
 - Waits for SEC.Action.End event
 - Completes when action finishes
+
+---
+
+## Awareness Nodes
+
+These two nodes let the brain branch on what the AI has *perceived* (via the [Awareness System](/docs/soulslike-combat/awareness-system)), so you can build patrol → investigate → combat → search loops without wiring delegates by hand.
+
+### STCondition_AwarenessState — "Awareness State At Least"
+
+**Inputs:**
+- AIController (Object, Context)
+- `Target` (Actor) - the target to test. Leave empty to test the AI's **most-aware** target.
+- `MinState` (ESECAwarenessState) - passes when the target's state is ≥ this. Default `Detected`.
+- `bInvertResult` (bool)
+
+**What it does:**
+- Reads `GetAwarenessState(Target)` from the controller's awareness component and compares it to `MinState` (ordering: Unknown < Forgotten < Suspicious < Lost < Detected).
+- Gate a Combat state with `MinState = Detected`, an Investigate state with `MinState = Suspicious`, and so on.
+
+### STTask_PollLastKnownLocation
+
+**Inputs:**
+- AIController (Object, Context)
+- `Target` (Actor) - the target to read. Leave empty to use the AI's most-aware target.
+
+**Outputs:**
+- `LastKnownLocation` (FVector) - bind this straight into an **AI Move To** destination
+- `AgeSeconds` (float) - how stale the location is
+- `bValid` (bool) - false if there is no recorded location
+- `ResolvedTarget` (Actor) - the target actually read (handy with the most-aware fallback)
+
+**What it does:**
+- Each tick, reads `GetLastKnownLocation` for the target and exposes it as bindable outputs - the core of "search where I last saw you" behavior.
 
 <DocNav prev={{ title: "Configuration Reference", href: "/docs/soulslike-combat/configuration" }} next={{ title: "Patterns & Examples", href: "/docs/soulslike-combat/patterns" }} />

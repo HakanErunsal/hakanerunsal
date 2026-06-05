@@ -1,6 +1,6 @@
 ---
 title: "Awareness System"
-description: "Per-AI perception memory so enemies engage only the targets they have sensed."
+description: "Per-AI perception memory: enemies notice, investigate, chase, and forget targets like a guard would."
 date: 2026-06-05
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Awareness", "Perception"]
@@ -14,159 +14,275 @@ parent: "SoulslikeCombatDocs"
     { label: "Awareness System" }
 ]} />
 
-> Enemies fight only what they have sensed, not every target on the map.
+> Enemies fight only what they have sensed. They notice you over time, lose you when you break line of sight, and remember where you went.
 
 <AwarenessVisualizer />
 
 ## When to Use This
 
 - Souls-like enemies that aggro on sight, not through walls
-- Stealth and horror games where the player can break line of sight
-- "Investigate the noise" behavior, where the AI heard you but has not seen you
+- Stealth and horror games where the player can break line of sight and slip away
+- "Investigate the noise" behavior: the AI heard you but has not seen you
+- A patrol, spot, chase, lose, search, return-to-post loop
+- An on-screen awareness meter that fills as the enemy notices you
 - Pack alerting: one enemy spots the player and warns nearby allies
-- Any AI that should remember a target for a grace window after losing it
 
-> This system is opt-in. Leave the config empty and behavior is unchanged.
+> Opt-in. Leave the config off and behavior is unchanged.
 
 ---
 
-## Core Concepts
+## How It Works
 
-### Perception Memory
-
-The Awareness component sits on the AI controller and wraps Unreal's `UAIPerceptionComponent`. Unreal's senses report raw stimuli; the Awareness layer turns those into a remembered, per-target state and fires events you can bind to. It reads perception, it does not replace it.
+The Awareness component lives on the AI controller and wraps Unreal's `UAIPerceptionComponent`. Unreal's senses report raw stimuli; the Awareness layer turns those into a remembered, per-target state and fires events you can bind to.
 
 ### The Five States
 
-Each target the AI has sensed holds one state, ordered from least to most aware:
+Each sensed target holds one state, ordered from least to most aware:
 
 | State | Meaning |
 |-------|---------|
-| **Unknown** | Never sensed. No memory. |
-| **Forgotten** | Grace expired. Fires once, then the entry is dropped. |
-| **Suspicious** | Heard or half-glimpsed. Knows something is there, not locked on. |
-| **Lost** | Saw it, then lost sight. Still engages through the grace window. |
+| **Unknown** | Never sensed (or fully forgotten). No memory. |
+| **Forgotten** | Grace expired. Fires once, then the entry drops. |
+| **Suspicious** | Heard or half-glimpsed it. Knows something is there, not locked on. |
+| **Lost** | Saw it, then lost it. Remembers the last spot and searches the grace window. |
 | **Detected** | Sensed with confidence. Engaged. |
 
-### How a State Changes
+### Detection fills over time
 
-- A sense **raises** the state: sight and damage reach Detected, hearing reaches Suspicious.
-- **Losing all senses** drops Detected to Lost, the grace window.
-- **Losing sight while still hearing** drops Detected to Suspicious, so the AI investigates instead of staying locked on.
-- A **decay timer** ages Lost and Suspicious to Forgotten, then drops the entry.
+Sight does not jump to Detected. Each target carries a `0..1` **perception meter** that fills while the AI sees it:
 
-The component also records each target's **last-known location**, so you can drive "search where I last saw you" behavior.
+- Fill rate scales with **distance** and **angle**. A centred, close target fills fast; one at the cone edge and far away trickles up. Shape this with `DistanceRateCurve` and `AngleRateCurve` (flat by default).
+- Cross `SuspicionThreshold` and the target becomes **Suspicious**, so the AI investigates.
+- Reach `1.0` and the target becomes **Detected**, so the AI engages.
+- **Hearing** raises the meter to at least `SuspicionThreshold` (using `HearingBump` when it is higher), so sound always reaches Suspicious but never confirms a target on its own.
+- **Damage** reveals the attacker at once (straight to Detected).
+
+> Prefer the old instant-on-sight behavior? Set `bGradualEscalation = false`.
+
+### Losing a target
+
+- **Brief sight breaks count for nothing.** A Detected target drops to **Lost** only after `ConfirmLostDelay` seconds of unbroken no-sight, so the cone exits of normal strafing leave the state alone.
+- **Point-blank targets stay seen.** Anything within `ProximityRadius` holds Detected regardless of line of sight, so an enemy keeps a target standing against it even as its attack swings the body away.
+- **Lost is a search window.** The AI remembers the spot for `GraceLossDuration`, then forgets and disengages. The clock starts when Lost begins, so a noisy target cannot reset it.
+- **Re-acquiring is instant.** See the target again during grace and it snaps back to Detected.
+
+The component also records each target's last-known location and velocity, which drives "search where I last saw you" behavior.
+
+<Protip
+  title="The mental model"
+  description="A meter fills while the AI sees a target (Suspicious, then Detected). A short hysteresis keeps flicker from demoting it, a proximity floor pins close targets, and a grace clock ages Lost to Forgotten. Every state is a threshold on that one meter."
+/>
 
 ---
 
 ## Quick Setup
 
-Getting "only fight what I have seen" takes two steps. **Both are required.**
+"Only fight what I have sensed" takes two steps. **Both are required.**
 
 ### Step 1: Give the enemy senses
 
-Create a `USECAwarenessConfig` data asset (Right-click, Miscellaneous, Data Asset, **SECAwarenessConfig**), set the sight and hearing ranges, and assign it to your enemy's `UEnemyAIConfig` → **AwarenessConfig**.
+Create a `USECAwarenessConfig` data asset (Right-click → Miscellaneous → Data Asset → **SECAwarenessConfig**), set the sight and hearing ranges, and assign it to your enemy's `UEnemyAIConfig` → **AwarenessConfig**.
 
 ### Step 2: Gate target selection (required)
 
-Set `UEnemyAIConfig` → **Target Selector** to an **Awareness Filtered Target Selector**. This is the step that makes the AI ignore targets it has not sensed.
+Set `UEnemyAIConfig` → **Target Selector** to an **Awareness Filtered Target Selector**. This step makes the AI ignore targets it has not sensed.
 
-> **Without Step 2 the enemy senses targets but still engages everyone.** A config on its own records awareness; the filtered selector is what acts on it. The plugin logs a warning on possession if you set a config without the selector.
+<Callout type="warning">
+  Skip Step 2 and the enemy senses targets but still engages everyone. A config on its own records awareness; the filtered selector acts on it. The plugin logs a warning on possession if you set a config without the selector.
+</Callout>
 
-### Perception: two ways to provide it
+The selector's **`MinRequiredState`** sets how the AI behaves when it loses sight:
 
-**Let the config build it (default).** With `bAutoCreatePerceptionComponent` on, the component creates and configures a `UAIPerceptionComponent` from the config's sense settings. You tune sight radius and the rest in the data asset.
+| `MinRequiredState` | Feel |
+|--------------------|------|
+| **Detected** | Disengage and investigate. The AI breaks off the moment it loses sight and your Blueprint runs the search. Recommended for stealth/patrol enemies. |
+| **Lost** (default) | Keep fighting. The AI chases the live target through the grace window, then gives up at Forgotten. |
+| **Suspicious** | Also engages investigate-by-sound targets directly. |
 
-**Bring your own.** Add a `UAIPerceptionComponent` to your controller Blueprint and configure the senses there. The Awareness component binds to it and reads its events without touching its settings. Set `bAutoCreatePerceptionComponent` to false so it does not build a second one. In this mode only the config's memory fields apply (grace, decay, stimulus map); the sense fields are ignored.
+> See [Targeting System](/docs/soulslike-combat/targeting-system) for the full selector picture.
 
-> **Team setup matters.** Unreal's senses detect across teams only. Give the player a team id different from the enemy (`AEnemyControllerBase` defaults enemies to team 1). If the player shares the enemy's team, sight reports nothing and it looks like awareness is broken when the cause is the team config.
+### Two ways to provide perception
+
+**Let the config build it (default).** With `bAutoCreatePerceptionComponent` on, the component builds a `UAIPerceptionComponent` from the config's sense settings.
+
+**Bring your own.** Add a `UAIPerceptionComponent` to your controller Blueprint, configure the senses there, and set `bAutoCreatePerceptionComponent` to false so the component binds to yours. In this mode only the memory and meter fields apply; the sense fields are ignored.
+
+<Callout type="warning">
+  **Team setup matters.** Unreal's senses detect across teams only. Give the player a team id different from the enemy (`AEnemyControllerBase` defaults enemies to team 1). When the player shares the enemy's team, sight reports nothing and awareness looks broken, though the cause is the team config. To exclude a single actor (like a debug fly-cam), see [Extension Points](#extension-points).
+</Callout>
 
 ---
 
-## Key Properties
+## Tuning
 
-On the `USECAwarenessConfig` data asset:
+All fields live on the `USECAwarenessConfig` data asset.
+
+**Senses**
 
 | Property | Default | Purpose |
 |----------|---------|---------|
 | `bAutoCreatePerceptionComponent` | true | Build a perception component from this config if the controller has none |
 | `SightRadius` | 1500 | How far the AI can see (cm) |
 | `LoseSightRadius` | 1800 | Distance at which an already-seen target is lost (cm) |
-| `PeripheralVisionHalfAngle` | 90 | Half-angle of the sight cone (90 = full 180 degrees) |
+| `PeripheralVisionHalfAngle` | 90 | Half-angle of the sight cone (90 = full 180°) |
 | `HearingRange` | 1200 | How far the AI can hear (cm) |
 | `bEnableDamageSense` | true | A hit from behind reveals the attacker |
-| `GraceLossDuration` | 5.0 | Seconds a target stays Lost (still engaged) before it is Forgotten |
-| `SuspiciousDecayDuration` | 8.0 | Seconds a Suspicious target lingers before it is Forgotten |
-| `EvaluationInterval` | 0.1 | How often the decay check runs (s) |
-| `StimulusToStateMap` | (empty) | Remap a sense class to a state (e.g. hearing to Detected for an alert archetype) |
 
-On `UAwarenessFilteredTargetSelector`:
+**Gradual meter**
 
 | Property | Default | Purpose |
 |----------|---------|---------|
-| `MinRequiredState` | Lost | Minimum state a target needs to be selectable |
-| `InnerSelector` | closest | Selector that runs on the filtered list (null = closest target) |
+| `bGradualEscalation` | true | Fill the meter over time; false = instant Detected on sight (legacy) |
+| `EscalationRate` | 0.9 | Meter units per second at best range and angle (~1.1 s to detect) |
+| `SuspicionThreshold` | 0.2 | Meter at or above this reports Suspicious; 1.0 reports Detected |
+| `DistanceRateCurve` | (none) | Multiplier on fill rate by distance (X = dist / SightRadius). Flat 1.0 if unset |
+| `AngleRateCurve` | (none) | Multiplier on fill rate by angle off-centre (X = angle / half-angle). Flat 1.0 if unset |
+| `HearingBump` | 0.45 | Meter value a hearing stimulus jumps to (capped under 1.0) |
+
+**Proximity and loss**
+
+| Property | Default | Purpose |
+|----------|---------|---------|
+| `ProximityRadius` | 220 | Targets within this radius stay Detected regardless of sight (cm). 0 disables |
+| `ConfirmLostDelay` | 0.5 | Continuous seconds of no-sight before Detected drops to Lost |
+| `GraceLossDuration` | 5.0 | Seconds a target stays Lost (searchable) before Forgotten |
+| `SuspiciousDecayDuration` | 8.0 | Seconds a Suspicious target lingers before Forgotten |
+| `EvaluationInterval` | 0.1 | How often the meter and decay tick runs (s) |
+
+**Memory, mapping, filtering**
+
+| Property | Default | Purpose |
+|----------|---------|---------|
+| `bTrackLastKnownLocation` | true | Record LastKnownLocation / LastKnownVelocity per target |
+| `StimulusToStateMap` | (empty) | Remap a sense class to a state (e.g. hearing → Detected for an alert archetype) |
+| `IgnoredActorClasses` | (empty) | Classes the AI never perceives. See [Extension Points](#extension-points) |
 
 ---
 
-## Key Functions
+## The Building Blocks for Behavior
+
+Events, queries, two StateTree nodes, and a facing toggle. You compose behavior from these in Blueprint; the plugin ships no hard-coded patrol or investigate logic.
+
+### Events
+
+| Event | Params | When |
+|-------|--------|------|
+| `OnTargetSuspicious` | Target, StimulusLocation | A target first reaches Suspicious, the investigate entry point. Carries where to look. |
+| `OnTargetSpotted` | Target | A target first reaches Detected. |
+| `OnTargetLost` | Target | A Detected target drops to Lost (search window starts). |
+| `OnTargetForgotten` | Target | A target ages out; the entry drops right after. |
+| `OnAwarenessProgress` | Target, Progress01 | The meter crosses a quarter step (0.25 / 0.5 / 0.75 / 1.0). Use for UI or stingers. |
+| `OnAlertLevelChanged` | HighestState | The highest state across all targets changes. |
+| `OnTargetStateChanged` | Target, Old, New | Any state change (catch-all). |
+
+### Queries
 
 ```cpp
-// Query
-ESECAwarenessState GetAwarenessState(AActor* Target) const;
-bool GetLastKnownLocation(AActor* Target, FVector& OutLocation, float& OutAgeSeconds) const;
-void GetTargetsInState(ESECAwarenessState MinState, TArray<AActor*>& OutTargets) const;
+ESECAwarenessState GetAwarenessState(AActor* Target) const;        // this target's state
+float              GetAwarenessProgress(AActor* Target) const;     // 0..1, drive a UI bar
+AActor*            GetMostAwareTarget(ESECAwarenessState& OutState) const; // best target to react to
+bool               GetLastKnownLocation(AActor* Target, FVector& OutLocation, float& OutAgeSeconds) const;
+void               GetTargetsInState(ESECAwarenessState MinState, TArray<AActor*>& OutTargets) const;
 ESECAwarenessState GetHighestAwarenessState() const;
-
-// Scripted control (cutscene reveals, stealth callouts, alarm bells)
-void ForceAwareOf(AActor* Target, ESECAwarenessState State);
-void Forget(AActor* Target);
-void ClearAllAwareness();
-
-// Pack alerting
-void BroadcastAwarenessToAllies(float Radius);
+FSECAwarenessEntry GetAwarenessEntry(AActor* Target) const;  // full entry: state, last-known, times
 ```
 
+> `GetMostAwareTarget` lets a patrol or investigate Blueprint pick something to react to without running combat target selection.
+
+### StateTree nodes
+
+- **Awareness State At Least** (condition) passes when a target's state reaches a minimum. Gate Patrol, Investigate, Combat, and Search states with it. Leave Target empty to test the most-aware target.
+- **Poll Last Known Location** (task) outputs `LastKnownLocation`, `AgeSeconds`, `bValid`, and `ResolvedTarget` each tick. Bind `LastKnownLocation` into an **AI Move To** to walk the AI to where it last saw the target.
+
+> Full node reference on the [StateTree Integration](/docs/soulslike-combat/statetree) page.
+
+### Facing
+
+`AEnemyControllerBase` tracks the live target only while it is **Detected**. Once a target is Suspicious or Lost, the controller faces the **last-known location**, so a searching enemy looks where it last saw you rather than through a wall. This only kicks in when an awareness config is active; without one the controller keeps default focus tracking, so existing non-stealth enemies are unaffected.
+
+- Toggle with **`bFaceLastKnownWhenNotDetected`** (on by default).
+- Override **`GetDesiredFacingLocation`** (a `BlueprintNativeEvent`) for custom facing: return a world location to face, or false to keep the default.
+
 ---
 
-## Events
+## Recipes: Building Behaviors
 
-Bind these in Blueprint or C++ for VO, animation cues, or an alert-eye UI:
+The pieces compose into behavior. The ladder runs from one node to the full loop.
 
-| Event | When |
-|-------|------|
-| `OnTargetSpotted` | A target first reaches Detected |
-| `OnTargetLost` | A Detected target drops to Lost (sight broken, grace window starts) |
-| `OnTargetForgotten` | A target ages out; the entry is dropped right after |
-| `OnTargetStateChanged` | Any state change (passes old and new state) |
-| `OnAlertLevelChanged` | The highest state across all targets changes |
+### Recipe 1: Go home when forgotten
 
----
+The smallest useful behavior, and what the showcase controller does:
 
-## Pack Alerting
-
-`BroadcastAwarenessToAllies(Radius)` shares this enemy's Detected targets with same-team AI within the radius that have their own Awareness component. Each alerted ally gets a Detected entry, so it engages on the next update.
-
-It is a manual call, so you choose the trigger. Wiring `OnTargetSpotted` to it gives "one spots, the pack engages":
-
-```cpp
-// On the enemy controller:
-// Awareness.OnTargetSpotted  ->  Awareness.BroadcastAwarenessToAllies(1500)
+```
+Event OnTargetForgotten
+  -> AI Move To (HomeLocation)     // HomeLocation captured at BeginPlay
 ```
 
-For a softer "they heard there is something" alert, call `ForceAwareOf(Target, Suspicious)` on the allies yourself instead of the broadcast helper.
+That is the whole "give up and walk back to post" behavior. No StateTree changes.
+
+### Recipe 2: Investigate a noise
+
+```
+Event OnTargetSuspicious(Target, StimulusLocation)
+  -> AI Move To (StimulusLocation)   // facing follows movement
+  -> on arrive: play a look-around
+```
+
+Hearing only reaches Suspicious, so the AI walks over to check instead of attacking. See you there and the meter fills to Detected; otherwise the Suspicious entry decays and `OnTargetForgotten` sends it home (Recipe 1).
+
+### Recipe 3: The full patrol, search, return loop
+
+Drive it from the StateTree with the **Awareness State At Least** condition:
+
+| State | Enter when | Does |
+|-------|-----------|------|
+| **Patrol** | most-aware target `< Suspicious` | follow a spline (stock `AI Move To`) |
+| **Investigate** | most-aware target `>= Suspicious` and `< Detected` | move to the stimulus / last-known, look around |
+| **Combat** | a target is `Detected` | your existing SEC combat sub-tree |
+| **Search** | was Detected, now `Lost` | **Poll Last Known Location** → `AI Move To`, wait out the grace window |
+| **Return** | `OnTargetForgotten` fires | `AI Move To` home, then back to Patrol |
+
+Combat movement (the Movement Evaluator) runs only inside the Combat state. Patrol, Investigate, Search, and Return use stock navigation, so they stay out of the combat layer. For the disengage feel, set the selector's `MinRequiredState = Detected` ([Quick Setup](#step-2-gate-target-selection-required)).
+
+### Recipe 4: An awareness meter UI
+
+```
+Tick (or bind OnAwarenessProgress)
+  -> GetAwarenessProgress(Target)  ->  set HUD bar fill (0..1)
+```
+
+`GetAwarenessProgress` returns the rising meter while Suspicious, `1.0` while Detected, and the draining grace fraction while Lost, so one bar reads as noticing, spotted, losing you.
+
+### Recipe 5: Pack alerting
+
+Wire `OnTargetSpotted` → `BroadcastAwarenessToAllies(Radius)` so one enemy spotting you grants nearby same-team allies a Detected entry on the player. For a softer "they heard something" alert, call `ForceAwareOf(Target, Suspicious)` on the allies yourself.
 
 ---
 
-## Custom Stimulus Rules
+## Extension Points
 
-`ResolveStimulusState` is a BlueprintNativeEvent. Override it to apply game-specific rules without C++, for example to ignore a sight stimulus while the target carries an Invisibility tag. The default maps Sight and Damage to Detected and Hearing to Suspicious; anything unmapped falls back to Suspicious.
+| Hook | Type | Use it to |
+|------|------|-----------|
+| `ShouldIgnoreActor(Actor)` | BlueprintNativeEvent | Drop all stimuli from an actor. The default ignores anything in `IgnoredActorClasses`; add `DefaultPawn` or spectator classes there. Override for tag- or team-based rules. |
+| `ResolveStimulusState(Sense, Source)` | BlueprintNativeEvent | Remap a non-sight stimulus (hearing/damage) to a state, e.g. ignore hearing while the target carries a "Sneaking" tag. |
+| `GetDesiredFacingLocation(OutLoc)` | BlueprintNativeEvent | Custom facing while not Detected (see above). |
+| `InnerSelector` | Property | Run your own selector on the awareness-filtered list (default: nearest). |
+| `bGradualEscalation = false` | Property | Revert to instant Detected-on-sight. |
+
+<Protip
+  title="Ignore the showcase fly-cam"
+  description="When a stray Unreal DefaultPawn or debug fly-cam keeps getting noticed, add its class to IgnoredActorClasses. Sight skips ResolveStimulusState after the meter change, so the ignore list (or a ShouldIgnoreActor override) is how you filter actors out of perception."
+/>
 
 ---
 
 ## Debug
 
-The awareness state is server-side. To watch it during play, bind `OnTargetStateChanged` to a print or on-screen log, or read `GetAwarenessState` / `GetHighestAwarenessState` on tick. Confirm the chain is live by binding `OnTargetSpotted` and walking into the enemy's sight cone: it fires when you enter and not when you are behind the enemy.
+Awareness runs server-side. To watch it during play:
+
+- Bind `OnTargetStateChanged` to a print, or read `GetAwarenessState` / `GetHighestAwarenessState` on tick.
+- Read `GetAwarenessProgress` to see the meter fill in real time, or bind `OnAwarenessProgress`.
+- Check the chain: bind `OnTargetSpotted` and walk into the cone. It fires when you enter and stays quiet when you stand behind the enemy.
 
 ---
 
@@ -174,9 +290,10 @@ The awareness state is server-side. To watch it during play, bind `OnTargetState
 
 | System | How Awareness Connects |
 |--------|------------------------|
-| [Targeting System](/docs/soulslike-combat/targeting-system) | The Awareness Filtered Target Selector gates which targets pass to selection |
+| [Targeting System](/docs/soulslike-combat/targeting-system) | The Awareness Filtered Target Selector gates which targets reach selection; `MinRequiredState` sets the disengage feel |
+| [StateTree Integration](/docs/soulslike-combat/statetree) | The Awareness State At Least condition and Poll Last Known Location task branch the brain on awareness |
 | [Combat Roles](/docs/soulslike-combat/combat-roles) | Only sensed targets feed role assignment, since the selector filters first |
-| [Threat Detection](/docs/soulslike-combat/threat-detection) | Threat tracks player attention; Awareness tracks what the AI has perceived. Use both for "knows you are there and knows you are watching" |
+| [Threat Detection](/docs/soulslike-combat/threat-detection) | Threat tracks the player's attention; Awareness tracks what the AI has perceived. Use both for "knows you are there and knows you are watching" |
 
 ---
 
