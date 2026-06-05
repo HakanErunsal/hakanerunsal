@@ -198,7 +198,7 @@ FSECAwarenessEntry GetAwarenessEntry(AActor* Target) const;  // full entry: stat
 
 ### Facing
 
-`AEnemyControllerBase` tracks the live target only while it is **Detected**. Once a target is Suspicious or Lost, the controller faces the **last-known location**, so a searching enemy looks where it last saw you rather than through a wall. This only kicks in when an awareness config is active; without one the controller keeps default focus tracking, so existing non-stealth enemies are unaffected.
+`AEnemyControllerBase` tracks the live target only while it is **Detected**. Once a target is Suspicious or Lost, the controller faces the **last-known location**, so a searching enemy looks where it last saw you rather than through a wall. With no awareness config, the controller keeps default focus tracking, so existing non-stealth enemies are unaffected.
 
 - Toggle with **`bFaceLastKnownWhenNotDetected`** (on by default).
 - Override **`GetDesiredFacingLocation`** (a `BlueprintNativeEvent`) for custom facing: return a world location to face, or false to keep the default.
