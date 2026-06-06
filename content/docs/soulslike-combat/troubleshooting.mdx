@@ -118,7 +118,7 @@ Open your Blackboard Data Asset and add a **Name** key called `SEC_ActivationMod
 
 **Possible Causes:**
 - Movement task not ticking
-- NavMesh not present above hybrid movement range
+- NavMesh not present (tactical sampling reads it below the hybrid range, strategic pathfinding above it)
 - DirectControlThreshold too high/low
 
 **Solutions:**

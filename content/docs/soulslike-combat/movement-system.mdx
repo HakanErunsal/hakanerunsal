@@ -73,7 +73,7 @@ Two layers switch automatically by distance:
 
 | Layer | When | How |
 |-------|------|-----|
-| **Tactical** | Target is within `HybridSwitchDistance` | Direct movement input for responsive strafing and positioning |
+| **Tactical** | Target is within `HybridSwitchDistance` | Direct movement input for responsive strafing and positioning. Still reads the navmesh per direction for walkability, ledges, and hazards (see [Navmesh-Aware Sampling](#navmesh-aware-sampling)) |
 | **Strategic** | Target is far away or path-blocked | NavMesh pathfinding to navigate around obstacles |
 
 The switch happens at `HybridSwitchDistance` (default 800).
@@ -128,7 +128,7 @@ float     Angle = MovementEvaluator->GetCurrentDirectionAngle();   // signed yaw
 FVector2D Local = MovementEvaluator->GetCurrentDirectionLocal();   // (forward, right)
 ```
 
-In this mode the component stays tactical-only and issues no path-following moves.
+In this mode the component stays tactical-only and issues no path-following moves. It still scores directions against the navmesh when nav-aware sampling is on.
 
 ---
 
