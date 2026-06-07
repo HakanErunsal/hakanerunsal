@@ -116,9 +116,34 @@ AbilityEndTag = "SEC.Action.End";
 </Callout>
 
 `UGameplayAbilityBase` provides:
-- **Rotation Lock** (`bLockAIRotation`) - AI commits to the attack direction (no tracking mid-swing).
-- **Motion Warping** (`MotionWarpingTargetName`) - Automatically sets up a warp target from `AIController::GetFocusActor()`.
-- **Action Context** (`FSECExecutionContext`) - Passes target, distance, direction, magnitude, and context tags to the ability on activation.
+- **Rotation Lock** (`bLockAIRotation`): the AI commits to the attack direction with no tracking mid-swing.
+- **Motion Warping** (`MotionWarpingTargetName`): sets up a warp target from the resolved action context so attacks can steer toward their target. See [Motion Warping](#motion-warping).
+- **Action Context** (`FSECExecutionContext`): passes target, distance, direction, magnitude, and context tags to the ability on activation.
+
+#### Motion Warping
+
+`UGameplayAbilityBase` can steer an attack toward its target with Unreal's [Motion Warping](https://dev.epicgames.com/documentation/en-us/unreal-engine/motion-warping-in-unreal-engine). On activation the ability registers a warp target from the resolved [action context](#activation-modes): the event payload's target for event-driven activations, or `AIController::GetFocusActor()` as the fallback for tag or direct activations with no payload target. The plugin only registers the target; the montage's Motion Warp anim notify performs the warp.
+
+The pawn must carry a `UMotionWarpingComponent`. `AEnemyCharacterBase` does not add one, so warping no-ops on pawns without it.
+
+| Property | Default | Effect |
+| --- | --- | --- |
+| `MotionWarpingTargetName` | `Target` | Warp target key. Must match the Warp Target Name on the montage's Motion Warp notify. Set to None to disable warp setup for the ability. |
+| `MotionWarpingOffset` | `100.0` | Warp point offset in cm, placed in front of the target toward the AI. Doubles as a switch-off distance: once the AI is closer than this, root-motion warping pauses so the attack does not overshoot. The pause condition is created only while the offset is above 0. |
+| `MaxWarpDistance` | `0.0` | Skip gate. If the AI is closer than this when the ability activates, no warp target is set up. The default of 0 leaves the gate off (any distance warps). |
+| `bLockAIRotation` | `true` | Stops the controller from yawing the pawn toward focus during the ability. Warping runs on a separate path and still rotates the pawn during the notify window. |
+
+Setup:
+
+1. Add a `UMotionWarpingComponent` to your character, in the Blueprint through **Add Component** or in a C++ subclass through `CreateDefaultSubobject`.
+2. Place a **Motion Warp** notify window over the attack's windup in the montage.
+3. Set the ability's `MotionWarpingTargetName` to the notify's Warp Target Name.
+
+Where the AI tracks versus commits is down to the notify window: rotation warps toward the target across the window, then the swing commits past it. Because `bLockAIRotation` and warping run on separate paths, a committed attack can still track during the warp window while controller facing stays locked.
+
+<Callout type="info">
+  `AM_SEC_TwoHanded_TripleAttack_Montage` in the showcase content has a working Motion Warp setup. Copy its notify and warp values as a starting point.
+</Callout>
 
 #### Activation Modes
 
