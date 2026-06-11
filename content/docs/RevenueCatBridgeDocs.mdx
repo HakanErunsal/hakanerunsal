@@ -16,8 +16,8 @@ tags: ["Documentation", "Unreal Engine", "IAP", "Subscriptions", "Mobile"]
 **Platforms:** Android and iOS at runtime. Win64 editor builds compile and run with stub implementations for iteration.
 
 **Included SDKs:**
-- Android: RevenueCat v9.25.0 + purchases-ui v9.25.0 (Gradle, pulled at build time)
-- iOS: RevenueCat v5.63.0 + RevenueCatUI v5.63.0 (xcframeworks, bundled)
+- Android: RevenueCat v10.8.0 + purchases-ui v10.8.0 (Gradle, pulled at build time)
+- iOS: RevenueCat v5.78.0 + RevenueCatUI v5.78.0 (xcframeworks, bundled)
 
 **Native Paywall UI:** Present RevenueCat's dashboard-configured paywall with a single Blueprint node or C++ call. Design and iterate on your paywall remotely. No app update required.
 
@@ -78,7 +78,7 @@ tags: ["Documentation", "Unreal Engine", "IAP", "Subscriptions", "Mobile"]
     },
     {
       label: "RevenueCat SDK",
-      items: ["Android: v9.25.0 + purchases-ui v9.25.0 (Gradle)", "iOS: v5.63.0 + RevenueCatUI v5.63.0 (xcframework)"],
+      items: ["Android: v10.8.0 + purchases-ui v10.8.0 (Gradle)", "iOS: v5.78.0 + RevenueCatUI v5.78.0 (xcframework)"],
       icon: "shield",
       color: "purple"
     },
@@ -103,6 +103,7 @@ tags: ["Documentation", "Unreal Engine", "IAP", "Subscriptions", "Mobile"]
 |-------------|---------|
 | **Engine** | Unreal Engine 5.5+ |
 | **Platforms** | Android, iOS (editor stubs for Win64) |
+| **Android min SDK** | API 23 (Android 6.0)+, required by RevenueCat 10 / Google Play Billing 8 |
 | **RevenueCat account** | Free tier at [revenuecat.com](https://www.revenuecat.com/) |
 | **Store setup** | Google Play Console and/or App Store Connect with products configured |
 | **RevenueCat dashboard** | Products linked, offerings created, entitlements configured |

@@ -367,6 +367,15 @@ The full picture of a customer's purchases and subscriptions.
 
 ---
 
+## Upgrading to 1.5.0
+
+1.5.0 updates the bundled RevenueCat SDKs to Android 10.8.0 and iOS 5.78.0 (from 9.25.0 and 5.63.0). No nodes, pins, or C++ signatures changed, so your Blueprints and code keep working after a rebuild. Two things to handle on Android:
+
+- **Set the project's Android `Minimum SDK Version` to 23 or higher.** RevenueCat 10 runs on Google Play Billing 8, which requires API 23 (Android 6.0). You set this under Project Settings > Platforms > Android. Below 23, the Android build fails at manifest merge.
+- **Check your consumable product types.** RevenueCat 10 stops restoring consumed one-time products. If you sell consumables, confirm each one is set to the right type (consumable vs non-consumable) in the RevenueCat dashboard.
+
+iOS needs nothing beyond a rebuild; the plugin ships the 5.78.0 frameworks, and the Android Compose runtime (now 1.7.0 / Material3 1.3.0) resolves through Gradle.
+
 ## Upgrading to 1.4.0
 
 The 1.4.0 update is drop-in: no nodes or pins were removed or renamed, so existing Blueprints keep working after you refresh nodes. A few behaviors changed:
