@@ -1,6 +1,6 @@
 ---
 title: "Testing & Troubleshooting"
-description: "14-phase test plan, edge cases, logging tips, and common issues for RevenueCat Bridge."
+description: "16-phase test plan, edge cases, logging tips, and common issues for RevenueCat Bridge."
 date: 2026-03-14
 published: true
 tags: ["Documentation", "Unreal Engine", "Testing", "Troubleshooting"]
@@ -254,6 +254,21 @@ Tests the native paywall UI. Requires iOS 16+ or Android with Compose.
 | 15.9 | Use the **Present Paywall (Async)** Blueprint node | Output pins fire correctly (OnPurchased / OnCancelled / OnRestored / OnFailure) | - |
 | 15.10 | Verify paywall on Android | Compose-based paywall renders correctly | Check Logcat for Compose errors |
 | 15.11 | Verify paywall on iOS | SwiftUI-based paywall renders correctly | Check Xcode console |
+
+---
+
+### Phase 16 - Virtual Currencies
+
+Needs virtual currencies configured in the RevenueCat dashboard, with a product that grants currency on purchase.
+
+| # | Test | Expected | Log to check |
+|---|------|----------|--------------|
+| 16.1 | Call `FetchVirtualCurrencies()` | `OnSuccess` fires (and `OnVirtualCurrenciesUpdated`) | `[RevenueCat] Fetched N virtual currencies.` |
+| 16.2 | Inspect a currency | `Code`, `Name`, and `Balance` populated for each dashboard currency | Log each code and balance |
+| 16.3 | Call `GetVirtualCurrencyBalance("GLD")` | Returns the same balance as the fetched data | - |
+| 16.4 | Buy a product that grants currency, with `bAutoFetchVirtualCurrencies` on | Balance rises after the purchase with no manual fetch | - |
+| 16.5 | Grant currency through the RevenueCat backend, then call `InvalidateVirtualCurrenciesCache()` and `FetchVirtualCurrencies()` | New balance returns | - |
+| 16.6 | Call `FetchVirtualCurrencies()` with no dashboard currencies | Empty array, no error | - |
 
 ---
 

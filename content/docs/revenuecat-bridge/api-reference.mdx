@@ -37,6 +37,7 @@ These are stored in `URevenueCatSettings` (a `DeveloperSettings` subclass) and s
 | `IosApiKey` | `FString` | RevenueCat public API key for iOS |
 | `bAutoFetchOfferings` | `bool` | Fetch offerings once after configure (default `true`). |
 | `bAutoFetchCustomerInfo` | `bool` | Fetch customer info once after configure (default `true`) so `IsEntitlementActive` is truthful on cold launch. |
+| `bAutoFetchVirtualCurrencies` | `bool` | Fetch virtual currency balances after configure and refresh them after each purchase (default `false`). Turn on when your project uses virtual currencies. |
 | `bEnableDebugLogs` | `bool` | Verbose SDK logging. Turn on during development, turn off before shipping. |
 
 ---
@@ -75,6 +76,17 @@ These are stored in `URevenueCatSettings` (a `DeveloperSettings` subclass) and s
 | `FetchCustomerInfo(FetchPolicy)` | `void` | Fetch customer info from RevenueCat. Results through `OnCustomerInfoUpdated`. `FetchPolicy` defaults to `Default` (cached); pass `FetchCurrent` to force a live read, for example on foreground to catch an expiry. |
 | `GetCachedCustomerInfo()` | `FRevenueCatCustomerInfo` | Returns cached customer info from the last fetch. |
 | `IsEntitlementActive(EntitlementID)` | `bool` | Check if a specific entitlement is active. Uses cached data - call `FetchCustomerInfo()` first if you need fresh data. |
+
+### Virtual Currencies
+
+Virtual currencies are coin, gem, or credit balances you configure in the RevenueCat dashboard. The SDK reads balances; it cannot spend them. A balance changes through a store-purchase grant or your backend calling the RevenueCat API. Needs virtual currencies configured in the dashboard, and the bundled SDKs already meet the version floor (iOS 5.32+ / Android 9.1+).
+
+| Function | Returns | Description |
+|----------|---------|-------------|
+| `FetchVirtualCurrencies()` | `void` | Fetch the current user's balances from RevenueCat. Results come back through `OnVirtualCurrenciesUpdated`. |
+| `GetCachedVirtualCurrencies()` | `TArray<FRevenueCatVirtualCurrency>` | Returns balances from the last fetch. Empty if you haven't fetched yet. |
+| `GetVirtualCurrencyBalance(Code)` | `int32` | Balance for one currency by its dashboard code (e.g. `"GLD"`). Reads cached data; returns 0 when the code is unknown or nothing is cached. |
+| `InvalidateVirtualCurrenciesCache()` | `void` | Drop the SDK's cached balances so the next `FetchVirtualCurrencies()` reads from the network. Call after your backend changes a balance. |
 
 ### User Identity
 
@@ -141,6 +153,7 @@ RC->OnPurchaseCompleted.AddDynamic(this, &UMyClass::HandlePurchase);
 | `OnPurchaseCompleted` | `ERevenueCatPurchaseResult Result`, `FRevenueCatCustomerInfo CustomerInfo` | A purchase flow finished (success, cancel, error, or already owned). |
 | `OnPurchasesRestored` | `FRevenueCatCustomerInfo CustomerInfo` | Restore purchases completed. |
 | `OnCustomerInfoUpdated` | `FRevenueCatCustomerInfo CustomerInfo` | Customer info changed: purchase, restore, login, logout, fetch, or a background SDK update. Treat as idempotent; it can fire more than once for one change. |
+| `OnVirtualCurrenciesUpdated` | `TArray<FRevenueCatVirtualCurrency> VirtualCurrencies` | Virtual currency balances fetched or refreshed. Carries all currencies; find the one you need by code. |
 | `OnPaywallCompleted` | `ERevenueCatPaywallResult Result`, `FRevenueCatCustomerInfo CustomerInfo` | The native paywall was dismissed. Check the result for what happened (purchased, cancelled, restored, or error). |
 | `OnError` | `FRevenueCatError Error` | Any error occurred. Check `ErrorCode` and `ErrorMessage`. |
 
@@ -206,6 +219,13 @@ Search for the node name in the Blueprint action palette (they are in the **Reve
 | **OnFailure** | `FRevenueCatError` | Fired on error |
 
 > **Note:** These async actions bind to the subsystem's delegates internally. The customer-info actions (Fetch Customer Info, Log In, Log Out, Sync Purchases) complete only on their own operation's result, not on a background SDK update. Avoid running two instances of the same action type at once, since they share a completion signal.
+
+### Fetch Virtual Currencies (Async)
+
+| Pin | Type | Description |
+|-----|------|-------------|
+| **OnSuccess** | `TArray<FRevenueCatVirtualCurrency>` | Fired with the fetched balances |
+| **OnFailure** | `FRevenueCatError` | Fired on error |
 
 ### Present Paywall (Async)
 
@@ -358,6 +378,17 @@ The full picture of a customer's purchases and subscriptions.
 | `ManagementURL` | `FString` | URL to manage subscriptions. Can be empty. |
 | `ActiveSubscriptions` | `TArray<FString>` | Product IDs with active subscriptions |
 
+#### `FRevenueCatVirtualCurrency`
+
+A virtual currency balance (coins, gems, credits) with its dashboard metadata. Read-only; the client cannot change a balance.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `Code` | `FString` | Currency code from the dashboard (e.g. `"GLD"`) |
+| `Name` | `FString` | Display name from the dashboard |
+| `Balance` | `int32` | Current balance for this user |
+| `ServerDescription` | `FString` | Optional description from the dashboard. Empty if none is set. |
+
 #### `FRevenueCatError`
 
 | Field | Type | Description |
@@ -366,6 +397,16 @@ The full picture of a customer's purchases and subscriptions.
 | `ErrorMessage` | `FString` | Human-readable error message |
 
 ---
+
+## Upgrading to 1.6.0
+
+1.6.0 adds virtual currency balances. It is drop-in: no existing nodes, pins, or C++ signatures changed, so your Blueprints and code keep working after a rebuild.
+
+- **New virtual currency API.** The `Fetch Virtual Currencies` node and `FetchVirtualCurrencies()` function read the player's balances, with `GetVirtualCurrencyBalance`, `GetCachedVirtualCurrencies`, `InvalidateVirtualCurrenciesCache`, and the `OnVirtualCurrenciesUpdated` event. See [Virtual Currencies](#virtual-currencies) above.
+- **New `bAutoFetchVirtualCurrencies` setting** (off by default). Turn it on to fetch balances on startup and refresh them after each purchase.
+- **Set up virtual currencies in the RevenueCat dashboard first.** Until you do, a fetch returns an empty array.
+
+The client reads balances; it cannot spend them. Grant currency through a dashboard purchase rule or the RevenueCat backend API, then call `InvalidateVirtualCurrenciesCache()` and `FetchVirtualCurrencies()` after a backend change.
 
 ## Upgrading to 1.5.0
 

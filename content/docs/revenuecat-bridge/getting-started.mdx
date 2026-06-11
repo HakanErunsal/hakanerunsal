@@ -81,6 +81,7 @@ After restarting, go to **Project Settings > Plugins**. You should see a **Reven
 | **iOS Api Key** | Your RevenueCat public API key for iOS |
 | **Auto Fetch Offerings** | On by default. After the SDK configures, the subsystem calls `FetchOfferings()` once so `GetCachedOfferings` has data before you ask. |
 | **Auto Fetch Customer Info** | On by default (v1.3.0+). After the SDK configures, the subsystem calls `FetchCustomerInfo()` once to populate the customer-info cache. Safety net for cold launches where the native SDK doesn't populate it. Bind `OnCustomerInfoUpdated` to apply entitlements. Bind `OnError` on failure. |
+| **Auto Fetch Virtual Currencies** | Off by default (v1.6.0+). When on, the subsystem fetches virtual currency balances after configure and refreshes them after each purchase. Turn it on if your project uses virtual currencies, then bind `OnVirtualCurrenciesUpdated` to read them. |
 | **Enable Debug Logs** | Check this during development. Uncheck before shipping. |
 
 3. Save
@@ -336,7 +337,7 @@ If anything goes wrong, check the [Testing & Troubleshooting](/docs/revenuecat-b
 ## Next Steps
 
 - [API Reference](/docs/revenuecat-bridge/api-reference) - every function, delegate, struct, and enum
-- [Testing & Troubleshooting](/docs/revenuecat-bridge/testing) - the full 14-phase test plan, edge cases, and logging tips
+- [Testing & Troubleshooting](/docs/revenuecat-bridge/testing) - the full 16-phase test plan, edge cases, and logging tips
 
 
 <DocNav
