@@ -72,7 +72,7 @@ AEnemyControllerBase (convenience wrapper)
 
 On top of the component setup, `EnemyControllerBase` also provides:
 - **Smooth focus rotation** with interpolation (`SmoothFocusInterpSpeed`)
-- **Rotation lock** for committed attacks (`LockRotation`, `UnlockRotation`, `ForceUnlockRotation`)
+- **Rotation lock** for committed attacks (`LockRotationBy`, `UnlockRotationBy`, `ForceUnlockRotation`; the keyless `LockRotation`/`UnlockRotation` remain for back-compat). Pass the owning ability or montage as the owner; the pin defaults to self. A lock keyed to an ability self-releases if that ability is interrupted or destroyed without unlocking, so a cancelled attack cannot leave the AI stuck facing one way. `UGameplayAbilityBase` does this via `bLockAIRotation`.
 - **Team ID** via `ISECTeamInterface` and Unreal's `IGenericTeamAgentInterface` (integrates with AI Perception and EQS)
 - **K2 Blueprint events** forwarded from the combat component (`OnCombatRoleAssigned`, `OnCombatTargetLost`)
 
