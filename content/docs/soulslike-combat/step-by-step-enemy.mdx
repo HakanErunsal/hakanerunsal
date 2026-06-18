@@ -67,7 +67,7 @@ UBotStateTreeAIComponent*       // StateTree AI runner
 UBehaviorTreeComponent*         // Helper BT for action sequences (not the BrainComponent)
 ```
 
-Additional features: smooth focus rotation with `LockRotation`/`UnlockRotation`, team ID via `ISECTeamInterface`, and K2 Blueprint events for role changes and target loss.
+Additional features: smooth focus rotation with owner-keyed `LockRotationBy`/`UnlockRotationBy` (an ability holds a lock that self-releases when it ends, cancels, or is destroyed; abilities on `UGameplayAbilityBase` get this through `bLockAIRotation`), team ID via `ISECTeamInterface`, and K2 Blueprint events for role changes and target loss. The keyless `LockRotation`/`UnlockRotation` pair remains for backward compatibility.
 
 ### Option B: Use Any AAIController + Components
 

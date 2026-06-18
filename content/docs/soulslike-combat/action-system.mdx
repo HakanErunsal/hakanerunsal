@@ -387,6 +387,10 @@ For anything the built-ins miss, subclass `USECScorer` or `USECGate` in Blueprin
   Keep scorer and gate subclasses **stateless**. A single instance is shared across every AI using the asset, so mutable fields would alias across enemies. For randomness, use the `SeededRandom` helper.
 </Callout>
 
+<Callout type="info">
+  `SeededRandom` draws from the per-action seed in `FSECScoringContext`. On the reaction path that seed is 0, so `SeededRandom` returns a fixed value there. Vary reaction randomness through a built-in factor or your own context read instead.
+</Callout>
+
 ### Examples
 
 **Cast a spell only above a mana threshold.** Add an **Attribute Gate**, set `Attribute = Mana`, `MinValue = 30`. The spell drops out of selection whenever mana is below 30.
