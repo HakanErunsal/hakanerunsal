@@ -36,10 +36,11 @@ On every evaluation, all valid actions compete. The highest score wins.
 
 ```
 Final Score = SelectionWeight 
-            × Range Score (Distance & Angle)
+            × Range Score (Distance, Angle, Health, Speed)
             × Context Multipliers (Tags)
             × Novelty Bonus (Variety)
             × Chain Bonus (Combos)
+            × Custom Scorers (your own factors)
 ```
 
 ### Range & Angle Evaluation
@@ -60,6 +61,8 @@ Distance.MaxValue = 400;     // Score ramps down to 0.0
 - `FRangeEval::MakeFrontalAngle()` - Forward-facing cone
 - `FRangeEval::MakeLowHealthRange()` - Triggers at low health
 - `FRangeEval::MakeAlwaysOne()` - Always returns 1.0 (no range preference)
+
+Beyond distance and angle, each action also scores against **Health** (`HealthEval`) and **Movement Speed** (`SpeedEval`, the AI's current speed in cm/s). Both are `FRangeEval` curves that default to `MakeAlwaysOne()` (no preference). Use `SpeedEval` for moves that depend on pace, such as a running attack that should only score while the enemy is sprinting.
 
 ### Cooldowns & Variance
 
@@ -92,6 +95,7 @@ Before scoring, every action runs a set of hard gates. Fail one and the action d
 | `BlockTags` | Any of them sits on Self, Target, or World. |
 | `StaminaCost` | The AI's stamina falls below the cost. |
 | **Require Line Of Sight** | The box is ticked and the AI has no clear view of its target. |
+| **Custom Gates** | Any `USECGate` in the action's Custom Scoring returns false. See [Custom Scorers & Gates](#custom-scorers--gates). |
 
 **Require Line Of Sight** reads `FDecisionContext::bHasLOS`, which the [Build Decision Context](/docs/soulslike-combat/statetree#sttask_builddecisioncontext) task traces from the AI's eyes to the target's every tick. Tick it for moves that need a clean line (ranged shots, gap-closers) and leave it off for attacks that land blind, like a radial slam or a taunt.
 
@@ -359,9 +363,43 @@ Mutators run on the server only (`BlueprintAuthorityOnly`); client calls no-op s
 
 ---
 
+## Custom Scorers & Gates
+
+Built-in factors cover distance, angle, health, speed, and tags. For anything else (mana, ally count, terrain, faction state), attach your own **Scorers** and **Gates** to an action. Each `FActionSpec` has a **Custom Scoring** group with two arrays:
+
+| Type | Base Class | Returns | Effect |
+|------|-----------|---------|--------|
+| **Scorer** | `USECScorer` | A multiplier (`1.0` = no effect) | Folds into the action score. Above 1 favors, below 1 disfavors. |
+| **Gate** | `USECGate` | `true` / `false` | A `false` drops the action from selection, like a built-in precondition. |
+
+Add an entry, then pick a built-in class or your own Blueprint/C++ subclass and set its parameters inline. This is the same authoring pattern as [Role Evaluators](/docs/soulslike-combat/combat-roles) and [Positioning Rules](/docs/soulslike-combat/movement-system).
+
+### Built-in Classes
+
+| Class | Kind | Use |
+|-------|------|-----|
+| **Attribute Scorer** | Scorer | Scale by a GameplayAttribute through an `FRangeEval` curve. Optional normalize-by attribute (e.g. Mana / MaxMana). |
+| **Attribute Gate** | Gate | Allow only while an attribute sits between a min and max. |
+
+For anything the built-ins miss, subclass `USECScorer` or `USECGate` in Blueprint and override its one function (`ScoreMultiplier` or `PassesGate`). The `FSECScoringContext` passed in carries the controller, target, owning ASC, and the seed that `SeededRandom` uses.
+
+<Callout type="warning">
+  Keep scorer and gate subclasses **stateless**. A single instance is shared across every AI using the asset, so mutable fields would alias across enemies. For randomness, use the `SeededRandom` helper.
+</Callout>
+
+### Examples
+
+**Cast a spell only above a mana threshold.** Add an **Attribute Gate**, set `Attribute = Mana`, `MinValue = 30`. The spell drops out of selection whenever mana is below 30.
+
+**Favor a heavy attack as rage builds.** Add an **Attribute Scorer**, set `Attribute = Rage`, `NormalizeBy = MaxRage`, and shape the curve to peak near full. The attack scores higher as rage fills.
+
+The same Scorers and Gates work on reactions. See [Reaction System](/docs/soulslike-combat/reaction-system#custom-scorers--gates).
+
+---
+
 ## Custom Scoring Hooks
 
-The `ActionEvaluationComponent` provides two `BlueprintNativeEvent` hooks for project-specific logic.
+The `ActionEvaluationComponent` provides two `BlueprintNativeEvent` hooks for project-wide logic that applies to **every** action. For per-action rules, prefer [Custom Scorers & Gates](#custom-scorers--gates).
 
 **CanExecuteAction** - Veto an action after all built-in gates pass.
 

@@ -89,6 +89,7 @@ Each entry is an `FReactionSpec`:
 | `Priority` | `int32` | Higher value = chosen first |
 | `SelectionWeight` | `float` | Random tiebreak among equal-priority reactions |
 | `Cooldown` | `FActionCooldown` | Same cooldown struct as actions |
+| `CustomScoring` | `FSECCustomScoring` | Custom scorers scale the selection weight, gates allow or deny. See [Custom Scorers & Gates](/docs/soulslike-combat/action-system#custom-scorers--gates). |
 
 ### Action Interaction
 
@@ -115,8 +116,9 @@ EvaluateBestReaction(CategoryTag):
      - SEC.Reaction.BlockReactions not on ASC?
      - All RequiresTags present?
      - No BlockTags present?
-  3. Group survivors by Priority (highest first)
-  4. Weighted random pick among top-priority group
+     - Custom Gates pass?
+  3. Custom Scorers scale each survivor's weight, then group by Priority (highest first)
+  4. Weighted random pick among the top-priority group
   → FChosenReaction { ReactionId, AbilityTag, Priority, Weight }
 ```
 
