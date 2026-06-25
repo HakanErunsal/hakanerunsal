@@ -14,6 +14,10 @@ parent: "SoulslikeCombatDocs"
     { label: "Patterns" }
 ]} />
 
+<Callout type="info">
+The distance bands below (for example 100-250cm) describe the `Range` of a **Distance Scorer**. Distance is opt-in: an action only reacts to range once you add a Distance Scorer to its **Scoring** list and tune that scorer's `Range`. Movement values map to `UMovementBehaviorProfile` fields (`DesiredDistance`, `DistanceTolerance`, and the strafe-rest / threat-response toggles).
+</Callout>
+
 ## Pattern 1: Basic Melee Enemy
 
 **ActionSet:**
@@ -21,9 +25,9 @@ parent: "SoulslikeCombatDocs"
 - Quick retreat when too close (under 100cm)
 
 **Movement:**
-- IdealMinDistance: 150
-- IdealMaxDistance: 250
-- Strafe enabled
+- DesiredDistance: 200
+- DistanceTolerance: 0.2 (holds roughly 160-240cm, prefers strafing inside it)
+- bEnableStrafeRest: true
 
 **Actions:**
 ```
@@ -41,9 +45,9 @@ QuickRetreat: 0-100cm,   3s cooldown, weight 1.5 (defensive)
 - Longer cooldowns, stays at distance
 
 **Movement:**
-- IdealMinDistance: 250
-- IdealMaxDistance: 400
-- Retreat bias: 0.7
+- DesiredDistance: 350
+- DistanceTolerance: 0.2 (holds roughly 280-420cm)
+- bAdjustDistanceByThreat: true, ThreatDistanceScale: 1.0 (backs off further as threat rises)
 
 **Actions:**
 ```
@@ -61,9 +65,9 @@ Retreat:       0-200cm,   high weight, moves away
 - Short cooldowns
 
 **Movement:**
-- IdealMinDistance: 50
-- IdealMaxDistance: 150
-- Strafe disabled, aggressive approach
+- DesiredDistance: 100
+- DistanceTolerance: 0.1 (tight band, closes in fast)
+- bEnableStrafeRest: false (no forced breaks, relentless pressure)
 
 **Actions:**
 ```

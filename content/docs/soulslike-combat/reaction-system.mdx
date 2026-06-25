@@ -89,7 +89,11 @@ Each entry is an `FReactionSpec`:
 | `Priority` | `int32` | Higher value = chosen first |
 | `SelectionWeight` | `float` | Random tiebreak among equal-priority reactions |
 | `Cooldown` | `FActionCooldown` | Same cooldown struct as actions |
-| `CustomScoring` | `FSECCustomScoring` | Custom scorers scale the selection weight, gates allow or deny. See [Custom Scorers & Gates](/docs/soulslike-combat/action-system#custom-scorers--gates). |
+| `CustomScoring` | `FSECCustomScoring` | Scorers scale the selection weight, gates allow or deny. See [Scorers & Gates](/docs/soulslike-combat/action-system#scorers--gates). |
+
+<Callout type="warning">
+  The built-in Distance, Angle, Health, and Speed Scorers and the Stamina Gate read the decision-context snapshot, which the action path builds. On a reaction, the snapshot holds its defaults (distance 0, angle 0, speed 0, health 1.0, stamina 100), so those scorers and the gate evaluate against placeholder values rather than the live combat state. Score reactions with `Priority`, `SelectionWeight`, tags (`RequiresTags` / `BlockTags`), and Attribute Scorers / Attribute Gates, which read live GameplayAttributes.
+</Callout>
 
 ### Action Interaction
 
@@ -116,8 +120,8 @@ EvaluateBestReaction(CategoryTag):
      - SEC.Reaction.BlockReactions not on ASC?
      - All RequiresTags present?
      - No BlockTags present?
-     - Custom Gates pass?
-  3. Custom Scorers scale each survivor's weight, then group by Priority (highest first)
+     - Gates pass?
+  3. Scorers scale each survivor's weight, then group by Priority (highest first)
   4. Weighted random pick among the top-priority group
   → FChosenReaction { ReactionId, AbilityTag, Priority, Weight }
 ```

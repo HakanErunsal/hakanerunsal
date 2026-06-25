@@ -28,10 +28,12 @@ ThreatDetection → bDebugLog: true
 **Output Log Messages:**
 
 ```
-LogEvaluation: Evaluating 3 actions...
-LogEvaluation: [LightAttack] Dist:180 Angle:15 Score:0.95 SELECTED
-LogEvaluation: [HeavyAttack] Dist:180 Angle:15 Score:0.60 (cooldown:1.2s)
+[EvalComp] Evaluating 3 actions...
+[EvalComp] LightAttack: Ctx=1.00 Nov=1.00 Chain=1.00 Risk=1.00 Runtime=1.00 Custom=0.95 -> 0.95 SELECTED
+[EvalComp] HeavyAttack: Ctx=1.00 Nov=1.00 Chain=1.00 Risk=1.00 Runtime=1.00 Custom=0.60 -> 0.60 (cooldown:1.2s)
 ```
+
+`Custom` folds every scorer on the action (Distance, Angle, Health, Speed, and any you add). Per-scorer values live in the score breakdown, keyed by each scorer's display name.
 
 ---
 
@@ -72,7 +74,7 @@ Melee.Debug.DrawTracing 0-1
 - Check ASC grants ability with correct tag
 - Verify ActionSet AbilityTag matches ability's tags
 - Enable bDebugLog to see why action isn't selected
-- Check distance/angle ranges in ActionSet
+- Check the Range on the action's Distance Scorer and Angle Scorer (an action with no Distance Scorer ignores range and stays distance-agnostic)
 - If using a custom character class, ensure it implements `IAbilitySystemInterface` and returns a valid `UAbilitySystemComponent` from `GetAbilitySystemComponent()`. See the [Getting Started](/docs/soulslike-combat/getting-started) guide for details.
 - For ByEvent abilities, open the ability class defaults, go to **Triggers**, add an entry with your event tag and set **Trigger Source** to **Gameplay Event**.
 
@@ -182,7 +184,7 @@ The melee trace system works standalone, but action execution relies on GAS. A n
 
 ### What Unreal Engine versions are supported?
 
-UE 5.6+. StateTree APIs have breaking changes between versions, so older versions are not compatible.
+UE 5.6, 5.7, and 5.8. StateTree APIs have breaking changes between versions, so older versions are not compatible.
 
 ### Can I make bosses with this?
 

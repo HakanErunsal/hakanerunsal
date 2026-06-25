@@ -22,7 +22,7 @@ Before starting, ensure you have:
 - Character skeletal mesh with attack animations
 - Attack animation montages with hit frames identified
 - Basic understanding of Gameplay Ability System
-- Unreal Engine 5.6+ installed
+- Unreal Engine 5.6, 5.7, and 5.8 installed
 
 ---
 
@@ -87,6 +87,8 @@ Threat-to-movement response is auto-wired if both `ThreatDetectionComponent` and
 
 Add actions to the `Actions` array. Each entry is an `FActionSpec`.
 
+> Distance and angle no longer score automatically. Add a Distance Scorer or Angle Scorer to the action's **Scoring** list to opt in. A new action with no Distance Scorer ignores range and scores the same at any distance.
+
 ### Action 1: Light Attack (Close Range)
 
 | Property | Value | Notes |
@@ -94,14 +96,14 @@ Add actions to the `Actions` array. Each entry is an `FActionSpec`.
 | **ActionId** | `LightAttack` | Unique identifier for chaining and cooldowns |
 | **ExecutionMode** | `GameplayAbility` | Simple ability execution |
 | **AbilityClass** | `GA_LightAttack` | `AbilityTag` and `AbilityEndTag` are auto-generated from the class |
-| **DistanceEval** | | |
-| ↳ MinValue | `0` | Valid from 0cm |
-| ↳ OptimalMin | `100` | Score = 1.0 starts |
-| ↳ OptimalMax | `250` | Score = 1.0 ends |
-| ↳ MaxValue | `400` | Score = 0 beyond this |
-| **AngleEval** | | |
-| ↳ OptimalMax | `30` | Up to 30 degrees is ideal |
-| ↳ MaxValue | `90` | Not used beyond 90 degrees |
+| **Scoring → Distance Scorer** | | Add to the **Scoring** list, then set its `Range` |
+| ↳ Range MinValue | `0` | Valid from 0cm |
+| ↳ Range OptimalMin | `100` | Score = 1.0 starts |
+| ↳ Range OptimalMax | `250` | Score = 1.0 ends |
+| ↳ Range MaxValue | `400` | Score = 0 beyond this |
+| **Scoring → Angle Scorer** | | Add to the **Scoring** list, then set its `Range` |
+| ↳ Range OptimalMax | `30` | Up to 30 degrees is ideal |
+| ↳ Range MaxValue | `90` | Not used beyond 90 degrees |
 | **Cooldown** | | |
 | ↳ Duration | `2.0` | 2 second cooldown |
 | ↳ InitialCooldown | `1.0` | Cannot use during first second after spawn |
@@ -114,8 +116,9 @@ Add actions to the `Actions` array. Each entry is an `FActionSpec`.
 | **ActionId** | `HeavyAttack` | |
 | **ExecutionMode** | `GameplayAbility` | |
 | **AbilityClass** | `GA_HeavyAttack` | |
-| DistanceEval: OptimalMin | `150` | Slightly farther than light |
-| DistanceEval: OptimalMax | `300` | |
+| **Scoring → Distance Scorer** | | Add to the **Scoring** list, then set its `Range` |
+| ↳ Range OptimalMin | `150` | Slightly farther than light |
+| ↳ Range OptimalMax | `300` | |
 | Cooldown: Duration | `4.0` | Longer cooldown |
 | **SelectionWeight** | `0.8` | Lower base weight |
 | **RiskPenalty** | `1.5` | Divides score, making it less frequent |
@@ -129,8 +132,9 @@ To make this combo from a light attack, set `PreferredNextActionId` to `HeavyAtt
 | **ActionId** | `QuickRetreat` | |
 | **ExecutionMode** | `BehaviorTreeSequence` | Uses a BT for movement logic |
 | **BehaviorTreeSequence** | `[BT_QuickBackstep]` | Array of BTs to run in order |
-| DistanceEval: OptimalMin | `0` | Best when very close |
-| DistanceEval: OptimalMax | `100` | |
+| **Scoring → Distance Scorer** | | Add to the **Scoring** list, then set its `Range` |
+| ↳ Range OptimalMin | `0` | Best when very close |
+| ↳ Range OptimalMax | `100` | |
 | Cooldown: Duration | `3.0` | |
 | **SelectionWeight** | `1.5` | Higher priority when in range |
 | **TagScoreMultipliers** | | |
@@ -333,10 +337,12 @@ MovementEvaluatorComponent → bDebugLog: true
 **Expected Output Log Messages:**
 ```
 LogEvaluation: Evaluating 3 actions for BP_DetailedEnemy_1...
-LogEvaluation: [LightAttack] Dist:180 Angle:15 Score:0.95 SELECTED
-LogEvaluation: [HeavyAttack] Dist:180 Angle:15 Score:0.60 (cooldown)
-LogEvaluation: [QuickRetreat] Dist:180 Angle:15 Score:0.10 (too far)
+LogEvaluation: [EvalComp] LightAttack: Ctx=1.00 Nov=1.00 Chain=1.00 Risk=1.00 Runtime=1.00 Custom=0.95 -> 0.95
+LogEvaluation: [EvalComp] HeavyAttack: Ctx=1.00 Nov=1.00 Chain=1.00 Risk=0.67 Runtime=1.00 Custom=0.90 -> 0.60
+LogEvaluation: [EvalComp] QuickRetreat: Ctx=1.00 Nov=1.00 Chain=1.00 Risk=1.00 Runtime=1.00 Custom=0.10 -> 0.10
 ```
+
+> Per-scorer values (Distance Scorer, Angle Scorer, and any you add) live in `FScoreBreakdown.CustomScores`, keyed by each scorer's `GetDisplayName()`, and fold into the `Custom=` factor. The log no longer includes a per-factor `Dist:` or `Angle:` value.
 
 **Expected Behavior:**
 - Approaches to ideal distance range

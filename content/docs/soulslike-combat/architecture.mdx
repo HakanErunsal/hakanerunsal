@@ -167,10 +167,9 @@ Components work correctly regardless of when the controller possesses the pawn, 
 > **Why not BeginPlay?** Controller components' `BeginPlay` fires before possession. `OnRegister` + the possession delegate guarantees the pawn exists when the component initializes.
 
 1. **StateTree** drives the AI behavior loop using `BotStateTreeAIComponent`
-2. **ActionEvaluationComponent** gathers context: distance, angle, health, threat, tags
+2. **`STTask_BuildDecisionContext`** builds the `FDecisionContext` snapshot (distance, angle, health, threat, tags) via `USECDecisionLibrary::CalculateDecisionContext`, and **`ActionEvaluationComponent`** consumes it to score actions
 3. **ActionSet** scores all available actions using:
-   - Distance and angle evaluations (`FRangeEval`)
-   - Health-based modifiers
+   - Per-action Scorers (distance, angle, health, speed, attribute, custom) and Gates
    - Cooldown status
    - Context tags (player blocking, low health, etc.)
    - Novelty decay (anti-repetition)
