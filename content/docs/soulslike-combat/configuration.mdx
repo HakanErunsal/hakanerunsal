@@ -160,6 +160,20 @@ RoleMovementProfiles
 
 > Decision-context health comes from `UBasicHealthComponent` (else 1.0) and Stamina is fixed at 100. `FSECDecisionContextParams` holds no GAS attribute fields. For attribute-backed health or stamina scoring, use an Attribute Scorer or Attribute Gate on the action instead.
 
+### Recovery
+
+`Recovery` group on `UEnemyAIConfig`. After an enemy commits an action, these suspend its offensive action selection while movement and reactions keep running. Every field defaults to `0`, so recovery is off and existing configs are unchanged until you set one. See [Recovery Time](/docs/soulslike-combat/action-system#recovery-time) for the full behavior.
+
+```cpp
+// Recovery
+float ActionRecoveryTime;               // Seconds suspended after an action completes or times out (0 = off)
+float InterruptRecoveryTime;            // Seconds suspended after an interrupt or cancel; keep below ActionRecoveryTime
+float ActionRecoveryTimeRandomization;  // ± jitter on completion recovery, so a pack does not act in lockstep
+TObjectPtr<USECActionHook> GlobalHook;  // Optional instanced lifecycle hook run for every action this enemy commits
+```
+
+> A single action can replace the global window. On its `FActionSpec` **Recovery** group, set `bOverrideRecoveryTime` and `RecoveryTime` (absolute, not additive). Completion uses the override if set; interrupt or cancel always uses `InterruptRecoveryTime`; a timeout always uses the global `ActionRecoveryTime`.
+
 ---
 
 <h2 id="action-sets">ActionSet</h2>

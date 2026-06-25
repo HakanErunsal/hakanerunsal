@@ -80,6 +80,24 @@ Melee.Debug.DrawTracing 0-1
 
 ---
 
+### Enemy pauses between attacks or stops attacking mid-combat
+
+The enemy starts an attack, then stands off and strafes instead of swinging again. That is recovery time holding back offensive action selection while movement and reactions keep running, by design. It is a separate clock from cooldown.
+
+**Possible Causes:**
+- `ActionRecoveryTime` set longer than the attack cadence you want.
+- `InterruptRecoveryTime` set too high, so a parry or stagger locks the enemy out for too long.
+- A per-action `RecoveryTime` override that is longer than intended (it replaces the global for that action).
+
+**Solutions:**
+- Open `UEnemyAIConfig`, **Recovery** section. Recovery is off when every field is `0`; an enemy that paused has a non-zero value somewhere.
+- Lower `ActionRecoveryTime` for a faster attacker, or add `ActionRecoveryTimeRandomization` to stagger a pack instead of pausing every enemy the same amount.
+- Keep `InterruptRecoveryTime` below `ActionRecoveryTime` so a parry or stagger does not double-stun.
+- Check any action with `bOverrideRecoveryTime` enabled; its `RecoveryTime` replaces the global for that action.
+- Set `SEC.Debug.LogActionDecisions 1` and watch for `Recovering (X.Xs remaining)` to confirm recovery is the cause and read the live timer. `IsActionRecovering()` exposes the same value to a debug widget.
+
+---
+
 ### ByEvent activation silently falls back to ByTag (BehaviorTree mode)
 
 **Cause:** The `SEC_ActivationMode` key is missing from your Blackboard Data Asset. When the Action System writes `"ByEvent"` to this key and the key does not exist in the asset, the write is silently ignored. The BT task reads an empty value and falls back to ByTag.

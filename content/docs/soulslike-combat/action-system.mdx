@@ -88,6 +88,40 @@ A Health Scorer or Speed Scorer left at its `MakeAlwaysOne()` default has no eff
 
 An action commits its cooldown only **after** the ability activates. If a [`CanActivateAbility`](#3-gate-before-activation) override (or any other GAS gate) refuses the activation, the action stays off cooldown and is free to retry next tick.
 
+### Recovery Time
+
+Recovery time is a server-side breather. After an enemy commits an action, you can suspend its offensive action selection for a tunable number of seconds. While the enemy recovers it still strafes, repositions, and reacts (parry, dodge, counter), it just does not start a new attack. Set it to space out a relentless attacker into readable bursts.
+
+Recovery and cooldown are two separate clocks:
+
+| | Cooldown (`FActionCooldown`) | Recovery time |
+|--|------------------------------|---------------|
+| **Gates** | Re-use of that one move | **Every** offensive action |
+| **Stamped** | At commit, when the ability activates | At the action's end |
+| **Set on** | The action (`Cooldown`) | The config, with a per-action override |
+
+You tune the global windows on `UEnemyAIConfig` under the **Recovery** category. Every field defaults to `0`, so recovery is off until you set one and existing projects behave exactly as before.
+
+| Field | Sets |
+|-------|------|
+| `ActionRecoveryTime` | Seconds suspended after an action completes or times out. |
+| `InterruptRecoveryTime` | Seconds suspended after an action is interrupted or cancelled. Keep it shorter than `ActionRecoveryTime` so a parry or stagger does not double-stun. |
+| `ActionRecoveryTimeRandomization` | Plus or minus jitter on the completion recovery, so a pack does not act in lockstep. |
+
+**Per-action override.** A single action can opt out of the global value. On the action's **Recovery** group, enable `bOverrideRecoveryTime` and set `RecoveryTime`. The override is absolute, not additive: it replaces the global for that action. For example, with config `ActionRecoveryTime = 3`, a fast jab that sets `bOverrideRecoveryTime` and `RecoveryTime = 1` recovers in one second while everything else recovers in three.
+
+**Which window applies, by exit path:**
+
+- **Completed** uses the action's effective recovery (the override if set, otherwise the global `ActionRecoveryTime`).
+- **Interrupted or cancelled** uses `InterruptRecoveryTime`.
+- **Timed out** uses the global `ActionRecoveryTime`, never the per-action override.
+
+<Callout type="info">
+  Need recovery that stacks or depends on state, like extra recovery when the enemy is low on health? Request it from a [Lifecycle Hook](#lifecycle-hooks) instead of a fixed field. Call `RequestRecoveryTime` in `PostExecute` and the contribution folds into the window.
+</Callout>
+
+To watch the gate at runtime, set the console var `SEC.Debug.LogActionDecisions 1`. While an enemy is held off, the decision log prints `Recovering (X.Xs remaining)`. For a HUD or debug widget, the `BlueprintPure` `IsActionRecovering(float& OutRemaining)` returns whether the enemy is recovering and the live seconds left.
+
 ### Novelty & Chains
 - **Novelty:** Recently used actions get a score penalty. This creates diverse behavior without rigid randomization.
 - **Chains:** Actions can define a `PreferredNextActionId`. After a "Light Attack", the "Heavy Finisher" gets a large score boost, creating natural combos.
@@ -472,6 +506,31 @@ float ModifyActionScore(FName ActionId, float BaseScore, const FDecisionContext&
 ```
 
 Override these in a Blueprint or C++ subclass of `UActionEvaluationComponent`.
+
+---
+
+## Lifecycle Hooks
+
+A lifecycle hook runs your own logic around an action as it executes, on every exit path. Subclass `USECActionHook` in Blueprint or C++ (it is an Instanced, abstract base) and override the phases you need. Use it to play a telegraph before a heavy swing, drive a debug overlay, tally analytics, or veto an action on a condition the scorers cannot express.
+
+A hook has three phases:
+
+| Phase | When it runs | Gives you |
+|-------|--------------|-----------|
+| **PreExecute** | Before the action's started effects | A chance to abort: set `bVetoExecution` to stop the action before it begins. |
+| **TickExecute** | Each tick while the action executes | Per-frame work. Off by default; set `bWantsTick` to opt in. |
+| **PostExecute** | When the action ends, on every exit path | The end reason (Completed, Interrupted, Cancelled, TimedOut, or Failed). |
+
+Attach a hook in two places. Per action, set `FActionSpec.Hook`. Once for the whole enemy, set `UEnemyAIConfig.GlobalHook` (under **Recovery**) to run for every action it commits.
+
+When both are set they compose, with the global first and the per-action hook second, in each phase:
+
+- **Veto is OR.** If either hook sets `bVetoExecution` in `PreExecute`, the action aborts.
+- **Recovery accumulates.** `RequestRecoveryTime` contributions from both hooks add up.
+
+<Callout type="info">
+  For stacked or conditional [recovery time](#recovery-time), call `RequestRecoveryTime` on the context in `PostExecute` rather than setting a fixed field. For example, add extra recovery only when the enemy ends the action below a health threshold.
+</Callout>
 
 ---
 
