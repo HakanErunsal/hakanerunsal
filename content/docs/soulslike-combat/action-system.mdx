@@ -513,6 +513,11 @@ Override these in a Blueprint or C++ subclass of `UActionEvaluationComponent`.
 
 A lifecycle hook runs your own logic around an action as it executes, on every exit path. Subclass `USECActionHook` in Blueprint or C++ (it is an Instanced, abstract base) and override the phases you need. Use it to play a telegraph before a heavy swing, drive a debug overlay, tally analytics, or veto an action on a condition the scorers cannot express.
 
+<ZoomableImage
+  src="../images/sec_actionhook_overrides.png"
+  alt="USECActionHook override functions in the Blueprint editor: PreExecute, TickExecute, and PostExecute under the SEC category, plus GetDisplayName"
+/>
+
 A hook has three phases:
 
 | Phase | When it runs | Gives you |
