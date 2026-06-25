@@ -172,7 +172,7 @@ The target slipped behind a wall or around a corner. The AI sits close to it in 
 
 ### Can I use this with my existing character?
 
-Yes. Add `SECCombatControllerComponent` to your AI controller and the necessary pawn components to your character. Create an ActionSet, configure an AIConfig, and set up a StateTree. The plugin integrates with existing projects without requiring inheritance from `EnemyControllerBase` or `EnemyCharacterBase`.
+Yes. Add `SECCombatControllerComponent` to your AI controller and the necessary pawn components to your character. Create an ActionSet and configure an AIConfig. Leave the AIConfig's DefaultStateTree empty to run the native C++ combat loop, or assign a StateTree to drive the AI with one. The plugin integrates with existing projects without requiring inheritance from `EnemyControllerBase` or `EnemyCharacterBase`.
 
 ### Does this work with multiplayer?
 
@@ -184,7 +184,7 @@ The melee trace system works standalone, but action execution relies on GAS. A n
 
 ### What Unreal Engine versions are supported?
 
-UE 5.6, 5.7, and 5.8. StateTree APIs have breaking changes between versions, so older versions are not compatible.
+UE 5.6 and 5.7. StateTree APIs have breaking changes between versions, so older versions are not compatible.
 
 ### Can I make bosses with this?
 

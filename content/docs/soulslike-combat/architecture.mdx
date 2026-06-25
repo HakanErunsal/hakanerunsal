@@ -66,7 +66,7 @@ AEnemyControllerBase (convenience wrapper)
 ├── ActionEvaluationComponent      ← action scoring and execution
 ├── ReactionEvaluationComponent    ← event-driven reaction selection
 ├── ThreatDetectionComponent       ← player attention tracking
-├── BotStateTreeAIComponent        ← StateTree runner
+├── SECBrainComponent              ← runs the StateTree or a native combat loop
 └── BehaviorTreeComponent (helper) ← for action BT sequences
 ```
 
@@ -129,9 +129,24 @@ You can subclass `SECCombatControllerComponent` in Blueprint and override these 
 
 ---
 
+## SECBrainComponent
+
+The brain. `AEnemyControllerBase` creates it as a default subobject. On possession it reads the resolved `AIConfig`:
+
+- `DefaultStateTree` set: the brain creates a `BotStateTreeAIComponent` at runtime and runs that StateTree.
+- `DefaultStateTree` empty: the brain runs a native C++ combat loop (build the decision context, move, then poll and execute the best action each tick). No StateTree is created.
+
+It takes the controller's brain slot, so `HandleDeath` stops it and the per-action behavior-tree swap restores to it. When the `AIConfig` changes, the brain tears down the previous brain before starting the new one; `RefreshBrain()` re-runs that choice on demand. The native loop covers combat; graph-authored structure (patrol, investigate, boss phases) needs a StateTree.
+
+| Property | Purpose |
+|----------|---------|
+| `EvaluationCooldown` | Seconds between action evaluations in the native loop (default `0.1`). |
+
+---
+
 ## BotStateTreeAIComponent
 
-This component extends Unreal's `UStateTreeAIComponent` and adds automatic StateTree initialization on possession.
+`SECBrainComponent` creates this at runtime when the config names a StateTree. It extends Unreal's `UStateTreeAIComponent` and initializes the StateTree on registration.
 
 **How initialization works:**
 
@@ -156,7 +171,7 @@ This component extends Unreal's `UStateTreeAIComponent` and adds automatic State
 
 ### Component Lifecycle Convention
 
-All controller-side components (`SECCombatControllerComponent`, `BotStateTreeAIComponent`, `ActionEvaluationComponent`, `MovementEvaluatorComponent`, `ThreatDetectionComponent`) follow the same lifecycle pattern:
+All controller-side components (`SECCombatControllerComponent`, `SECBrainComponent`, `ActionEvaluationComponent`, `MovementEvaluatorComponent`, `ThreatDetectionComponent`) follow the same lifecycle pattern:
 
 1. **`OnRegister`** - Subscribe to `AAIController::OnPossessedPawnChanged`. If the controller already has a pawn, handle it immediately.
 2. **`OnPossessedPawnChanged` callback** - Cache pawn reference, resolve ASC (if needed), initialize actions/state for the new pawn.
@@ -166,7 +181,7 @@ Components work correctly regardless of when the controller possesses the pawn, 
 
 > **Why not BeginPlay?** Controller components' `BeginPlay` fires before possession. `OnRegister` + the possession delegate guarantees the pawn exists when the component initializes.
 
-1. **StateTree** drives the AI behavior loop using `BotStateTreeAIComponent`
+1. **The brain** (`SECBrainComponent`) drives the behavior loop: a StateTree via `BotStateTreeAIComponent` when `DefaultStateTree` is set, or a native C++ loop when it is empty
 2. **`STTask_BuildDecisionContext`** builds the `FDecisionContext` snapshot (distance, angle, health, threat, tags) via `USECDecisionLibrary::CalculateDecisionContext`, and **`ActionEvaluationComponent`** consumes it to score actions
 3. **ActionSet** scores all available actions using:
    - Per-action Scorers (distance, angle, health, speed, attribute, custom) and Gates

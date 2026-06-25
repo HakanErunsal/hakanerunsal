@@ -90,7 +90,7 @@ An action commits its cooldown only **after** the ability activates. If a [`CanA
 
 ### Novelty & Chains
 - **Novelty:** Recently used actions get a score penalty. This creates diverse behavior without rigid randomization.
-- **Chains:** Actions can define a `PreferredNextActionId`. After a "Light Attack", the "Heavy Finisher" gets a massive score boost - creating natural combos.
+- **Chains:** Actions can define a `PreferredNextActionId`. After a "Light Attack", the "Heavy Finisher" gets a large score boost, creating natural combos.
 
 <Protip 
   title="Organic Combos" 
@@ -188,7 +188,7 @@ AbilityTag = "SEC.Action.Attack.SweepEvent";  // Used as the event tag
 </Callout>
 
 ### Behavior Tree (Complex)
-For multi-stage behaviors - circling, investigating, complex boss moves. Runs one or more Behavior Trees in sequence.
+For multi-stage behaviors: circling, investigating, complex boss moves. Runs one or more Behavior Trees in sequence.
 
 ```cpp
 ExecutionMode = EActionExecutionMode::BehaviorTreeSequence;
@@ -227,7 +227,7 @@ The plugin provides two Behavior Tree tasks for activating abilities inside a BT
 
 ## Contextual Execution
 
-Sometimes you need to tell an action *exactly* what to do - "Attack *that* specific target", "Use *this* item", or "Apply *strength* 0.5".
+Sometimes you need to tell an action *exactly* what to do: "Attack *that* specific target", "Use *this* item", or "Apply *strength* 0.5".
 
 Creating a new ActionId for every variation (e.g., `Attack_TargetA`, `Attack_TargetB`) is impossible. Instead, use **Context**.
 
@@ -380,12 +380,16 @@ Mutators run on the server only (`BlueprintAuthorityOnly`); client calls no-op s
 
 Every scoring dimension past `SelectionWeight`, tags, novelty, and chains is a **Scorer** or **Gate** you add to an action. Distance, angle, health, and speed each have a built-in scorer; tags stay built into the pipeline. For anything else (mana, ally count, terrain, faction state), attach your own. Each `FActionSpec` has a **Scoring** group with two arrays:
 
+<ScorerStackVisualizer />
+
 | Type | Base Class | Returns | Effect |
 |------|-----------|---------|--------|
 | **Scorer** | `USECScorer` | A multiplier (`1.0` = no effect) | Folds into the action score. Above 1 favors, below 1 disfavors. |
 | **Gate** | `USECGate` | `true` / `false` | A `false` drops the action from selection, like a built-in precondition. |
 
 Add an entry, then pick a built-in class or your own Blueprint/C++ subclass and set its parameters inline. This is the same authoring pattern as [Role Evaluators](/docs/soulslike-combat/combat-roles) and [Positioning Rules](/docs/soulslike-combat/movement-system).
+
+An action with an empty Scoring list scores on its `SelectionWeight` alone, the same in every situation, and no scorer or gate can veto it. The built-in [hard gates](#preconditions-hard-gates) still apply (cooldown, block tags, ability activation). Adding a scorer opts the action into that one dimension; omitting it leaves the action indifferent to it.
 
 ### Built-in Classes
 

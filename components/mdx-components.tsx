@@ -20,6 +20,8 @@ import BlueprintUE from '@/components/BlueprintUE';
 import ArchitectureDiagram from '@/components/ArchitectureDiagram';
 import SystemArchitectureVisualizer from '@/components/SystemArchitectureVisualizer';
 import PurchaseFlowVisualizer from '@/components/PurchaseFlowVisualizer';
+import ScorerStackVisualizer from '@/components/ScorerStackVisualizer';
+import StateTreeDiagram from '@/components/StateTreeDiagram';
 
 const useMDXComponent = (code: string) => {
   const fn = new Function(code);
@@ -48,6 +50,8 @@ const components = {
   ArchitectureDiagram,
   SystemArchitectureVisualizer,
   PurchaseFlowVisualizer,
+  ScorerStackVisualizer,
+  StateTreeDiagram,
   // Prevent hydration errors from block elements nested inside <p>
   p: ({ children, ...props }: React.HTMLAttributes<HTMLParagraphElement>) => (
     <div className="mb-4 leading-7" {...props}>{children}</div>

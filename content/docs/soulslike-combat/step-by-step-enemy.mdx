@@ -272,11 +272,11 @@ If you need the weapon to drop mid-animation (e.g. from an AnimNotify during a d
 
 > For most cases, use the included `StateTree_SEC_Core` instead of building from scratch. It handles the standard combat loop out of the box. The breakdown below is for learning or for situations where you need a fully custom tree.
 
+> A StateTree is optional. An AIConfig with no `DefaultStateTree` runs the native brain, which drives the same combat loop in C++. Reach for a StateTree when you want graph-authored structure (patrol, boss phases, custom states).
+
 **Create StateTree:** `ST_DetailedEnemy`
 
-<ZoomableImage
-  src = "../images/sec_statetree.jpg"
-/>
+<StateTreeDiagram />
 
 **Core StateTree structure:**
 

@@ -291,13 +291,13 @@ The melee trace component fires `OnMeleeHitResponse` when it lands a hit. To get
 
 #### SkipRecordTags
 
-The `SkipRecordTags` container on the melee trace component allows you to **conditionally skip hit recording**. If the damage result's `ResponseTag` matches any tag in `SkipRecordTags`, the hit is not recorded - meaning the same actor can be hit again on the next trace tick.
+The `SkipRecordTags` container on the melee trace component allows you to **conditionally skip hit recording**. If the damage result's `ResponseTag` matches any tag in `SkipRecordTags`, the hit is not recorded, so the same actor can be hit again on the next trace tick.
 
 This is useful for **parry windows**: the defender parries, the attacker's weapon bounces off, but can potentially hit again after recovery.
 
 <Protip
   title="Sense volume pattern"
-  description="For reactions to projectiles or area tells, use a sense-detection volume on the AI and call EvaluateBestReaction() from its overlap event. The melee trace damage path is just one of many triggers - the reaction system is stimulus-agnostic."
+  description="For reactions to projectiles or area tells, use a sense-detection volume on the AI and call EvaluateBestReaction() from its overlap event. The melee trace damage path is one of many triggers; the reaction system is stimulus-agnostic."
 />
 
 ---

@@ -16,7 +16,7 @@ parent: "SoulslikeCombatDocs"
 
 ## Overview
 
-**SoulslikeCombat** is an AI combat plugin for Unreal Engine 5.6, 5.7, and 5.8. It provides tactical enemy behavior for souls-like and action RPG games through a modular component system. Supports single-player and multiplayer (listen server and dedicated server).
+**SoulslikeCombat** is an AI combat plugin for Unreal Engine 5.6 and 5.7. It provides tactical enemy behavior for souls-like and action RPG games through a modular component system. Supports single-player and multiplayer (listen server and dedicated server).
 
 ---
 
@@ -53,7 +53,7 @@ In **Edit > Plugins**, ensure these are also enabled. The plugin depends on them
 2. Open `LVL_SEC_Showcase`
 3. Click Play. You should see a working enemy
 
-> **Note:** This plugin requires **Unreal Engine 5.6, 5.7, or 5.8**. Older versions have incompatible StateTree APIs.
+> **Note:** This plugin requires **Unreal Engine 5.6 or 5.7**. Older versions have incompatible StateTree APIs.
 
 ---
 
@@ -102,7 +102,7 @@ This comes with all SEC components pre-wired:
 - `MovementEvaluatorComponent` (tactical positioning)
 - `ActionEvaluationComponent` (action selection and execution)
 - `ThreatDetectionComponent` (player attention tracking, disabled by default)
-- `BotStateTreeAIComponent` (StateTree runner)
+- `USECBrainComponent` (the brain that runs the StateTree or the native combat loop)
 - Helper `BehaviorTreeComponent` (for action BT sequences)
 
 **Option B: Use Any AAIController + SECCombatControllerComponent**
@@ -169,7 +169,7 @@ EndAbility
 #### 7. Configure AI Config
 
 In `DA_MyAIConfig`:
-- **DefaultStateTree** > Set to `StateTree_SEC_Core` (found in `Showcase/AI/StateTree/`)
+- **DefaultStateTree** > Optional. Leave it empty to run the brain's native C++ combat loop (build decision context, move, then poll and execute the best action each tick). Set it to `StateTree_SEC_Core` (found in `Showcase/AI/StateTree/`) if you want the brain to run that StateTree instead.
 - **RoleActionSets** > Add an entry, leave the Role empty (acts as default), and set the ActionSet to `DA_MyEnemyActions`
 - (Optional) **DefaultReactionSet** > If you created a `ReactionSet` data asset, assign it here. See [Reaction System](/docs/soulslike-combat/reaction-system) for details.
 

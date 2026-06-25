@@ -14,6 +14,8 @@ parent: "SoulslikeCombatDocs"
     { label: "StateTree" }
 ]} />
 
+StateTree is one of two ways the brain runs an enemy. `USECBrainComponent` reads `AIConfig.DefaultStateTree`: when it names a StateTree, the brain creates a `BotStateTreeAIComponent` at runtime and runs the graph; when it is empty, the brain runs the same combat loop in native C++ with no StateTree. This page covers the StateTree path, the right choice when you want graph-authored structure such as patrol, investigate, and boss phases.
+
 ## Available StateTree Tasks
 
 | Task | Purpose | When to Use |
@@ -137,7 +139,7 @@ All three are server-only and return a default-constructed result off the author
 
 These two nodes let the brain branch on what the AI has *perceived* (via the [Awareness System](/docs/soulslike-combat/awareness-system)), so you can build patrol → investigate → combat → search loops without wiring delegates by hand.
 
-### STCondition_AwarenessState — "Awareness State At Least"
+### STCondition_AwarenessState ("Awareness State At Least")
 
 **Inputs:**
 - AIController (Object, Context)
