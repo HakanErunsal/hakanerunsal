@@ -44,23 +44,25 @@ StateTree is one of two ways the brain runs an enemy. `USECBrainComponent` reads
 
 ## Typical StateTree Structure
 
-```
-Root (Always Active)
-├─ BuildDecisionContext [Tick]
-├─ AIMovement [Tick]
-│
-├─ Idle State
-│  └─ Transition → Combat (when target acquired)
-│
-└─ Combat State
-   ├─ Decision State
-   │  ├─ PollAction [Enter]
-   │  └─ Transition → Execute (when action chosen)
-   │
-   └─ Execute State
-      ├─ DoAction [Enter]
-      └─ Transition → Decision (when complete)
-```
+The shipped trees split in two: a core tree picks the high-level state, and a per-role behavior tree runs the combat loop as a subtree.
+
+**`StateTree_SEC_Core`** is the top level. It stays in Idle until the AI has a target and a combat role, then enters Combat and runs the role subtree (`Attacker_Subtree`, a `StateTree_RoleBehavior` instance).
+
+<ZoomableImage
+  src="../images/sec_statetree_core.png"
+  alt="StateTree_SEC_Core: a Combat state that runs Attacker_Subtree (StateTree_RoleBehavior) while the AI has a target and a non-None combat role, and an Idle state otherwise"
+/>
+
+**`StateTree_RoleBehavior`** is the combat loop, run as a subtree. Role polls the focus actor, builds the decision context, and polls an action; Move runs tactical movement; Action runs the chosen action; on success it passes through a brief Recovery settle before Role polls again.
+
+<ZoomableImage
+  src="../images/sec_statetree_rolebehavior.png"
+  alt="StateTree_RoleBehavior: a Role state that polls and branches to Move or Action, with a Recovery settle state before returning to Role"
+/>
+
+<Callout type="info">
+  This `Recovery` state is a full pause: the AI does nothing for the state's delay, then the loop polls again. It is not the same as [Action Recovery Time](/docs/soulslike-combat/action-system#recovery-time), which suspends only offensive action selection while movement and reactions keep running. Use the `Recovery` state for a brief settle; use `ActionRecoveryTime` to tune how long an enemy holds off attacking.
+</Callout>
 
 ---
 
