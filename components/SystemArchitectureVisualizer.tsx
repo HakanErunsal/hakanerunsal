@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
     Brain, Zap, Shield, Move, Settings, Radio,
-    Hexagon, Server, Monitor, ChevronRight, ArrowRight
+    Hexagon, Server, Monitor, ChevronRight, ArrowRight, Network
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -13,6 +13,7 @@ import {
 type NodeId =
     | 'aiconfig'
     | 'combatcontroller'
+    | 'secbrain'
     | 'actioneval'
     | 'reactioneval'
     | 'movementeval'
@@ -57,6 +58,7 @@ const palette: Record<string, {
     amber: { bg: 'bg-amber-500/10', border: 'border-amber-500/50', text: 'text-amber-400', glow: 'shadow-[0_0_20px_rgba(245,158,11,0.25)]', hexFill: 'rgba(245,158,11,0.12)', hexStroke: 'rgba(245,158,11,0.6)' },
     red: { bg: 'bg-red-500/10', border: 'border-red-500/50', text: 'text-red-400', glow: 'shadow-[0_0_20px_rgba(239,68,68,0.25)]', hexFill: 'rgba(239,68,68,0.12)', hexStroke: 'rgba(239,68,68,0.6)' },
     slate: { bg: 'bg-slate-500/10', border: 'border-slate-500/50', text: 'text-slate-400', glow: 'shadow-[0_0_20px_rgba(100,116,139,0.15)]', hexFill: 'rgba(100,116,139,0.12)', hexStroke: 'rgba(100,116,139,0.5)' },
+    indigo: { bg: 'bg-indigo-500/10', border: 'border-indigo-500/50', text: 'text-indigo-400', glow: 'shadow-[0_0_20px_rgba(99,102,241,0.25)]', hexFill: 'rgba(99,102,241,0.12)', hexStroke: 'rgba(99,102,241,0.6)' },
 };
 
 // ---------------------------------------------------------------------------
@@ -77,7 +79,7 @@ const nodes: NodeDef[] = [
     },
     {
         id: 'combatcontroller', label: 'SECCombatControllerComponent', shortLabel: 'CombatController',
-        icon: Brain, color: 'blue', side: 'controller',
+        icon: Network, color: 'blue', side: 'controller',
         description: 'Orchestrator. Caches AIConfig, syncs everything on role changes.',
         details: [
             'Lives on: AI Controller (auto-created by EnemyControllerBase)',
@@ -87,14 +89,26 @@ const nodes: NodeDef[] = [
         ],
     },
     {
+        id: 'secbrain', label: 'SECBrainComponent', shortLabel: 'SECBrain',
+        icon: Brain, color: 'indigo', side: 'controller',
+        description: 'The brain. Runs the config\'s StateTree, or a native C++ combat loop when none is set.',
+        details: [
+            'Lives on: AI Controller (auto-created by EnemyControllerBase)',
+            'On possession: reads AIConfig. DefaultStateTree set → creates and runs a StateTree at runtime; empty → runs the native loop',
+            'Native loop: build decision context → move → poll and execute the best action, each tick',
+            'Swaps safely if the config changes: tears down the old brain before starting the new one',
+            'Customize: leave DefaultStateTree empty to skip StateTree entirely, or assign one to author graph behavior',
+        ],
+    },
+    {
         id: 'actioneval', label: 'ActionEvaluationComponent', shortLabel: 'ActionEval',
         icon: Zap, color: 'green', side: 'controller',
         description: 'Scores actions and executes the best one via GAS or Behavior Trees.',
         details: [
             'Lives on: AI Controller',
             'Queries: current ActionSet for available actions',
-            'Scoring: Distance × Angle × Weight × Novelty × Chain bonuses',
-            'Customize: Override CanExecuteAction() or ModifyActionScore() in Blueprint',
+            'Scoring: SelectionWeight × opt-in Scorers (Distance, Angle, …) × Novelty × Chain, gated by Gates',
+            'Customize: add Scorers and Gates, or override CanExecuteAction() in Blueprint',
         ],
     },
     {
@@ -172,6 +186,9 @@ const nodes: NodeDef[] = [
 
 const connections: ConnectionDef[] = [
     { from: 'aiconfig', to: 'combatcontroller', label: 'Cached on possession', description: 'Controller reads and caches AIConfig from pawn or its own defaults' },
+    { from: 'aiconfig', to: 'secbrain', label: 'Picks the brain', description: 'On possession SECBrain reads DefaultStateTree: set runs a StateTree, empty runs the native combat loop' },
+    { from: 'secbrain', to: 'actioneval', label: 'Native loop polls', description: 'In native mode SECBrain drives action scoring and execution each tick' },
+    { from: 'secbrain', to: 'movementeval', label: 'Native loop moves', description: 'In native mode SECBrain runs movement evaluation each tick' },
     { from: 'combatcontroller', to: 'actionset', label: 'SyncForCombatRole()', description: 'On role change, tells ActionSetComponent to resolve and apply the correct ActionSet' },
     { from: 'combatcontroller', to: 'reactionset', label: 'SyncForCombatRole()', description: 'On role change, tells ReactionSetComponent to resolve and apply the correct ReactionSet' },
     { from: 'actioneval', to: 'actionset', label: 'Notify Started/Completed', description: 'Pushes action execution state to the pawn for client replication' },

@@ -14,6 +14,8 @@ parent: "SoulslikeCombatDocs"
     { label: "StateTree" }
 ]} />
 
+StateTree is one of two ways the brain runs an enemy. `USECBrainComponent` reads `AIConfig.DefaultStateTree`: when it names a StateTree, the brain creates a `BotStateTreeAIComponent` at runtime and runs the graph; when it is empty, the brain runs the same combat loop in native C++ with no StateTree. This page covers the StateTree path, the right choice when you want graph-authored structure such as patrol, investigate, and boss phases.
+
 ## Available StateTree Tasks
 
 | Task | Purpose | When to Use |
@@ -42,23 +44,25 @@ parent: "SoulslikeCombatDocs"
 
 ## Typical StateTree Structure
 
-```
-Root (Always Active)
-├─ BuildDecisionContext [Tick]
-├─ AIMovement [Tick]
-│
-├─ Idle State
-│  └─ Transition → Combat (when target acquired)
-│
-└─ Combat State
-   ├─ Decision State
-   │  ├─ PollAction [Enter]
-   │  └─ Transition → Execute (when action chosen)
-   │
-   └─ Execute State
-      ├─ DoAction [Enter]
-      └─ Transition → Decision (when complete)
-```
+The shipped trees split in two: a core tree picks the high-level state, and a per-role behavior tree runs the combat loop as a subtree.
+
+**`StateTree_SEC_Core`** is the top level. It stays in Idle until the AI has a target and a combat role, then enters Combat and runs the role subtree (`Attacker_Subtree`, a `StateTree_RoleBehavior` instance).
+
+<ZoomableImage
+  src="../images/sec_statetree_core.png"
+  alt="StateTree_SEC_Core: a Combat state that runs Attacker_Subtree (StateTree_RoleBehavior) while the AI has a target and a non-None combat role, and an Idle state otherwise"
+/>
+
+**`StateTree_RoleBehavior`** is the combat loop, run as a subtree. Role polls the focus actor, builds the decision context, and polls an action; Move runs tactical movement; Action runs the chosen action; on success it passes through a brief Recovery settle before Role polls again.
+
+<ZoomableImage
+  src="../images/sec_statetree_rolebehavior.png"
+  alt="StateTree_RoleBehavior: a Role state that polls and branches to Move or Action, with a Recovery settle state before returning to Role"
+/>
+
+<Callout type="info">
+  This `Recovery` state is a full pause: the AI does nothing for the state's delay, then the loop polls again. It is not the same as [Action Recovery Time](/docs/soulslike-combat/action-system#recovery-time), which suspends only offensive action selection while movement and reactions keep running. Use the `Recovery` state for a brief settle; use `ActionRecoveryTime` to tune how long an enemy holds off attacking.
+</Callout>
 
 ---
 
@@ -68,32 +72,17 @@ Root (Always Active)
 
 **Inputs:**
 - AIController (Object)
-- DefaultAggressionLevel
-- WindowIdIntervalSeconds
 
-**Attribute Inputs (Optional):**
-- HealthAttribute (FGameplayAttribute)
-- MaxHealthAttribute (FGameplayAttribute)
-- StaminaAttribute (FGameplayAttribute)
-- MaxStaminaAttribute (FGameplayAttribute)
-
-Point these at your GAS AttributeSet properties (e.g. `UMyAttributeSet::GetHealthAttribute()`). When set, the task reads live values from the pawn's ASC every tick. When left empty, it falls back to `BasicHealthComponent` (if present) or safe defaults (health percentage 1.0, max health 100).
-
-**Line of Sight (Optional):**
-- `LineOfSightTraceChannel` (Collision Channel) - the channel for the LOS trace. Defaults to `Visibility`; point it at a dedicated channel if your project has one.
-- `bLineOfSightTraceComplex` (bool) - trace against complex (per-poly) collision. Off uses simple collision, which is faster.
-
-The task traces from the AI's view point to the target's view point each tick and writes the result to `FDecisionContext::bHasLOS`. Actions flagged **Require Line Of Sight** use it as a hard gate.
+Tuning that used to live on the task (aggression baseline, window cadence, line-of-sight trace channel) moved onto the config. Set it under `UEnemyAIConfig` > Behavior > **Decision Context Params**. The task resolves those params on EnterState via `USECDecisionLibrary::ResolveDecisionParams`, so every AI that shares a config shares the same tunables. See [Decision Context Params](/docs/soulslike-combat/configuration#decision-context-params) in the configuration reference.
 
 **Outputs:**
 - OutDecisionContext (FDecisionContext struct)
 
 **What it does:**
-- Calculates distance and angle to target
-- Reads health and stamina from GAS attributes (or `BasicHealthComponent` fallback)
-- Evaluates health percentages
+- Calculates distance and angle to the target
+- Reads AI health from `UBasicHealthComponent` (or 1.0 when no component is present); Stamina is fixed at 100. For GAS attribute-backed health or stamina, add an Attribute Scorer or Attribute Gate on the action rather than sourcing it into the context.
 - Gathers tags from the AI's ASC (`SelfTags`), the target's ASC (`TargetTags`), and `USECWorldTagSubsystem` (`WorldTags`)
-- Traces line of sight from the AI's eyes to the target and writes `bHasLOS`
+- Traces line of sight from the AI's eyes to the target and writes `bHasLOS`. Actions flagged **Require Line Of Sight** use it as a hard gate. The trace channel and complexity come from Decision Context Params.
 
 ---
 
@@ -109,10 +98,10 @@ The task traces from the AI's view point to the target's view point each tick an
 - ChosenAction (FChosenAction)
 
 **What it does:**
-- Scores all actions in ActionSet
-- Applies evaluators
+- Scores all actions in the ActionSet
+- Runs each action's Scorers and Gates
 - Checks cooldowns
-- Selects best valid action
+- Selects the best valid action
 
 ---
 
@@ -132,11 +121,27 @@ The task traces from the AI's view point to the target's view point each tick an
 
 ---
 
+## Reading the Decision Context Outside the Task
+
+`STTask_BuildDecisionContext` builds `FDecisionContext` by calling `USECDecisionLibrary::CalculateDecisionContext`; `ActionEvaluationComponent` then consumes that context for scoring. The same calculation is exposed as Blueprint nodes so you can read the current decision inputs from your own logic (HUD, debug overlays, gameplay scripts) without standing up a separate evaluation. They run the same math the task runs, so the values match what scoring sees.
+
+| Node | Returns | Notes |
+|------|---------|-------|
+| `Get Decision Context (AI Controller)` | `FDecisionContext` | Pass the AIController. Resolves tunables from its config. |
+| `Get Decision Context (Pawn)` | `FDecisionContext` | Convenience wrapper; resolves the pawn's AIController first. |
+| `Resolve Decision Params` | `FSECDecisionContextParams` | Returns the config's [Decision Context Params](/docs/soulslike-combat/configuration#decision-context-params), or struct defaults when no config is found. |
+
+All three are server-only and return a default-constructed result off the authority.
+
+> A getter call uses a fresh window and seed, so its `WindowId` / `Seed` fields will not match the cadence of the running StateTree task. Use it to read the live spatial, health, threat, and tag fields. It will not reproduce score variation.
+
+---
+
 ## Awareness Nodes
 
 These two nodes let the brain branch on what the AI has *perceived* (via the [Awareness System](/docs/soulslike-combat/awareness-system)), so you can build patrol → investigate → combat → search loops without wiring delegates by hand.
 
-### STCondition_AwarenessState — "Awareness State At Least"
+### STCondition_AwarenessState ("Awareness State At Least")
 
 **Inputs:**
 - AIController (Object, Context)

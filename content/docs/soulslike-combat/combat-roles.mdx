@@ -290,7 +290,7 @@ When an enemy's role changes (e.g., from *Waiter* to *Attacker*), their abilitie
 
 ### Automatic Syncing (Default)
 
-If you use the included `StateTree_SEC_Core`, role syncing happens automatically. The StateTree tasks query the current role and resolve the appropriate ActionSet and MovementProfile from the `EnemyAIConfig`.
+If you use `AEnemyControllerBase`, role syncing is handled for you. Its brain (`USECBrainComponent`) queries the current role and resolves the appropriate ActionSet and MovementProfile from the `EnemyAIConfig`. This works whether the brain runs a StateTree (when `AIConfig.DefaultStateTree` is set) or its native combat loop (when that field is empty).
 
 ### Manual Syncing (Custom Controllers)
 

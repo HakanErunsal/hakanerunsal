@@ -28,10 +28,12 @@ ThreatDetection → bDebugLog: true
 **Output Log Messages:**
 
 ```
-LogEvaluation: Evaluating 3 actions...
-LogEvaluation: [LightAttack] Dist:180 Angle:15 Score:0.95 SELECTED
-LogEvaluation: [HeavyAttack] Dist:180 Angle:15 Score:0.60 (cooldown:1.2s)
+[EvalComp] Evaluating 3 actions...
+[EvalComp] LightAttack: Ctx=1.00 Nov=1.00 Chain=1.00 Risk=1.00 Runtime=1.00 Custom=0.95 -> 0.95 SELECTED
+[EvalComp] HeavyAttack: Ctx=1.00 Nov=1.00 Chain=1.00 Risk=1.00 Runtime=1.00 Custom=0.60 -> 0.60 (cooldown:1.2s)
 ```
+
+`Custom` folds every scorer on the action (Distance, Angle, Health, Speed, and any you add). Per-scorer values live in the score breakdown, keyed by each scorer's display name.
 
 ---
 
@@ -72,9 +74,27 @@ Melee.Debug.DrawTracing 0-1
 - Check ASC grants ability with correct tag
 - Verify ActionSet AbilityTag matches ability's tags
 - Enable bDebugLog to see why action isn't selected
-- Check distance/angle ranges in ActionSet
+- Check the Range on the action's Distance Scorer and Angle Scorer (an action with no Distance Scorer ignores range and stays distance-agnostic)
 - If using a custom character class, ensure it implements `IAbilitySystemInterface` and returns a valid `UAbilitySystemComponent` from `GetAbilitySystemComponent()`. See the [Getting Started](/docs/soulslike-combat/getting-started) guide for details.
 - For ByEvent abilities, open the ability class defaults, go to **Triggers**, add an entry with your event tag and set **Trigger Source** to **Gameplay Event**.
+
+---
+
+### Enemy pauses between attacks or stops attacking mid-combat
+
+The enemy starts an attack, then stands off and strafes instead of swinging again. That is recovery time holding back offensive action selection while movement and reactions keep running, by design. It is a separate clock from cooldown.
+
+**Possible Causes:**
+- `ActionRecoveryTime` set longer than the attack cadence you want.
+- `InterruptRecoveryTime` set too high, so a parry or stagger locks the enemy out for too long.
+- A per-action `RecoveryTime` override that is longer than intended (it replaces the global for that action).
+
+**Solutions:**
+- Open `UEnemyAIConfig`, **Recovery** section. Recovery is off when every field is `0`; an enemy that paused has a non-zero value somewhere.
+- Lower `ActionRecoveryTime` for a faster attacker, or add `ActionRecoveryTimeRandomization` to stagger a pack instead of pausing every enemy the same amount.
+- Keep `InterruptRecoveryTime` below `ActionRecoveryTime` so a parry or stagger does not double-stun.
+- Check any action with `bOverrideRecoveryTime` enabled; its `RecoveryTime` replaces the global for that action.
+- Set `SEC.Debug.LogActionDecisions 1` and watch for `Recovering (X.Xs remaining)` to confirm recovery is the cause and read the live timer. `IsActionRecovering()` exposes the same value to a debug widget.
 
 ---
 
@@ -170,7 +190,7 @@ The target slipped behind a wall or around a corner. The AI sits close to it in 
 
 ### Can I use this with my existing character?
 
-Yes. Add `SECCombatControllerComponent` to your AI controller and the necessary pawn components to your character. Create an ActionSet, configure an AIConfig, and set up a StateTree. The plugin integrates with existing projects without requiring inheritance from `EnemyControllerBase` or `EnemyCharacterBase`.
+Yes. Add `SECCombatControllerComponent` to your AI controller and the necessary pawn components to your character. Create an ActionSet and configure an AIConfig. Leave the AIConfig's DefaultStateTree empty to run the native C++ combat loop, or assign a StateTree to drive the AI with one. The plugin integrates with existing projects without requiring inheritance from `EnemyControllerBase` or `EnemyCharacterBase`.
 
 ### Does this work with multiplayer?
 
@@ -182,7 +202,7 @@ The melee trace system works standalone, but action execution relies on GAS. A n
 
 ### What Unreal Engine versions are supported?
 
-UE 5.6+. StateTree APIs have breaking changes between versions, so older versions are not compatible.
+UE 5.6 and 5.7. StateTree APIs have breaking changes between versions, so older versions are not compatible.
 
 ### Can I make bosses with this?
 

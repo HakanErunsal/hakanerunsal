@@ -36,33 +36,45 @@ On every evaluation, all valid actions compete. The highest score wins.
 
 ```
 Final Score = SelectionWeight 
-            × Range Score (Distance, Angle, Health, Speed)
             × Context Multipliers (Tags)
             × Novelty Bonus (Variety)
             × Chain Bonus (Combos)
-            × Custom Scorers (your own factors)
+            × Scorers (Distance, Angle, Health, Speed, + your own)
 ```
 
-### Range & Angle Evaluation
+Distance, angle, health, and speed are opt-in **Scorers** you add to an action's Scoring list. An action with no Distance Scorer ignores range and scores the same at any distance.
 
-Each action uses an `FRangeEval` curve that defines its **optimal** zone. An attack might be valid from 0-500cm, but its score peaks at 150-250cm.
+### Distance, Angle, Health & Speed Scorers
+
+Add a **Distance Scorer** to an action and it scores against AI-to-target distance; leave it off and the action is distance-agnostic. The same pattern covers angle, health, and speed: one scorer per dimension, each carrying a `Range` curve (`FRangeEval`) that defines its **optimal** zone. An attack might be valid from 0-500cm, but its score peaks at 150-250cm.
+
+Each scorer exposes a single `Range` property. For a Distance Scorer that peaks at mid-close range:
 
 ```cpp
-// Light Attack: Perfect at mid-close range
-Distance.MinValue = 0;
-Distance.OptimalMin = 100;   // Score ramps up to 1.0
-Distance.OptimalMax = 250;   // Score stays at 1.0
-Distance.MaxValue = 400;     // Score ramps down to 0.0
+// Distance Scorer → Range
+Range.MinValue = 0;
+Range.OptimalMin = 100;   // Score ramps up to 1.0
+Range.OptimalMax = 250;   // Score stays at 1.0
+Range.MaxValue = 400;     // Score ramps down to 0.0
 ```
 
-**Available presets:**
-- `FRangeEval::MakeMeleeRange()` - Close-range attacks
-- `FRangeEval::MakeRangedRange()` - Long-range attacks
-- `FRangeEval::MakeFrontalAngle()` - Forward-facing cone
-- `FRangeEval::MakeLowHealthRange()` - Triggers at low health
-- `FRangeEval::MakeAlwaysOne()` - Always returns 1.0 (no range preference)
+The four built-ins and their `Range` defaults:
 
-Beyond distance and angle, each action also scores against **Health** (`HealthEval`) and **Movement Speed** (`SpeedEval`, the AI's current speed in cm/s). Both are `FRangeEval` curves that default to `MakeAlwaysOne()` (no preference). Use `SpeedEval` for moves that depend on pace, such as a running attack that should only score while the enemy is sprinting.
+| Scorer | Reads | `Range` default |
+|--------|-------|-----------------|
+| **Distance Scorer** | AI-to-target distance in cm (0 with no target) | `MakeMeleeRange()` |
+| **Angle Scorer** | Angle to target in degrees, 0 facing it, 180 away (0 with no target) | `MakeFrontalAngle()` |
+| **Health Scorer** | AI health, 0-1 fraction | `MakeAlwaysOne()` |
+| **Speed Scorer** | AI horizontal speed in cm/s | `MakeAlwaysOne()` |
+
+**`FRangeEval` presets** to assign to a scorer's `Range`:
+- `FRangeEval::MakeMeleeRange()` - Close-range distance band
+- `FRangeEval::MakeRangedRange()` - Long-range distance band
+- `FRangeEval::MakeFrontalAngle()` - Forward-facing cone (Angle Scorer)
+- `FRangeEval::MakeLowHealthRange()` - Peaks at low health (Health Scorer, for desperate moves)
+- `FRangeEval::MakeAlwaysOne()` - Always returns 1.0 (no preference)
+
+A Health Scorer or Speed Scorer left at its `MakeAlwaysOne()` default has no effect. Shape the Health Scorer's `Range` to favor moves at low or high health, and use the Speed Scorer for moves that depend on pace, such as a running attack that should only score while the enemy is sprinting. For health or stamina backed by a GameplayAttribute, use an [Attribute Scorer or Attribute Gate](#scorers--gates) instead.
 
 ### Cooldowns & Variance
 
@@ -76,9 +88,43 @@ Beyond distance and angle, each action also scores against **Health** (`HealthEv
 
 An action commits its cooldown only **after** the ability activates. If a [`CanActivateAbility`](#3-gate-before-activation) override (or any other GAS gate) refuses the activation, the action stays off cooldown and is free to retry next tick.
 
+### Recovery Time
+
+Recovery time is a server-side breather. After an enemy commits an action, you can suspend its offensive action selection for a tunable number of seconds. While the enemy recovers it still strafes, repositions, and reacts (parry, dodge, counter), it just does not start a new attack. Set it to space out a relentless attacker into readable bursts.
+
+Recovery and cooldown are two separate clocks:
+
+| | Cooldown (`FActionCooldown`) | Recovery time |
+|--|------------------------------|---------------|
+| **Gates** | Re-use of that one move | **Every** offensive action |
+| **Stamped** | At commit, when the ability activates | At the action's end |
+| **Set on** | The action (`Cooldown`) | The config, with a per-action override |
+
+You tune the global windows on `UEnemyAIConfig` under the **Recovery** category. Every field defaults to `0`, so recovery is off until you set one and existing projects behave exactly as before.
+
+| Field | Sets |
+|-------|------|
+| `ActionRecoveryTime` | Seconds suspended after an action completes or times out. |
+| `InterruptRecoveryTime` | Seconds suspended after an action is interrupted or cancelled. Keep it shorter than `ActionRecoveryTime` so a parry or stagger does not double-stun. |
+| `ActionRecoveryTimeRandomization` | Plus or minus jitter on the completion recovery, so a pack does not act in lockstep. |
+
+**Per-action override.** A single action can opt out of the global value. On the action's **Recovery** group, enable `bOverrideRecoveryTime` and set `RecoveryTime`. The override is absolute, not additive: it replaces the global for that action. For example, with config `ActionRecoveryTime = 3`, a fast jab that sets `bOverrideRecoveryTime` and `RecoveryTime = 1` recovers in one second while everything else recovers in three.
+
+**Which window applies, by exit path:**
+
+- **Completed** uses the action's effective recovery (the override if set, otherwise the global `ActionRecoveryTime`).
+- **Interrupted or cancelled** uses `InterruptRecoveryTime`.
+- **Timed out** uses the global `ActionRecoveryTime`, never the per-action override.
+
+<Callout type="info">
+  Need recovery that stacks or depends on state, like extra recovery when the enemy is low on health? Request it from a [Lifecycle Hook](#lifecycle-hooks) instead of a fixed field. Call `RequestRecoveryTime` in `PostExecute` and the contribution folds into the window.
+</Callout>
+
+To watch the gate at runtime, set the console var `SEC.Debug.LogActionDecisions 1`. While an enemy is held off, the decision log prints `Recovering (X.Xs remaining)`. For a HUD or debug widget, the `BlueprintPure` `IsActionRecovering(float& OutRemaining)` returns whether the enemy is recovering and the live seconds left.
+
 ### Novelty & Chains
 - **Novelty:** Recently used actions get a score penalty. This creates diverse behavior without rigid randomization.
-- **Chains:** Actions can define a `PreferredNextActionId`. After a "Light Attack", the "Heavy Finisher" gets a massive score boost - creating natural combos.
+- **Chains:** Actions can define a `PreferredNextActionId`. After a "Light Attack", the "Heavy Finisher" gets a large score boost, creating natural combos.
 
 <Protip 
   title="Organic Combos" 
@@ -93,9 +139,10 @@ Before scoring, every action runs a set of hard gates. Fail one and the action d
 |------|------------------------|
 | `RequiresTags` | The combined Self/Target/World tags don't hold all of them. |
 | `BlockTags` | Any of them sits on Self, Target, or World. |
-| `StaminaCost` | The AI's stamina falls below the cost. |
 | **Require Line Of Sight** | The box is ticked and the AI has no clear view of its target. |
-| **Custom Gates** | Any `USECGate` in the action's Custom Scoring returns false. See [Custom Scorers & Gates](#custom-scorers--gates). |
+| **Gates** | Any `USECGate` in the action's Scoring list returns false. See [Scorers & Gates](#scorers--gates). |
+
+Stamina is enforced only when you add a **Stamina Gate** (`MinStamina`) to the action's Scoring list, or an **Attribute Gate** for a GAS-backed stamina pool. The decision-context Stamina value is 100 by default, so an action with no Stamina Gate never fails on stamina.
 
 **Require Line Of Sight** reads `FDecisionContext::bHasLOS`, which the [Build Decision Context](/docs/soulslike-combat/statetree#sttask_builddecisioncontext) task traces from the AI's eyes to the target's every tick. Tick it for moves that need a clean line (ranged shots, gap-closers) and leave it off for attacks that land blind, like a radial slam or a taunt.
 
@@ -175,7 +222,7 @@ AbilityTag = "SEC.Action.Attack.SweepEvent";  // Used as the event tag
 </Callout>
 
 ### Behavior Tree (Complex)
-For multi-stage behaviors - circling, investigating, complex boss moves. Runs one or more Behavior Trees in sequence.
+For multi-stage behaviors: circling, investigating, complex boss moves. Runs one or more Behavior Trees in sequence.
 
 ```cpp
 ExecutionMode = EActionExecutionMode::BehaviorTreeSequence;
@@ -214,7 +261,7 @@ The plugin provides two Behavior Tree tasks for activating abilities inside a BT
 
 ## Contextual Execution
 
-Sometimes you need to tell an action *exactly* what to do - "Attack *that* specific target", "Use *this* item", or "Apply *strength* 0.5".
+Sometimes you need to tell an action *exactly* what to do: "Attack *that* specific target", "Use *this* item", or "Apply *strength* 0.5".
 
 Creating a new ActionId for every variation (e.g., `Attack_TargetA`, `Attack_TargetB`) is impossible. Instead, use **Context**.
 
@@ -363,9 +410,11 @@ Mutators run on the server only (`BlueprintAuthorityOnly`); client calls no-op s
 
 ---
 
-## Custom Scorers & Gates
+## Scorers & Gates
 
-Built-in factors cover distance, angle, health, speed, and tags. For anything else (mana, ally count, terrain, faction state), attach your own **Scorers** and **Gates** to an action. Each `FActionSpec` has a **Custom Scoring** group with two arrays:
+Every scoring dimension past `SelectionWeight`, tags, novelty, and chains is a **Scorer** or **Gate** you add to an action. Distance, angle, health, and speed each have a built-in scorer; tags stay built into the pipeline. For anything else (mana, ally count, terrain, faction state), attach your own. Each `FActionSpec` has a **Scoring** group with two arrays:
+
+<ScorerStackVisualizer />
 
 | Type | Base Class | Returns | Effect |
 |------|-----------|---------|--------|
@@ -374,14 +423,25 @@ Built-in factors cover distance, angle, health, speed, and tags. For anything el
 
 Add an entry, then pick a built-in class or your own Blueprint/C++ subclass and set its parameters inline. This is the same authoring pattern as [Role Evaluators](/docs/soulslike-combat/combat-roles) and [Positioning Rules](/docs/soulslike-combat/movement-system).
 
+An action with an empty Scoring list scores on its `SelectionWeight` alone, the same in every situation, and no scorer or gate can veto it. The built-in [hard gates](#preconditions-hard-gates) still apply (cooldown, block tags, ability activation). Adding a scorer opts the action into that one dimension; omitting it leaves the action indifferent to it.
+
 ### Built-in Classes
 
-| Class | Kind | Use |
-|-------|------|-----|
-| **Attribute Scorer** | Scorer | Scale by a GameplayAttribute through an `FRangeEval` curve. Optional normalize-by attribute (e.g. Mana / MaxMana). |
-| **Attribute Gate** | Gate | Allow only while an attribute sits between a min and max. |
+| Class | Kind | Property | Use |
+|-------|------|----------|-----|
+| **Distance Scorer** | Scorer | `Range` (default `MakeMeleeRange()`) | Score by AI-to-target distance in cm (0 with no target). The `Range` OptimalMin/OptimalMax also feed the positioning query. |
+| **Angle Scorer** | Scorer | `Range` (default `MakeFrontalAngle()`) | Score by angle to the target in degrees, 0 facing it, 180 away (0 with no target). |
+| **Health Scorer** | Scorer | `Range` (default `MakeAlwaysOne()`) | Score by AI health, a 0-1 fraction from the decision context. For a GAS health attribute, use Attribute Scorer. |
+| **Speed Scorer** | Scorer | `Range` (default `MakeAlwaysOne()`) | Score by AI horizontal speed in cm/s. |
+| **Stamina Gate** | Gate | `MinStamina` (default `0`) | Veto unless decision-context Stamina is at least `MinStamina`. Stamina is 100 by default; for a GAS stamina attribute, use Attribute Gate. |
+| **Attribute Scorer** | Scorer | `Attribute`, `NormalizeBy`, `ValueEval` | Scale by a GameplayAttribute through an `FRangeEval` curve. Optional normalize-by attribute (e.g. Mana / MaxMana). |
+| **Attribute Gate** | Gate | `Attribute`, `MinValue`, `MaxValue` | Allow only while an attribute sits between a min and a max. |
 
-For anything the built-ins miss, subclass `USECScorer` or `USECGate` in Blueprint and override its one function (`ScoreMultiplier` or `PassesGate`). The `FSECScoringContext` passed in carries the controller, target, owning ASC, and the seed that `SeededRandom` uses.
+<Callout type="info">
+  **Health or stamina backed by a GameplayAttribute?** The decision context does not read GAS attributes. The Health Scorer and Stamina Gate read the decision-context snapshot (BasicHealthComponent health, default-100 stamina). For an attribute-backed pool, reach for the **Attribute Scorer** or **Attribute Gate** instead and point it at your attribute.
+</Callout>
+
+For anything the built-ins miss, subclass `USECScorer` or `USECGate` in Blueprint and override its one function (`ScoreMultiplier` or `PassesGate`). The `FSECScoringContext` passed in carries the controller, target, owning ASC, the seed that `SeededRandom` uses, and a decision-context snapshot (see below).
 
 <Callout type="warning">
   Keep scorer and gate subclasses **stateless**. A single instance is shared across every AI using the asset, so mutable fields would alias across enemies. For randomness, use the `SeededRandom` helper.
@@ -391,19 +451,45 @@ For anything the built-ins miss, subclass `USECScorer` or `USECGate` in Blueprin
   `SeededRandom` draws from the per-action seed in `FSECScoringContext`. On the reaction path that seed is 0, so `SeededRandom` returns a fixed value there. Vary reaction randomness through a built-in factor or your own context read instead.
 </Callout>
 
+### The Scoring Context Snapshot
+
+`FSECScoringContext` carries a decision-context snapshot, copied once per evaluation, that the built-in Distance/Angle/Health/Speed Scorers and the Stamina Gate read from:
+
+| Field | Meaning |
+|-------|---------|
+| `Distance` | Distance to the focus target in cm (0 with no target). |
+| `AngleDegAbs` | Absolute angle to the target in degrees, 0 facing it (0 with no target). |
+| `Speed` | AI horizontal movement speed in cm/s. |
+| `HealthPercentage` | AI health as a 0-1 fraction. |
+| `Stamina` | AI stamina (default scale 0-100). |
+
+These fields are populated on the **action path only**. On the reaction path they hold defaults (`0` / `0` / `0` / `1.0` / `100`), so the distance, angle, health, and speed scorers and the Stamina Gate are not meaningful on reactions. Score reactions with priority, weight, tags, and Attribute Scorers or Gates instead.
+
+### Labeling a Scorer or Gate
+
+Each scorer and gate reports a display name through an overridable `GetDisplayName()` (a `BlueprintNativeEvent`). It defaults to the class display name and drives the decision log line, the score breakdown, and the editor array row title on UE 5.7+. Override it in a `USECScorer` or `USECGate` subclass for a custom or dynamic label, for example to fold the configured range into the name.
+
+<Callout type="warning">
+  `GetDisplayName()` replaces the old `ScorerName` / `GateName` text fields. Those fields are removed: any label typed into them on a pre-existing asset is lost on load. Re-label through a `GetDisplayName()` override.
+</Callout>
+
 ### Examples
 
 **Cast a spell only above a mana threshold.** Add an **Attribute Gate**, set `Attribute = Mana`, `MinValue = 30`. The spell drops out of selection whenever mana is below 30.
 
 **Favor a heavy attack as rage builds.** Add an **Attribute Scorer**, set `Attribute = Rage`, `NormalizeBy = MaxRage`, and shape the curve to peak near full. The attack scores higher as rage fills.
 
-The same Scorers and Gates work on reactions. See [Reaction System](/docs/soulslike-combat/reaction-system#custom-scorers--gates).
+The same Scorers and Gates work on reactions, with the snapshot caveat above. See [Reaction System](/docs/soulslike-combat/reaction-system#scorers--gates).
+
+<Callout type="info">
+  **Upgrading from v1.6?** ActionSet assets migrate once on load: each action's old distance and angle evaluations become a Distance Scorer and Angle Scorer, a non-default health or speed range becomes a Health or Speed Scorer, and a stamina cost above 0 becomes a Stamina Gate. Scoring is unchanged. Re-save the asset to persist the migration. New actions you author ship with no scorers, so they are distance-agnostic until you add a Distance Scorer.
+</Callout>
 
 ---
 
 ## Custom Scoring Hooks
 
-The `ActionEvaluationComponent` provides two `BlueprintNativeEvent` hooks for project-wide logic that applies to **every** action. For per-action rules, prefer [Custom Scorers & Gates](#custom-scorers--gates).
+The `ActionEvaluationComponent` provides two `BlueprintNativeEvent` hooks for project-wide logic that applies to **every** action. For per-action rules, prefer [Scorers & Gates](#scorers--gates).
 
 **CanExecuteAction** - Veto an action after all built-in gates pass.
 
@@ -423,10 +509,40 @@ Override these in a Blueprint or C++ subclass of `UActionEvaluationComponent`.
 
 ---
 
+## Lifecycle Hooks
+
+A lifecycle hook runs your own logic around an action as it executes, on every exit path. Subclass `USECActionHook` in Blueprint or C++ (it is an Instanced, abstract base) and override the phases you need. Use it to play a telegraph before a heavy swing, drive a debug overlay, tally analytics, or veto an action on a condition the scorers cannot express.
+
+<ZoomableImage
+  src="../images/sec_actionhook_overrides.png"
+  alt="USECActionHook override functions in the Blueprint editor: PreExecute, TickExecute, and PostExecute under the SEC category, plus GetDisplayName"
+/>
+
+A hook has three phases:
+
+| Phase | When it runs | Gives you |
+|-------|--------------|-----------|
+| **PreExecute** | Before the action's started effects | A chance to abort: set `bVetoExecution` to stop the action before it begins. |
+| **TickExecute** | Each tick while the action executes | Per-frame work. Off by default; set `bWantsTick` to opt in. |
+| **PostExecute** | When the action ends, on every exit path | The end reason (Completed, Interrupted, Cancelled, TimedOut, or Failed). |
+
+Attach a hook in two places. Per action, set `FActionSpec.Hook`. Once for the whole enemy, set `UEnemyAIConfig.GlobalHook` (under **Recovery**) to run for every action it commits.
+
+When both are set they compose, with the global first and the per-action hook second, in each phase:
+
+- **Veto is OR.** If either hook sets `bVetoExecution` in `PreExecute`, the action aborts.
+- **Recovery accumulates.** `RequestRecoveryTime` contributions from both hooks add up.
+
+<Callout type="info">
+  For stacked or conditional [recovery time](#recovery-time), call `RequestRecoveryTime` on the context in `PostExecute` rather than setting a fixed field. For example, add extra recovery only when the enemy ends the action below a health threshold.
+</Callout>
+
+---
+
 ## Quick Setup
 
 1.  **Create Asset:** Right-click → **Miscellaneous** → **Data Asset** → **ActionSet**.
-2.  **Define Actions:** Each entry needs an `ActionId`, `SelectionWeight`, `DistanceEval`, `AngleEval`, and an execution mode.
+2.  **Define Actions:** Each entry needs an `ActionId`, `SelectionWeight`, an execution mode, and (for range behavior) a Distance Scorer in its Scoring list. A new action with no Distance Scorer is distance-agnostic.
 3.  **Assign:** Drop the ActionSet into your `EnemyAIConfig`, or set it directly for testing:
 
 ```cpp

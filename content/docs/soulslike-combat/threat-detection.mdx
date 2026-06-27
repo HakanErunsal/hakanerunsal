@@ -120,10 +120,10 @@ if (Threat > 0.7f)
 
 | Property | Default | Purpose |
 |----------|---------|---------|
-| `PlayerLookAngleThreshold` | 15.0° | How directly player must look to trigger |
-| `PlayerLookTimeThreshold` | 3.0s | Time to reach max threat |
-| `ThreatDecayRate` | 0.5 | How fast threat drops when not observed |
-| `bEnabled` | true | Toggle detection on/off |
+| `PlayerLookAngleThreshold` | 15.0° | How directly the player must look to count as looking at the AI |
+| `PlayerLookTimeThreshold` | 3.0s | Look time before `OnThreatDurationExceeded` fires; resets on look-away |
+| `bDebugLogThreat` | false | Log threat and player-look events |
+| `bDebugDrawThreat` | false | Draw the threat cone and color the AI by threat level |
 
 ---
 
@@ -133,14 +133,15 @@ if (Threat > 0.7f)
 // Current threat level [0.0 - 1.0]
 float GetCurrentThreatLevel() const;
 
-// Is player actively looking at this AI right now?
+// Accumulated time the player has been looking at this AI
+float GetPlayerLookDuration() const;
+
+// Is the player looking at this AI right now (within the angle threshold)?
 bool IsPlayerLookingAtMe() const;
 
-// Enable/disable detection
+// Enable or disable detection ticking, and query it
 void SetThreatDetectionEnabled(bool bEnabled);
-
-// Reset threat to zero
-void ResetThreat();
+bool IsThreatDetectionEnabled() const;
 ```
 
 ---
@@ -169,12 +170,17 @@ To also adjust distance based on threat, enable `bAdjustDistanceByThreat`:
 
 ### Defensive Action Bonus
 
-Modify action scores based on threat:
+To make threat influence action scores, write a custom `USECScorer` (C++ or Blueprint) and add it to the action's Scoring list. The scorer reads the threat level and returns a multiplier (1.0 = no effect):
 
 ```cpp
-// In your action scoring (or use context modifiers):
-float ThreatBonus = ThreatDetection->GetCurrentThreatLevel();
-DefensiveAction.RuntimeScoreBonus = ThreatBonus * 0.5f;  // Up to +50% when threatened
+// Custom USECScorer subclass:
+float ScoreMultiplier_Implementation(const FSECScoringContext& Context) const override
+{
+    const UThreatDetectionComponent* Threat =
+        Context.Controller->FindComponentByClass<UThreatDetectionComponent>();
+    const float Level = Threat ? Threat->GetCurrentThreatLevel() : 0.f;
+    return 1.f + Level * 0.5f;  // Up to +50% on a defensive action when threatened
+}
 ```
 
 ### "I See You" Bark
@@ -197,12 +203,13 @@ void OnThreatLevelChanged(float OldThreat, float NewThreat)
 
 **Enable Logging:**
 ```cpp
-ThreatDetection->bDebugLog = true;
+ThreatDetection->bDebugLogThreat = true;
 ```
 
-**Console Command:**
+**Console Commands:**
 ```
-SEC.Debug.Threat.DrawDetection 1   // Visualize detection cone
+SEC.Debug.Threat.Draw 1   // Visualize the detection cone for all AI
+SEC.Debug.Threat.Log 1    // Log threat events for all AI
 ```
 
 ---

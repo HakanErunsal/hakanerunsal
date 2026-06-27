@@ -16,7 +16,7 @@ parent: "SoulslikeCombatDocs"
 
 ## Overview
 
-**SoulslikeCombat** is an AI combat plugin for Unreal Engine 5.6+. It provides tactical enemy behavior for souls-like and action RPG games through a modular component system. Supports single-player and multiplayer (listen server and dedicated server).
+**SoulslikeCombat** is an AI combat plugin for Unreal Engine 5.6 and 5.7. It provides tactical enemy behavior for souls-like and action RPG games through a modular component system. Supports single-player and multiplayer (listen server and dedicated server).
 
 ---
 
@@ -53,7 +53,7 @@ In **Edit > Plugins**, ensure these are also enabled. The plugin depends on them
 2. Open `LVL_SEC_Showcase`
 3. Click Play. You should see a working enemy
 
-> **Note:** This plugin requires **Unreal Engine 5.6** or later. Older versions have incompatible StateTree APIs.
+> **Note:** This plugin requires **Unreal Engine 5.6 or 5.7**. Older versions have incompatible StateTree APIs.
 
 ---
 
@@ -102,7 +102,7 @@ This comes with all SEC components pre-wired:
 - `MovementEvaluatorComponent` (tactical positioning)
 - `ActionEvaluationComponent` (action selection and execution)
 - `ThreatDetectionComponent` (player attention tracking, disabled by default)
-- `BotStateTreeAIComponent` (StateTree runner)
+- `USECBrainComponent` (the brain that runs the StateTree or the native combat loop)
 - Helper `BehaviorTreeComponent` (for action BT sequences)
 
 **Option B: Use Any AAIController + SECCombatControllerComponent**
@@ -131,12 +131,19 @@ In your enemy pawn `BP_MyEnemy`, set the **AIConfig** property to `DA_MyAIConfig
 |-------|-------|
 | **ActionId** | `LightAttack` |
 | **AbilityClass** | `GA_LightAttack` (create in next step) |
-| **DistanceEval > OptimalMin** | `100` |
-| **DistanceEval > OptimalMax** | `250` |
-| **DistanceEval > MaxValue** | `500` |
-| **AngleEval > OptimalMax** | `30` |
 | **Cooldown > Duration** | `2.0` |
 | **SelectionWeight** | `1.0` |
+
+Then add two built-in scorers to the action's **Scoring** list so it favors close, frontal targets:
+
+| Scoring entry | Property | Value |
+|---------------|----------|-------|
+| **Distance Scorer** | `Range > OptimalMin` | `100` |
+| **Distance Scorer** | `Range > OptimalMax` | `250` |
+| **Distance Scorer** | `Range > MaxValue` | `500` |
+| **Angle Scorer** | `Range > OptimalMax` | `30` |
+
+> Without a Distance Scorer the action is distance-agnostic. It scores the same at any range. Add a Distance Scorer (and tune its `Range`) whenever you want range to influence selection.
 
 > `AbilityTag` and `AbilityEndTag` are set automatically when you assign an `AbilityClass`. You can override them manually if needed.
 
@@ -162,7 +169,7 @@ EndAbility
 #### 7. Configure AI Config
 
 In `DA_MyAIConfig`:
-- **DefaultStateTree** > Set to `StateTree_SEC_Core` (found in `Showcase/AI/StateTree/`)
+- **DefaultStateTree** > Optional. Leave it empty to run the brain's native C++ combat loop (build decision context, move, then poll and execute the best action each tick). Set it to `StateTree_SEC_Core` (found in `Showcase/AI/StateTree/`) if you want the brain to run that StateTree instead.
 - **RoleActionSets** > Add an entry, leave the Role empty (acts as default), and set the ActionSet to `DA_MyEnemyActions`
 - (Optional) **DefaultReactionSet** > If you created a `ReactionSet` data asset, assign it here. See [Reaction System](/docs/soulslike-combat/reaction-system) for details.
 
@@ -181,7 +188,7 @@ In `BP_MyEnemy` > Class Defaults > **AI Controller Class** > Set to `BP_MyEnemyC
 4. Watch Output Log for action selection debug messages
 
 **Expected behavior:**
-- Enemy approaches to ideal distance (100-250 cm based on your DistanceEval)
+- Enemy approaches to ideal distance (100-250 cm based on your Distance Scorer's Range)
 - Executes light attack when in range and facing the target
 - Waits for cooldown, then repositions
 - Repeats

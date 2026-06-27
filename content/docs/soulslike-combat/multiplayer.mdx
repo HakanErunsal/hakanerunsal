@@ -159,7 +159,7 @@ If you're already using the plugin in single-player, there's almost nothing to c
 
 ### What You Need
 
-1. **Register combat targets** - In multiplayer, register each player pawn as a combat target. The [Targeting System](/docs/soulslike-combat/targeting-system) handles multi-target distribution automatically.
+1. **Register combat targets.** In multiplayer, register each player pawn as a combat target. The [Targeting System](/docs/soulslike-combat/targeting-system) handles multi-target distribution.
 
 ```cpp
 // In GameMode or Player setup:
@@ -167,16 +167,16 @@ UAICombatRoleSubsystem* Subsystem = GetWorld()->GetSubsystem<UAICombatRoleSubsys
 Subsystem->RegisterCombatTarget(PlayerPawn, /*bAutoAssignUnassigned=*/ true);
 ```
 
-2. **Drive client UI from replicated state** - Use the delegates on `SECActionSetComponent`, `SECCombatRoleComponent`, and `BasicHealthComponent` for client-side feedback.
+2. **Drive client UI from replicated state.** Use the delegates on `SECActionSetComponent`, `SECCombatRoleComponent`, and `BasicHealthComponent` for client-side feedback.
 
-3. **Damage handling** - If you're using custom damage handling (not Unreal's built-in `ApplyDamage`), make sure your system is server-authoritative. The melee trace only runs on the server, so all hit events originate there.
+3. **Damage handling.** If you're using custom damage handling (not Unreal's built-in `ApplyDamage`), make sure your system is server-authoritative. The melee trace only runs on the server, so all hit events originate there.
 
 ### What You Don't Need To Do
 
-- No need to configure replication on components - it's set up by default
-- No need to manually sync animations - GAS handles montage replication
-- No need to replicate movement - CMC does this natively
-- No need to run AI logic on clients - everything is server-authoritative
+- No need to configure replication on components; it's set up by default
+- No need to manually sync animations; GAS handles montage replication
+- No need to replicate movement; CMC does this natively
+- No need to run AI logic on clients; everything is server-authoritative
 
 ---
 
