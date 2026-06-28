@@ -95,6 +95,30 @@ Built for crowds: the route query is throttled to `DetourRecheckInterval` (0.5s)
 
 > **Tuning:** if it paths around minor bumps, raise `DetourEnterRatio` or `DetourMinExcess`; if it still grinds a tight corner, raise `DetourStallSpeed` so a slower grind counts as stalled; if it pathfinds during a normal slow approach, lower `DetourStallSpeed`. `SEC.Debug.Movement.LogMovement 1` logs `Detour escalation ENGAGED` / `CLEARED`, noting `(stalled at cover)` when the reactive path fired. Works under the StateTree, a Behavior Tree, or standalone, with no extra wiring.
 
+### Approach-Blocked Signal (Cover-Break Hook)
+
+The detour logic already computes whether the AI can see its target and whether a full navmesh route to it exists, then discards both. This signal exposes them, so you can react when a target is walled off behind something solid. That is the trigger for cover-break behavior: a player hides behind a breakable, the AI detects the dead end and destroys it. Server-only, additive, no change to movement decisions.
+
+Read the state through these Blueprint-pure getters on `MovementEvaluatorComponent`:
+
+| Getter | Meaning |
+|--------|---------|
+| `IsApproachBlocked()` | Sight blocked **and** no full route: the target is walled off. The cover-break gate. |
+| `HasLineOfSightToTarget()` | Clear view to the target at the last detour recheck. Reports true (assumed clear) when out of range or not rechecking. |
+| `IsTargetReachable()` | A full navmesh route to the target exists. Only refreshed while sight is blocked, so read it through `IsApproachBlocked`, not on its own. |
+| `IsApproachStalled()` | Tactical steering is grinding cover without gaining ground. Transient, tactical-range only. |
+
+And bind these delegates:
+
+| Event | Fires |
+|-------|-------|
+| `OnTargetLineOfSightChanged` | Line of sight flips, clear to blocked or back. The parameter carries the new value. |
+| `OnApproachBlocked` | Rising edge only: once when the target becomes walled off. |
+
+The signal refreshes on the detour cadence (`DetourRecheckInterval`, default 0.5s), inside `HybridSwitchDistance`, while `bEnableDetourEscalation` is on. It is a throttled tactical-range read, so debounce a timer on bind rather than expecting a per-frame edge.
+
+**Cover-break pattern (no extra C++):** bind `OnTargetLineOfSightChanged` and start a timer when it reports `false`. On timer expiry, gate on `IsApproachBlocked()`; if it is still true, line-trace from the pawn to the player on your cover channel and the first blocking hit is the obstacle to focus or attack. Clear the timer when `OnTargetLineOfSightChanged` reports `true`. `ResetApproachBlockedState()` clears the signal by hand; it also runs on target loss, detour disable, owner death, and teardown.
+
 ### Navmesh-Aware Sampling
 
 In the tactical layer, each sampled direction gets a soft navmesh walkability score, so enemies stop strafing, circling, or backing off ledges and into walls during a fight. It is a preference, not a veto, so a boxed-in AI still picks its safest direction instead of freezing. A forward probe also eases speed down at a rim, so momentum does not carry the AI over the edge.
@@ -310,6 +334,8 @@ The component broadcasts delegates you can bind to in Blueprint or C++:
 | `OnSwitchToPathfinding` | Switched to Strategic layer |
 | `OnSwitchToDirectInput` | Switched to Tactical layer |
 | `OnPathfindingFailed` | Pathfinding blocked or unreachable |
+| `OnTargetLineOfSightChanged` | Detour-recheck view to the target flips (carries the new value) |
+| `OnApproachBlocked` | Target becomes walled off, sight blocked and no full route (rising edge) |
 
 ---
 

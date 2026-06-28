@@ -90,7 +90,7 @@ An action commits its cooldown only **after** the ability activates. If a [`CanA
 
 ### Recovery Time
 
-Recovery time is a server-side breather. After an enemy commits an action, you can suspend its offensive action selection for a tunable number of seconds. While the enemy recovers it still strafes, repositions, and reacts (parry, dodge, counter), it just does not start a new attack. Set it to space out a relentless attacker into readable bursts.
+Recovery time is a server-side breather. After an enemy commits an action, you can suspend its offensive action selection for a tunable number of seconds. While recovering, the enemy still strafes, repositions, and reacts (parry, dodge, counter), but does not start a new attack. Set it to space out a relentless attacker into readable bursts.
 
 Recovery and cooldown are two separate clocks:
 
@@ -100,7 +100,7 @@ Recovery and cooldown are two separate clocks:
 | **Stamped** | At commit, when the ability activates | At the action's end |
 | **Set on** | The action (`Cooldown`) | The config, with a per-action override |
 
-You tune the global windows on `UEnemyAIConfig` under the **Recovery** category. Every field defaults to `0`, so recovery is off until you set one and existing projects behave exactly as before.
+You tune the global windows on `UEnemyAIConfig` under the **Recovery** category. Every field defaults to `0`, so recovery is off until you set one and existing projects behave as before.
 
 | Field | Sets |
 |-------|------|
