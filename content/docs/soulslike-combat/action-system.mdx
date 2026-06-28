@@ -116,6 +116,8 @@ You tune the global windows on `UEnemyAIConfig` under the **Recovery** category.
 - **Interrupted or cancelled** uses `InterruptRecoveryTime`.
 - **Timed out** uses the global `ActionRecoveryTime`, never the per-action override.
 
+**Combos flow through recovery.** An action's preferred follow-up (its `PreferredNextActionId`) can still be selected while the enemy recovers, for `ChainFollowupWindowSeconds` after the action ends. Set that window on the evaluation component (default `0.6`); `0` makes the follow-up wait out the recovery window like any other action. Only the one named follow-up bypasses the gate, and a non-completion end (interrupt or cancel) clears it, so a parried enemy cannot combo through its own recovery.
+
 <Callout type="info">
   Need recovery that stacks or depends on state, like extra recovery when the enemy is low on health? Request it from a [Lifecycle Hook](#lifecycle-hooks) instead of a fixed field. Call `RequestRecoveryTime` in `PostExecute` and the contribution folds into the window.
 </Callout>
