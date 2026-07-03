@@ -51,7 +51,7 @@ Each sensed target holds one state, ordered from least to most aware:
 
 Sight does not jump to Detected. Each target carries a `0..1` **perception meter** that fills while the AI sees it:
 
-- Fill rate scales with **distance** and **angle**. A centred, close target fills fast; one at the cone edge and far away trickles up. Shape this with `DistanceRateCurve` and `AngleRateCurve` (flat by default).
+- Fill rate scales with **distance** and **angle**. A centred, close target fills fast; one at the cone edge and far away trickles up. Shape this with `DistanceRateCurve` and `AngleRateCurve` (flat by default). A per-sense [runtime multiplier](#tuning) stacks on top.
 - Cross `SuspicionThreshold` and the target becomes **Suspicious**, so the AI investigates.
 - Reach `1.0` and the target becomes **Detected**, so the AI engages.
 - **Hearing** raises the meter to at least `SuspicionThreshold` (or `HearingBump` if higher), so sound reaches Suspicious but not Detected.
@@ -157,6 +157,17 @@ All fields live on the `USECAwarenessConfig` data asset.
 | `StimulusToStateMap` | (empty) | Remap a sense class to a state (e.g. hearing → Detected for an alert archetype) |
 | `IgnoredActorClasses` | (empty) | Classes the AI never perceives. See [Extension Points](#extension-points) |
 
+**Runtime multipliers**
+
+These live on `USECAwarenessComponent` itself, not the config asset, so each AI holds its own values.
+
+| Item | Purpose |
+|------|---------|
+| `AwarenessRateMultipliers` | Per-sense map of multipliers on awareness gain. Sight scales the meter fill rate; hearing (and any sense mapped to Suspicious) scales the bump. No entry = 1 |
+| `SetAwarenessRateMultiplier(Sense, Value)` | Set one entry at runtime; it holds until set again. Clamped at 0, and 0 stops that sense from raising awareness |
+
+Senses that resolve to Detected (damage by default) and the proximity floor ignore the multipliers; a hit or a point-blank target still reveals. A scaled hearing bump can land below `SuspicionThreshold`, raising the meter without registering as Suspicious, so repeated quiet noises stack toward investigation.
+
 ---
 
 ## The Building Blocks for Behavior
@@ -257,6 +268,15 @@ Tick (or bind OnAwarenessProgress)
 
 Wire `OnTargetSpotted` → `BroadcastAwarenessToAllies(Radius)` so one enemy spotting you grants nearby same-team allies a Detected entry on the player. For a softer "they heard something" alert, call `ForceAwareOf(Target, Suspicious)` on the allies yourself.
 
+### Recipe 6: Crouching halves detection
+
+Two ways, by scope:
+
+- **Per AI, no override.** Call `SetAwarenessRateMultiplier(AISense_Sight, 0.5)` on the awareness component. Good for archetypes: a sleepy guard at 0.5, a hawk-eyed elite at 2.0. The value holds until you set it again.
+- **Per target.** Override `GetAwarenessRateMultiplier` in your controller Blueprint: if the Target is crouching, return 0.5; otherwise return the parent call. The AI now notices a crouching player at half speed and everyone else at full.
+
+For sound, add an `AISense_Hearing` entry the same way, or scale loudness at the `ReportNoiseEvent` call site (that affects all listeners; the multiplier is per AI).
+
 ---
 
 ## Extension Points
@@ -265,6 +285,7 @@ Wire `OnTargetSpotted` → `BroadcastAwarenessToAllies(Radius)` so one enemy spo
 |------|------|-----------|
 | `ShouldIgnoreActor(Actor)` | BlueprintNativeEvent | Drop all stimuli from an actor. The default ignores anything in `IgnoredActorClasses`; add `DefaultPawn` or spectator classes there. Override for tag- or team-based rules. |
 | `ResolveStimulusState(Sense, Source)` | BlueprintNativeEvent | Remap a non-sight stimulus (hearing/damage) to a state, e.g. ignore hearing while the target carries a "Sneaking" tag. |
+| `GetAwarenessRateMultiplier(Sense, Target)` | BlueprintNativeEvent | Scale one sense's awareness gain per target, e.g. return 0.5 while the target crouches. The default reads `AwarenessRateMultipliers` ([Tuning](#tuning)). |
 | `GetDesiredFacingLocation(OutLoc)` | BlueprintNativeEvent | Custom facing while not Detected (see above). |
 | `InnerSelector` | Property | Run your own selector on the awareness-filtered list (default: nearest). |
 | `bGradualEscalation = false` | Property | Revert to instant Detected-on-sight. |
