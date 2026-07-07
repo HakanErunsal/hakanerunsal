@@ -70,24 +70,39 @@ Architecture uses StateTree for strategic decisions and BehaviorTree/Gameplay Ab
 
 This started from years of building combat systems for commercial mobile games and action prototypes. I kept solving the same problems - getting AI to feel responsive, movement to look natural, and architecture to not collapse as complexity grew. So I packaged it into something reusable. The whole thing is built on the same StateTree/BehaviorTree hybrid pattern used in professional action games, and it ships with multiplayer support out of the box.
 
-## Screenshots
+## What Developers Are Saying
 
-<ZoomableImage
-  src="../images/SEC_StoreFront.png"
-  alt="Action evaluation and movement system"
+<Reviews
+  sourceHref="https://www.fab.com/listings/7087cec0-6975-4de5-82e0-0de0b9b3e9a7"
+  items={[
+    {
+      title: "Docs are amazing, the dev is active, and it's fun",
+      quote: "I finally found the system I think I'll be using for a long time. Pretty painless to actually go through the setup. It uses gameplay tags, which are really easy to work with and keep things clean and organized. I'm happy about finding this plugin and can't wait to tinker with the config settings.",
+    },
+    {
+      title: "Useful. Powerful. Modular. Convenient.",
+      quote: "Excellent plugin. In my case, it covered about 80-90% of my AI implementation needs. I really liked the system architecture, which supports modularity and the creation of different presets for different types of mobs, while still allowing individual presets to be reused. The author responds quickly to feedback, makes updates promptly, and actively works with the community.",
+    },
+    {
+      title: "High quality, highly modular",
+      quote: "This is some high-quality engineering and documenting. The various parts are highly modular and customizable, and the documentation is expansive. Incredible value for how much time you'd save trying to implement your own system as a solo dev or small team. The author is incredibly helpful in the Discord server.",
+    },
+  ]}
 />
+
+## Systems in Action
 
 <ZoomableImage
   src="../images/sec_01.png"
-  alt="ActionSet configuration"
+  alt="Hybrid architecture: StateTree for strategic decisions, BehaviorTree and Gameplay Abilities for action execution"
 />
 
 <ZoomableImage
   src="../images/sec_02.png"
-  alt="StateTree AI flow"
+  alt="Data-driven design: behavior is modular, stackable, and extendable through data assets"
 />
 
 <ZoomableImage
   src="../images/sec_03.png"
-  alt="Melee trace system"
+  alt="Advanced movement: awareness and avoidance, hybrid NavMesh/tactical movement, configurable controls, and data-driven behavior"
 />
