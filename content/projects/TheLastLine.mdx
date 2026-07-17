@@ -1,0 +1,74 @@
+---
+title: "The Last Line"
+image: "./../images/thelastline_boss_chainsaw.jpg"
+description: "A mobile zombie survival shooter running 150-zombie hordes and Souls-like arena bosses on a phone, built solo in Unreal Engine 5."
+date: 2026-07-17
+developer: "Rigbak"
+published: true
+tags: ["Unreal Engine", "Mobile", "Shooter", "Solo Development"]
+---
+
+## The Last Line
+
+<img src="../images/thelastline_flamethrower.jpg" alt="The Last Line gameplay" className="w-full h-auto" />
+
+<div style={{ display: 'flex', justifyContent: 'center', gap: '24px', marginTop: '24px', marginBottom: '40px', flexWrap: 'wrap' }}>
+  <div style={{ width: '280px', padding: '24px', backgroundColor: 'rgba(52, 168, 83, 0.1)', borderRadius: '12px', border: '1px solid rgba(52, 168, 83, 0.3)' }}>
+    <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Android</h3>
+    <ul style={{ margin: '0 0 20px 0', paddingLeft: '20px', fontSize: '14px', lineHeight: '1.8' }}>
+      <li>Downloads: 10,000+</li>
+      <li>Growth: organic, no paid ads</li>
+      <li>Live on Google Play</li>
+    </ul>
+    <a href='https://play.google.com/store/apps/details?id=com.rigbak.thelastline' target="_blank" rel="noopener noreferrer" style={{ display: 'block', textAlign: 'center' }}>
+      <img src="../images/googleplay-badge-trim.png" alt="Get it on Google Play" style={{ width: '210px', maxWidth: '100%', height: 'auto', display: 'block', margin: '0 auto' }} />
+    </a>
+  </div>
+  <div style={{ width: '280px', padding: '24px', backgroundColor: 'rgba(0, 122, 255, 0.1)', borderRadius: '12px', border: '1px solid rgba(0, 122, 255, 0.3)' }}>
+    <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>iOS</h3>
+    <ul style={{ margin: '0 0 20px 0', paddingLeft: '20px', fontSize: '14px', lineHeight: '1.8' }}>
+      <li>In App Store review</li>
+      <li>Same content as Android</li>
+      <li>Launching soon</li>
+    </ul>
+    <div style={{ display: 'block', padding: '14px 24px', backgroundColor: 'rgba(120,120,120,0.15)', color: '#9aa', borderRadius: '8px', fontWeight: '600', textAlign: 'center', fontSize: '14px' }}>
+      Coming soon
+    </div>
+  </div>
+</div>
+
+### Overview
+
+The Last Line is my most ambitious solo project: a zombie survival shooter for mobile that puts console-style set pieces on a phone. You hold a barricade against waves of more than a hundred zombies at once, and every so often a Souls-like boss walks into the arena and the fight changes shape. It is free to play, live on Google Play, and built in Unreal Engine 5.
+
+### Development
+
+I built The Last Line alone in about five months: the gameplay, the systems, the UI, the store setup, and the tools around it, including the Soulslike Enemy Combat framework it runs its bosses on. Almost every hard decision came down to the same trade: spend the frame budget on what the player sees and cut or fake the rest, so the game reads far bigger than the hardware it runs on.
+
+### Key Techniques and Learnings
+
+- **150-zombie horde on a phone:** actor tick is disabled on every zombie and one batch component drives the whole crowd with distance-based update tiers, animation LOD, designer splines instead of navmesh, and object pooling. The system holds a full wave without dropping the frame.
+- **Souls-like boss AI:** bosses run on my [Soulslike Enemy Combat](/projects/SoulslikeCombatSystem) plugin, a StateTree strategy layer over Gameplay Ability and Behavior Tree execution, with frame-rate-independent swept melee traces so fast attacks never tunnel through the player.
+- **Widget-free combat HUD:** floating damage numbers and hit markers use a fixed pool of structs painted straight onto the HUD canvas, with no UMG and no per-hit allocation, so a busy wave costs the same as a quiet one.
+- **Runs from flagship to budget devices:** a per-device quality tiering system reads the real hardware profile (falling back to physical RAM) and applies the right preset before the first frame, hardening the deferred mobile renderer against shader-compile crashes on low-end GPUs.
+- **Live-ops and resilience:** a self-healing save layer repairs corrupt data at load time, backed by a Firebase backend for weekly leaderboards, analytics, and diagnostics.
+
+For the full development story and the engineering behind these systems, read the article: [The Last Line: Building a Zombie Shooter for Phones, Solo](/articles/TheLastLine).
+
+### In-Game Visuals
+
+<div class="mt-10">
+  <VideoLoop src="../images/thelastline_trailer.mp4" className="w-full h-auto rounded-none shadow-lg" />
+</div>
+
+<ZoomableImage src="../images/thelastline_boss_chainsaw.jpg" alt="A chainsaw boss grabbing the player in a container yard at night" />
+
+<ZoomableImage src="../images/thelastline_horde_arena.jpg" alt="A large wave of zombies, including flyers, closing on the player in a flooded arena" />
+
+<ZoomableImage src="../images/thelastline_mobile_hud.jpg" alt="The Last Line running on a phone with on-screen touch controls at a gas station" />
+
+<ZoomableImage src="../images/thelastline_subway.jpg" alt="Barricade defense on a subway platform" />
+
+<ZoomableImage src="../images/thelastline_forest_night.jpg" alt="Aiming at a horde in a night forest" />
+
+<ZoomableImage src="../images/thelastline_loadout.jpg" alt="Weapon loadout and upgrade screen" />
