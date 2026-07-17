@@ -11,7 +11,7 @@ export default function MainLayout({
             {/* Persistent sidebar across all sections */}
             <SiteTreeSidebar />
             <div className="flex flex-col flex-grow lg:ml-72">
-                <main className="flex-grow">{children}</main>
+                <main className="flex-grow overflow-x-clip">{children}</main>
             </div>
             <SiteFooter />
         </div>
