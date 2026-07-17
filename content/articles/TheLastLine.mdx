@@ -1,0 +1,85 @@
+---
+title: "The Last Line: Building a Zombie Shooter for Phones, Solo"
+image: "./../images/thelastline_boss_chainsaw.jpg"
+description: "How I built The Last Line solo in five months: a 150-zombie horde and Souls-style bosses running on a phone, and the systems engineering underneath."
+date: 2026-07-17
+developer: "Hakan Erünsal"
+published: true
+tags: ["Unreal Engine", "Mobile", "Solo Development", "Optimization", "The Last Line"]
+---
+
+## The Last Line <svg aria-hidden="true" viewBox="0 -960 960 960" width="26" height="26" fill="#d97757" style={{ display: 'inline-block', verticalAlign: '-0.15em', marginLeft: '8px' }}><path d="M480-81q-140-35-230-162.5T160-523v-238l320-120 320 120v238q0 152-90 279.5T480-81Zm0-62q115-38 187.5-143.5T740-523v-196l-260-98-260 98v196q0 131 72.5 236.5T480-143Zm0-337Z" /></svg>
+
+The Last Line is the game I always wanted to make and never had the time for. A layoff earlier this year gave me the time. Five months later it is live on Google Play: a zombie survival shooter that holds a barricade against 150-zombie waves and drops a Souls-style boss into the arena, on a phone. The systems in it are mine.
+
+<VideoLoop src="../images/thelastline_trailer.mp4" className="w-full h-auto rounded-none shadow-lg" />
+
+The loop is a siege. You hold a barricade with a gun, a bow, or a flamethrower while waves cross a gas station, a subway platform, a flooded arena. Heavies soak damage, flyers come over the wall, and bosses fight like they wandered in from a slower game. Free to play, no ads.
+
+<ZoomableImage src="../images/thelastline_mobile_hud.jpg" alt="The Last Line running on a phone: an on-screen movement stick, a fire button and weapon wheel, and a heavy zombie leading the horde toward the barricade at a gas station" />
+
+A phone gives you a fraction of a PC's compute, memory, and thermal budget, and punishes overruns with heat, throttling, and the OS killing the app mid-fight. Solo work puts the same squeeze on time. I pay full price for what the player sees and cut or fake the rest. I made that trade across the systems below.
+
+## A horde that doesn't think <svg aria-hidden="true" viewBox="0 -960 960 960" width="26" height="26" fill="#d97757" style={{ display: 'inline-block', verticalAlign: '-0.15em', marginLeft: '8px' }}><path d="M0-240v-53q0-38.57 41.5-62.78Q83-380 150.38-380q12.16 0 23.39.5t22.23 2.15q-8 17.35-12 35.17-4 17.81-4 37.18v65H0Zm240 0v-65q0-32 17.5-58.5T307-410q32-20 76.5-30t96.5-10q53 0 97.5 10t76.5 30q32 20 49 46.5t17 58.5v65H240Zm540 0v-65q0-19.86-3.5-37.43T765-377.27q11-1.73 22.17-2.23 11.17-.5 22.83-.5 67.5 0 108.75 23.77T960-293v53H780Zm-480-60h360v-6q0-37-50.5-60.5T480-390q-79 0-129.5 23.5T300-305v5ZM149.57-410q-28.57 0-49.07-20.56Q80-451.13 80-480q0-29 20.56-49.5Q121.13-550 150-550q29 0 49.5 20.5t20.5 49.93q0 28.57-20.5 49.07T149.57-410Zm660 0q-28.57 0-49.07-20.56Q740-451.13 740-480q0-29 20.56-49.5Q781.13-550 810-550q29 0 49.5 20.5t20.5 49.93q0 28.57-20.5 49.07T809.57-410ZM480-480q-50 0-85-35t-35-85q0-51 35-85.5t85-34.5q51 0 85.5 34.5T600-600q0 50-34.5 85T480-480Zm.35-60Q506-540 523-557.35t17-43Q540-626 522.85-643t-42.5-17q-25.35 0-42.85 17.15t-17.5 42.5q0 25.35 17.35 42.85t43 17.5ZM480-300Zm0-300Z" /></svg>
+
+<ZoomableImage src="../images/thelastline_horde_arena.jpg" alt="A large wave of zombies, including winged flyers, closing on the player in a flooded arena, with floating damage numbers over the crowd" />
+
+On screen: over a hundred zombies at the barricade, more behind them, flyers overhead. A hundred-plus actors each ticking and pathing is a slideshow on my Galaxy Tab S7 FE test device.
+
+I disable actor tick on every zombie and let one batch component on the spawner run the crowd, scanning the live list each frame and moving whoever is due. Close zombies update every frame, mid ones about every 15th, far ones about every 25th, spread across rotating groups so the cost stays flat. Each move scales by the time since its last one to cover the right ground, and the crowd returns to full rate as a wave thins. Far zombies also fall back to cheaper animation.
+
+<VideoLoop src="../images/thelastline_lod_demo.mp4" className="w-full h-auto rounded-none shadow-lg" />
+
+In this debug build each zombie is tinted by its update tier: the front rank refreshes every frame, the far ranks in bursts, and the perf overlay holds while they do.
+
+There is no navmesh; path queries for that many agents missed the frame budget, so each zombie rides a designer-authored spline toward the wall. While the barricade holds they crowd it. Once it breaks they draw from a target subsystem that keeps a registry of live targets and spread across them instead of piling onto the player, each taking a fixed offset so the crowd fans into a loose ring. Nothing spawns or dies mid-fight while the prewarmed pool is sized for the wave: it checks zombies out and takes corpses back. On my iPhone test device it holds a full 150-zombie wave with room to spare.
+
+I found my favorite bug in the pool. A watchdog that kills zombies stuck on geometry scanned every actor in the world, found the prewarmed ones idle in the pool with a last-moved time of zero, judged them the most stuck things on the map, and executed them before they could spawn. I pointed it at the batch's live list and made it check state and age first.
+
+## One boss, one expensive brain <svg aria-hidden="true" viewBox="0 -960 960 960" width="26" height="26" fill="#d97757" style={{ display: 'inline-block', verticalAlign: '-0.15em', marginLeft: '8px' }}><path d="M240-80v-172q-57-52-88.5-121.5T120-520q0-150 105-255t255-105q125 0 221.5 73.5T827-615l55 218q4 14-5 25.5T853-360h-93v140q0 24.75-17.62 42.37Q724.75-160 700-160H600v80h-60v-140h160v-200h114l-45-180q-24-97-105-158.5T480-820q-125 0-212.5 86.5T180-522.46q0 64.42 26.32 122.39Q232.65-342.09 281-297l19 18v199h-60Zm257-370Zm-48 76h60l3-44q12-2 22.47-8.46Q544.94-432.92 553-441l42 14 28-48-30-24q5-14 5-29t-5-29l30-24-28-48-42 14q-8.33-7.69-19.17-13.85Q523-635 512-638l-3-44h-60l-3 44q-11 3-21.83 9.15Q413.33-622.69 405-615l-42-14-28 48 30 24q-5 14-5 29t5 29l-30 24 28 48 42-14q8.06 8.08 18.53 14.54Q434-420 446-418l3 44Zm-19.5-104.38q-20.5-20.38-20.5-49.5t20.38-49.62q20.38-20.5 49.5-20.5t49.62 20.38q20.5 20.38 20.5 49.5t-20.38 49.62q-20.38 20.5-49.5 20.5t-49.62-20.38Z" /></svg>
+
+<ZoomableImage src="../images/thelastline_boss_chainsaw.jpg" alt="A hulking chainsaw boss lifting the player off the ground in a container yard at night" />
+
+The horde is cheap because it is dumb. The bosses are the inverse, and affordable because each arena runs one at a time. A boss scores candidate actions against your distance, angle, and health, picks the winner, reacts to hits with staggers and dodges, and jitters its recovery timing so the rhythm stays unreadable.
+
+The hit detection matters most. A once-per-frame melee trace lets a fast arc tunnel past the player between two frames at mobile frame rates, and the miss looks unexplainable. Each swing instead sweeps from the socket's previous position to its current one in capped substeps. It does not make a miss impossible; it turns a constant problem into a rare one.
+
+None of this is boss-specific. I built the boss combat as a standalone framework during this project, the [Soulslike Enemy Combat](/projects/SoulslikeCombatSystem) plugin, and the game runs on it. It is on the Unreal marketplace too, and those sales paid for part of the five months.
+
+I built it because of how the last one went. My previous mobile shooter ran its enemy AI as one monolithic behavior tree, and every new behavior meant threading another branch through the same graph until it was unreadable.
+
+<ZoomableImage src="../images/AI_overview.jpg" alt="An earlier project's enemy AI built as one sprawling monolithic Unreal behavior tree, hard to read or extend" />
+
+Now a StateTree assigns the enemy's role, short behavior-tree sequences drive each beat, and the moves themselves are self-contained ability chunks that chain together. Adding an attack is a new ability, not another branch in a graph nobody wants to open.
+
+<ZoomableImage src="../images/sec_01.png" alt="The Soulslike Enemy Combat architecture: a StateTree assigns a combat role, a short behavior-tree sequence runs each beat, and self-contained gameplay-ability chunks execute the moves" />
+
+## Damage numbers without UMG <svg aria-hidden="true" viewBox="0 -960 960 960" width="26" height="26" fill="#d97757" style={{ display: 'inline-block', verticalAlign: '-0.15em', marginLeft: '8px' }}><path d="M473.5-303.5Q517-305 537-336l216-339-335 219q-30 20-32 64t21 67q23 23 66.5 21.5ZM478-799q57 0 119 18.5T716-717l-52 37q-45-30-96.5-44.5T477.98-739q-140.47 0-239.23 100.22Q140-538.57 140-396.02 140-351 152.5-305q12.5 46 35.5 85h579q22-36 35-84t13-94q0-42-12.5-90.5T758-578l39-52q38 56 57 112.5T875-404q2 60-12 113t-41 98q-12 23-25.5 28t-33.5 5H192q-17 0-33.5-8.5T134-193q-26-48-40-97.5T80-396q0-83 31.5-156.5t85.5-128Q251-735 323.68-767T478-799Zm-9 331Z" /></svg>
+
+Hits throw numbers, and a busy wave throws hundreds. I first built each one as a UMG widget, and construction, layout, and GC churn spiked frame times. The shipping system preallocates a pool of 32 plain entries and reuses them. A single HUD post-render callback draws them on the canvas without UMG. When all 32 slots are active, a new hit recycles the oldest. Each number projects to screen space once, then drifts in 2D.
+
+## Fitting a $150 phone <svg aria-hidden="true" viewBox="0 -960 960 960" width="26" height="26" fill="#d97757" style={{ display: 'inline-block', verticalAlign: '-0.15em', marginLeft: '8px' }}><path d="M260-40q-24.75 0-42.37-17.63Q200-75.25 200-100v-760q0-24 18-42t42-18h438q24.75 0 42.38 17.62Q758-884.75 758-860v150q18 3 30 16.95 12 13.96 12 31.63V-587q0 19-12 33t-30 17v437q0 24.75-17.62 42.37Q722.75-40 698-40H260Zm0-60h438v-760H260v760Zm0 0v-760 760Zm219-620q12 0 21-9t9-21q0-12-9-21t-21-9q-12 0-21 9t-9 21q0 12 9 21t21 9Z" /></svg>
+
+<ZoomableImage src="../images/thelastline_flamethrower.jpg" alt="The player mowing down a dense horde with a flamethrower from a raised barricade at night" />
+
+A $150 phone and a flagship from the same year are not the same machine, and Unreal starts everyone at the top quality preset. So I set sensible presets per device tier and tested them across a spread of real phones on Firebase Test Lab, dropping quality wherever the frame budget needed it. The trick is to cut what the player cannot see: a shadow here, a render scale there. If it still reads right in motion, the cut is free. A lot of mobile work is deciding what to fake.
+
+## The repetitive parts, handed to Claude <svg aria-hidden="true" viewBox="0 0 24 24" width="26" height="26" fill="#d97757" style={{ display: 'inline-block', verticalAlign: '-0.15em', marginLeft: '8px' }}><path d="m4.7144 15.9555 4.7174-2.6471.079-.2307-.079-.1275h-.2307l-.7893-.0486-2.6956-.0729-2.3375-.0971-2.2646-.1214-.5707-.1215-.5343-.7042.0546-.3522.4797-.3218.686.0608 1.5179.1032 2.2767.1578 1.6514.0972 2.4468.255h.3886l.0546-.1579-.1336-.0971-.1032-.0972L6.973 9.8356l-2.55-1.6879-1.3356-.9714-.7225-.4918-.3643-.4614-.1578-1.0078.6557-.7225.8803.0607.2246.0607.8925.686 1.9064 1.4754 2.4893 1.8336.3643.3035.1457-.1032.0182-.0728-.164-.2733-1.3539-2.4467-1.445-2.4893-.6435-1.032-.17-.6194c-.0607-.255-.1032-.4674-.1032-.7285L6.287.1335 6.6997 0l.9957.1336.419.3642.6192 1.4147 1.0018 2.2282 1.5543 3.0296.4553.8985.2429.8318.091.255h.1579v-.1457l.1275-1.706.2368-2.0947.2307-2.6957.0789-.7589.3764-.9107.7468-.4918.5828.2793.4797.686-.0668.4433-.2853 1.8517-.5586 2.9021-.3643 1.9429h.2125l.2429-.2429.9835-1.3053 1.6514-2.0643.7286-.8196.85-.9046.5464-.4311h1.0321l.759 1.1293-.34 1.1657-1.0625 1.3478-.8804 1.1414-1.2628 1.7-.7893 1.36.0729.1093.1882-.0183 2.8535-.607 1.5421-.2794 1.8396-.3157.8318.3886.091.3946-.3278.8075-1.967.4857-2.3072.4614-3.4364.8136-.0425.0304.0486.0607 1.5482.1457.6618.0364h1.621l3.0175.2247.7892.522.4736.6376-.079.4857-1.2142.6193-1.6393-.3886-3.825-.9107-1.3113-.3279h-.1822v.1093l1.0929 1.0686 2.0035 1.8092 2.5075 2.3314.1275.5768-.3218.4554-.34-.0486-2.2039-1.6575-.85-.7468-1.9246-1.621h-.1275v.17l.4432.6496 2.3436 3.5214.1214 1.0807-.17.3521-.6071.2125-.6679-.1214-1.3721-1.9246L14.38 17.959l-1.1414-1.9428-.1397.079-.674 7.2552-.3156.3703-.7286.2793-.6071-.4614-.3218-.7468.3218-1.4753.3886-1.9246.3157-1.53.2853-1.9004.17-.6314-.0121-.0425-.1397.0182-1.4328 1.9672-2.1796 2.9446-1.7243 1.8456-.4128.164-.7164-.3704.0667-.6618.4008-.5889 2.386-3.0357 1.4389-1.882.929-1.0868-.0062-.1579h-.0546l-6.3385 4.1164-1.1293.1457-.4857-.4554.0608-.7467.2307-.2429 1.9064-1.3114Z" /></svg>
+
+A solo project is mostly surface area. Every subsystem needs the same scaffolding around the interesting part: a class in the house pattern, save data wired through the sync layer, data-table row types, delegates hooked up. That work is repetitive rather than hard, and it is where a solo dev loses days.
+
+I used Claude Code for most of it. I would point it at a subsystem I had already written, describe the next one in the same shape, and it produced the boilerplate, the registration, and the save hooks to match. I kept the design and the systems thinking, read every line it wrote, and spent my own hours on the parts that earned them: the horde scheduler, the boss AI, the device tiering. It let one person cover the ground of a small team.
+
+## Where it landed <svg aria-hidden="true" viewBox="0 -960 960 960" width="26" height="26" fill="#d97757" style={{ display: 'inline-block', verticalAlign: '-0.15em', marginLeft: '8px' }}><path d="m187-551 106 45q18-36 38.5-71t43.5-67l-79-16-109 109Zm154 81 133 133q57-26 107-59t81-64q81-81 119-166t41-192q-107 3-192 41T464-658q-31 31-64 81t-59 107Zm209-145.5q0-29.5 20-49.5t49.5-20q29.5 0 49.5 20t20 49.5q0 29.5-20 49.5t-49.5 20q-29.5 0-49.5-20t-20-49.5Zm5 432.5 109-109-16-79q-32 23-67 43.5T510-289l45 106Zm326-694q9 136-34 248T705-418l-2 2-2 2 22 110q3 15-1.5 29T706-250L535-78l-85-198-170-170-198-85 172-171q11-11 25-15.5t29-1.5l110 22q1-1 2-1.5t2-1.5q99-99 211-142.5T881-877ZM149-325q35-35 85.5-35.5T320-326q35 35 34.5 85.5T319-155q-26 26-80.5 43T75-80q15-109 31.5-164t42.5-81Zm42 43q-14 15-25 47t-19 82q50-8 82-19t47-25q19-17 19.5-42.5T278-284q-19-18-44.5-17.5T191-282Z" /></svg>
+
+The Last Line has passed ten thousand downloads on Google Play with no ads behind them, and player reports keep surfacing what my test devices miss. Apple is reviewing the iOS build. Five months on no salary was harder than any bug, but it shipped, and the oversized update is next on the list.
+
+<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '16px', flexWrap: 'wrap', marginTop: '28px' }}>
+  <a href="https://play.google.com/store/apps/details?id=com.rigbak.thelastline" target="_blank" rel="noopener noreferrer">
+    <img src="../images/googleplay-badge-trim.png" alt="Get it on Google Play" style={{ height: '120px', width: 'auto', maxWidth: '100%' }} />
+  </a>
+</div>
+
+<p style={{ textAlign: 'center', fontSize: '13px', opacity: 0.7, marginTop: '10px' }}>App Store version coming soon.</p>
+
+---
