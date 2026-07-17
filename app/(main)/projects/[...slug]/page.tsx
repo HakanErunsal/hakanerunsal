@@ -40,11 +40,13 @@ export async function generateMetadata({
       description: project.description,
       type: "article",
       url: project.slug,
+      images: [project.image?.src ?? "/og-card.png"],
     },
     twitter: {
-      card: "summary",
+      card: "summary_large_image",
       title: project.title,
       description: project.description,
+      images: [project.image?.src ?? "/og-card.png"],
     },
   };
 }
