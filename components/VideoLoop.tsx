@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 interface VideoLoopProps {
   src: string;
@@ -69,9 +70,9 @@ const VideoLoop: React.FC<VideoLoopProps> = ({ src, className }) => {
         playsInline
         onClick={toggleDialog}
       />
-      {isOpen && (
+      {isOpen && typeof document !== 'undefined' && createPortal(
         <div
-          className={`fixed inset-0 flex items-center justify-center bg-black bg-opacity-75 z-50 transition-opacity duration-500 ${isVisible ? 'opacity-100' : 'opacity-0'}`}
+          className={`fixed inset-0 flex items-center justify-center bg-black bg-opacity-75 z-[100] transition-opacity duration-500 ${isVisible ? 'opacity-100' : 'opacity-0'}`}
           onClick={toggleDialog}
         >
           <video
@@ -87,7 +88,8 @@ const VideoLoop: React.FC<VideoLoopProps> = ({ src, className }) => {
             }}
             muted={false} // Ensure sound is on when in fullscreen
           />
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

@@ -78,7 +78,7 @@ export default async function PostPage({ params }: PostPageProps) {
 
         <article className="py-6 prose dark:prose-invert max-w-none">
           <h1 className="font-heading mb-2">{project.title}</h1>
-          <div className="flex gap-2 mb-2">
+          <div className="flex flex-wrap gap-2 mb-2">
             {project.tags?.map((tag) => (
               <Tag tag={tag} key={tag} />
             ))}

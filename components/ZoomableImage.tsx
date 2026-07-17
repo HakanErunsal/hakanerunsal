@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 
 interface ZoomableImageProps {
   src: string;
@@ -31,18 +32,19 @@ const ZoomableImage: React.FC<ZoomableImageProps> = ({ src, alt, className }) =>
         onClick={toggleDialog}
       />
 
-      {isOpen && (
+      {isOpen && typeof document !== 'undefined' && createPortal(
         <div
-          className={`fixed inset-0 flex items-center justify-center bg-black bg-opacity-75 z-50 transition-opacity duration-200 ${isVisible ? 'opacity-100' : 'opacity-0'}`}
+          className={`fixed inset-0 flex items-center justify-center bg-black bg-opacity-75 z-[100] transition-opacity duration-200 ${isVisible ? 'opacity-100' : 'opacity-0'}`}
           onClick={toggleDialog}
         >
           <img
             src={src}
             alt={alt}
-            className="max-w-full max-h-full transform transition-transform duration-200"
+            className="max-w-[95vw] max-h-[95vh] transform transition-transform duration-200"
             onClick={toggleDialog}
           />
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
