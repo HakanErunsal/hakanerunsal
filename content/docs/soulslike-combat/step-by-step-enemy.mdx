@@ -94,8 +94,8 @@ Add actions to the `Actions` array. Each entry is an `FActionSpec`.
 | Property | Value | Notes |
 |----------|-------|-------|
 | **ActionId** | `LightAttack` | Unique identifier for chaining and cooldowns |
-| **ExecutionMode** | `GameplayAbility` | Simple ability execution |
-| **AbilityClass** | `GA_LightAttack` | `AbilityTag` and `AbilityEndTag` are auto-generated from the class |
+| **Execution Method** | `Gameplay Ability` | Pick this in the action's Execution group |
+| ↳ **AbilityClass** | `GA_LightAttack` | `AbilityTag` and `AbilityEndTag` auto-fill from the class |
 | **Scoring → Distance Scorer** | | Add to the **Scoring** list, then set its `Range` |
 | ↳ Range MinValue | `0` | Valid from 0cm |
 | ↳ Range OptimalMin | `100` | Score = 1.0 starts |
@@ -114,8 +114,8 @@ Add actions to the `Actions` array. Each entry is an `FActionSpec`.
 | Property | Value | Notes |
 |----------|-------|-------|
 | **ActionId** | `HeavyAttack` | |
-| **ExecutionMode** | `GameplayAbility` | |
-| **AbilityClass** | `GA_HeavyAttack` | |
+| **Execution Method** | `Gameplay Ability` | |
+| ↳ **AbilityClass** | `GA_HeavyAttack` | |
 | **Scoring → Distance Scorer** | | Add to the **Scoring** list, then set its `Range` |
 | ↳ Range OptimalMin | `150` | Slightly farther than light |
 | ↳ Range OptimalMax | `300` | |
@@ -130,8 +130,8 @@ To make this combo from a light attack, set `PreferredNextActionId` to `HeavyAtt
 | Property | Value | Notes |
 |----------|-------|-------|
 | **ActionId** | `QuickRetreat` | |
-| **ExecutionMode** | `BehaviorTreeSequence` | Uses a BT for movement logic |
-| **BehaviorTreeSequence** | `[BT_QuickBackstep]` | Array of BTs to run in order |
+| **Execution Method** | `Behavior Tree Sequence` | Uses a BT for movement logic |
+| ↳ **BehaviorTreeSequence** | `[BT_QuickBackstep]` | Array of BTs to run in order |
 | **Scoring → Distance Scorer** | | Add to the **Scoring** list, then set its `Range` |
 | ↳ Range OptimalMin | `0` | Best when very close |
 | ↳ Range OptimalMax | `100` | |
@@ -146,7 +146,7 @@ To make this combo from a light attack, set `PreferredNextActionId` to `HeavyAtt
 
 ## Step 4: Create Gameplay Abilities
 
-For each action using `GameplayAbility` execution mode, create an ability Blueprint.
+For each action using the Gameplay Ability method, create an ability Blueprint.
 
 **Recommended:** Inherit from `GameplayAbilityBase` (included in the plugin). This base class automatically sends the `AbilityEndTag` event when the ability ends, even if interrupted. If you do not use this base class, you must send the end tag manually or the AI will get stuck.
 

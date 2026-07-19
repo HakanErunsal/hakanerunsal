@@ -150,19 +150,32 @@ Stamina is enforced only when you add a **Stamina Gate** (`MinStamina`) to the a
 
 ---
 
-## Execution Modes
+## Execution Methods
 
-Actions execute in one of two ways depending on complexity.
+Each action runs through an **Execution Method**: an instanced object in the action's **Execution** group that owns how the action executes. Two built-ins ship, and you can write your own.
 
-### Gameplay Ability (Simple)
-Activates a Gameplay Ability and listens for the end tag.
+| Method | Runs |
+|--------|------|
+| **Gameplay Ability** | A single Gameplay Ability, activated by tag or event. |
+| **Behavior Tree Sequence** | One or more Behavior Trees, one after another. |
 
-```cpp
-ExecutionMode = EActionExecutionMode::GameplayAbility;
-AbilityClass = UGA_LightAttack::StaticClass();
-AbilityTag = "SEC.Action.LightAttack";
-AbilityEndTag = "SEC.Action.End";
-```
+Pick a method once per action. Its fields appear inline under it, so an ability action shows the ability fields and a behavior-tree action shows the tree list. For a third kind of execution, subclass `USECExecutionMethod`, covered under [Custom Execution Methods](#custom-execution-methods).
+
+<Callout type="info">
+  **Upgrading from an earlier version?** ActionSet assets migrate once on load. Each action's old execution mode becomes an Execution Method: a Gameplay Ability action becomes a **Gameplay Ability** method carrying the same ability, tags, and timeout; a Behavior Tree action becomes a **Behavior Tree Sequence** method carrying the same trees and timeout. Behavior is unchanged. Re-save the asset to persist the migration.
+</Callout>
+
+### Gameplay Ability
+
+Activates a Gameplay Ability and listens for its end tag. Set these on the method:
+
+| Field | Sets |
+|-------|------|
+| `AbilityClass` | The ability to activate. Auto-granted to the character's ASC. |
+| `ActivationMode` | ByTag or ByEvent (see [Activation Modes](#activation-modes)). |
+| `AbilityTag` | Activation tag in ByTag mode, event tag in ByEvent mode. Auto-filled from the ability's class defaults. |
+| `AbilityEndTag` | Tag the system waits for to end the action. Auto-filled from the ability. |
+| `AbilityTimeout` | Seconds to wait for the end tag before giving up. 0 waits indefinitely. |
 
 <Callout type="warning">
   Your ability class **must** inherit from `UGameplayAbilityBase`. It handles the end-event handshake that tells the Action System when the ability finishes. Without it, the AI gets stuck waiting.
@@ -200,7 +213,7 @@ Where the AI tracks versus commits is down to the notify window: rotation warps 
 
 #### Activation Modes
 
-Each action can choose how its ability is triggered via the `ActivationMode` property:
+The ability method's `ActivationMode` chooses how the ability is triggered:
 
 | Mode | How It Works |
 |------|-------------|
@@ -223,16 +236,17 @@ AbilityTag = "SEC.Action.Attack.SweepEvent";  // Used as the event tag
   **ByEvent abilities do not need AbilityTags in their class defaults.** Instead, add a **Trigger** entry with the matching tag and set its source to **Gameplay Event**. The `AbilityTag` field serves double duty: tag activation in ByTag mode, event tag in ByEvent mode.
 </Callout>
 
-### Behavior Tree (Complex)
-For multi-stage behaviors: circling, investigating, complex boss moves. Runs one or more Behavior Trees in sequence.
+### Behavior Tree Sequence
 
-```cpp
-ExecutionMode = EActionExecutionMode::BehaviorTreeSequence;
-BehaviorTreeSequence = { BT_ChargeWindup, BT_ChargeRelease };
-BehaviorTreeTimeout = 5.0f;
-```
+Runs one or more Behavior Trees in order. Use it for multi-stage behaviors: circling, investigating, complex boss moves. Set these on the method:
 
-When an action uses `BehaviorTreeSequence` mode, the system writes several blackboard keys **before** the tree starts, so your BT tasks can read them immediately:
+| Field | Sets |
+|-------|------|
+| `BehaviorTreeSequence` | The trees to run, in order. |
+| `BehaviorTreeTimeout` | Per-tree timeout in seconds. 0 waits for each tree to finish. |
+| `AbilityTag`, `AbilityEndTag`, `ActivationMode` | Passed through to the blackboard for a BT task that activates a tagged ability. |
+
+Before the first tree starts, the method writes these blackboard keys, so your BT tasks can read them right away:
 
 | Blackboard Key | Type | Value |
 |----------------|------|-------|
@@ -258,6 +272,41 @@ The plugin provides two Behavior Tree tasks for activating abilities inside a BT
 - `ByEvent` - always uses event-based activation.
 
 **Activate Ability** - A standalone task where you set the ability class directly. Has `ActivationMode` (ByTag / ByEvent) and an `EventTag` field that appears only in ByEvent mode. Use this when you want to activate a specific ability from a BT without going through the Action System.
+
+### Custom Execution Methods
+
+The two built-ins cover abilities and behavior trees. For anything else, a latent task, a spawned projectile, a timeline, a third-party system, subclass `USECExecutionMethod` in Blueprint or C++. Your method carries its own payload fields and slots into the action's **Execution Method** picker next to the built-ins.
+
+The action holds your method as a definition and never mutates it. On execution the component duplicates the definition, so the running instance can hold per-execution state, a spawned actor, a montage handle, an elapsed counter, as ordinary properties.
+
+Override the phases you need:
+
+| Function | When it runs | What to do |
+|----------|--------------|------------|
+| `BeginExecute` | The action starts | Start your work. Return `false` to fail the start; the action charges no cooldown and is free to retry. |
+| `TickExecute` | Each frame while running | Poll or advance. Runs only when `bWantsTick` is set. |
+| `AbortExecute` | The action is interrupted or cancelled | Tear down: cancel timers, destroy spawned actors, unbind callbacks, restore state. |
+
+Call `FinishExecution(bSuccess, Reason)` when your work ends. The component completes the action on the next tick, so completion never re-enters your `BeginExecute`. The ability method calls it from the ability's end-tag event; the behavior-tree method calls it when the last tree finishes.
+
+The component owns everything around the method: cooldowns, [recovery](#recovery-time), [lifecycle hooks](#lifecycle-hooks), the timeout, and the started and completed delegates. Your method owns only the mechanism.
+
+Four definition-side queries shape how the component treats the method. Keep them as pure reads:
+
+| Query | Returns |
+|-------|---------|
+| `HasValidData` | Whether the method is configured. An action whose method returns `false` is skipped, the same as an action with no execution data. |
+| `GetAbilityToGrant` | An ability class to auto-grant to the character's ASC, or none for a method that grants nothing. |
+| `GetExecutionTimeout` | Seconds before the component force-ends the method. Return `0` to wait on `FinishExecution` alone. |
+| `GetDisplayName` | The label shown on the action's Execution Method slot and in the logs. |
+
+<Callout type="warning">
+  Report completion by calling `FinishExecution`. A method that never calls it and returns `0` from `GetExecutionTimeout` ends only when the 30-second hard safety fires.
+</Callout>
+
+<Callout type="info">
+  A method instance is stateful and private to one execution, unlike a [Scorer or Gate](#scorers--gates), which stays stateless and shared across every AI using the asset. Hold per-execution state on the method; the component discards the instance when the action ends.
+</Callout>
 
 ---
 
@@ -544,7 +593,7 @@ When both are set they compose, with the global first and the per-action hook se
 ## Quick Setup
 
 1.  **Create Asset:** Right-click → **Miscellaneous** → **Data Asset** → **ActionSet**.
-2.  **Define Actions:** Each entry needs an `ActionId`, `SelectionWeight`, an execution mode, and (for range behavior) a Distance Scorer in its Scoring list. A new action with no Distance Scorer is distance-agnostic.
+2.  **Define Actions:** Each entry needs an `ActionId`, `SelectionWeight`, an Execution Method, and (for range behavior) a Distance Scorer in its Scoring list. A new action with no Distance Scorer is distance-agnostic.
 3.  **Assign:** Drop the ActionSet into your `EnemyAIConfig`, or set it directly for testing:
 
 ```cpp

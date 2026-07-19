@@ -195,15 +195,9 @@ struct FActionSpec
 {
     // Identity
     FName ActionId;                    // Unique identifier within the set
-    EActionExecutionMode ExecutionMode; // GameplayAbility or BehaviorTreeSequence
 
-    // Gameplay Ability Mode
-    FGameplayTag AbilityTag;           // Tag to activate ability
-    FGameplayTag AbilityEndTag;        // Completion signal tag
-
-    // Behavior Tree Mode
-    TArray<TSoftObjectPtr<UBehaviorTree>> BehaviorTreeSequence;  // BTs to run in order
-    float BehaviorTreeTimeout;         // Per-BT timeout (0 = wait for completion)
+    // Execution: instanced method that owns how the action runs
+    TObjectPtr<USECExecutionMethod> ExecutionMethod; // Gameplay Ability, Behavior Tree Sequence, or your own subclass
 
     // Scoring
     float SelectionWeight;             // Base priority multiplier
