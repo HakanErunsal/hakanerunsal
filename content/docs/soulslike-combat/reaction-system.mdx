@@ -111,7 +111,7 @@ Each entry is an `FReactionSpec`:
 ## Selection Logic
 
 ```
-EvaluateBestReaction(CategoryTag):
+EvaluateBestReaction(CategoryTag, TargetOverride):
   1. Filter by CategoryTag (skip if empty)
   2. Gate checks per reaction:
      - Is enabled?
@@ -121,9 +121,13 @@ EvaluateBestReaction(CategoryTag):
      - All RequiresTags present?
      - No BlockTags present?
      - Gates pass?
-  3. Scorers scale each survivor's weight, then group by Priority (highest first)
-  4. Weighted random pick among the top-priority group
+  3. Scorers scale each survivor's weight. Distance, angle, speed, and health read
+     live against TargetOverride, or the controller's focus actor when not set.
+  4. A weight of zero is a hard veto: that reaction is dropped, never chosen.
+  5. Group the survivors by Priority (highest first)
+  6. Weighted random pick among the top-priority group
   → FChosenReaction { ReactionId, AbilityTag, Priority, Weight }
+  → invalid FChosenReaction when nothing qualifies (check IsValid())
 ```
 
 ---
@@ -137,8 +141,8 @@ Lives on the **AIController** alongside `ActionEvaluationComponent`.
 | Function | Description |
 |----------|-------------|
 | `SetReactionSet(UReactionSet*)` | **Deprecated.** Use `SECReactionSetComponent` for reaction set management. This function still works but bypasses the resolution chain. |
-| `CanReact(FName ReactionId)` | Quick gate check without executing. |
-| `EvaluateBestReaction(FGameplayTag CategoryTag)` | Find best available reaction. Returns `FChosenReaction`. |
+| `CanReact(FName ReactionId, AActor* TargetOverride = nullptr)` | Quick gate check without executing. `TargetOverride` scores target-relative gates, falling back to the focus actor. |
+| `EvaluateBestReaction(FGameplayTag CategoryTag, AActor* TargetOverride = nullptr)` | Find best available reaction. Returns `FChosenReaction`; check `IsValid()`. `TargetOverride` sets what distance and angle score against, falling back to the focus actor. |
 | `ExecuteReaction(FName ReactionId, FSECExecutionContext Context)` | Fire a reaction with full context. |
 | `StopCurrentReaction(bool bSuccess)` | Manually stop the running reaction. |
 | `IsReactionExecuting()` | True while a reaction is active. |
@@ -322,13 +326,18 @@ Context.Magnitude = DamageAmount;
 Context.EventTag = SEC_Stimulus_MeleeHit;
 Context.TargetData = USECTargetDataLibrary::MakeTargetDataFromDirection(HitDirection);
 
-FChosenReaction Chosen = ReactionComp->EvaluateBestReaction(SEC_Reaction_Defensive);
+// Pass the attacker so distance and angle scorers measure against it.
+FChosenReaction Chosen = ReactionComp->EvaluateBestReaction(SEC_Reaction_Defensive, DamageInstigator);
 if (Chosen.IsValid())
 {
     ReactionComp->ExecuteReaction(Chosen.ReactionId, Context);
 }
 ```
 
+<Protip 
+  title="Score reactions by distance" 
+  description="Pass the attacker to EvaluateBestReaction so distance, angle, speed, and health scorers on a reaction measure against it. Without a target it falls back to the controller's focus actor. A reaction whose distance scorer rules out the current range is skipped, so make sure each reaction's range covers where it should fire." 
+/>
 <Protip 
   title="Context reuse" 
   description="FSECExecutionContext is the same struct used by actions. If you're already familiar with ExecuteActionWithContext(), reaction context works identically: same fields, same auto-population, same TargetData library." 
