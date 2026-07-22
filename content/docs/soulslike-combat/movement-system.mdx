@@ -35,16 +35,9 @@ A direction's score comes from how well it serves the target distance, whether i
 
 ### Distance and the comfort zone
 
-The AI holds a band around its `DesiredDistance` instead of a single exact range:
+The AI holds a band around its `DesiredDistance` instead of a single exact range. `DesiredDistance = 400` with `DistanceTolerance = 0.2` gives a comfort band of 320 to 480 cm. Inside the band the AI strafes; too close, it retreats; too far, it approaches.
 
-```
-Too Close      Comfort Zone      Too Far
-   |-----------|=============|-----------|
-   0        -tolerance    distance    +tolerance     inf
-          (approach)     (strafe)     (retreat)
-```
-
-`DesiredDistance = 400` with `DistanceTolerance = 0.2` gives a comfort band of 320 to 480 cm. Inside the band the AI strafes; outside it, it approaches or retreats.
+<DistanceBandVisualizer desiredDistance={400} tolerance={0.2} />
 
 ### Strafing
 

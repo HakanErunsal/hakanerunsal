@@ -65,4 +65,5 @@ Order comes from an `order:` number in each doc's frontmatter (`velite.config.ts
 - `FRangeEval` is a real USTRUCT.
 - Scoring in 2.3.0: distance/angle no longer auto-score. Add a Distance Scorer or Angle Scorer to the action's Scoring list. Per-scorer values live in `FScoreBreakdown.CustomScores`, keyed by each scorer's `GetDisplayName()`, folded into the `Custom` factor.
 - Debug flags: `ActionEvaluationComponent` → `bDebugLogDecisions` / `bDebugLogExecution`; `MovementEvaluatorComponent` → `bDebugLogScoring` / `bDebugDrawScoring`. There is no `bDebugLog`.
+- Distance response direction: `DistanceError = Distance - DesiredDistance`. Too close (error < 0) → the AI RETREATS (moves away); too far (error > 0) → it APPROACHES. Confirmed by `CalculateDistanceScore` and `CloseRangeRetreatBias`. Do not swap these in diagrams.
 - Root-motion (evaluate-only) movement is a Blueprint path, not C++: set `bApplyMovementInput` false, then read the BlueprintCallable getters `GetCurrentDirectionAngle` / `GetCurrentDirectionLocal` / `GetCurrentDirection` each tick and feed them to the Anim BP blendspace whose root motion drives the pawn. Badge it `Alternative`, not `C++`.
