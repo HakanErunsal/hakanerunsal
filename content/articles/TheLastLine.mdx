@@ -10,7 +10,7 @@ tags: ["Unreal Engine", "Mobile", "Solo Development", "Optimization", "The Last 
 
 ## The Last Line
 
-The Last Line is the game I always wanted to make and never had the time for. A layoff earlier this year gave me the time. Five months later it is live on Google Play: a zombie survival shooter that holds a barricade against 150-zombie waves and drops a Souls-style boss into the arena, on a phone. The systems in it are mine.
+The Last Line is the game I always wanted to make and never had the time for. A layoff earlier this year gave me the time. Five months later I had a zombie survival shooter that holds a barricade against 150-zombie waves and drops a Souls-style boss into the arena, on a phone — built iPhone-first, with an App Store launch ahead. The systems in it are mine.
 
 <VideoLoop src="../images/thelastline_trailer.mp4" className="w-full h-auto rounded-none shadow-lg" />
 
@@ -72,14 +72,14 @@ I used Claude Code for most of it. I would point it at a subsystem I had already
 
 ## Where it landed <svg aria-hidden="true" viewBox="0 -960 960 960" width="26" height="26" fill="#d97757" style={{ display: 'inline-block', verticalAlign: '-0.15em', marginLeft: '8px' }}><path d="m187-551 106 45q18-36 38.5-71t43.5-67l-79-16-109 109Zm154 81 133 133q57-26 107-59t81-64q81-81 119-166t41-192q-107 3-192 41T464-658q-31 31-64 81t-59 107Zm209-145.5q0-29.5 20-49.5t49.5-20q29.5 0 49.5 20t20 49.5q0 29.5-20 49.5t-49.5 20q-29.5 0-49.5-20t-20-49.5Zm5 432.5 109-109-16-79q-32 23-67 43.5T510-289l45 106Zm326-694q9 136-34 248T705-418l-2 2-2 2 22 110q3 15-1.5 29T706-250L535-78l-85-198-170-170-198-85 172-171q11-11 25-15.5t29-1.5l110 22q1-1 2-1.5t2-1.5q99-99 211-142.5T881-877ZM149-325q35-35 85.5-35.5T320-326q35 35 34.5 85.5T319-155q-26 26-80.5 43T75-80q15-109 31.5-164t42.5-81Zm42 43q-14 15-25 47t-19 82q50-8 82-19t47-25q19-17 19.5-42.5T278-284q-19-18-44.5-17.5T191-282Z" /></svg>
 
-The Last Line has passed ten thousand downloads on Google Play, and player reports keep surfacing what my test devices miss. It is free to play; subscriptions and in-app purchases run through RevenueCat, which I wrapped behind a single Unreal subsystem and published as its own plugin, the [RevenueCat Bridge](/projects/RevenueCatBridge). Apple is reviewing the iOS build. Five months on no salary was harder than any bug, but it shipped, and the oversized update is next on the list.
+The Last Line is iPhone-first and heading to the App Store. It is free to play; subscriptions and in-app purchases run through RevenueCat, which I wrapped behind a single Unreal subsystem and published as its own plugin, the [RevenueCat Bridge](/projects/RevenueCatBridge). TestFlight feedback keeps surfacing what my devices miss. Five months on no salary was harder than any bug, but the build is in review, and the oversized update is queued for launch.
 
-<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '16px', flexWrap: 'wrap', marginTop: '28px' }}>
-  <a href="https://play.google.com/store/apps/details?id=com.rigbak.thelastline" target="_blank" rel="noopener noreferrer">
-    <img src="../images/googleplay-badge-trim.png" alt="Get it on Google Play" style={{ height: '120px', width: 'auto', maxWidth: '100%' }} />
-  </a>
+<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', gap: '12px', marginTop: '28px' }}>
+  <img src="../images/appstore-download-badge.svg" alt="Download on the App Store" style={{ height: '120px', width: 'auto', maxWidth: '100%', opacity: 0.5 }} />
+  <div style={{ padding: '12px 24px', backgroundColor: 'rgba(0, 122, 255, 0.08)', borderRadius: '8px', border: '1px solid rgba(0, 122, 255, 0.25)', textAlign: 'center' }}>
+    <p style={{ margin: 0, fontSize: '15px', fontWeight: '600' }}>Coming soon to the App Store</p>
+    <p style={{ margin: '6px 0 0', fontSize: '13px', opacity: 0.75 }}>iPhone exclusive at launch</p>
+  </div>
 </div>
-
-<p style={{ textAlign: 'center', fontSize: '13px', opacity: 0.7, marginTop: '10px' }}>App Store version coming soon.</p>
 
 ---
