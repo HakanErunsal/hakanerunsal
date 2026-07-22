@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from 'react';
-import { Swords } from 'lucide-react';
+import { UePanel, UeViewport } from '@/components/ue-editor';
 
 export default function MeleeTraceVisualizer() {
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -172,43 +172,47 @@ export default function MeleeTraceVisualizer() {
     }, [useInterpolation, speed]); // Re-run if these change
 
     return (
-        <div className="my-8 rounded-lg border border-border bg-black/20 p-6 shadow-sm">
-            <div className="mb-4 flex flex-col gap-4 border-b border-border pb-4">
-                <div className="flex items-center justify-between">
-                    <h4 className="flex items-center gap-2 font-semibold">
-                        <Swords className="h-5 w-5" />
-                        Sub-stepping Visualizer
-                    </h4>
-                    <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground uppercase tracking-wider">
-                            {useInterpolation ? "Interpolation ON" : "Interpolation OFF"}
-                        </span>
-                        <button
-                            onClick={() => setUseInterpolation(!useInterpolation)}
-                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/50 ${useInterpolation ? 'bg-blue-600' : 'bg-slate-700'}`}
-                        >
-                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${useInterpolation ? 'translate-x-6' : 'translate-x-1'}`} />
-                        </button>
-                    </div>
+        <UePanel
+            title="Viewport"
+            breadcrumb={["LVL_SEC_Showcase", "Melee Trace"]}
+            assetType="visualizer"
+            headerRight={
+                <div className="flex items-center gap-2">
+                    <span className="text-[10px] uppercase tracking-wider text-[#888888]">
+                        {useInterpolation ? "Interpolation ON" : "Interpolation OFF"}
+                    </span>
+                    <button
+                        type="button"
+                        onClick={() => setUseInterpolation(!useInterpolation)}
+                        data-state={useInterpolation ? "on" : "off"}
+                        className="ue-toggle"
+                        aria-pressed={useInterpolation}
+                    >
+                        <span className="ue-toggle-thumb" />
+                    </button>
                 </div>
-
-                {/* Speed Slider */}
-                <div className="flex items-center gap-4 text-xs">
-                    <span className="text-muted-foreground w-20">Swing Speed</span>
-                    <input
-                        type="range"
-                        min="30"
-                        max="90"
-                        step="5"
-                        value={speed}
-                        onChange={(e) => setSpeed(Number(e.target.value))}
-                        className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-slate-700 accent-blue-500"
-                    />
-                    <span className="font-mono w-8 text-right">{speed}°</span>
-                </div>
+            }
+            caption={
+                useInterpolation
+                    ? "With Interpolation: The system fills the gap between frames, ensuring the hit is detected."
+                    : "Without Interpolation: The fast sword swings 'teleport' over the target between frames, causing a miss."
+            }
+        >
+            <div className="mb-4 flex items-center gap-4 text-xs">
+                <span className="w-20 text-[#888888]">Swing Speed</span>
+                <input
+                    type="range"
+                    min="30"
+                    max="90"
+                    step="5"
+                    value={speed}
+                    onChange={(e) => setSpeed(Number(e.target.value))}
+                    className="ue-slider flex-1"
+                />
+                <span className="w-8 text-right font-mono text-[#c8c8c8]">{speed}°</span>
             </div>
 
-            <div className="relative mx-auto aspect-[400/350] w-full max-w-[400px] overflow-hidden rounded bg-black/40 border border-white/5">
+            <UeViewport className="relative mx-auto aspect-[400/350] w-full max-w-[400px]">
                 <canvas
                     ref={canvasRef}
                     width={400}
@@ -216,27 +220,20 @@ export default function MeleeTraceVisualizer() {
                     className="absolute inset-0"
                 />
 
-                {/* Helper Text Overlay */}
-                <div className="absolute top-4 left-4 text-xs font-mono text-muted-foreground">
+                <div className="absolute left-4 top-4 font-mono text-xs text-[#888888]">
                     <div>SIM_FPS: 10</div>
                     <div>STATUS: {
-                        (useInterpolation || speed <= 30) // Technically strictly low speed hits too
-                            ? <span className="text-green-400">ROBUST</span>
-                            : <span className="text-red-400">TUNNELING</span>
+                        (useInterpolation || speed <= 30)
+                            ? <span className="text-[#6CC644]">ROBUST</span>
+                            : <span className="text-[#FF4444]">TUNNELING</span>
                     }</div>
                 </div>
 
                 <div className="absolute bottom-4 right-4 text-right">
-                    <div className="text-2xl font-bold font-mono">{stats.hits}</div>
-                    <div className="text-[10px] text-muted-foreground uppercase">Successful Hits</div>
+                    <div className="font-mono text-2xl font-bold text-[#c8c8c8]">{stats.hits}</div>
+                    <div className="text-[10px] uppercase text-[#888888]">Successful Hits</div>
                 </div>
-            </div>
-
-            <div className="mt-4 text-center text-sm text-muted-foreground">
-                {useInterpolation
-                    ? "With Interpolation: The system fills the gap between frames, ensuring the hit is detected."
-                    : "Without Interpolation: The fast sword swings 'teleport' over the target between frames, causing a miss."}
-            </div>
-        </div>
+            </UeViewport>
+        </UePanel>
     );
 }

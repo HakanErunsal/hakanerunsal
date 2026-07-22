@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef } from 'react';
-import { Brain } from 'lucide-react';
+import { UePanel, UeViewport } from '@/components/ue-editor';
 
 type AwarenessState = 'Unknown' | 'Suspicious' | 'Lost' | 'Detected';
 
@@ -179,26 +179,19 @@ export default function AwarenessVisualizer() {
     };
 
     return (
-        <div className="my-8 rounded-lg border border-border bg-black/20 p-4 shadow-sm">
-            <div className="mb-4 flex items-center justify-between border-b border-border pb-2">
-                <h4 className="flex items-center gap-2 font-semibold">
-                    <Brain className="h-4 w-4" />
-                    Interactive Awareness States
-                </h4>
-                <span className="text-xs text-muted-foreground">Move the player through the cone and hearing ring</span>
-            </div>
-
-            <div
+        <UePanel
+            title="Viewport"
+            breadcrumb={["LVL_SEC_Showcase", "Awareness"]}
+            assetType="visualizer"
+            caption="Seen = Detected. Lose sight = Lost (grace), then Suspicious if still heard, then Unknown."
+        >
+            <UeViewport
                 ref={containerRef}
                 onMouseMove={handleMove}
-                className="relative mx-auto aspect-[400/350] w-full max-w-[400px] cursor-crosshair overflow-hidden rounded bg-black/20"
+                className="relative mx-auto aspect-[400/350] w-full max-w-[400px]"
             >
                 <canvas ref={canvasRef} width={400} height={350} className="absolute inset-0" />
-            </div>
-
-            <div className="mt-2 text-center text-sm text-muted-foreground">
-                Seen = Detected. Lose sight = Lost (grace), then Suspicious if still heard, then Unknown.
-            </div>
-        </div>
+            </UeViewport>
+        </UePanel>
     );
 }

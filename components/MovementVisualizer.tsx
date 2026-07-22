@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from 'react';
-import { MousePointer2 } from 'lucide-react';
+import { UePanel, UeViewport } from '@/components/ue-editor';
 
 export default function MovementVisualizer() {
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -143,21 +143,18 @@ export default function MovementVisualizer() {
     };
 
     return (
-        <div className="my-8 rounded-lg border border-border bg-card p-4 shadow-sm">
-            <div className="mb-4 flex items-center justify-between border-b border-border pb-2">
-                <h4 className="flex items-center gap-2 font-semibold">
-                    <MousePointer2 className="h-4 w-4" />
-                    Interactive Direction Sampling
-                </h4>
-                <span className="text-xs text-muted-foreground">Move mouse to simulate Target</span>
-            </div>
-
-            <div
+        <UePanel
+            title="Viewport"
+            breadcrumb={["LVL_SEC_Showcase"]}
+            assetType="visualizer"
+            caption="Green arrows = High Score (Preferred Direction)"
+        >
+            <UeViewport
                 ref={containerRef}
                 onMouseMove={handleMouseMove}
                 onMouseEnter={() => setIsHovering(true)}
                 onMouseLeave={() => setIsHovering(false)}
-                className="relative mx-auto aspect-square w-full max-w-[400px] cursor-crosshair overflow-hidden rounded bg-black/20"
+                className="relative mx-auto aspect-square w-full max-w-[400px]"
             >
                 <canvas
                     ref={canvasRef}
@@ -166,17 +163,12 @@ export default function MovementVisualizer() {
                     className="absolute inset-0 h-full w-full"
                 />
 
-                {/* Legend */}
-                <div className="absolute bottom-2 left-2 text-[10px] text-muted-foreground bg-black/50 p-2 rounded pointer-events-none">
-                    <div className="flex items-center gap-1"><div className="w-2 h-2 bg-[#3b82f6] rounded-full"></div> AI Pawn</div>
-                    <div className="flex items-center gap-1"><div className="w-2 h-2 bg-[#ef4444] rounded-full"></div> Target</div>
-                    <div className="flex items-center gap-1"><div className="w-2 h-2 bg-[rgba(100,255,100,0.2)] border border-[rgba(100,255,100,0.5)] rounded-full"></div> Ideal Range</div>
+                <div className="pointer-events-none absolute bottom-2 left-2 rounded-sm border border-[#36363a] bg-[#232428]/90 p-2 text-[10px] text-[#888888]">
+                    <div className="flex items-center gap-1"><div className="h-2 w-2 rounded-full bg-[#0078d4]" /> AI Pawn</div>
+                    <div className="flex items-center gap-1"><div className="h-2 w-2 rounded-full bg-[#FF4444]" /> Target</div>
+                    <div className="flex items-center gap-1"><div className="h-2 w-2 rounded-full border border-[#6CC644]/50 bg-[#6CC644]/20" /> Ideal Range</div>
                 </div>
-            </div>
-
-            <div className="mt-2 text-center text-sm text-muted-foreground">
-                Green arrows = High Score (Preferred Direction)
-            </div>
-        </div>
+            </UeViewport>
+        </UePanel>
     );
 }

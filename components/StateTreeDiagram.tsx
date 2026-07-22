@@ -1,24 +1,22 @@
 "use client"
 
-import { GitBranch, Filter, CornerDownRight, Repeat, LogIn, MousePointerClick } from 'lucide-react';
-
-// Static, data-driven render of the SEC core StateTree. Not animated. To update it after a
-// tree change, edit the CORE object below; the layout follows the data.
+import { Filter, Repeat, LogIn, MousePointerClick } from 'lucide-react';
+import { UePanel, UeDetailsSection, UePropertyRow, UeAssetPicker } from '@/components/ue-editor';
 
 type TaskWhen = 'tick' | 'enter' | 'select';
 type Task = { name: string; when: TaskWhen };
 type State = {
     name: string;
-    accent: string;        // tailwind text color for the state icon and name
-    condition?: string;    // enter condition shown under the header
+    headerColor: string;
+    condition?: string;
     tasks?: Task[];
-    linked?: string;       // name of a linked subtree entered from this state
-    dashed?: boolean;      // render as a linked-subtree box
+    linked?: string;
+    dashed?: boolean;
     children?: State[];
 };
 
 const CORE: State = {
-    name: 'ST_SEC_Core', accent: 'text-indigo-400',
+    name: 'ST_SEC_Core', headerColor: '#4A2C7A',
     tasks: [
         { name: 'Build Decision Context', when: 'tick' },
         { name: 'Poll Combat Role', when: 'tick' },
@@ -26,7 +24,7 @@ const CORE: State = {
     ],
     children: [
         {
-            name: 'Combat', accent: 'text-sky-400',
+            name: 'Combat', headerColor: '#00549E',
             condition: 'Target is valid AND role is not SEC.Role.None',
             tasks: [
                 { name: 'Sync Action Set', when: 'enter' },
@@ -35,12 +33,12 @@ const CORE: State = {
             ],
             children: [
                 {
-                    name: 'Role', accent: 'text-emerald-400',
+                    name: 'Role', headerColor: '#006633',
                     condition: 'SEC.Role.* matches the current role',
                     linked: 'ST_SEC_MoveAndAction',
                     children: [
                         {
-                            name: 'ST_SEC_MoveAndAction', accent: 'text-emerald-400', dashed: true,
+                            name: 'ST_SEC_MoveAndAction', headerColor: '#006633', dashed: true,
                             tasks: [
                                 { name: 'AI Movement', when: 'tick' },
                                 { name: 'Poll Action', when: 'tick' },
@@ -52,96 +50,85 @@ const CORE: State = {
             ],
         },
         {
-            name: 'Idle', accent: 'text-amber-400',
+            name: 'Idle', headerColor: '#8B6914',
             condition: 'No valid target',
             tasks: [{ name: 'Delay 1.0', when: 'tick' }],
         },
     ],
 };
 
-const WHEN: Record<TaskWhen, { label: string; cls: string; Icon: typeof Repeat }> = {
-    tick: { label: 'tick', cls: 'text-sky-400 border-sky-500/40 bg-sky-500/10', Icon: Repeat },
-    enter: { label: 'on enter', cls: 'text-emerald-400 border-emerald-500/40 bg-emerald-500/10', Icon: LogIn },
-    select: { label: 'on select', cls: 'text-violet-400 border-violet-500/40 bg-violet-500/10', Icon: MousePointerClick },
+const WHEN: Record<TaskWhen, { label: string; color: string; Icon: typeof Repeat }> = {
+    tick: { label: 'tick', color: '#34a8ff', Icon: Repeat },
+    enter: { label: 'on enter', color: '#6CC644', Icon: LogIn },
+    select: { label: 'on select', color: '#A070FF', Icon: MousePointerClick },
 };
 
-function TaskPill({ task }: { task: Task }) {
+function TaskRow({ task }: { task: Task }) {
     const w = WHEN[task.when];
     const { Icon } = w;
     return (
-        <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background/50 px-2 py-1 text-xs text-foreground/90">
-            <span className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium border ${w.cls}`}>
-                <Icon className="h-3 w-3" />{w.label}
-            </span>
-            {task.name}
-        </span>
+        <UePropertyRow label={w.label}>
+            <div className="flex items-center gap-1.5">
+                <Icon className="h-3 w-3 shrink-0" style={{ color: w.color }} />
+                <span className="font-mono text-[11px] text-[#cccccc]">{task.name}</span>
+            </div>
+        </UePropertyRow>
     );
 }
 
-function StateNode({ state }: { state: State }) {
+function StateSection({ state, depth = 0 }: { state: State; depth?: number }) {
     return (
-        <div
-            className={[
-                "rounded-lg border bg-card/50 p-3",
-                state.dashed ? "border-dashed border-emerald-500/40" : "border-border",
-            ].join(' ')}
-        >
-            <div className="flex items-center gap-2">
-                {state.dashed
-                    ? <CornerDownRight className={`h-4 w-4 shrink-0 ${state.accent}`} />
-                    : <GitBranch className={`h-4 w-4 shrink-0 ${state.accent}`} />}
-                <span className={`font-mono text-sm font-semibold ${state.accent}`}>{state.name}</span>
-                {state.dashed && (
-                    <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] text-emerald-400 border border-emerald-500/30">
-                        linked subtree
-                    </span>
-                )}
-            </div>
-
+        <UeDetailsSection title={state.name} defaultOpen={depth < 2}>
             {state.condition && (
-                <div className="mt-1.5 flex items-center gap-1.5 text-xs italic text-muted-foreground">
-                    <Filter className="h-3 w-3 shrink-0" />
-                    {state.condition}
-                </div>
+                <UePropertyRow label="Enter Condition">
+                    <div className="flex items-center gap-1.5 text-[11px] italic text-[#888888]">
+                        <Filter className="h-3 w-3 shrink-0" />
+                        {state.condition}
+                    </div>
+                </UePropertyRow>
             )}
 
-            {state.tasks && state.tasks.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                    {state.tasks.map((t) => <TaskPill key={t.name} task={t} />)}
-                </div>
+            {state.dashed && (
+                <UePropertyRow label="Type">
+                    <span className="text-[11px] text-[#6CC644]">Linked subtree</span>
+                </UePropertyRow>
             )}
 
             {state.linked && (
-                <div className="mt-2 flex items-center gap-1.5 text-xs text-emerald-400">
-                    <CornerDownRight className="h-3.5 w-3.5 shrink-0" />
-                    Linked subtree: <span className="font-mono">{state.linked}</span>
-                </div>
+                <UePropertyRow label="Linked Subtree">
+                    <UeAssetPicker value={state.linked} />
+                </UePropertyRow>
             )}
 
-            {state.children && state.children.length > 0 && (
-                <div className="mt-3 space-y-2 border-l border-border/60 pl-3 sm:pl-4">
-                    {state.children.map((c) => <StateNode key={c.name} state={c} />)}
+            {state.tasks?.map((t) => <TaskRow key={t.name} task={t} />)}
+
+            {state.children?.map((c) => (
+                <div key={c.name} className="border-t border-[#111111] pl-2">
+                    <StateSection state={c} depth={depth + 1} />
                 </div>
-            )}
-        </div>
+            ))}
+        </UeDetailsSection>
     );
 }
 
 export default function StateTreeDiagram({ caption }: { caption?: string }) {
     return (
-        <div className="my-8 rounded-xl border border-border bg-black/20 p-4 shadow-sm sm:p-6">
-            <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
-                <span className="font-semibold uppercase tracking-wide">SEC core StateTree</span>
-                <span className="inline-flex items-center gap-1"><Repeat className="h-3 w-3 text-sky-400" /> ticks each frame</span>
-                <span className="inline-flex items-center gap-1"><LogIn className="h-3 w-3 text-emerald-400" /> runs on enter</span>
-                <span className="inline-flex items-center gap-1"><MousePointerClick className="h-3 w-3 text-violet-400" /> runs on select</span>
+        <UePanel
+            title="StateTree"
+            breadcrumb={["Content", "Plugins", "SoulslikeEnemyCombat", "ST_SEC_Core"]}
+            assetType="statetree"
+            caption={caption ?? "One option for the brain. Leave AIConfig's DefaultStateTree empty and the same loop runs in native C++ instead."}
+            bodyClassName="p-0"
+        >
+            <div className="flex items-center gap-3 border-b border-[#111111] bg-[#151515] px-2 py-1 text-[10px] text-[#666666]">
+                <span className="flex items-center gap-1"><Repeat className="h-3 w-3 text-[#34a8ff]" /> tick</span>
+                <span className="flex items-center gap-1"><LogIn className="h-3 w-3 text-[#6CC644]" /> on enter</span>
+                <span className="flex items-center gap-1"><MousePointerClick className="h-3 w-3 text-[#A070FF]" /> on select</span>
             </div>
 
-            <StateNode state={CORE} />
-
-            <div className="mt-4 text-center text-xs text-muted-foreground">
-                {caption ?? 'One option for the brain. Leave AIConfig\'s DefaultStateTree empty and the same loop runs in native C++ instead.'}
+            <div className="overflow-hidden rounded-[2px] border-x-0 border-b-0 border border-[#111111]">
+                <StateSection state={CORE} />
             </div>
-        </div>
+        </UePanel>
     );
 }

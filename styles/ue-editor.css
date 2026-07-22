@@ -1,0 +1,570 @@
+/* ── UE 5.8 Starship editor UI (StyleColors.cpp + ContentBrowser) ── */
+
+/* Panel tab */
+.ue-panel-tab {
+  background: #242424;
+  border-top: 2px solid transparent;
+}
+
+.ue-panel-tab:hover {
+  background: #2F2F2F;
+}
+
+/* Content Browser tile — StarshipStyle ContentBrowser.AssetTileItem */
+.ue-cb-tile {
+  border: 2px solid #383838;
+  border-radius: 4px;
+  background: #383838;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+}
+
+.ue-cb-tile:hover {
+  border-color: #575757;
+}
+
+.ue-cb-tile-active,
+.ue-cb-tile[data-active="true"] {
+  border-color: #0070E0;
+  box-shadow: 0 0 0 1px #0070E0, 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+.ue-cb-tile-thumb {
+  background: #1A1A1A;
+  border-radius: 4px 4px 0 0;
+}
+
+.ue-cb-tile-label {
+  background: #242424;
+  border-radius: 0 0 4px 4px;
+}
+
+/* Components panel row — SCS.Component list */
+.ue-component-row {
+  min-height: 22px;
+  border-bottom: 1px solid transparent;
+  color: #C0C0C0;
+  font-size: 11px;
+}
+
+.ue-component-row:hover {
+  background: #242424;
+}
+
+.ue-component-row-selected,
+.ue-component-row[data-selected="true"] {
+  background: #40576F;
+  color: #C0C0C0;
+}
+
+/* Details panel */
+.ue-details-section {
+  border-bottom: 1px solid #0F0F0F;
+}
+
+.ue-details-section-header {
+  background: #2F2F2F;
+  border-top: 1px solid #383838;
+  border-bottom: 1px solid #0F0F0F;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.ue-details-section-header:hover {
+  background: #383838;
+}
+
+.ue-details-section-body {
+  background: #151515;
+}
+
+.ue-property-row:hover {
+  background: #242424;
+}
+
+.ue-property-row:hover > div:first-child {
+  background: #1A1A1A;
+}
+
+.ue-asset-picker {
+  min-height: 22px;
+}
+
+/* Details panel template (UeDetailsPanel) — component UPROPERTY rows */
+.ue-dp {
+  background: #262626;
+}
+
+.ue-dp-section {
+  border-bottom: 1px solid #1b1b1b;
+}
+
+.ue-dp-header {
+  min-height: 26px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  background: linear-gradient(to bottom, #3c3c3c, #333333);
+  border-top: 1px solid #454545;
+  border-bottom: 1px solid #1c1c1c;
+}
+
+.ue-dp-header:hover {
+  background: linear-gradient(to bottom, #444444, #3a3a3a);
+}
+
+/* Zebra rows */
+.ue-dp-row {
+  background: #2a2a2a;
+  border-bottom: 1px solid #202020;
+}
+
+.ue-dp-row:nth-child(even) {
+  background: #242424;
+}
+
+.ue-dp-row:hover {
+  background: #303030;
+}
+
+.ue-dp-row--disabled {
+  opacity: 0.42;
+  pointer-events: none;
+}
+
+/* Faint splitter between name and value columns */
+.ue-dp-value {
+  border-left: 1px solid rgba(0, 0, 0, 0.28);
+  box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.02);
+  padding-left: 8px;
+  align-self: stretch;
+}
+
+/* Numeric spin box */
+.ue-dp-num {
+  width: 100%;
+  max-width: 190px;
+  height: 18px;
+  overflow: hidden;
+  background: #181818;
+  border: 1px solid #0c0c0c;
+  border-radius: 2px;
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.4);
+}
+
+.ue-dp-num-fill {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* Enum / asset combo box */
+.ue-dp-combo,
+.ue-dp-asset {
+  width: 100%;
+  max-width: 190px;
+  height: 18px;
+  background: #181818;
+  border: 1px solid #0c0c0c;
+  border-radius: 2px;
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.4);
+}
+
+/* Checkbox */
+.ue-dp-check {
+  border-radius: 2px;
+  background: #0d0d0d;
+  border: 1px solid #4a4a4a;
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.5);
+}
+
+.ue-dp-check[data-checked="true"] {
+  border-color: #565656;
+}
+
+/* StateTree node */
+.ue-statetree-node {
+  border: 1px solid #383838;
+  background: #242424;
+  border-radius: 2px;
+}
+
+.ue-statetree-node-header {
+  border-bottom: 1px solid #0F0F0F;
+  background: #2F2F2F;
+}
+
+/* Search bar */
+.ue-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  max-width: 480px;
+  border: 1px solid #0F0F0F;
+  background: #0F0F0F;
+  border-radius: 2px;
+  padding: 2px 8px;
+}
+
+.ue-search input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 11px;
+  color: #C0C0C0;
+}
+
+.ue-search input::placeholder {
+  color: #575757;
+}
+
+/* Sliders & toggles */
+.ue-slider {
+  height: 4px;
+  width: 100%;
+  cursor: pointer;
+  appearance: none;
+  border-radius: 1px;
+  background: #383838;
+}
+
+.ue-slider::-webkit-slider-thumb {
+  height: 12px;
+  width: 12px;
+  cursor: pointer;
+  appearance: none;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #575757 0%, #383838 100%);
+  border: 1px solid #4C4C4C;
+}
+
+.ue-slider::-moz-range-thumb {
+  height: 12px;
+  width: 12px;
+  cursor: pointer;
+  border-radius: 2px;
+  border: 1px solid #4C4C4C;
+  background: linear-gradient(180deg, #575757 0%, #383838 100%);
+}
+
+.ue-toggle {
+  position: relative;
+  display: inline-flex;
+  height: 18px;
+  width: 32px;
+  align-items: center;
+  border-radius: 2px;
+  transition: background 0.15s;
+  background: #383838;
+  border: 1px solid #4C4C4C;
+}
+
+.ue-toggle[data-state="on"] {
+  background: #0070E0;
+  border-color: #0070E0;
+}
+
+.ue-toggle-thumb {
+  display: inline-block;
+  height: 12px;
+  width: 12px;
+  border-radius: 1px;
+  background: #C0C0C0;
+  transition: transform 0.15s;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.ue-toggle[data-state="on"] .ue-toggle-thumb {
+  transform: translateX(16px);
+}
+
+.ue-toggle[data-state="off"] .ue-toggle-thumb {
+  transform: translateX(2px);
+}
+
+.ue-outliner-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  font-size: 11px;
+  color: #C0C0C0;
+  border-bottom: 1px solid #0F0F0F;
+}
+
+.ue-outliner-row:hover {
+  background: #242424;
+}
+
+.ue-outliner-row[data-selected="true"] {
+  color: #0070E0;
+  background: #40576F;
+}
+
+.ue-folder-icon {
+  width: 64px;
+  height: 52px;
+  background: linear-gradient(180deg, #a08860 0%, #6b5a3e 100%);
+  border-radius: 2px 6px 2px 2px;
+  position: relative;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.ue-folder-icon::before {
+  content: "";
+  position: absolute;
+  top: -4px;
+  left: 0;
+  width: 24px;
+  height: 8px;
+  background: linear-gradient(180deg, #b09870 0%, #8b7155 100%);
+  border-radius: 2px 2px 0 0;
+}
+
+/* ── Blueprint graph nodes (GraphEditorSettings + SGraphNode) ── */
+
+.ue-bp-graph {
+  min-height: 200px;
+}
+
+.ue-bp-graph__grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: 16px 16px, 16px 16px, 64px 64px, 64px 64px;
+}
+
+.ue-bp-node {
+  border-radius: 7px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
+  transition: box-shadow 0.2s, opacity 0.2s;
+}
+
+.ue-bp-node--active {
+  box-shadow: 0 0 0 1px rgba(255, 170, 0, 0.6), 0 4px 16px rgba(0, 0, 0, 0.6);
+}
+
+.ue-bp-node--disabled {
+  opacity: 0.45;
+  filter: saturate(0.5);
+}
+
+/* Node body — near-black, matches Graph.Node.Body over dark graph */
+.ue-bp-node__body {
+  position: absolute;
+  inset: 0;
+  border-radius: 7px;
+  border: 1px solid rgba(0, 0, 0, 0.65);
+  background: linear-gradient(180deg, rgba(13, 13, 15, 0.92) 0%, rgba(7, 7, 9, 0.95) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.ue-bp-node__header {
+  border-radius: 7px 7px 0 0;
+  min-height: 30px;
+}
+
+/* ColorSpill — tinted header, darkened toward bottom for depth (UE renders
+   the title color multiplied over the dark body, so it reads muted) */
+.ue-bp-node__color-spill {
+  position: absolute;
+  inset: 0;
+  border-radius: 7px 7px 0 0;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0) 45%, rgba(0, 0, 0, 0.4) 100%),
+    var(--bp-header, #3195ff);
+  opacity: 0.72;
+  filter: saturate(0.8) brightness(0.9);
+}
+
+/* Flow-chart nodes — even softer headers */
+.ue-bp-node--flow .ue-bp-node__color-spill {
+  opacity: 0.5;
+}
+
+.ue-bp-node--flow:not(.ue-bp-node--active) {
+  opacity: 0.82;
+}
+
+/* TitleGloss — subtle sheen only at the very top edge */
+.ue-bp-node__gloss {
+  position: absolute;
+  inset: 0;
+  border-radius: 7px 7px 0 0;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.13) 0%,
+    rgba(255, 255, 255, 0.03) 24%,
+    rgba(255, 255, 255, 0) 48%
+  );
+  pointer-events: none;
+}
+
+/* TitleHighlight — faint bright line along the top */
+.ue-bp-node__highlight {
+  position: absolute;
+  top: 0;
+  left: 6px;
+  right: 6px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.28),
+    transparent
+  );
+  pointer-events: none;
+}
+
+.ue-bp-node__pins {
+  position: relative;
+}
+
+/* Exec pins — white right-pointing arrows (both input & output point right) */
+.ue-bp-exec-pin {
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 9px solid #f0f0f0;
+  filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.7));
+}
+
+.ue-bp-exec-pin--connected {
+  filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.4));
+}
+
+.ue-bp-exec-row {
+  margin-bottom: 2px;
+}
+
+/* Data pins — hollow rings when unconnected, filled when connected (UE Pin.svg) */
+.ue-bp-data-pin {
+  position: relative;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: transparent;
+  border: 2px solid var(--pin-color, #0066e8);
+  box-shadow: 0 0 1px rgba(0, 0, 0, 0.6);
+}
+
+.ue-bp-data-pin--connected {
+  background: var(--pin-color, #0066e8);
+  border-color: var(--pin-color, #0066e8);
+}
+
+.ue-bp-pin-label {
+  color: #c8c8c8;
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.ue-bp-pin-default {
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 2px;
+  padding: 0 4px;
+  font-size: 10px;
+  color: #c0c0c0;
+}
+
+/* Variable getter pill — Graph.VarNode (very dark, faint type tint) */
+.ue-bp-var-node {
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.6);
+  background: linear-gradient(180deg, rgba(20, 20, 24, 0.95) 0%, rgba(9, 9, 12, 0.97) 100%);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.55);
+  min-height: 30px;
+}
+
+.ue-bp-var-node__spill {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 50%, rgba(0, 0, 0, 0.35) 100%),
+    var(--bp-header, #0066e8);
+  opacity: 0.18;
+}
+
+.ue-bp-var-node__gloss {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, transparent 45%);
+}
+
+.ue-bp-var-node__pin {
+  width: 10px;
+  height: 10px;
+}
+
+/* Pure operator node */
+.ue-bp-operator {
+  border-radius: 6px;
+  border: 1px solid rgba(72, 72, 76, 0.85);
+  background: linear-gradient(180deg, rgba(28, 28, 32, 0.96) 0%, rgba(16, 16, 18, 0.98) 100%);
+  min-width: 36px;
+  min-height: 28px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.ue-bp-operator__header {
+  position: absolute;
+  inset: 0;
+  border-radius: 6px;
+  background: var(--bp-header, #66d959);
+  opacity: 0.85;
+}
+
+.ue-bp-comment {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+/* ── My Blueprint variable tree (Kismet.VariableList) ── */
+
+.ue-var-pill {
+  display: inline-block;
+  width: 17px;
+  height: 11px;
+  border-radius: 999px;
+  background: var(--pill-color, #0066e8);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.3);
+}
+
+.ue-mybp-panel {
+  max-width: 320px;
+}
+
+.ue-mybp-tree {
+  font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+.ue-mybp-row {
+  cursor: default;
+}
+
+.ue-mybp-row:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.ue-mybp-row--selected {
+  background: #40576f;
+}
+
+.ue-mybp-row--selected:hover {
+  background: #40576f;
+}
+
+.ue-mybp-row--category > span:nth-child(2) {
+  color: #c0c0c0;
+}
+
+.ue-mybp-chevron {
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}

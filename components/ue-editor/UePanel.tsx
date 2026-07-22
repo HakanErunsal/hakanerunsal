@@ -1,0 +1,74 @@
+import { cn } from "@/lib/utils";
+import { ueCaption, uePanel, uePanelBody } from "./ue-theme";
+import type { UeAssetType } from "./ue-theme";
+import { UeAssetIcon } from "./UeAssetIcon";
+
+interface UePanelProps {
+  title: string;
+  breadcrumb?: string[];
+  subtitle?: string;
+  assetType?: UeAssetType;
+  toolbarRight?: React.ReactNode;
+  headerRight?: React.ReactNode;
+  caption?: React.ReactNode;
+  className?: string;
+  bodyClassName?: string;
+  compact?: boolean;
+  children: React.ReactNode;
+}
+
+/** Docked UE panel — tab bar + breadcrumb toolbar (Starship chrome). */
+export function UePanel({
+  title,
+  breadcrumb,
+  subtitle,
+  assetType = "visualizer",
+  toolbarRight,
+  headerRight,
+  caption,
+  className,
+  bodyClassName,
+  compact = false,
+  children,
+}: UePanelProps) {
+  const crumbs = breadcrumb ?? (subtitle ? [subtitle] : []);
+
+  return (
+    <div className={uePanel(className)}>
+      {/* Tab bar — Background #151515, active tab #242424 */}
+      <div className="flex items-stretch border-b border-[#0F0F0F] bg-[#151515]">
+        <div className="ue-panel-tab flex items-center gap-2 px-3 py-1">
+          <UeAssetIcon type={assetType} showLabel={false} />
+          <span className="text-[11px] text-[#C8C8C8]">{title}</span>
+        </div>
+        {(headerRight || toolbarRight) && (
+          <div className="ml-auto flex items-center gap-2 px-2">{headerRight ?? toolbarRight}</div>
+        )}
+      </div>
+
+      {!compact && (crumbs.length > 0 || toolbarRight) && (
+        <div className="flex items-center gap-2 border-b border-[#0F0F0F] bg-[#1A1A1A] px-2 py-1">
+          {crumbs.length > 0 && (
+            <div className="flex min-w-0 flex-1 items-center gap-0.5 truncate text-[11px] text-[#808080]">
+              {crumbs.map((crumb, i) => (
+                <span key={i} className="flex items-center gap-0.5">
+                  {i > 0 && <span className="text-[#575757]">&gt;</span>}
+                  <span className={i === crumbs.length - 1 ? "text-[#C0C0C0]" : undefined}>{crumb}</span>
+                </span>
+              ))}
+            </div>
+          )}
+          {toolbarRight && !headerRight && <div className="shrink-0">{toolbarRight}</div>}
+        </div>
+      )}
+
+      <div className={uePanelBody(bodyClassName)}>{children}</div>
+
+      {caption && (
+        <div className={cn(ueCaption(), "border-t border-[#0F0F0F] bg-[#151515] px-3 py-2 text-left")}>
+          {caption}
+        </div>
+      )}
+    </div>
+  );
+}

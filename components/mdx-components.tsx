@@ -1,6 +1,7 @@
 import Image from "next/image";
 import * as runtime from "react/jsx-runtime";
 import { Callout } from "./callout";
+import { Collapsible } from "./collapsible";
 import { Protip } from '@/components/Protip';
 import ZoomableImage from "@/components/ZoomableImage";
 import GameStatusBadge from './GameStatusBadge';
@@ -23,6 +24,7 @@ import PurchaseFlowVisualizer from '@/components/PurchaseFlowVisualizer';
 import ScorerStackVisualizer from '@/components/ScorerStackVisualizer';
 import StateTreeDiagram from '@/components/StateTreeDiagram';
 import ArchitectureFlowDiagram from '@/components/ArchitectureFlowDiagram';
+import MovementEvaluatorDetails from '@/components/MovementEvaluatorDetails';
 import Reviews from '@/components/Reviews';
 
 const useMDXComponent = (code: string) => {
@@ -33,6 +35,7 @@ const useMDXComponent = (code: string) => {
 const components = {
   Image,
   Callout,
+  Collapsible,
   Protip,
   ZoomableImage,
   VideoLoop,
@@ -55,6 +58,7 @@ const components = {
   ScorerStackVisualizer,
   StateTreeDiagram,
   ArchitectureFlowDiagram,
+  MovementEvaluatorDetails,
   Reviews,
   // Prevent hydration errors from block elements nested inside <p>
   p: ({ children, ...props }: React.HTMLAttributes<HTMLParagraphElement>) => (
