@@ -1,6 +1,6 @@
 ---
 title: "Melee Trace"
-description: "Frame-rate independent hit detection with swept traces and automatic damage application."
+description: "Frame-rate independent swept weapon traces with per-window damage configs and ISECDamageable integration."
 date: 2025-12-27
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Melee", "Combat"]
@@ -8,302 +8,175 @@ parent: "SoulslikeCombatDocs"
 order: 11
 ---
 
-
 <Breadcrumb items={[
     { label: "Docs", href: "/docs" },
     { label: "SoulslikeCombat", href: "/docs/SoulslikeCombatDocs" },
     { label: "Melee Trace" }
 ]} />
 
-> Frame-perfect hit detection that works at any frame rate. No more attacks passing through enemies.
+> Each active frame, `USECMeleeTraceComponent` sweeps from the last socket positions to the current ones. Fast swings still register hits at 30 or 144 FPS.
 
 <MeleeTraceVisualizer />
 
 ## When to Use This
 
-- Any game with melee combat (works for both AI and player characters)
-- Fast weapon swings that might miss at low framerates
-- Multiple hit zones on a single weapon (blade tip vs. hilt)
-- Configurable damage per weapon or attack
+- Melee on AI or player pawns.
+- Swings that outrun per-frame overlap checks.
+- Several hit zones on one weapon (blade, pommel).
+- Different damage per montage window through **`SECDamageConfig`**.
 
-> This system is completely standalone and works independently of the AI systems.
-
----
-
-## Core Concepts
-
-### The Problem
-
-Traditional per-frame collision checks can miss:
-
-```
-Frame 1:  Sword ──→    [Enemy]
-Frame 2:              [Enemy]   ←── Sword
-                        ↑
-          Sword passed through between frames!
-```
-
-At 30 FPS, a fast sword swing can teleport 50cm between frames, missing the target entirely.
-
-### The Solution: Swept Traces
-
-The component **remembers where the weapon was last frame** and traces the entire path:
-
-```
-Frame 1 position ═══════════════► Frame 2 position
-                   ↑
-            Continuous trace catches the hit
-```
-
-Behavior is identical at 30 FPS or 144 FPS.
-
-### Trace Sockets
-
-Weapons define **trace sockets**, which are points along the weapon that are tracked:
-
-```
-                  ┌─────────────────┐
-   Handle         │     BLADE       │         Tip
-   [socket]───────┴─────────────────┴────────[socket]
-     ↑                                          ↑
-  blade_start                               blade_end
-```
-
-The component traces between these sockets, creating a swept volume that matches the weapon's swing.
-
-### Trace Shapes
-
-| Shape | Use Case | How It Works |
-|-------|----------|--------------|
-| **Sphere** | Blunt weapons | Single point with radius |
-| **Capsule** | Short blades | Single point with capsule volume |
-| **CapsuleTwoPoint** | Long blades | Capsule stretched between two sockets |
-
-For swords, use `CapsuleTwoPoint` with `blade_start` and `blade_end` sockets.
+`AEnemyCharacterBase` ships with **`USECMeleeTraceComponent`**. Add **SEC Melee Trace** to any other pawn you want in the pipeline.
 
 ---
 
-## Quick Setup
+## How It Works
 
-### 1. Add Sockets to Weapon Mesh
+Register **trace sockets** on the wielder (usually when the weapon equips). **`StartTracing`** captures socket positions and enables tick. Each tick sub-steps between previous and current transforms and sweeps sphere, capsule, or two-point capsule shapes (**`SubStepDistance`**, **`MaxSubSteps`**).
 
-In your weapon's skeletal/static mesh, add sockets:
-- `blade_start`: Base of the hitbox
-- `blade_end`: Tip of the hitbox
+| Shape | Use |
+|-------|-----|
+| **Sphere** | Fists, small contact points. |
+| **Capsule** | Single-socket volume aligned to bone rotation. |
+| **CapsuleTwoPoint** | Span between two mesh sockets (typical sword blade). |
 
-### 2. Create Weapon Blueprint
+The first tick after **`StartTracing`** records positions only; sweeps begin once a previous sample exists.
 
-Inherit from `ASECWeaponBase`:
+Hit order:
 
-```cpp
-// In Class Defaults:
-AttachSocket: "RightHandSocket"     // Socket on character skeleton
-DefaultAttachOffset: (Transform)     // Offset after attachment
+1. **`TeamFilter`** and duplicate checks (**`CanHitActor`**, owner ignored).
+2. **`OnMeleeHit`** with **`FMeleeHitData`** (contact VFX/SFX hook).
+3. **`ISECDamageable`:** **`BuildDamageInfo`** → **`ApplyDamage`** → **`HandleDamageResult`** → **`OnMeleeHitResponse`**.
+4. **No interface:** **`RecordHit`**, **`ApplyPointDamage`** (**`CurrentDamage`**, **`DamageTypeClass`**), **`OnMeleeHitResponse`** with **`bDamageApplied = true`**.
 
-TraceSockets:
-  - ID: "Blade"
-    Shape: CapsuleTwoPoint
-    SocketOrBoneName: "blade_start"
-    EndSocketOrBoneName: "blade_end"
-    Radius: 15.0
-    TraceChannel: ECC_Pawn
+**`StartTracing`** and tick body return early without authority. **`StopTracing`** clears active sockets, hit records, and disables tick.
 
-DamageConfig: DA_SwordDamage        // Reference to damage data asset
-```
+---
 
-### 3. Create Damage Config
+## Setup
 
-Right-click → Data Asset → **SECDamageConfig**
+### 1. Component on the wielder
 
-```cpp
-BaseDamage: 25.0
-DamageType: UDamageType_Physical
-bCanBeBlocked: true
-bCanBeParried: true
-ImpulseStrength: 500.0
-```
+<MeleeTraceComponentDetails />
 
-See [Configuration Reference](/docs/soulslike-combat/configuration#damage-config) for all options.
+Set **`Default Damage Config`** or **`Base Damage`** when a notify omits damage.
 
-### 4. Add Notify States to Animation
+### 2. Weapon mesh sockets
 
-In your attack montage:
+Add sockets on the weapon mesh (example: **`blade_start`**, **`blade_end`**).
 
-1. Right-click timeline at the **start of the swing**
-2. Add Notify State → **SECMeleeTraceWindow**
-3. Drag to cover the active swing frames
-4. Configure: `SocketIDs: ["Blade"]`
+### 3. Weapon Blueprint
+
+Subclass **`ASECWeaponBase`**, fill **`TraceSockets`**. **`OnEquipped`** assigns **`SourceComponent`** to the weapon mesh and calls **`RegisterTraceSocket_Struct`** on the wielder's trace component.
+
+<WeaponTraceSocketDetails />
+
+Per-attack damage comes from the montage notify or component default, not the weapon actor.
+
+### 4. Damage config
+
+Create **`SECDamageConfig`**, assign on the notify or **`Default Damage Config`**:
+
+<SECDamageConfigDetails />
+
+Per window: notify **`Damage Config`** → **`Default Damage Config`** → **`Base Damage`**. **`StartTracingSimple`** accepts a numeric override; values below zero fall back to **`Base Damage`**.
+
+### 5. Montage window
+
+Add Notify State → **SEC Melee Trace Window** on strike frames:
+
+<MeleeTraceNotifyDetails />
+
+Empty **`Socket IDs`** activates every registered socket. Names must match each trace socket **`ID`**.
 
 <ZoomableImage
   src="../images/sec_animmontagenotifiers.jpg"
-  alt="Animation montage with melee trace notify state"
+  alt="Animation montage with SEC Melee Trace Window notify state"
 />
 
-**Timing guide:**
-```
-Frame:     0    10    20    30    40    50
-Animation: [━━━━][━━━━][━━━━][━━━━][━━━━]
-           Windup Strike  Follow Recovery
-                  ↑
-Trace Window:    [═══════════]
-                Start        End
-```
-
-### 5. Done!
-
-When the weapon is equipped and the montage plays:
-1. Weapon auto-registers its trace sockets with the character's `MeleeTraceComponent`
-2. Notify state triggers tracing during active frames
-3. Hits apply damage automatically via `ApplyDamage`
+Equip, play the montage: register on equip, **`StartTracing`** at notify begin, **`StopTracing`** at notify end.
 
 ---
 
-## Key Properties
+## Integration
 
-### On Weapon (`ASECWeaponBase`)
+| System | Link |
+|--------|------|
+| [Reaction System](/docs/soulslike-combat/reaction-system) | **`ApplyDamage`** returns **`ResultTags`** for reaction selection. |
+| [Multiplayer](/docs/soulslike-combat/multiplayer) | Trace and damage on authority; clients follow replicated state. |
+| [Configuration Reference](/docs/soulslike-combat/configuration) | Shared project tuning (reconcile damage fields with this page). |
 
-| Property | Purpose |
-|----------|---------|
-| `TraceSockets` | Array of socket definitions |
-| `DamageConfig` | Data asset with damage values |
-| `AttachSocket` | Character socket to attach to |
+**`TeamFilter`** on the trace component (damage gating, not combat target selection):
 
-### On Character (`USECMeleeTraceComponent`)
-
-| Property | Default | Purpose |
-|----------|---------|---------|
-| `DefaultDamageConfig` | - | Fallback if weapon has none |
-| `BaseDamage` | 10 | Fallback damage |
-| `HitResetInterval` | 0.0 | Time before same target can be hit again |
-| `bDebugDraw` | false | Visualize traces |
+<MeleeTraceTeamFilterDetails />
 
 ---
 
-## Key Functions
+<Collapsible title="Delegates and manual control" badge="Advanced">
 
 ```cpp
-// Called automatically by weapon on equip
-void RegisterWeaponTraceSockets(const TArray<FSECTraceSocket>& Sockets);
-
-// Called by notify state
-void StartTracing(const TArray<FName>& SocketIDs, UDamageConfig* Config, bool bDebug);
+void StartTracing(const TArray<FName>& SocketIDs, USECDamageConfig* DamageConfig = nullptr, bool bDebugOverride = false);
+void StartTracingSimple(const TArray<FName>& SocketIDs, float DamageOverride);
 void StopTracing();
 
-// Manual control (if not using notify states)
-void BeginTrace(FName SocketID);
-void EndTrace(FName SocketID);
-
-// Events
-FOnMeleeHit OnMeleeHit;  // Delegate when hit occurs
+void RegisterTraceSocket_Struct(const FSECTraceSocket& TraceSocket);
+void UnregisterTraceSocket(FName ID);
+void UnregisterAllSockets();  // weapon swap: stock OnUnequipped does not call this
 ```
 
----
+**`OnMeleeHit`:** **`FMeleeHitData`** (`HitResult`, `FromSocketID`, `DamageConfig`).
 
-## Advanced: Custom Damage Handling
+**`OnMeleeHitResponse`:** **`FMeleeHitData`** + **`FSECDamageResult`**.
 
-If you don't want to use Unreal's built-in `ApplyDamage`, bind to the delegate:
+Subclass **`BuildDamageInfo`** or **`HandleDamageResult`** for crit scaling, pierce, or custom hit recording.
 
-```cpp
-MeleeTraceComponent->OnMeleeHit.AddDynamic(this, &AMyCharacter::HandleMeleeHit);
+Blueprint helpers: **`RegisterSphereSocket`**, **`RegisterCapsuleSocket`**, **`RegisterTwoPointCapsule`**.
 
-void AMyCharacter::HandleMeleeHit(const FHitResult& Hit, float Damage, UDamageConfig* Config)
-{
-    // Your custom damage logic
-    IHealthInterface* Health = Cast<IHealthInterface>(Hit.GetActor());
-    if (Health)
-    {
-        Health->TakeDamage(Damage, Config->bCanBeBlocked, Config->bCanBeParried);
-    }
-}
+</Collapsible>
+
+<Collapsible title="ISECDamageable pipeline" badge="Advanced">
+
+**`FSECDamageInfo`:** **`Instigator`**, **`HitResult`**, **`HitDirection`**, **`DamageDefinition`** (**`ToDamageDefinition()`** when a config is active).
+
+**`FSECDamageResult`:** **`bDamageApplied`**, **`ResultTags`**.
+
+**`HandleDamageResult` recording:**
+
+| Result | Recording |
+|--------|-----------|
+| **`bDamageApplied = true`** | **`RecordHit`** (blocks repeat hits this window when **`HitResetInterval`** is 0). |
+| **`bDamageApplied = false`**, tags match **`SkipRecordTags`** | No record (dodge: try again next frame). |
+| **`bDamageApplied = false`**, other tags | **`RecordHit`** (parry/block consumes the swing). |
+| **`bDamageApplied = false`**, empty tags | No record (ignored stimulus). |
+
+**`HitResetInterval`:** **`0`** allows one recorded hit per target per window. Above **`0`**, the same target can register again after that many seconds; expired records purge each tick.
+
+</Collapsible>
+
+<Collapsible title="Debug" badge="Advanced">
+
+```
+SEC.Debug.Melee.DrawTracing 1
 ```
 
----
+Component **`Draw Debug`**, or notify **`Enable Debug Draw`** for one window (**`bSessionDebugOverride`**).
 
-## Debug Tools
+</Collapsible>
 
-**Console Command:**
-```
-SEC.Debug.Melee.DrawTracing 1   // Visualize swept traces
-```
+<Collapsible title="Common issues" badge="Advanced">
 
-**In Component:**
-```cpp
-MeleeTraceComponent->bDebugDraw = true;
-```
+| Problem | Likely cause | Fix |
+|---------|--------------|-----|
+| No hits | **`SocketIDs`** ≠ socket **`ID`** | Match **`FName`** strings. |
+| No hits | Sockets missing | Equip via **`ASECWeaponBase::OnEquipped`**; wielder needs trace component. |
+| Miss first active frame | Warm-up tick | Normal: sweep needs a prior position sample. |
+| Through walls | **`TraceChannel`** | Pick a channel blocked by world geometry. |
+| Two hits one swing | Two sockets touch | Expected; narrow active **`SocketIDs`** or shapes. |
+| No damage on SEC pawn | No interface | Implement **`ISECDamageable`**. |
+| Client swing, no damage | No authority | **`StartTracing`** / tick skip non-authority owners. |
 
-This draws the trace volumes in real-time. Very useful for tuning socket positions and timing.
+</Collapsible>
 
----
-
-## Common Issues
-
-| Problem | Cause | Solution |
-|---------|-------|----------|
-| No hits registering | Socket ID mismatch | Verify notify `SocketIDs` matches weapon `TraceSockets.ID` |
-| Hitting through walls | Wrong trace channel | Set `TraceChannel` to one that blocks geometry |
-| Multiple hits per swing | `HitResetInterval` is 0 | Set to 0.1+ to prevent rapid multi-hits |
-| Weapon not tracing | Not equipped properly | Ensure `OnEquipped()` is called |
-
----
-
-## Integration Points
-
-Weapons register on equip and animation notifies trigger tracing. For standalone use (player characters, destructibles), add `USECMeleeTraceComponent` to your actor and call `StartTracing()`/`StopTracing()` manually.
-
-### Multiplayer
-
-Melee traces are **server-authoritative**. The component only ticks on the server (authority check in `TickComponent`), so clients never run trace logic. Damage is applied server-side. Weapons replicate as actors, so they're visible on all clients. Hit reactions and damage feedback on clients should be driven by replicated health changes or Gameplay Cues.
-
-See [Multiplayer](/docs/soulslike-combat/multiplayer) for the full replication overview.
-
-### Damage System (`ISECDamageable`)
-
-The melee trace component fires `OnMeleeHitResponse` when it lands a hit. To get **structured damage results** (parried, blocked, immune, or applied), implement the `ISECDamageable` interface on the target actor.
-
-#### Hit Flow
-
-| Step | What Happens |
-|------|--------------|
-| 1 | `OnMeleeTraceHit` fires with raw hit result |
-| 2 | Your code builds `FSECDamageInfo` → calls `ISECDamageable::ProcessDamage()` |
-| 3 | Damageable returns `FSECDamageResult` (outcome, final damage, response tag) |
-| 4 | `OnMeleeHitResponse` fires with damage result + full execution context |
-| 5 | AI reaction system evaluates based on the response tag |
-
-#### FSECDamageInfo
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `BaseDamage` | `float` | Raw damage before defense |
-| `DamageType` | `FGameplayTag` | e.g. `SEC.Damage.Melee`, `SEC.Damage.Fire` |
-| `Instigator` | `AActor*` | Who dealt the damage |
-| `DamageSource` | `UObject*` | Weapon, ability, or projectile |
-| `HitResult` | `FHitResult` | Impact point, normal, bone |
-| `InstigatorTags` | `FGameplayTagContainer` | Snapshot of instigator's active tags |
-
-#### FSECDamageResult
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `Outcome` | `ESECDamageOutcome` | `Applied`, `Blocked`, `Parried`, `Immune` |
-| `FinalDamage` | `float` | After defense calculation |
-| `ResponseTag` | `FGameplayTag` | Tag for reaction evaluation |
-| `bShouldReact` | `bool` | Whether the target should play a reaction |
-
-#### SkipRecordTags
-
-The `SkipRecordTags` container on the melee trace component allows you to **conditionally skip hit recording**. If the damage result's `ResponseTag` matches any tag in `SkipRecordTags`, the hit is not recorded, so the same actor can be hit again on the next trace tick.
-
-This is useful for **parry windows**: the defender parries, the attacker's weapon bounces off, but can potentially hit again after recovery.
-
-<Protip
-  title="Sense volume pattern"
-  description="For reactions to projectiles or area tells, use a sense-detection volume on the AI and call EvaluateBestReaction() from its overlap event. The melee trace damage path is one of many triggers; the reaction system is stimulus-agnostic."
-/>
-
----
-
-<DocNav 
-  prev={{ title: "Awareness System", href: "/docs/soulslike-combat/awareness-system" }} 
-  next={{ title: "Configuration Reference", href: "/docs/soulslike-combat/configuration" }} 
+<DocNav
+  prev={{ title: "Awareness System", href: "/docs/soulslike-combat/awareness-system" }}
+  next={{ title: "Configuration Reference", href: "/docs/soulslike-combat/configuration" }}
 />

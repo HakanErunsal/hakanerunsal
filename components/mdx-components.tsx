@@ -46,6 +46,10 @@ import AwarenessConfigEscalationDetails from '@/components/AwarenessConfigEscala
 import AwarenessConfigMemoryDetails from '@/components/AwarenessConfigMemoryDetails';
 import TargetSelectionContextDetails from '@/components/TargetSelectionContextDetails';
 import MeleeTraceTeamFilterDetails from '@/components/MeleeTraceTeamFilterDetails';
+import MeleeTraceComponentDetails from '@/components/MeleeTraceComponentDetails';
+import SECDamageConfigDetails from '@/components/SECDamageConfigDetails';
+import MeleeTraceNotifyDetails from '@/components/MeleeTraceNotifyDetails';
+import WeaponTraceSocketDetails from '@/components/WeaponTraceSocketDetails';
 import ThreatDetectionDetails from '@/components/ThreatDetectionDetails';
 import ThreatResponseWiringDetails from '@/components/ThreatResponseWiringDetails';
 import ThreatResponseProfileDetails from '@/components/ThreatResponseProfileDetails';
@@ -106,6 +110,10 @@ const components = {
   AwarenessConfigMemoryDetails,
   TargetSelectionContextDetails,
   MeleeTraceTeamFilterDetails,
+  MeleeTraceComponentDetails,
+  SECDamageConfigDetails,
+  MeleeTraceNotifyDetails,
+  WeaponTraceSocketDetails,
   RegisterCombatTargetBlueprint,
   ThreatDetectionDetails,
   ThreatResponseWiringDetails,

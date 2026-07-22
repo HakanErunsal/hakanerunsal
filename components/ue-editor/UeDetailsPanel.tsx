@@ -792,6 +792,88 @@ export const THREAT_RESPONSE_PROFILE_DETAILS: UeDetailCategory[] = [
   },
 ];
 
+/** USECMeleeTraceComponent core fields — verified against SECMeleeTraceComponent.h */
+export const MELEE_TRACE_COMPONENT_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Damage",
+    properties: [
+      { label: "Default Damage Config", value: { kind: "asset", value: "None" } },
+      { label: "Base Damage", value: n(10, 0) },
+      { label: "Hit Reset Interval", value: n(0, 0) },
+      { label: "Team Filter", value: { kind: "enum", value: "No Filter" } },
+    ],
+  },
+  {
+    title: "Trace",
+    properties: [
+      { label: "Sub Step Distance", value: n(10, 1) },
+      { label: "Max Sub Steps", value: n(20, 1, 50, 0) },
+    ],
+  },
+  {
+    title: "Debug",
+    properties: [
+      { label: "Draw Debug", value: b(false) },
+      { label: "Debug Draw Duration", value: n(0.1, 0), disabled: true },
+    ],
+  },
+];
+
+/** USECDamageConfig — verified against SECDamageConfig.h */
+export const SEC_DAMAGE_CONFIG_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Damage",
+    properties: [
+      { label: "Damage", value: n(10, 0) },
+      { label: "Damage Type", value: { kind: "text", value: "None" } },
+    ],
+  },
+  {
+    title: "Forces",
+    properties: [
+      { label: "Hit Bone Force", value: n(0, 0) },
+      { label: "Hit Overall Force", value: n(0, 0) },
+      { label: "Hit Rotational Force", value: n(0, 0) },
+    ],
+  },
+];
+
+/** USECMeleeTraceNotifyState — verified against SECMeleeTraceNotifyState.h */
+export const MELEE_TRACE_NOTIFY_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Melee Trace",
+    properties: [
+      { label: "Socket IDs", value: { kind: "text", value: "1 Array element" } },
+      { label: "Damage Config", value: { kind: "asset", value: "DA_SwordDamage" } },
+    ],
+  },
+  {
+    title: "Debug",
+    properties: [{ label: "Enable Debug Draw", value: b(false) }],
+  },
+];
+
+/** ASECWeaponBase trace setup — verified against SECWeaponBase.h + FSECTraceSocket */
+export const WEAPON_TRACE_SOCKET_DETAILS: UeDetailCategory[] = [
+  {
+    title: "SEC|Weapon",
+    properties: [
+      { label: "Attach Socket", value: { kind: "text", value: "hand_r" } },
+    ],
+  },
+  {
+    title: "SEC|Trace",
+    properties: [
+      { label: "ID", value: { kind: "text", value: "Blade" } },
+      { label: "Shape", value: { kind: "enum", value: "Capsule Two Point" } },
+      { label: "Socket Or Bone Name", value: { kind: "text", value: "blade_start" } },
+      { label: "End Socket Or Bone Name", value: { kind: "text", value: "blade_end" } },
+      { label: "Radius", value: n(15, 1) },
+      { label: "Trace Channel", value: { kind: "enum", value: "Pawn" } },
+    ],
+  },
+];
+
 /** SECMeleeTraceComponent TeamFilter — verified against SECMeleeTraceComponent.h */
 export const MELEE_TRACE_TEAM_FILTER_DETAILS: UeDetailCategory[] = [
   {
