@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from 'react';
-import { Eye, ShieldAlert } from 'lucide-react';
+import { UePanel, UeViewport } from '@/components/ue-editor';
 
 export default function ThreatVisualizer() {
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -159,19 +159,16 @@ export default function ThreatVisualizer() {
     };
 
     return (
-        <div className="my-8 rounded-lg border border-border bg-black/20 p-4 shadow-sm">
-            <div className="mb-4 flex items-center justify-between border-b border-border pb-2">
-                <h4 className="flex items-center gap-2 font-semibold">
-                    <Eye className="h-4 w-4" />
-                    Interactive Threat Detection
-                </h4>
-                <span className="text-xs text-muted-foreground">Aim with your mouse (Vision Cone)</span>
-            </div>
-
-            <div
+        <UePanel
+            title="Viewport"
+            breadcrumb={["LVL_SEC_Showcase", "Threat"]}
+            assetType="visualizer"
+            caption="Looking at an enemy increases their Threat. High Threat = Aggro."
+        >
+            <UeViewport
                 ref={containerRef}
                 onMouseMove={handleMouseMove}
-                className="relative mx-auto aspect-[400/350] w-full max-w-[400px] cursor-crosshair overflow-hidden rounded bg-black/20"
+                className="relative mx-auto aspect-[400/350] w-full max-w-[400px]"
             >
                 <canvas
                     ref={canvasRef}
@@ -179,11 +176,7 @@ export default function ThreatVisualizer() {
                     height={350}
                     className="absolute inset-0"
                 />
-            </div>
-
-            <div className="mt-2 text-center text-sm text-muted-foreground">
-                Looking at an enemy increases their Threat. High Threat = Aggro.
-            </div>
-        </div>
+            </UeViewport>
+        </UePanel>
     );
 }

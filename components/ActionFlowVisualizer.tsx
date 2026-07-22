@@ -1,11 +1,9 @@
 "use client"
 
 import { useEffect, useState } from 'react';
-import { Box, Zap, Workflow, ArrowDown, MoveDownLeft, MoveDownRight } from 'lucide-react';
-import { cn } from '@/lib/utils'; // Assuming this exists, typical in shadcn/ui. If not, I'll remove it.
+import { Box, Zap, Workflow, ArrowDown } from 'lucide-react';
+import { UeBlueprintNode, UePanel, UE_NODE_HEADERS } from '@/components/ue-editor';
 
-// Fallback for cn if not present, but usually is in these templates.
-// I'll assume standard className construction for safety though to avoid dependency issues.
 function classNames(...classes: (string | undefined | null | false)[]) {
     return classes.filter(Boolean).join(' ');
 }
@@ -66,13 +64,6 @@ export default function ActionFlowVisualizer() {
         return () => { mounted = false; };
     }, []);
 
-    const getNodeStyle = (isActive: boolean, color: string) => {
-        return classNames(
-            "relative z-10 flex h-16 w-16 items-center justify-center rounded-lg border-2 transition-all duration-500",
-            isActive ? `bg-opacity-20 ${color} border-current scale-110 shadow-[0_0_20px_rgba(0,0,0,0.3)]` : "border-border bg-card text-muted-foreground scale-100 opacity-60"
-        );
-    };
-
     const getLineStyle = (isActive: boolean) => {
         return classNames(
             "absolute transition-all duration-500",
@@ -81,13 +72,26 @@ export default function ActionFlowVisualizer() {
     };
 
     return (
-        <div className="my-8 rounded-lg border border-border bg-black/20 p-8 shadow-sm">
+        <UePanel
+            title="Action Evaluation Flow"
+            breadcrumb={["Content", "Plugins", "SoulslikeEnemyCombat", "Components"]}
+            assetType="component"
+            caption={
+                <>The system dynamically chooses the execution method. <span className="text-[#FFB800]">Behavior Trees can be chained</span> for complex sequences.</>
+            }
+        >
             <div className="relative mx-auto flex h-[300px] w-full max-w-[500px] flex-col items-center">
 
                 {/* TOP NODE: Component */}
-                <div className={classNames(getNodeStyle(state === 0, "bg-blue-500/20 border-blue-500 text-blue-500"), "mb-4")}>
-                    <Box className="h-8 w-8" />
-                    <div className="absolute -top-6 whitespace-nowrap text-xs font-semibold text-muted-foreground">
+                <div className="relative mb-4">
+                    <UeBlueprintNode
+                        compact
+                        active={state === 0}
+                        category="component"
+                        title="ActionEvaluationComponent"
+                        icon={<Box className="h-8 w-8" />}
+                    />
+                    <div className="absolute -top-5 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-mono text-[#888888]">
                         ActionEvaluationComponent
                     </div>
                 </div>
@@ -97,8 +101,8 @@ export default function ActionFlowVisualizer() {
 
                     {/* Center Label */}
                     <div className={classNames(
-                        "z-20 rounded bg-background/80 px-3 py-1 text-xs font-mono transition-all duration-300 border border-border",
-                        state === 0 ? "text-foreground border-primary" : "text-muted-foreground"
+                        "z-20 rounded-sm border px-3 py-1 text-xs font-mono transition-all duration-300",
+                        state === 0 ? "border-[#0078d4] bg-[#1e1e22] text-[#c8c8c8]" : "border-[#3a3a3f] bg-[#1a1a1c] text-[#666666]"
                     )}>
                         EvaluateBestAction()
                     </div>
@@ -110,7 +114,7 @@ export default function ActionFlowVisualizer() {
                         <path
                             d="M 250 0 C 250 40, 100 0, 100 80"
                             fill="none"
-                            stroke={state === 1 ? "#22c55e" : "currentColor"}
+                            stroke={state === 1 ? UE_NODE_HEADERS.action : "currentColor"}
                             className={getLineStyle(state === 1)}
                         />
 
@@ -118,7 +122,7 @@ export default function ActionFlowVisualizer() {
                         <path
                             d="M 250 0 C 250 40, 400 0, 400 80"
                             fill="none"
-                            stroke={state >= 2 ? "#f97316" : "currentColor"}
+                            stroke={state >= 2 ? UE_NODE_HEADERS.event : "currentColor"}
                             className={getLineStyle(state >= 2)}
                         />
                     </svg>
@@ -129,13 +133,17 @@ export default function ActionFlowVisualizer() {
 
                     {/* LEFT: Ability */}
                     <div className="flex w-[120px] flex-col items-center gap-2">
-                        <div className={getNodeStyle(state === 1, "bg-green-500/20 border-green-500 text-green-500")}>
-                            <Zap className="h-8 w-8" />
-                        </div>
-                        <div className={classNames("text-xs transition-colors duration-300", state === 1 ? "text-green-500 font-bold" : "text-muted-foreground")}>
+                        <UeBlueprintNode
+                            compact
+                            active={state === 1}
+                            category="ability"
+                            title="Gameplay Ability"
+                            icon={<Zap className="h-8 w-8" />}
+                        />
+                        <div className={classNames("text-xs transition-colors duration-300 font-mono", state === 1 ? "text-[#6CC644] font-bold" : "text-[#666666]")}>
                             Gameplay Ability
                         </div>
-                        <div className={classNames("text-[10px] text-muted-foreground transition-opacity duration-300", state === 1 ? "opacity-100" : "opacity-0")}>
+                        <div className={classNames("text-[10px] text-[#666666] transition-opacity duration-300", state === 1 ? "opacity-100" : "opacity-0")}>
                             (Simple Action)
                         </div>
                     </div>
@@ -143,30 +151,34 @@ export default function ActionFlowVisualizer() {
                     {/* RIGHT: Behavior Tree Chain */}
                     <div className="flex w-[200px] flex-col items-center gap-2">
                         <div className="flex items-center gap-2">
-                            {/* First BT */}
-                            <div className={getNodeStyle(state >= 2, "bg-orange-500/20 border-orange-500 text-orange-500")}>
-                                <Workflow className="h-8 w-8" />
-                            </div>
+                            <UeBlueprintNode
+                                compact
+                                active={state >= 2}
+                                category="flow"
+                                title="Behavior Tree"
+                                icon={<Workflow className="h-8 w-8" />}
+                            />
 
-                            {/* Chain Arrow */}
                             <ArrowDown className={classNames(
                                 "h-4 w-4 -rotate-90 transition-all duration-300",
-                                state === 3 ? "text-orange-500 opacity-100" : "text-muted-foreground opacity-20"
+                                state === 3 ? "text-[#FFB800] opacity-100" : "text-[#666666] opacity-20"
                             )} />
 
-                            {/* Second BT */}
-                            <div className={classNames(
-                                getNodeStyle(state === 3, "bg-orange-500/20 border-orange-500 text-orange-500"),
-                                state < 3 ? "opacity-0 scale-50" : "" // Hide when not active
-                            )}>
-                                <Workflow className="h-8 w-8" />
+                            <div className={classNames(state < 3 ? "opacity-0 scale-50" : "")}>
+                                <UeBlueprintNode
+                                    compact
+                                    active={state === 3}
+                                    category="flow"
+                                    title="Behavior Tree 2"
+                                    icon={<Workflow className="h-8 w-8" />}
+                                />
                             </div>
                         </div>
 
-                        <div className={classNames("text-xs transition-colors duration-300", state >= 2 ? "text-orange-500 font-bold" : "text-muted-foreground")}>
+                        <div className={classNames("text-xs transition-colors duration-300 font-mono", state >= 2 ? "text-[#FFB800] font-bold" : "text-[#666666]")}>
                             Behavior Tree Sequence
                         </div>
-                        <div className={classNames("text-[10px] text-muted-foreground transition-opacity duration-300", state >= 2 ? "opacity-100" : "opacity-0")}>
+                        <div className={classNames("text-[10px] text-[#666666] transition-opacity duration-300", state >= 2 ? "opacity-100" : "opacity-0")}>
                             {state === 3 ? "(Steps can chain!)" : "(Complex Logic)"}
                         </div>
                     </div>
@@ -174,10 +186,6 @@ export default function ActionFlowVisualizer() {
                 </div>
 
             </div>
-
-            <div className="mt-4 text-center text-sm text-muted-foreground">
-                The system dynamically chooses the execution method. <span className="text-orange-500">Behavior Trees can be chained</span> for complex sequences.
-            </div>
-        </div>
+        </UePanel>
     );
 }

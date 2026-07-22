@@ -1,7 +1,9 @@
 "use client"
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { User, Skull, Target, Zap, Play, Pause, RotateCcw, Bot, Plus } from 'lucide-react';
+import { User, Skull, Target, Zap, RotateCcw, Bot, Plus } from 'lucide-react';
+import { UePanel, ueButton, ueDetailsPanel, ueSelect } from '@/components/ue-editor';
+import { cn } from '@/lib/utils';
 
 function classNames(...classes: (string | undefined | null | false)[]) {
     return classes.filter(Boolean).join(' ');
@@ -280,15 +282,19 @@ export default function TargetingVisualizer() {
     const hasAITarget = targets.some(t => t.isAI && t.alive);
 
     return (
-        <div className="my-8 rounded-lg border border-border bg-black/20 p-6 shadow-sm">
-            {/* Controls */}
+        <UePanel
+            title="Viewport"
+            breadcrumb={["LVL_SEC_Showcase", "Targeting"]}
+            assetType="visualizer"
+            caption="Click targets to eliminate. System periodically re-evaluates assignments based on strategy."
+        >
             <div className="mb-4 flex flex-wrap items-center gap-3">
                 <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">Selector:</span>
+                    <span className="text-xs text-[#888888]">Selector:</span>
                     <select
                         value={selector}
                         onChange={(e) => setSelector(e.target.value as SelectorType)}
-                        className="rounded border border-border bg-background px-2 py-1 text-sm"
+                        className={ueSelect()}
                     >
                         <option value="First">First Target</option>
                         <option value="Closest">Closest Target</option>
@@ -298,19 +304,12 @@ export default function TargetingVisualizer() {
                 </div>
 
                 <div className="flex gap-2">
-
-                    <button
-                        onClick={reset}
-                        className="flex items-center gap-1 rounded bg-slate-500/20 px-3 py-1 text-sm hover:bg-slate-500/30"
-                    >
+                    <button type="button" onClick={reset} className={ueButton()}>
                         <RotateCcw className="h-3 w-3" />
                         Reset
                     </button>
                     {!hasAITarget && (
-                        <button
-                            onClick={addAITarget}
-                            className="flex items-center gap-1 rounded bg-amber-500/20 px-3 py-1 text-sm text-amber-400 hover:bg-amber-500/30"
-                        >
+                        <button type="button" onClick={addAITarget} className={ueButton(true)}>
                             <Plus className="h-3 w-3" />
                             Add New Target
                         </button>
@@ -318,8 +317,7 @@ export default function TargetingVisualizer() {
                 </div>
             </div>
 
-            {/* Arena */}
-            <div className="relative mx-auto h-[300px] w-full max-w-[600px] rounded-lg border border-border/50 bg-gradient-to-b from-slate-900/50 to-slate-800/50">
+            <div className="relative mx-auto h-[300px] w-full max-w-[600px] rounded-sm border border-[#2a2a2e] bg-[#0b0b0c]">
 
                 {/* Connection lines */}
                 <svg className="absolute inset-0 h-full w-full pointer-events-none">
@@ -404,13 +402,13 @@ export default function TargetingVisualizer() {
                 ))}
 
                 {/* Legend - Desktop (Absolute) / Mobile (Hidden from here, moved below) */}
-                <div className="hidden sm:block absolute bottom-2 left-2 rounded bg-background/80 p-2 text-[10px] border border-border">
-                    <div className="font-bold text-muted-foreground mb-1">Target Counts</div>
+                <div className={cn(ueDetailsPanel(), "absolute bottom-2 left-2 hidden p-2 text-[10px] sm:block")}>
+                    <div className="mb-1 font-semibold uppercase tracking-wider text-[#888888]">Target Counts</div>
                     {targets.filter(t => t.alive).map(t => (
                         <div key={t.id} className="flex items-center gap-1">
                             <div className="h-2 w-2 rounded-full" style={{ backgroundColor: t.color }} />
                             <span>{t.name}: {counts[t.id] || 0}</span>
-                            {t.isAI && <span className="text-amber-400">(AI)</span>}
+                            {t.isAI && <span className="text-[#FFB800]">(AI)</span>}
                         </div>
                     ))}
                 </div>
@@ -418,25 +416,23 @@ export default function TargetingVisualizer() {
                 {/* Event Log - Desktop (Absolute) / Mobile (Hidden from here, moved below) */}
                 <div
                     ref={logRef}
-                    className="hidden sm:block absolute bottom-2 right-2 w-[180px] rounded bg-background/80 p-2 text-[10px] border border-border max-h-[80px] overflow-hidden"
+                    className={cn(ueDetailsPanel(), "absolute bottom-2 right-2 hidden max-h-[80px] w-[180px] overflow-hidden p-2 text-[10px] sm:block")}
                 >
-                    <div className="font-bold text-muted-foreground mb-1 flex items-center gap-1">
+                    <div className="mb-1 flex items-center gap-1 font-semibold uppercase tracking-wider text-[#888888]">
                         <Zap className="h-3 w-3" /> Events
                         {isRunning && (
-                            <span className="ml-auto text-green-400 animate-pulse">●</span>
+                            <span className="ml-auto animate-pulse text-[#6CC644]">●</span>
                         )}
                     </div>
                     {eventLog.slice(-3).map((log, i) => (
-                        <div key={i} className="text-slate-400 truncate">{log}</div>
+                        <div key={i} className="truncate text-[#888888]">{log}</div>
                     ))}
                 </div>
             </div>
 
-            {/* Mobile Layout: Legend & Logs below */}
             <div className="mt-4 flex flex-col gap-4 sm:hidden">
-                {/* Mobile Legend */}
-                <div className="rounded bg-background/40 p-3 text-xs border border-border">
-                    <div className="font-bold text-muted-foreground mb-2">Target Counts</div>
+                <div className={cn(ueDetailsPanel(), "p-3 text-xs")}>
+                    <div className="mb-2 font-semibold uppercase tracking-wider text-[#888888]">Target Counts</div>
                     <div className="flex flex-wrap gap-4">
                         {targets.filter(t => t.alive).map(t => (
                             <div key={t.id} className="flex items-center gap-1.5">
@@ -448,23 +444,19 @@ export default function TargetingVisualizer() {
                 </div>
 
                 {/* Mobile Log */}
-                <div className="rounded bg-background/40 p-3 text-xs border border-border">
-                    <div className="font-bold text-muted-foreground mb-2 flex items-center gap-2">
+                <div className={cn(ueDetailsPanel(), "p-3 text-xs")}>
+                    <div className="mb-2 flex items-center gap-2 font-semibold uppercase tracking-wider text-[#888888]">
                         <Zap className="h-3 w-3" /> Event Log
-                        {isRunning && <span className="text-green-400 animate-pulse">●</span>}
+                        {isRunning && <span className="animate-pulse text-[#6CC644]">●</span>}
                     </div>
                     <div className="space-y-1">
                         {eventLog.slice(-3).map((log, i) => (
-                            <div key={i} className="text-slate-400 truncate">{log}</div>
+                            <div key={i} className="truncate text-[#888888]">{log}</div>
                         ))}
-                        {eventLog.length === 0 && <div className="text-muted-foreground italic">No events yet</div>}
+                        {eventLog.length === 0 && <div className="italic text-[#666666]">No events yet</div>}
                     </div>
                 </div>
             </div>
-
-            <div className="mt-4 text-center text-sm text-muted-foreground">
-                Click targets to eliminate. System periodically re-evaluates assignments based on strategy.
-            </div>
-        </div>
+        </UePanel>
     );
 }

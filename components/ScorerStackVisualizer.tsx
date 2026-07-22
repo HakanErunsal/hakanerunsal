@@ -1,19 +1,18 @@
 "use client"
 
 import { useEffect, useState } from 'react';
-import { Ruler, ShieldCheck, Sparkles, Plus, Pencil, Check, Layers } from 'lucide-react';
+import { Check, Layers } from 'lucide-react';
+import {
+  UePanel,
+  UeContentBrowserTile,
+  UeDetailsSection,
+  UePropertyRow,
+  UeAssetPicker,
+  UeAssetThumbnail,
+  getAssetAccent,
+} from '@/components/ue-editor';
+import { cn } from '@/lib/utils';
 
-function classNames(...classes: (string | undefined | null | false)[]) {
-    return classes.filter(Boolean).join(' ');
-}
-
-// Stages of the loop:
-// 0  empty list (opt-in: the action rides on its weight)
-// 1  a built-in Distance Scorer drops in
-// 2  a built-in Stamina Gate drops in
-// 3  a custom card is authored on the right and gets named
-// 4  the custom card joins the bottom of the list
-// 5  hold the full stack, then loop
 type Stage = 0 | 1 | 2 | 3 | 4 | 5;
 
 export default function ScorerStackVisualizer() {
@@ -42,185 +41,129 @@ export default function ScorerStackVisualizer() {
         return () => { mounted = false; };
     }, []);
 
-    // A list card. `shown` drives the slide-in; `accent` themes scorer vs gate vs custom.
-    const Card = ({
-        shown, icon, name, kind, effect, accent, dashed,
-    }: {
-        shown: boolean;
-        icon: React.ReactNode;
-        name: string;
-        kind: string;
-        effect: string;
-        accent: string;
-        dashed?: boolean;
-    }) => (
-        <div
-            className={classNames(
-                "flex items-center gap-3 rounded-lg border bg-card px-3 py-2.5 transition-all duration-700 ease-out",
-                dashed ? "border-dashed" : "border-solid",
-                accent,
-                shown ? "translate-x-0 opacity-100" : "translate-x-12 opacity-0",
-            )}
-        >
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-background/60">
-                {icon}
-            </div>
-            <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-semibold text-foreground">{name}</div>
-                <div className="text-[11px] text-muted-foreground">{kind}</div>
-            </div>
-            <div className="shrink-0 rounded bg-background/60 px-2 py-1 font-mono text-[11px] text-muted-foreground">
-                {effect}
-            </div>
-        </div>
-    );
-
-    // Right-side library chip. Lights up while its card is being added.
-    const Chip = ({ active, done, icon, label }: { active: boolean; done: boolean; icon: React.ReactNode; label: string }) => (
-        <div
-            className={classNames(
-                "flex items-center gap-2 rounded-md border px-2.5 py-2 text-xs transition-all duration-300",
-                active ? "border-primary bg-primary/10 text-foreground scale-[1.03]"
-                    : done ? "border-border bg-card text-muted-foreground opacity-50"
-                        : "border-border bg-card text-muted-foreground",
-            )}
-        >
-            <span className="shrink-0">{icon}</span>
-            <span className="truncate">{label}</span>
-            {done && <Check className="ml-auto h-3.5 w-3.5 shrink-0 text-emerald-500" />}
-        </div>
-    );
-
     const distanceShown = stage >= 1;
     const gateShown = stage >= 2;
     const customInList = stage >= 4;
-    const customOnRight = stage === 3 || stage === 4; // authored, before it joins the list
+    const customOnRight = stage === 3 || stage === 4;
 
     return (
-        <div className="my-8 rounded-xl border border-border bg-black/20 p-5 shadow-sm sm:p-6">
-            <div className="mb-5 text-center">
-                <div className="text-sm font-semibold text-foreground">Scoring one action</div>
-                <div className="text-xs text-muted-foreground">
-                    Scorers and gates are opt-in and stack. Add only the dimensions an action should care about.
-                </div>
-            </div>
-
-            <div className="flex flex-col gap-5 md:flex-row md:items-stretch md:gap-6">
-
-                {/* LEFT: the action's Scoring list */}
-                <div className="flex-1">
-                    <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                        <Layers className="h-3.5 w-3.5" />
+        <UePanel
+            title="Content Browser"
+            breadcrumb={["Content", "Plugins", "SoulslikeEnemyCombat", "ActionSets"]}
+            assetType="dataAsset"
+            caption={<>Each scorer multiplies in; each gate can veto. Mix built-ins with custom subclasses.</>}
+        >
+            <div className="flex flex-col gap-3 lg:flex-row lg:gap-4">
+                {/* Details panel — scoring list as property rows */}
+                <div className="min-w-0 flex-1 overflow-hidden rounded-[2px] border border-[#111111]">
+                    <div className="flex items-center gap-1.5 border-b border-[#111111] bg-[#1a1a1a] px-2 py-1 text-[11px] text-[#cccccc]">
+                        <Layers className="h-3 w-3 text-[#888888]" />
                         Scoring list
                     </div>
 
-                    <div className="flex flex-col gap-2">
-                        {/* Base row, always present */}
-                        <div className="flex items-center gap-3 rounded-lg border border-border bg-card/60 px-3 py-2.5">
-                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-background/60 text-muted-foreground">
-                                <span className="font-mono text-xs">W</span>
-                            </div>
-                            <div className="min-w-0 flex-1">
-                                <div className="text-sm font-semibold text-foreground">SelectionWeight</div>
-                                <div className="text-[11px] text-muted-foreground">Always present, the base score</div>
-                            </div>
-                            <div className="shrink-0 rounded bg-background/60 px-2 py-1 font-mono text-[11px] text-muted-foreground">× base</div>
+                    <UeDetailsSection title="Action Scorers">
+                        <UePropertyRow label="SelectionWeight">
+                            <UeAssetPicker value="Always present · × base" />
+                        </UePropertyRow>
+
+                        <div className={cn(
+                            "transition-all duration-700",
+                            distanceShown ? "opacity-100" : "h-0 overflow-hidden opacity-0",
+                        )}>
+                            <UePropertyRow label="Distance Scorer">
+                                <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                                    <UeAssetThumbnail accent={getAssetAccent("dataAsset")} />
+                                    <UeAssetPicker value="Distance Scorer · × range" />
+                                </div>
+                            </UePropertyRow>
                         </div>
 
-                        <Card
-                            shown={distanceShown}
-                            icon={<Ruler className="h-5 w-5 text-sky-400" />}
+                        <div className={cn(
+                            "transition-all duration-700",
+                            gateShown ? "opacity-100" : "h-0 overflow-hidden opacity-0",
+                        )}>
+                            <UePropertyRow label="Stamina Gate">
+                                <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                                    <UeAssetThumbnail accent="#FFB800" />
+                                    <UeAssetPicker value="Stamina Gate · pass / fail" />
+                                </div>
+                            </UePropertyRow>
+                        </div>
+
+                        <div className={cn(
+                            "transition-all duration-700",
+                            customInList ? "opacity-100" : "h-0 overflow-hidden opacity-0",
+                        )}>
+                            <UePropertyRow label="Ally-Count Scorer">
+                                <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                                    <UeAssetThumbnail accent="#A070FF" />
+                                    <UeAssetPicker value="Ally-Count Scorer · × your rule" />
+                                </div>
+                            </UePropertyRow>
+                        </div>
+
+                        {stage === 0 && (
+                            <div className="px-2 py-3 text-center text-[10px] italic text-[#666666]">
+                                No scorers or gates — action scores on weight alone.
+                            </div>
+                        )}
+                    </UeDetailsSection>
+
+                    {/* Live formula bar */}
+                    <div className="border-t border-[#111111] bg-[#151515] px-2 py-2 font-mono text-[10px] text-[#888888]">
+                        score = <span className="text-[#cccccc]">Weight</span>
+                        <span className={cn("transition-opacity", distanceShown ? "text-[#34a8ff] opacity-100" : "opacity-25")}> × Distance</span>
+                        <span className={cn("transition-opacity", gateShown ? "text-[#FFB800] opacity-100" : "opacity-25")}> · (Stamina pass)</span>
+                        <span className={cn("transition-opacity", customInList ? "text-[#C71585] opacity-100" : "opacity-25")}> × Yours</span>
+                    </div>
+                </div>
+
+                {/* Content Browser grid — library tiles */}
+                <div className="shrink-0 lg:w-[240px]">
+                    <div className="mb-2 text-[10px] text-[#666666]">Add from library</div>
+                    <div className="flex flex-wrap gap-2">
+                        <UeContentBrowserTile
                             name="Distance Scorer"
-                            kind="Built-in scorer · multiplier"
-                            effect="× range"
-                            accent="border-sky-500/40"
+                            assetType="dataAsset"
+                            typeLabel="Data Asset (Scorer)"
+                            active={stage === 1}
+                            faded={stage > 1}
                         />
-                        <Card
-                            shown={gateShown}
-                            icon={<ShieldCheck className="h-5 w-5 text-amber-400" />}
+                        <UeContentBrowserTile
                             name="Stamina Gate"
-                            kind="Built-in gate · pass or veto"
-                            effect="pass / fail"
-                            accent="border-amber-500/40"
+                            assetType="dataAsset"
+                            typeLabel="Data Asset (Gate)"
+                            active={stage === 2}
+                            faded={stage > 2}
                         />
-                        <Card
-                            shown={customInList}
-                            icon={<Sparkles className="h-5 w-5 text-violet-400" />}
-                            name="Ally-Count Scorer"
-                            kind="Your subclass · Blueprint or C++"
-                            effect="× your rule"
-                            accent="border-violet-500/50"
-                            dashed
+                        <UeContentBrowserTile
+                            name={customOnRight ? (customNamed ? "Ally-Count Scorer" : "New Scorer") : "Create custom"}
+                            assetType="blueprint"
+                            typeLabel="Blueprint (USECScorer)"
+                            active={customOnRight}
+                            faded={stage === 4}
                         />
-
-                        {/* Empty-state hint */}
-                        <div
-                            className={classNames(
-                                "rounded-lg border border-dashed border-border px-3 py-2.5 text-center text-[11px] text-muted-foreground transition-all duration-500",
-                                stage === 0 ? "opacity-100" : "pointer-events-none h-0 -translate-y-1 overflow-hidden py-0 opacity-0",
-                            )}
-                        >
-                            No scorers or gates. The action scores on its weight alone, the same in every situation, and is never vetoed.
-                        </div>
-                    </div>
-                </div>
-
-                {/* RIGHT: the library you pull from */}
-                <div className="md:w-56">
-                    <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                        Add from the library
                     </div>
 
-                    <div className="flex flex-col gap-2">
-                        <Chip active={stage === 1} done={stage > 1} icon={<Ruler className="h-4 w-4 text-sky-400" />} label="Distance Scorer" />
-                        <Chip active={stage === 2} done={stage > 2} icon={<ShieldCheck className="h-4 w-4 text-amber-400" />} label="Stamina Gate" />
-                        <div className="my-1 text-center text-[10px] uppercase tracking-wider text-muted-foreground/70">or write your own</div>
-
-                        {/* Create-custom affordance: a card authored here, then it joins the list */}
-                        <div
-                            className={classNames(
-                                "rounded-md border border-dashed px-2.5 py-2 transition-all duration-500",
-                                customOnRight ? "border-violet-500/60 bg-violet-500/10" : "border-border bg-card",
-                                stage === 4 ? "scale-95 opacity-40" : "opacity-100",
-                            )}
-                        >
-                            <div className="flex items-center gap-2 text-xs">
-                                {customOnRight
-                                    ? <Pencil className="h-4 w-4 shrink-0 text-violet-400" />
-                                    : <Plus className="h-4 w-4 shrink-0 text-muted-foreground" />}
-                                <span className={classNames("truncate", customOnRight ? "text-foreground" : "text-muted-foreground")}>
-                                    {customOnRight
-                                        ? (customNamed ? "Ally-Count Scorer" : "New Scorer")
-                                        : "Create custom"}
-                                </span>
-                                {customOnRight && !customNamed && (
-                                    <span className="ml-0.5 inline-block h-3.5 w-px animate-pulse bg-violet-400" />
-                                )}
+                    <div className="mt-3 flex flex-col gap-1">
+                        {stage > 1 && (
+                            <div className="flex items-center gap-1 text-[10px] text-[#666666]">
+                                <Check className="h-3 w-3 text-[#6CC644]" /> Distance Scorer added
                             </div>
-                            <div className={classNames(
-                                "mt-1 text-[10px] text-muted-foreground transition-opacity duration-300",
-                                customOnRight ? "opacity-100" : "opacity-0",
-                            )}>
-                                subclass USECScorer, override one function
+                        )}
+                        {stage > 2 && (
+                            <div className="flex items-center gap-1 text-[10px] text-[#666666]">
+                                <Check className="h-3 w-3 text-[#6CC644]" /> Stamina Gate added
                             </div>
-                        </div>
+                        )}
+                        {customInList && (
+                            <div className="flex items-center gap-1 text-[10px] text-[#666666]">
+                                <Check className="h-3 w-3 text-[#6CC644]" /> Custom scorer added
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
-
-            {/* Live formula: grows as scorers stack in */}
-            <div className="mt-5 rounded-lg border border-border bg-background/40 px-4 py-3 text-center">
-                <span className="font-mono text-xs text-muted-foreground sm:text-sm">
-                    score = <span className="text-foreground">Weight</span>
-                    <span className={classNames("transition-opacity duration-500", distanceShown ? "opacity-100 text-sky-400" : "opacity-30")}> × Distance</span>
-                    <span className={classNames("transition-opacity duration-500", gateShown ? "opacity-100 text-amber-400" : "opacity-30")}> · (Stamina pass)</span>
-                    <span className={classNames("transition-opacity duration-500", customInList ? "opacity-100 text-violet-400" : "opacity-30")}> × Yours</span>
-                </span>
-            </div>
-
-            <div className="mt-3 text-center text-xs text-muted-foreground">
-                Each scorer multiplies in; each gate can veto. Mix built-ins with <span className="text-violet-400">your own</span>.
-            </div>
-        </div>
+        </UePanel>
     );
 }

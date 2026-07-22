@@ -14,28 +14,43 @@ module.exports = {
   reactStrictMode: true,
   
   // Webpack configuration
-  webpack: config => {
+  webpack: (config, { dev }) => {
     config.plugins.push(new VeliteWebpackPlugin())
+
+    // Ensure Velite output changes trigger a recompile (content MDX edits)
+    if (dev) {
+      config.watchOptions = {
+        ...config.watchOptions,
+        ignored: ['**/node_modules/**', '**/.git/**'],
+        aggregateTimeout: 300,
+      }
+    }
+
     return config
   }
 }
 
 class VeliteWebpackPlugin {
-  static started = false
+  /** Shared across server/client/edge compilers — all must await Velite */
+  static veliteReady = null
+
   constructor(/** @type {import('velite').Options} */ options = {}) {
     this.options = options
   }
+
   apply(/** @type {import('webpack').Compiler} */ compiler) {
-    // executed three times in nextjs !!!
-    // twice for the server (nodejs / edge runtime) and once for the client
     compiler.hooks.beforeCompile.tapPromise('VeliteWebpackPlugin', async () => {
-      if (VeliteWebpackPlugin.started) return
-      VeliteWebpackPlugin.started = true
-      const dev = compiler.options.mode === 'development'
-      this.options.watch = this.options.watch ?? dev
-      this.options.clean = this.options.clean ?? !dev
-      const { build } = await import('velite')
-      await build(this.options) // start velite
+      if (!VeliteWebpackPlugin.veliteReady) {
+        VeliteWebpackPlugin.veliteReady = (async () => {
+          const dev = compiler.options.mode === 'development'
+          this.options.watch = this.options.watch ?? dev
+          this.options.clean = this.options.clean ?? !dev
+          const { build } = await import('velite')
+          await build(this.options)
+        })()
+      }
+
+      await VeliteWebpackPlugin.veliteReady
     })
   }
 }

@@ -1,7 +1,8 @@
 "use client"
 
 import { useEffect, useState } from 'react';
-import { Brain, Zap, Workflow, Move, Target, Shield, ArrowDown, ChevronDown } from 'lucide-react';
+import { Brain, Zap, Workflow, Move, Target, Shield, ChevronDown } from 'lucide-react';
+import { UePanel } from '@/components/ue-editor';
 
 interface LayerItem {
   label: string;
@@ -83,7 +84,13 @@ export default function ArchitectureDiagram({ layers, caption }: ArchitectureDia
   }, [layers.length]);
 
   return (
-    <div className="my-8 rounded-lg border border-border bg-black/20 p-6 sm:p-8">
+    <UePanel
+      title="Architecture"
+      breadcrumb={["Content", "Plugins", "SoulslikeEnemyCombat"]}
+      assetType="component"
+      caption={caption}
+      bodyClassName="p-6 sm:p-8"
+    >
       <div className="mx-auto flex max-w-[540px] flex-col items-center gap-0">
         {layers.map((layer, idx) => {
           const colors = colorMap[layer.color] || colorMap.blue;
@@ -108,10 +115,10 @@ export default function ArchitectureDiagram({ layers, caption }: ArchitectureDia
               {/* Layer card */}
               <div
                 className={`
-                  w-full rounded-lg border-2 p-4 transition-all duration-500
+                  w-full rounded-sm border-2 p-4 transition-all duration-500
                   ${isActive
                     ? `${colors.bg} ${colors.border} ${colors.glow} scale-[1.02]`
-                    : 'border-border/40 bg-card/30 opacity-60 scale-100'
+                    : 'border-[#3a3a3f]/40 bg-[#1a1a1c]/30 opacity-60 scale-100'
                   }
                 `}
               >
@@ -121,7 +128,7 @@ export default function ArchitectureDiagram({ layers, caption }: ArchitectureDia
                       mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md border transition-all duration-500
                       ${isActive
                         ? `${colors.bg} ${colors.border} ${colors.text}`
-                        : 'border-border bg-card text-muted-foreground'
+                        : 'border-[#3a3a3f] bg-[#1a1a1c] text-[#666666]'
                       }
                     `}
                   >
@@ -154,12 +161,6 @@ export default function ArchitectureDiagram({ layers, caption }: ArchitectureDia
           );
         })}
       </div>
-
-      {caption && (
-        <div className="mt-5 text-center text-sm text-muted-foreground">
-          {caption}
-        </div>
-      )}
-    </div>
+    </UePanel>
   );
 }

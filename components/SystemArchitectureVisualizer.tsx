@@ -5,6 +5,7 @@ import {
     Brain, Zap, Shield, Move, Settings, Radio,
     Hexagon, Server, Monitor, ChevronRight, ArrowRight, Network
 } from 'lucide-react';
+import { UePanel, ueDetailsPanel, UeActorComponentIcon, UeDataAssetThumbnailIcon } from '@/components/ue-editor';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -258,7 +259,6 @@ export default function SystemArchitectureVisualizer() {
 
     const renderNode = (node: NodeDef) => {
         const colors = palette[node.color] || palette.blue;
-        const Icon = node.icon;
         const highlighted = isNodeHighlighted(node.id);
         const isSelected = selectedNode === node.id;
 
@@ -267,39 +267,32 @@ export default function SystemArchitectureVisualizer() {
                 key={node.id}
                 onClick={() => handleNodeClick(node.id)}
                 className={cn(
-                    "group relative flex items-center gap-3 rounded-lg border-2 px-3 py-2.5 transition-all duration-500 text-left w-full",
-                    "hover:scale-[1.02] cursor-pointer",
+                    "ue-component-row group relative flex items-center gap-2 rounded-[2px] border px-2 py-1.5 transition-all duration-500 text-left w-full",
+                    "hover:bg-[#242424] cursor-pointer",
                     highlighted
                         ? `${colors.bg} ${colors.border} ${colors.glow} scale-[1.01]`
-                        : "border-border/40 bg-card/30 opacity-50 scale-100",
-                    isSelected && "ring-2 ring-primary/50 ring-offset-1 ring-offset-background"
+                        : "border-[#383838]/60 bg-[#1A1A1A]/50 opacity-70 scale-100",
+                    isSelected && "ue-component-row-selected ring-1 ring-[#0070E0]"
                 )}
+                data-selected={isSelected}
             >
-                {/* Hex-shaped icon container */}
-                <div
-                    className={cn(
-                        "flex h-9 w-9 flex-shrink-0 items-center justify-center transition-all duration-500",
-                        highlighted ? colors.text : "text-muted-foreground"
-                    )}
-                    style={{
-                        clipPath: "polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)",
-                        background: highlighted ? colors.hexFill : 'rgba(100,116,139,0.08)',
-                        border: `2px solid ${highlighted ? colors.hexStroke : 'rgba(100,116,139,0.2)'}`,
-                    }}
-                >
-                    <Icon className="h-4 w-4" />
-                </div>
+                {node.side === 'data' ? (
+                    <UeDataAssetThumbnailIcon className="h-4 w-4 shrink-0" />
+                ) : (
+                    <UeActorComponentIcon className="h-4 w-4 shrink-0" />
+                )}
 
                 <div className="flex-1 min-w-0">
                     <div className={cn(
-                        "text-xs font-semibold transition-colors duration-500 truncate",
-                        highlighted ? colors.text : "text-muted-foreground"
+                        "truncate text-[11px] transition-colors duration-500",
+                        highlighted ? colors.text : "text-[#C0C0C0]"
                     )}>
                         {node.shortLabel}
+                        <span className="text-[#808080]"> ({node.label.replace(/\s+/g, '')})</span>
                     </div>
                     <div className={cn(
-                        "text-[10px] leading-tight transition-colors duration-500 truncate",
-                        highlighted ? "text-foreground/60" : "text-muted-foreground/40"
+                        "truncate text-[9px] leading-tight transition-colors duration-500",
+                        highlighted ? "text-[#808080]" : "text-[#575757]"
                     )}>
                         {node.description.split('.')[0]}
                     </div>
@@ -335,16 +328,19 @@ export default function SystemArchitectureVisualizer() {
     const flowLabel = selectedNode ? null : conn;
 
     return (
-        <div className="my-8 rounded-lg border border-border bg-black/20 p-4 sm:p-6 shadow-sm">
-
-            {/* Header */}
-            <div className="mb-4 text-center">
-                <div className="text-sm font-semibold text-foreground/80">System Architecture</div>
-                <div className="text-xs text-muted-foreground mt-0.5">
-                    Click any component to see its resolution chain and injection points
-                </div>
-            </div>
-
+        <UePanel
+            title="System Architecture"
+            breadcrumb={["Content", "Plugins", "SoulslikeEnemyCombat"]}
+            assetType="component"
+            bodyClassName="p-3"
+            caption={
+                <>
+                    <span className="text-[#00A2FF]">Controller-side</span> components handle decisions.{' '}
+                    <span className="text-[#6CC644]">Pawn-side</span> components handle resolution chains and replication.{' '}
+                    The <span className="text-[#FFB800]">AIConfig</span> data asset drives everything.
+                </>
+            }
+        >
             {/* Data Asset Row */}
             <div className="mx-auto max-w-[200px] mb-3">
                 {dataNodes.map(renderNode)}
@@ -360,12 +356,12 @@ export default function SystemArchitectureVisualizer() {
 
             {/* Flow indicator */}
             {flowLabel && (
-                <div className="mx-auto mb-3 flex items-center justify-center gap-2 rounded-md bg-background/60 px-3 py-1.5 border border-border max-w-fit">
-                    <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-                    <span className="text-[11px] font-mono text-muted-foreground">
+                <div className={cn(ueDetailsPanel(), "mx-auto mb-3 flex max-w-fit items-center justify-center gap-2 px-3 py-1.5")}>
+                    <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#0078d4]" />
+                    <span className="font-mono text-[11px] text-[#888888]">
                         {flowLabel.label}
                     </span>
-                    <span className="text-[10px] text-muted-foreground/60">
+                    <span className="text-[10px] text-[#666666]">
                         ({nodes.find(n => n.id === flowLabel.from)?.shortLabel} → {nodes.find(n => n.id === flowLabel.to)?.shortLabel})
                     </span>
                 </div>
@@ -549,13 +545,6 @@ export default function SystemArchitectureVisualizer() {
                     );
                 })()}
             </div>
-
-            {/* Footer */}
-            <div className="mt-4 text-center text-[11px] text-muted-foreground">
-                <span className="text-blue-400">Controller-side</span> components handle decisions.{' '}
-                <span className="text-green-400">Pawn-side</span> components handle resolution chains and replication.{' '}
-                The <span className="text-amber-400">AIConfig</span> data asset drives everything.
-            </div>
-        </div>
+        </UePanel>
     );
 }

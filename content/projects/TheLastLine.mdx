@@ -17,7 +17,7 @@ tags: ["Unreal Engine", "Mobile", "Shooter", "Solo Development"]
     <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600' }}>Android</h3>
     <ul style={{ margin: '0 0 20px 0', paddingLeft: '20px', fontSize: '14px', lineHeight: '1.8' }}>
       <li>Downloads: 10,000+</li>
-      <li>Growth: organic, no paid ads</li>
+      <li>Growth: organic</li>
       <li>Live on Google Play</li>
     </ul>
     <a href='https://play.google.com/store/apps/details?id=com.rigbak.thelastline' target="_blank" rel="noopener noreferrer" style={{ display: 'block', textAlign: 'center' }}>
@@ -52,6 +52,7 @@ I built The Last Line alone in about five months: the gameplay, the systems, the
 - **Widget-free combat HUD:** floating damage numbers and hit markers use a fixed pool of structs painted straight onto the HUD canvas, with no UMG and no per-hit allocation, so a busy wave costs the same as a quiet one.
 - **Runs from flagship to budget devices:** a per-device quality tiering system reads the real hardware profile (falling back to physical RAM) and applies the right preset before the first frame, hardening the deferred mobile renderer against shader-compile crashes on low-end GPUs.
 - **Live-ops and resilience:** a self-healing save layer repairs corrupt data at load time, backed by a Firebase backend for weekly leaderboards, analytics, and diagnostics.
+- **Purchases and subscriptions:** in-app purchases and subscriptions run on my [RevenueCat Bridge](/projects/RevenueCatBridge) plugin, which wraps RevenueCat's native Android and iOS SDKs behind one Blueprint and C++ subsystem for purchase, entitlement, and restore flows.
 
 For the full development story and the engineering behind these systems, read the article: [The Last Line: Building a Zombie Shooter for Phones, Solo](/articles/TheLastLine).
 
