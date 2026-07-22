@@ -1,0 +1,61 @@
+---
+description: Workflow, standards, and verified facts for reworking the SoulslikeCombat documentation. Load when writing or editing content/docs/soulslike-combat/** or the ue-editor components.
+globs: content/docs/soulslike-combat/**,components/ue-editor/**,components/*Visualizer.tsx,components/collapsible.tsx
+alwaysApply: true
+---
+
+# SoulslikeCombat Docs Rework
+
+Reworking the SoulslikeCombat docs to a professional level: easy to read, truthful, no bloat, so a designer can follow along. Complex C++ goes in collapsibles, collapsed by default.
+
+## Source of truth
+
+- Plugin source: `D:\Repos\Anchors\Anchor6\Plugins\SoulslikeEnemyCombat`. Verify every claim against the headers (`.h`) and `.cpp` before writing it.
+- The plugin's `README.md` and `PLUGIN_DOCS.md` are **outdated**. Do not trust them (they claim 5.7-only, use stale property names like `IdealMinDistance`, mention a `MakeCoward()` preset that does not exist).
+- Facts: supported engine versions **5.6, 5.7, 5.8**; plugin version **2.3.0** (`.uplugin` reports `EngineVersion 5.6.0`).
+
+## Anti-fabrication (non-negotiable)
+
+- Never invent component, function, property, asset, or tag names. This is user-guiding documentation.
+- If you cannot verify a name against source, verify it or leave it out. No placeholders, no illustrative-but-fake data.
+- Outstanding cleanups: remove `SEC_BLUEPRINT_VARIABLES` from `components/ue-editor/UeBlueprintVariables.tsx` + its `index.ts` export; audit `ReactionFlowVisualizer`/`ActionFlowVisualizer`/`ArchitectureFlowDiagram` for fabricated node names.
+
+## Prose: stop-slop
+
+- Active voice, specific, no filler. No em dashes anywhere (use colons or periods).
+- Step headings use colons. List items end with periods.
+- In tables, "no default" cells use `n/a`, never an em dash.
+
+## Collapsibles
+
+`<Collapsible title badge defaultOpen>` (in `components/collapsible.tsx`), collapsed by default. Badge colors:
+- `C++` (primary): genuinely C++-only detail.
+- `Alternative` (emerald): a different no-C++/no-code path (e.g. reparenting).
+- `Advanced` (amber): optional depth for power users.
+
+## Sidebar ordering
+
+Order comes from an `order:` number in each doc's frontmatter (`velite.config.ts` schema + sort in `components/site-tree-sidebar.tsx`). Flow, 1..17: getting-started, architecture, step-by-step-enemy, movement-system, action-system, reaction-system, combat-roles, targeting, threat, awareness-system, melee-trace, configuration, multiplayer, statetree, patterns, troubleshooting, performance.
+
+## Page roles (avoid cross-page duplication)
+
+- **Getting Started (1):** minimal first enemy, hands-on. Install = install plugin to the chosen engine version, then project → Plugins → enable SoulslikeEnemyCombat. Step 3 uses `GA_SEC_Attack`.
+- **Core Architecture (2):** lean concept page only (two-layer model, component map linking to system pages, runtime flow, scope). No deep C++ API.
+- **API Reference (new):** home for deep C++ tables moved out of architecture.
+- **Step-by-Step Enemy (3):** integration capstone. Do not re-teach pawn/controller/ability basics; link to Getting Started. Unique value = multi-action moveset with combos + testing. Weapon walkthrough is NOT here.
+- **Melee Trace (11):** owns the full weapon walkthrough (`ASECWeaponBase`, trace sockets, `SECMeleeTraceWindow` notify, damage config). Needs an accuracy pass: it currently cites `ISECDamageable::ProcessDamage()` (real method is `ApplyDamage`), an `OnMeleeHit` delegate vs `OnMeleeHitResponse`, and damage fields `BaseDamage`/`ImpulseStrength` vs the real `Damage`/`KnockbackStrength`.
+
+## UE-editor components
+
+- Convert `FLinearColor` to sRGB with gamma correction (`linearToSrgbHex` in `ue-blueprint-theme.ts`), not raw linear values.
+- Show C++ component variables with `UeDetailsPanel` (data-driven UE Details panel), not a fake "My Blueprint variables" list.
+
+## Verified facts (reuse, don't re-derive)
+
+- `IAbilitySystemInterface` is C++-only. The no-C++ path for a custom character/controller is reparenting to `EnemyCharacterBase` / `EnemyControllerBase`.
+- `EnemyCharacterBase` creates the ASC + 4 SEC components (`SECMeleeTraceComponent`, `SECActionSetComponent`, `SECCombatRoleComponent`, `SECReactionSetComponent`), implements 3 interfaces (`IAbilitySystemInterface`, `IEnemyAIConfigProvider`, `ISECDamageable`), and applies a dedicated-server anim-tick fix in `BeginPlay`.
+- `EnemyControllerBase` creates 8 default subobjects incl. `AwarenessComponent`; `ThreatDetectionComponent` is **disabled by default**. It does **not** create a `BotStateTreeAIComponent`; `SECBrainComponent` creates that at runtime. It overrides `UpdateControlRotation` and exposes owner-keyed `LockRotationBy`/`UnlockRotationBy`.
+- `GA_SEC_Attack` (inherits `GameplayAbilityBase`): plays a montage (random from an array if several), forwards `Event_MontageNotifyBegin`/`Event_MontageNotifyEnd`, and sends the end tag. `GameplayAbilityBase` sends `AbilityEndTag` on end and, via `bLockAIRotation`, casts the controller to `AEnemyControllerBase` before locking rotation.
+- `FRangeEval` is a real USTRUCT.
+- Scoring in 2.3.0: distance/angle no longer auto-score. Add a Distance Scorer or Angle Scorer to the action's Scoring list. Per-scorer values live in `FScoreBreakdown.CustomScores`, keyed by each scorer's `GetDisplayName()`, folded into the `Custom` factor.
+- Debug flags: `ActionEvaluationComponent` → `bDebugLogDecisions` / `bDebugLogExecution`; `MovementEvaluatorComponent` → `bDebugLogScoring` / `bDebugDrawScoring`. There is no `bDebugLog`.
