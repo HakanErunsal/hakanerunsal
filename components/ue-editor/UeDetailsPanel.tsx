@@ -653,6 +653,83 @@ export const PROJECT_TARGETING_DETAILS: UeDetailCategory[] = [
   },
 ];
 
+/** UEnemyAIConfig awareness wiring — verified against EnemyAIConfig.h */
+export const AWARENESS_ENEMY_AI_CONFIG_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Awareness",
+    properties: [
+      { label: "Manage Awareness Automatically", value: b(true) },
+      { label: "Awareness Config", value: { kind: "asset", value: "DA_EnemyAwareness" } },
+    ],
+  },
+];
+
+/** USECAwarenessConfig perception senses — verified against SECAwarenessConfig.h */
+export const AWARENESS_CONFIG_SENSES_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Perception",
+    properties: [{ label: "Auto Create Perception Component", value: b(true) }],
+    children: [
+      {
+        title: "Sight",
+        properties: [
+          { label: "Enable Sight", value: b(true) },
+          { label: "Sight Radius", value: n(1500, 0, undefined, 0) },
+          { label: "Lose Sight Radius", value: n(1800, 0, undefined, 0) },
+          { label: "Peripheral Vision Half Angle", value: n(90, 1, 180, 0) },
+        ],
+      },
+      {
+        title: "Hearing",
+        properties: [
+          { label: "Enable Hearing", value: b(true) },
+          { label: "Hearing Range", value: n(1200, 0, undefined, 0) },
+        ],
+      },
+      {
+        title: "Damage",
+        properties: [{ label: "Enable Damage Sense", value: b(true) }],
+      },
+    ],
+  },
+];
+
+/** USECAwarenessConfig escalation meter — verified against SECAwarenessConfig.h */
+export const AWARENESS_CONFIG_ESCALATION_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Escalation",
+    properties: [
+      { label: "Gradual Escalation", value: b(true) },
+      { label: "Escalation Rate", value: n(0.9, 0.01) },
+      { label: "Suspicion Threshold", value: n(0.2, 0, 1) },
+      { label: "Hearing Bump", value: n(0.45, 0, 0.99) },
+      { label: "Distance Rate Curve", value: { kind: "asset", value: "None" } },
+      { label: "Angle Rate Curve", value: { kind: "asset", value: "None" } },
+    ],
+  },
+];
+
+/** USECAwarenessConfig memory, proximity, hysteresis — verified against SECAwarenessConfig.h */
+export const AWARENESS_CONFIG_MEMORY_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Memory",
+    properties: [
+      { label: "Grace Loss Duration", value: n(5, 0) },
+      { label: "Suspicious Decay Duration", value: n(8, 0) },
+      { label: "Evaluation Interval", value: n(0.1, 0.02, 2) },
+      { label: "Track Last Known Location", value: b(true) },
+    ],
+  },
+  {
+    title: "Proximity",
+    properties: [{ label: "Proximity Radius", value: n(220, 0, undefined, 0) }],
+  },
+  {
+    title: "Hysteresis",
+    properties: [{ label: "Confirm Lost Delay", value: n(0.5, 0) }],
+  },
+];
+
 /** UAwarenessFilteredTargetSelector — verified against AwarenessFilteredTargetSelector.h */
 export const AWARENESS_FILTERED_TARGET_SELECTOR_DETAILS: UeDetailCategory[] = [
   {

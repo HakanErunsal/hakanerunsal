@@ -40,6 +40,10 @@ import CooldownRoleEvaluatorDetails from '@/components/CooldownRoleEvaluatorDeta
 import TargetingConfigDetails from '@/components/TargetingConfigDetails';
 import ProjectTargetingDetails from '@/components/ProjectTargetingDetails';
 import AwarenessFilteredTargetSelectorDetails from '@/components/AwarenessFilteredTargetSelectorDetails';
+import AwarenessEnemyAIConfigDetails from '@/components/AwarenessEnemyAIConfigDetails';
+import AwarenessConfigSensesDetails from '@/components/AwarenessConfigSensesDetails';
+import AwarenessConfigEscalationDetails from '@/components/AwarenessConfigEscalationDetails';
+import AwarenessConfigMemoryDetails from '@/components/AwarenessConfigMemoryDetails';
 import TargetSelectionContextDetails from '@/components/TargetSelectionContextDetails';
 import MeleeTraceTeamFilterDetails from '@/components/MeleeTraceTeamFilterDetails';
 import ThreatDetectionDetails from '@/components/ThreatDetectionDetails';
@@ -96,6 +100,10 @@ const components = {
   TargetingConfigDetails,
   ProjectTargetingDetails,
   AwarenessFilteredTargetSelectorDetails,
+  AwarenessEnemyAIConfigDetails,
+  AwarenessConfigSensesDetails,
+  AwarenessConfigEscalationDetails,
+  AwarenessConfigMemoryDetails,
   TargetSelectionContextDetails,
   MeleeTraceTeamFilterDetails,
   RegisterCombatTargetBlueprint,
