@@ -17,7 +17,9 @@ export type UeDetailValue =
   | { kind: "number"; value: number; min?: number; max?: number; decimals?: number }
   | { kind: "enum"; value: string }
   | { kind: "asset"; value?: string }
-  | { kind: "text"; value: string };
+  | { kind: "text"; value: string }
+  /** FGameplayTagContainer: count label plus listed tags when non-empty. */
+  | { kind: "tagContainer"; tags: string[] };
 
 export interface UeDetailProperty {
   label: string;
@@ -110,6 +112,29 @@ function UeComboField({ value, disabled }: { value: string; disabled?: boolean }
   );
 }
 
+function UeTagContainerField({ tags }: { tags: string[] }) {
+  const count = tags.length;
+  const countLabel = count === 1 ? "1 Gameplay Tag" : `${count} Gameplay Tags`;
+
+  if (count === 0) {
+    return <span className="text-[11px] text-[#888888]">0 Gameplay Tags</span>;
+  }
+
+  return (
+    <div className="ue-dp-tag-container flex min-w-0 flex-col gap-1 py-0.5">
+      <div className="ue-dp-combo flex items-center justify-between gap-1 pl-1.5 pr-1">
+        <span className="text-[11px] leading-[18px] text-[#c9c9c9]">{countLabel}</span>
+        <Triangle />
+      </div>
+      {tags.map((tag) => (
+        <div key={tag} className="ml-4 border-l border-[#3a3a3f] pl-2">
+          <span className="ue-dp-tag-name font-mono text-[10px] leading-snug text-[#7ec8e3]">{tag}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function UeValueWidget({ value }: { value: UeDetailValue }) {
   switch (value.kind) {
     case "bool":
@@ -125,21 +150,39 @@ function UeValueWidget({ value }: { value: UeDetailValue }) {
           <Triangle />
         </div>
       );
+    case "tagContainer":
+      return <UeTagContainerField tags={value.tags} />;
     case "text":
       return <span className="text-[11px] text-[#c9c9c9]">{value.value}</span>;
   }
 }
 
 function PropertyRow({ property, indent }: { property: UeDetailProperty; indent: number }) {
+  const isTagContainer = property.value.kind === "tagContainer";
+
   return (
-    <div className={cn("ue-dp-row flex min-h-[26px] items-center", property.disabled && "ue-dp-row--disabled")}>
+    <div
+      className={cn(
+        "ue-dp-row flex min-h-[26px]",
+        isTagContainer ? "items-start py-1" : "items-center",
+        property.disabled && "ue-dp-row--disabled",
+      )}
+    >
       <div
-        className="flex shrink-0 items-center text-[11px] text-[#a9a9a9]"
+        className={cn(
+          "flex shrink-0 items-center text-[11px] text-[#a9a9a9]",
+          isTagContainer && "pt-0.5",
+        )}
         style={{ width: "56%", paddingLeft: indent }}
       >
         <span className="truncate">{property.label}</span>
       </div>
-      <div className="ue-dp-value flex min-w-0 flex-1 items-center pr-4">
+      <div
+        className={cn(
+          "ue-dp-value flex min-w-0 flex-1 pr-4",
+          isTagContainer ? "items-start" : "items-center",
+        )}
+      >
         <UeValueWidget value={property.value} />
       </div>
     </div>
@@ -193,6 +236,7 @@ const n = (value: number, min?: number, max?: number, decimals?: number): UeDeta
   max,
   decimals,
 });
+const tagContainer = (tags: string[]): UeDetailValue => ({ kind: "tagContainer", tags });
 
 export const MOVEMENT_EVALUATOR_DETAILS: UeDetailCategory[] = [
   {
@@ -387,5 +431,202 @@ export const RANGE_EVAL_DETAILS: UeDetailCategory[] = [
       { label: "Exponent", value: n(2, 0.1, 10) },
       { label: "Clamp To Zero", value: b(true) },
     ],
+  },
+];
+
+//=========================================================================
+// Template data: FReactionSpec groups (ReactionSet.h)
+// Verified against Plugins/SoulslikeEnemyCombat/.../Abilities/ReactionSet.h
+//=========================================================================
+
+export const REACTION_IDENTITY_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Identity",
+    properties: [
+      { label: "Enabled", value: b(true) },
+      { label: "Reaction ID", value: { kind: "text", value: "Parry" } },
+      { label: "Reaction Category", value: { kind: "text", value: "None" } },
+    ],
+  },
+];
+
+export const REACTION_EXECUTION_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Execution",
+    properties: [
+      { label: "Ability Class", value: { kind: "asset", value: "None" } },
+      { label: "Activation Mode", value: { kind: "enum", value: "By Event" } },
+      { label: "Ability Tag", value: { kind: "text", value: "None" } },
+      { label: "Ability End Tag", value: { kind: "text", value: "None" } },
+      { label: "Ability Timeout", value: n(0) },
+    ],
+  },
+];
+
+export const REACTION_TAGS_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Tags",
+    properties: [
+      { label: "Add Tags", value: tagContainer([]) },
+      { label: "Requires Tags", value: tagContainer([]) },
+      { label: "Block Tags", value: tagContainer([]) },
+    ],
+  },
+];
+
+/** Tags subset checked by PassesReactionGates (RequiresTags / BlockTags on the ASC). */
+export const REACTION_GATE_TAGS_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Tags",
+    properties: [
+      { label: "Requires Tags", value: tagContainer([]) },
+      { label: "Block Tags", value: tagContainer([]) },
+    ],
+  },
+];
+
+const REACTION_ACTIVE = "SEC.State.ReactionActive";
+
+/** Parry: marks itself active; nothing blocked. */
+export const REACTION_BLOCKING_PARRY_TAGS: UeDetailCategory[] = [
+  {
+    title: "Tags",
+    properties: [
+      { label: "Add Tags", value: tagContainer([REACTION_ACTIVE]) },
+      { label: "Requires Tags", value: tagContainer([]) },
+      { label: "Block Tags", value: tagContainer([]) },
+    ],
+  },
+];
+
+/** Dodge: same active tag, but blocked while ReactionActive is already on the ASC. */
+export const REACTION_BLOCKING_DODGE_TAGS: UeDetailCategory[] = [
+  {
+    title: "Tags",
+    properties: [
+      { label: "Add Tags", value: tagContainer([REACTION_ACTIVE]) },
+      { label: "Requires Tags", value: tagContainer([]) },
+      { label: "Block Tags", value: tagContainer([REACTION_ACTIVE]) },
+    ],
+  },
+];
+
+/** @deprecated Use REACTION_BLOCKING_PARRY_TAGS / REACTION_BLOCKING_DODGE_TAGS */
+export const REACTION_BLOCKING_TAGS_EXAMPLE = REACTION_BLOCKING_DODGE_TAGS;
+
+export const REACTION_SCORING_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Scoring",
+    properties: [
+      { label: "Priority", value: n(0, undefined, undefined, 0) },
+      { label: "Selection Weight", value: n(1, 0.01) },
+      { label: "Scoring", value: { kind: "text", value: "0 Array elements" } },
+    ],
+  },
+];
+
+export const REACTION_ACTION_INTERACTION_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Action Interaction",
+    properties: [{ label: "Cancel Current Action", value: b(true) }],
+  },
+];
+
+/** Editor fields that feed PassesReactionGates: Enabled, ASC tag gates, cooldown struct. */
+export const REACTION_PRECONDITION_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Identity",
+    properties: [{ label: "Enabled", value: b(true) }],
+  },
+  ...REACTION_GATE_TAGS_DETAILS,
+  ...ACTION_COOLDOWN_DETAILS,
+];
+
+export const REACTION_SPEC_DETAILS: UeDetailCategory[] = [
+  ...REACTION_IDENTITY_DETAILS,
+  ...REACTION_EXECUTION_DETAILS,
+  ...REACTION_TAGS_DETAILS,
+  ...REACTION_SCORING_DETAILS,
+  ...REACTION_ACTION_INTERACTION_DETAILS,
+];
+
+//=========================================================================
+// Template data: UEnemyAIConfig combat role fields
+// Verified against Plugins/SoulslikeEnemyCombat/.../AI/EnemyAIConfig.h
+// and FAIRoleRegistrationParams in AICombatRoleTypes.h
+//=========================================================================
+
+export const COMBAT_ROLE_CONFIG_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Combat Role",
+    properties: [
+      { label: "Auto-Register for Combat Roles", value: b(true) },
+      { label: "Allowed Roles (empty = any)", value: tagContainer([]) },
+      { label: "Priority", value: n(0, 0, 1000, 0) },
+      { label: "Preferred Role", value: { kind: "text", value: "None" } },
+      { label: "Fitness Evaluators", value: { kind: "text", value: "0 Array elements" } },
+      { label: "Target Selector", value: { kind: "asset", value: "None" } },
+      { label: "Ignore Target Redistribution", value: b(false) },
+    ],
+  },
+];
+
+//=========================================================================
+// Template data: USoulslikeEnemyCombatSettings timing fields
+// Verified against SoulslikeEnemyCombatSettings.h
+//=========================================================================
+
+export const COMBAT_ROLE_TIMING_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Timing",
+    properties: [
+      { label: "Role Reassignment Interval", value: n(8) },
+      { label: "Min Time In Role", value: n(8) },
+      { label: "Re-evaluate Targets On Reassignment", value: b(false) },
+    ],
+  },
+];
+
+//=========================================================================
+// Template data: UDistanceRoleEvaluator / UCooldownRoleEvaluator
+// Verified against Plugins/SoulslikeEnemyCombat/.../Subsystems/RoleEvaluator.h
+//=========================================================================
+
+export const DISTANCE_ROLE_EVALUATOR_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Affected Roles",
+    properties: [
+      { label: "Role Influence Weights", value: { kind: "text", value: "SEC.Role.Attacker → 1.0" } },
+      { label: "Influence On Unlisted Roles", value: n(0, 0, 1) },
+    ],
+  },
+  {
+    title: "Scoring",
+    properties: [{ label: "Score Mode", value: { kind: "enum", value: "Higher Score = Better Fit" } }],
+  },
+  {
+    title: "Distance Settings",
+    properties: [
+      { label: "Ideal Distance", value: n(0) },
+      { label: "Effective Range", value: n(2000, 1) },
+    ],
+  },
+];
+
+export const COOLDOWN_ROLE_EVALUATOR_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Affected Roles",
+    properties: [
+      { label: "Role Influence Weights", value: { kind: "text", value: "0 Map elements" } },
+      { label: "Influence On Unlisted Roles", value: n(0, 0, 1) },
+    ],
+  },
+  {
+    title: "Scoring",
+    properties: [{ label: "Score Mode", value: { kind: "enum", value: "Higher Score = Better Fit" } }],
+  },
+  {
+    title: "Cooldown Settings",
+    properties: [{ label: "Current Role Penalty", value: n(0.5, 0, 1) }],
   },
 ];

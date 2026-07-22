@@ -14,7 +14,7 @@ export default function ActionScoreFormula() {
       factors={ACTION_SCORE_FACTORS}
       caption={
         <>
-          Highest score wins. Leave a scorer off and that dimension drops out of the product.
+          Highest score above zero wins. Leave a scorer off and that dimension drops out of the product. Jitter is deterministic from the decision context seed.
         </>
       }
     />

@@ -29,6 +29,14 @@ import MovementProfileDetails from '@/components/MovementProfileDetails';
 import DistanceBandVisualizer from '@/components/DistanceBandVisualizer';
 import ActionCooldownDetails from '@/components/ActionCooldownDetails';
 import RangeEvalDetails from '@/components/RangeEvalDetails';
+import ReactionSpecDetails from '@/components/ReactionSpecDetails';
+import ReactionPreconditionDetails from '@/components/ReactionPreconditionDetails';
+import ReactionScoringDetails from '@/components/ReactionScoringDetails';
+import ReactionBlockingTagsDetails from '@/components/ReactionBlockingTagsDetails';
+import CombatRoleConfigDetails from '@/components/CombatRoleConfigDetails';
+import CombatRoleTimingDetails from '@/components/CombatRoleTimingDetails';
+import DistanceRoleEvaluatorDetails from '@/components/DistanceRoleEvaluatorDetails';
+import CooldownRoleEvaluatorDetails from '@/components/CooldownRoleEvaluatorDetails';
 import ActionScoreFormula from '@/components/ActionScoreFormula';
 import Reviews from '@/components/Reviews';
 
@@ -68,6 +76,14 @@ const components = {
   DistanceBandVisualizer,
   ActionCooldownDetails,
   RangeEvalDetails,
+  ReactionSpecDetails,
+  ReactionPreconditionDetails,
+  ReactionScoringDetails,
+  ReactionBlockingTagsDetails,
+  CombatRoleConfigDetails,
+  CombatRoleTimingDetails,
+  DistanceRoleEvaluatorDetails,
+  CooldownRoleEvaluatorDetails,
   ActionScoreFormula,
   Reviews,
   // Prevent hydration errors from block elements nested inside <p>

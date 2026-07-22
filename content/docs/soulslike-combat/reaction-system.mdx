@@ -1,6 +1,6 @@
 ---
 title: "Reaction System"
-description: "Event-driven AI reactions - parry, dodge, counter - that respond to game events in real time."
+description: "Event-driven AI reactions: parry, dodge, counter. They respond to game events in real time."
 date: 2026-02-26
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Reactions"]
@@ -14,40 +14,28 @@ order: 6
     { label: "Reaction System" }
 ]} />
 
-> Actions poll on a timer. Reactions fire from events.
-
-<ReactionFlowVisualizer />
+> Actions poll on a timer. Reactions fire from events you trigger.
 
 ## When to Use This
 
 - AI that parries incoming attacks
-- Dodge-rolls triggered by projectile detection
+- Dodge rolls triggered by projectile detection
 - Counter-attacks after blocking
-- Any "respond to this stimulus" behavior
+- Any respond-to-this-stimulus behavior
 
-> The system doesn't decide **when** to react: you do. It decides **what** to react with and whether the reaction is allowed.
+> The system does not decide **when** to react: you do. Most setups call `ExecuteReaction` with a known `ReactionId`. Use `EvaluateBestReaction` only when several reactions in the same category should compete.
 
 ---
 
-## Core Concepts
-
-### Actions vs Reactions
+## Actions vs Reactions
 
 | | Actions | Reactions |
 |---|---------|-----------|
-| **Trigger** | Polled on a timer by the brain | Event-driven from your Blueprint/C++ |
-| **Selection** | Score-based (distance, angle, context) | Priority + weighted random |
+| **Trigger** | Polled on a timer by the brain | Event-driven from your Blueprint or C++ |
+| **Selection** | Score-based (distance, angle, context) | Usually **by ID**; optional priority + weighted random |
 | **Component** | `ActionEvaluationComponent` | `ReactionEvaluationComponent` |
-| **Data Asset** | `ActionSet` | `ReactionSet` |
-| **When to use** | "What should I do next?" | "Something happened - how do I respond?" |
-
-### How It Works
-
-1. **Something happens** - your code detects a stimulus (damage, projectile, proximity)
-2. **Ask the system** - call `EvaluateBestReaction()` with an optional category filter
-3. **System evaluates** - checks gates (enabled, cooldown, BlockReactions tag, RequiresTags, BlockTags), groups by priority, picks weighted random winner
-4. **You fire it** - call `ExecuteReaction()` with the chosen reaction ID and a context payload
-5. **Lifecycle managed** - the system handles ability activation, tag management, cooldowns, timeout, and completion
+| **Data asset** | `ActionSet` | `ReactionSet` |
+| **When to use** | "What should I do next?" | "Something happened: how do I respond?" |
 
 ---
 
@@ -55,308 +43,227 @@ order: 6
 
 Create via **Right-click → Miscellaneous → Data Asset → ReactionSet**.
 
-Each entry is an `FReactionSpec`:
+Each entry in the **Reactions** array is an `FReactionSpec`. Defaults from the plugin header:
 
-### Identity
+<ReactionSpecDetails />
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `bEnabled` | `bool` | Toggle without removing |
-| `ReactionId` | `FName` | Unique name: `"Parry"`, `"DodgeLeft"`, `"Counter"` |
-| `ReactionCategory` | `FGameplayTag` | Grouping tag for `EvaluateBestReaction()` |
+Assign **Ability Class** to a `UGameplayAbilityBase` subclass: the editor auto-fills **Ability Tag** and **Ability End Tag**. **Activation Mode** defaults to **By Event** on reactions (actions default to By Tag).
 
-### Execution
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `AbilityClass` | `TSubclassOf<UGameplayAbility>` | Ability to activate (auto-granted to ASC) |
-| `ActivationMode` | `EAbilityActivationMode` | `ByEvent` (default) or `ByTag` |
-| `AbilityTag` | `FGameplayTag` | Tag for activation |
-| `AbilityEndTag` | `FGameplayTag` | Tag to listen for on ability completion |
-| `AbilityTimeout` | `float` | Max seconds to wait (0 = infinite) |
-
-### Tags
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `AddTags` | `FGameplayTagContainer` | Applied to ASC while reaction is active |
-| `RequiresTags` | `FGameplayTagContainer` | All must be present to allow this reaction |
-| `BlockTags` | `FGameplayTagContainer` | If any are present, this reaction is blocked |
-
-### Scoring
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `Priority` | `int32` | Higher value = chosen first |
-| `SelectionWeight` | `float` | Random tiebreak among equal-priority reactions |
-| `Cooldown` | `FActionCooldown` | Same cooldown struct as actions |
-| `CustomScoring` | `FSECCustomScoring` | Scorers scale the selection weight, gates allow or deny. See [Scorers & Gates](/docs/soulslike-combat/action-system#scorers--gates). |
+**Reaction Category**, **Priority**, and **Selection Weight** on the spec matter only when you use [`EvaluateBestReaction`](#choosing-a-reaction-optional). For direct `ExecuteReaction("Parry", …)` calls, the ID alone selects the reaction.
 
 <Callout type="warning">
-  The built-in Distance, Angle, Health, and Speed Scorers and the Stamina Gate read the decision-context snapshot, which the action path builds. On a reaction, the snapshot holds its defaults (distance 0, angle 0, speed 0, health 1.0, stamina 100), so those scorers and the gate evaluate against placeholder values rather than the live combat state. Score reactions with `Priority`, `SelectionWeight`, tags (`RequiresTags` / `BlockTags`), and Attribute Scorers / Attribute Gates, which read live GameplayAttributes.
+  Reaction abilities **must** inherit from `UGameplayAbilityBase`. It handles the end-event handshake that tells the system when the ability finishes. Without it, the AI waits until timeout.
 </Callout>
 
-### Action Interaction
+### Preconditions you author
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `bCancelCurrentAction` | `bool` | Cancel running action when reaction fires (default: true) |
+These ReactionSet fields feed `PassesReactionGates` (the same check runs at selection and again at execute):
 
-<Protip 
-  title="Block actions via tags" 
-  description="To prevent new actions during a reaction, add SEC.Action.BlockActions to AddTags. This is checked in PassesHardGates() on the action side, so blocked actions won't even be evaluated." 
+<ReactionPreconditionDetails />
+
+Unlike actions, **Requires Tags** and **Block Tags** read **only the AI's ASC**, not target or world tags. **Add Tags** is not a gate: it is applied while the reaction runs (see [Triggering Reactions](#triggering-reactions)).
+
+<Protip
+  title="Block actions via tags"
+  description="Add SEC.Action.BlockActions to Add Tags to freeze offensive action selection while the reaction runs. Actions check that tag in PassesHardGates()."
 />
 
 ---
 
-## Selection Logic
+## Assigning the ReactionSet
 
-```
-EvaluateBestReaction(CategoryTag, TargetOverride):
-  1. Filter by CategoryTag (skip if empty)
-  2. Gate checks per reaction:
-     - Is enabled?
-     - Off cooldown?
-     - Under MaxConsecutiveUses?
-     - SEC.Reaction.BlockReactions not on ASC?
-     - All RequiresTags present?
-     - No BlockTags present?
-     - Gates pass?
-  3. Scorers scale each survivor's weight. Distance, angle, speed, and health read
-     live against TargetOverride, or the controller's focus actor when not set.
-  4. A weight of zero is a hard veto: that reaction is dropped, never chosen.
-  5. Group the survivors by Priority (highest first)
-  6. Weighted random pick among the top-priority group
-  → FChosenReaction { ReactionId, AbilityTag, Priority, Weight }
-  → invalid FChosenReaction when nothing qualifies (check IsValid())
+`SECReactionSetComponent` on the pawn resolves which `ReactionSet` an enemy uses. `EnemyCharacterBase` creates it automatically; `EnemyControllerBase` already has `ReactionEvaluationComponent`.
+
+1. **Assign the asset:** Set `DefaultReactionSet` on `EnemyAIConfig`, or add role entries to `RoleReactionSets` (see [Combat Roles](/docs/soulslike-combat/combat-roles)). Or set `DefaultReactionSet` on the pawn component for zero-config testing.
+2. **Custom pawns:** Add `SECReactionSetComponent` manually if not using `EnemyCharacterBase`.
+
+On every **[combat role assignment or change](/docs/soulslike-combat/combat-roles)** (including the first assignment after a combat target is registered), `SECCombatControllerComponent::SyncStateForCombatRole` calls `SECReactionSetComponent::SyncForCombatRole`, which resolves the chain below and pushes the result to `ReactionEvaluationComponent::SetReactionSet`. Until that sync runs, the controller has no active reactions even if the config asset is set.
+
+### Quick path
+
+Minimum to get one parry working after assign:
+
+```cpp
+// On controller, after pawn is possessed and reaction set is synced:
+FSECExecutionContext Context;
+Context.Target = Attacker;
+ReactionComp->ExecuteReaction("Parry", Context);
 ```
 
----
+In Blueprint: get `Reaction Evaluation Component` on the AI controller, call **Execute Reaction** with the `ReactionId` from your ReactionSet and a filled **Context** struct.
 
-## ReactionEvaluationComponent
+The resolver walks this chain and returns the **first match**:
 
-Lives on the **AIController** alongside `ActionEvaluationComponent`.
+| Priority | Source | Use |
+|----------|--------|-----|
+| 1 (highest) | **Runtime Override** | `SetRuntimeOverride(ReactionSet)`. Boss phase transitions. |
+| 2 | **Equipped Weapon** | Weapon on the sibling `SECActionSetComponent` implementing `ISECWeaponReactionSetProvider`. |
+| 3 | **Config Role** | Role-specific ReactionSet from `EnemyAIConfig → RoleReactionSets`. |
+| 4 | **Config Default** | Fallback from `EnemyAIConfig → DefaultReactionSet`. |
+| 5 | **Component Default** | `SECReactionSetComponent → DefaultReactionSet` on the pawn. |
+| 6 | **None** | No ReactionSet. The AI cannot react. |
 
-### Core API
+Weapon and override changes take effect on the next sync. Set the equipped weapon on **`SECActionSetComponent`** (`SetEquippedWeapon`); the reaction component reads it from there.
 
-| Function | Description |
-|----------|-------------|
-| `SetReactionSet(UReactionSet*)` | **Deprecated.** Use `SECReactionSetComponent` for reaction set management. This function still works but bypasses the resolution chain. |
-| `CanReact(FName ReactionId, AActor* TargetOverride = nullptr)` | Quick gate check without executing. `TargetOverride` scores target-relative gates, falling back to the focus actor. |
-| `EvaluateBestReaction(FGameplayTag CategoryTag, AActor* TargetOverride = nullptr)` | Find best available reaction. Returns `FChosenReaction`; check `IsValid()`. `TargetOverride` sets what distance and angle score against, falling back to the focus actor. |
-| `ExecuteReaction(FName ReactionId, FSECExecutionContext Context)` | Fire a reaction with full context. |
-| `StopCurrentReaction(bool bSuccess)` | Manually stop the running reaction. |
-| `IsReactionExecuting()` | True while a reaction is active. |
-| `GetCurrentReactionId()` | Name of the currently running reaction. |
-
-### Delegates
-
-| Delegate | Parameters | When |
-|----------|------------|------|
-| `OnReactionStarted` | `FName ReactionId, FSECExecutionContext Context` | Reaction begins |
-| `OnReactionCompleted` | `FName ReactionId, bool bSuccess, FSECExecutionContext Context` | Reaction finishes (success or timeout) |
-
-<Callout type="warning">
-  Your reaction ability **must** inherit from `UGameplayAbilityBase`. It handles the end-event handshake that tells the system when the ability finishes. Without it, the AI gets stuck waiting until timeout.
-</Callout>
-
----
-
-## Execution Flow
-
-```
-ExecuteReaction("Parry", Context)
-  ├── 1. Validate gates (enabled, cooldown, BlockReactions, RequiresTags, BlockTags)
-  ├── 2. Cancel current action (if bCancelCurrentAction)
-  ├── 3. Apply AddTags to ASC
-  ├── 4. Pack FSECExecutionContext into FGameplayEventData
-  │      ├── Auto-populate InstigatorTags from instigator ASC
-  │      ├── Auto-populate TargetTags from target ASC
-  │      └── TargetData passed through directly
-  ├── 5. Activate ability (ByEvent or ByTag)
-  ├── 6. Start cooldown, record use
-  ├── 7. Fire OnReactionStarted
-  └── Listen for: AbilityEndTag event OR AbilityTimeout
-       └── CompleteExecution
-           ├── Remove AddTags from ASC
-           └── Fire OnReactionCompleted
-```
-
-The reaction commits its cooldown only after the ability activates (step 6 follows step 5), so a `CanActivateAbility` that refuses the activation leaves the reaction off cooldown. That override can read the hydrated `GetActionContext()` payload to make its decision. See [Gate Before Activation](/docs/soulslike-combat/action-system#3-gate-before-activation) in the Action System.
-
----
-
-## Reaction-to-Reaction Blocking
-
-No dedicated flag needed. Use `AddTags` and `BlockTags` for full control:
-
-```
-Reaction A (Parry):
-  AddTags:   [SEC.State.ReactionActive]
-  BlockTags: []
-
-Reaction B (Dodge):
-  AddTags:   [SEC.State.ReactionActive]
-  BlockTags: [SEC.State.ReactionActive]   ← can't fire while Parry is active
-```
-
-To block **all** reactions globally (e.g., during stun), apply the `SEC.Reaction.BlockReactions` tag to the ASC. This is checked inside `PassesReactionGates()` before any per-reaction tag check.
-
----
-
-## FSECExecutionContext
-
-Both actions and reactions share the same unified context struct:
-
-| Field | Type | Filled By |
-|-------|------|-----------|
-| `Target` | `TWeakObjectPtr<AActor>` | Caller |
-| `OptionalObject` | `TWeakObjectPtr<UObject>` | Caller |
-| `Magnitude` | `float` | Caller |
-| `EventTag` | `FGameplayTag` | Caller |
-| `ContextTags` | `FGameplayTagContainer` | Caller |
-| `TargetData` | `FGameplayAbilityTargetDataHandle` | Caller |
-| `DistanceToTarget` | `float` | System (auto) |
-| `DirectionToTarget` | `FVector` | System (auto) |
-| `InstigatorTags` | `FGameplayTagContainer` | System (auto from ASC) |
-| `TargetTags` | `FGameplayTagContainer` | System (auto from ASC) |
-
-Use `USECTargetDataLibrary` to pack spatial data (directions, locations, transforms) into `TargetData`.
-
----
-
-## SECReactionSetComponent (Pawn)
-
-Mirrors `SECActionSetComponent` for actions. Lives on the **pawn**, handles reaction set resolution, replication, and runtime overrides.
-
-`EnemyCharacterBase` creates this component automatically. If you use a custom pawn, add it manually.
-
-### Resolution Priority
-
-When `GetReactionSetForRole()` is called, it walks this chain and returns the **first match**:
-
-1.  **Runtime Override** - `SetRuntimeOverride(ReactionSet)`. Highest priority. Use for boss phase transitions.
-2.  **Equipped Weapon** - If the weapon actor implements `ISECWeaponReactionSetProvider`, calls `GetWeaponReactionSetForRole(RoleTag)`.
-3.  **Config Role** - Role-specific ReactionSet from `EnemyAIConfig → RoleReactionSets[CurrentRole]`.
-4.  **Config Default** - Fallback from `EnemyAIConfig → DefaultReactionSet`.
-5.  **Component Default** - `SECReactionSetComponent → DefaultReactionSet` property (set in Blueprint).
-6.  **None** - No ReactionSet found. AI cannot react.
-
-> This is the same resolution chain as `SECActionSetComponent`. Learn one, know both.
+> `SECActionSetComponent` uses the same resolution chain for action sets.
 
 ### Swap Modes
 
-When a reaction set swap is triggered while a reaction is already executing:
+When a reaction set swap runs while a reaction is already executing:
 
 | Mode | Behavior |
 |------|----------|
-| `ESECReactionSetSwapMode::Immediate` | Cancel the current reaction and swap immediately. |
-| `ESECReactionSetSwapMode::WaitForCompletion` | Queue the swap. It applies automatically when the current reaction completes. |
+| `ESECReactionSetSwapMode::Immediate` | Cancel the current reaction and swap now (default). |
+| `ESECReactionSetSwapMode::WaitForCompletion` | Queue the swap; it applies when the current reaction completes. |
 
-Set via the `SwapMode` property on the component, or pass it to `SetRuntimeOverride()`.
+Pass the mode to `SetRuntimeOverride`, `ClearRuntimeOverride`, or `SyncForCombatRole`. There is no persistent `SwapMode` property on the component.
 
-### Replicated State
-
-These properties replicate to all clients for UI, VFX, and animation purposes:
-
-| Property | Type | Purpose |
-|----------|------|---------|
-| `CurrentReactionId` | `FName` | Name of the currently executing reaction |
-| `bReactionExecuting` | `bool` | True while a reaction is active |
-| `ActiveReactionSet` | `UReactionSet*` | The currently resolved reaction set |
-
-### Delegates
-
-| Delegate | Parameters | When |
-|----------|------------|------|
-| `OnReactionExecutionStarted` | `FName ReactionId` | Reaction begins (replicated) |
-| `OnReactionExecutionCompleted` | `FName ReactionId, bool bSuccess` | Reaction finishes (replicated) |
-| `OnReactionSetChanged` | `UReactionSet* NewSet` | Active ReactionSet changes (replicated) |
-| `OnReactionCooldownStarted` | `FName ReactionId, float Duration` | Cooldown begins (replicated) |
-| `OnReactionCooldownExpired` | `FName ReactionId` | Cooldown expires (replicated) |
-
-### Weapon Reaction Set Provider
-
-To make a weapon provide reaction sets, implement `ISECWeaponReactionSetProvider` on your weapon actor:
+<Collapsible title="Weapon reaction set provider and replicated state" badge="Advanced">
+Implement `ISECWeaponReactionSetProvider` on your weapon actor and override `GetWeaponReactionSetForRole(RoleTag)`.
 
 ```cpp
-// Your weapon actor implements ISECWeaponReactionSetProvider
-UReactionSet* GetWeaponReactionSetForRole(FGameplayTag RoleTag) override
-{
-    // Return a role-specific reaction set, or a single set for all roles
-    return MyWeaponReactionSet;
-}
+Pawn->ActionSetComponent->SetEquippedWeapon(WeaponActor);
+Pawn->ActionSetComponent->SetEquippedWeapon(nullptr);  // revert to config resolution
 ```
 
-```cpp
-// Tell the pawn about the weapon:
-Pawn->ReactionSetComponent->SetEquippedWeapon(WeaponActor);
-
-// Clear to revert to Config-based resolution:
-Pawn->ReactionSetComponent->SetEquippedWeapon(nullptr);
-```
-
-### Key API
-
-| Function | Description |
-|----------|-------------|
-| `SetEquippedWeapon(AActor*)` | Set weapon for reaction set resolution via `ISECWeaponReactionSetProvider`. |
-| `SetRuntimeOverride(UReactionSet*)` | Override resolution chain. Takes effect immediately or queued based on SwapMode. |
-| `ClearRuntimeOverride()` | Remove override, fall back to normal resolution. |
-| `SyncForCombatRole(FGameplayTag Role, UEnemyAIConfig* Config)` | Called by controller on role change. Resolves and applies the correct set. |
-| `GetRemainingCooldown(ReactionId)` | Returns remaining cooldown seconds (0 if not cooling down). |
-| `IsReactionOnCooldown(ReactionId)` | Returns true if the reaction is on cooldown. |
-| `GetAllActiveCooldowns()` | Returns array of all active `FSECCooldownEntry` structs. |
+**Replicated state** on `SECReactionSetComponent` (client UI, VFX, debug): `CurrentReactionId`, `bReactionExecuting`, `ActiveReactionSet`, `OnReactionExecutionStarted` / `OnReactionExecutionCompleted`, `OnReactionSetChanged`, cooldown delegates, and `GetRemainingCooldown` / `IsReactionOnCooldown` / `GetAllActiveCooldowns`.
+</Collapsible>
 
 ---
 
-## Quick Setup
+## Triggering Reactions
 
-1. **Create Asset:** Right-click → Miscellaneous → Data Asset → ReactionSet
-2. **Define Reactions:** Fill in ReactionId, AbilityClass, AbilityTag, AbilityEndTag
-3. **Assign to Config:** Set `DefaultReactionSet` on your `EnemyAIConfig`, or add role-specific sets to `RoleReactionSets`
-4. **Pawn Component:** If using `EnemyCharacterBase`, `SECReactionSetComponent` is already created. Otherwise, add it to your pawn.
-5. **Controller Component:** Add `ReactionEvaluationComponent` to your AIController (already present on `EnemyControllerBase`)
-6. **Trigger from your logic:**
+Your game logic detects the stimulus and calls the controller's `ReactionEvaluationComponent`. The usual path is a **direct ID call**: you already know which reaction fits (parry on block input, dodge on projectile warn, etc.).
 
 ```cpp
-// In your Blueprint or C++ (e.g., OnDamageReceived):
 FSECExecutionContext Context;
 Context.Target = DamageInstigator;
 Context.Magnitude = DamageAmount;
-Context.EventTag = SEC_Stimulus_MeleeHit;
+Context.EventTag = YourGame.Stimulus.MeleeHit;
 Context.TargetData = USECTargetDataLibrary::MakeTargetDataFromDirection(HitDirection);
 
-// Pass the attacker so distance and angle scorers measure against it.
-FChosenReaction Chosen = ReactionComp->EvaluateBestReaction(SEC_Reaction_Defensive, DamageInstigator);
+if (ReactionComp->CanReact("Parry", DamageInstigator))
+{
+    ReactionComp->ExecuteReaction("Parry", Context);
+}
+```
+
+- **`CanReact(ReactionId, TargetOverride)`** runs `PassesReactionGates` without executing. Pass the attacker as `TargetOverride` so **Gates** in the Scoring array (distance, attributes, etc.) evaluate against it. Scorers do not run here; they only affect optional selection.
+- **`ExecuteReaction(ReactionId, Context)`** runs the same gates again, then starts the ability, manages tags and cooldowns, and fires delegates.
+
+**Extra blocks at execute time (not ReactionSet fields):**
+
+| Check | Blocks when |
+|-------|-------------|
+| **`SEC.Reaction.BlockReactions`** | The tag is on the AI's ASC ([Gameplay Tags](#gameplay-tags)). Global stun or cutscene. |
+| **Another reaction executing** | A reaction is already active on this controller. |
+
+Only one reaction runs at a time. If a reaction is already executing, `ExecuteReaction` returns false.
+
+### Execution order
+
+Inside `ExecuteReaction` (same gates as above, re-checked against `Context.GetTarget()`):
+
+1. `PassesReactionGates`.
+2. Cancel the current action if **Cancel Current Action** is enabled on the spec.
+3. Apply **Add Tags** to the ASC.
+4. Pack `FSECExecutionContext` into the gameplay event payload.
+5. Activate the ability (**By Event** or **By Tag**).
+6. On success: commit cooldown, listen for **Ability End Tag** (or timeout), fire `OnReactionStarted`.
+7. On end tag or timeout: remove **Add Tags**, fire `OnReactionCompleted`.
+
+A failed activation tears down immediately: tags removed, no cooldown committed. Cooldown commits only **after** activation succeeds; a [`CanActivateAbility`](/docs/soulslike-combat/action-system#contextual-execution) refusal leaves the reaction off cooldown.
+
+### Reaction-to-reaction blocking
+
+While a reaction runs, its **Add Tags** sit on the ASC. Put the same tag in another reaction's **Block Tags** to prevent overlap. Both reactions below use `SEC.State.ReactionActive`:
+
+<ReactionBlockingTagsDetails />
+
+When Parry is running, the ASC holds `SEC.State.ReactionActive`, so Dodge fails `PassesReactionGates` until Parry ends and removes the tag.
+
+### Context payload
+
+Both actions and reactions share `FSECExecutionContext`. Fill what you know before `ExecuteReaction`; the ability reads it through `GetActionContext()` on `UGameplayAbilityBase`.
+
+<Collapsible title="FSECExecutionContext fields and TargetData helpers" badge="Advanced">
+| Field | You set | System fills |
+|-------|---------|--------------|
+| `Target` | Stimulus source (attacker, projectile owner) | n/a |
+| `OptionalObject` | Weapon, projectile, item | n/a |
+| `Magnitude` | Damage, charge level, intensity | n/a |
+| `EventTag` | Stimulus category | n/a |
+| `ContextTags` | Situational tags ("Backstab", "Airborne") | n/a |
+| `TargetData` | Spatial payload via `USECTargetDataLibrary` | n/a |
+| `DistanceToTarget`, `DirectionToTarget` | n/a | Hydrated by `UGameplayAbilityBase` on activation |
+| `InstigatorTags`, `TargetTags` | n/a | Queried from ASCs at activation |
+
+```cpp
+Context.TargetData = USECTargetDataLibrary::MakeTargetDataFromDirection(HitDirection);
+```
+
+See [Gate Before Activation](/docs/soulslike-combat/action-system#contextual-execution) for payload gating in `CanActivateAbility`.
+</Collapsible>
+
+---
+
+## Choosing a Reaction (Optional)
+
+When several reactions could fit the same moment (multiple parry variants, dodge left vs right), call **`EvaluateBestReaction`** instead of picking the ID yourself. The system filters by category, runs gates, scales weights with scorers, picks the highest **Priority** band, then weighted-random among survivors.
+
+<ReactionFlowVisualizer />
+
+```cpp
+FChosenReaction Chosen = ReactionComp->EvaluateBestReaction(
+    YourGame.Reaction.Defensive,
+    DamageInstigator);
 if (Chosen.IsValid())
 {
     ReactionComp->ExecuteReaction(Chosen.ReactionId, Context);
 }
 ```
 
-<Protip 
-  title="Score reactions by distance" 
-  description="Pass the attacker to EvaluateBestReaction so distance, angle, speed, and health scorers on a reaction measure against it. Without a target it falls back to the controller's focus actor. A reaction whose distance scorer rules out the current range is skipped, so make sure each reaction's range covers where it should fire." 
-/>
-<Protip 
-  title="Context reuse" 
-  description="FSECExecutionContext is the same struct used by actions. If you're already familiar with ExecuteActionWithContext(), reaction context works identically: same fields, same auto-population, same TargetData library." 
-/>
-<Protip 
-  title="Working example included" 
-  description="Open BP_SEC_EnemyCharacter and inspect the ApplyDamage interface implementation for a real example of reaction triggering. DA_ReactionSet ships with pre-configured reactions you can experiment with as a starting point." 
-/>
+Leave the category tag empty to consider every reaction in the set.
+
+### Selection pipeline
+
+Uses the same `PassesReactionGates` as execute, then adds selection-only steps:
+
+1. **Filter by category** (optional).
+2. **Hard gates** per reaction (identical to [preconditions you author](#preconditions-you-author)).
+3. **Scorers scale weight**: each survivor's **Selection Weight** is multiplied by its Scorers. Weight zero or below is a hard veto, even at high priority.
+4. **Highest priority band** only.
+5. **Weighted random** among survivors in that band.
+
+Returns `FChosenReaction`. Check `IsValid()` before executing.
+
+### Priority and weight
+
+These fields apply only on this path, not on direct `ExecuteReaction` by ID:
+
+<ReactionScoringDetails />
+
+Add **Gates** under the Scoring array to hard-veto. Add **Scorers** to scale **Selection Weight** by distance, attributes, and more.
+
+### Scorers on reactions
+
+Built-in Distance, Angle, Health, and Speed Scorers read **live** values from the AI pawn and `TargetOverride` (or focus actor). Pass the attacker to `EvaluateBestReaction(CategoryTag, Attacker)`.
+
+Distance Scorer **Range** at the melee-preset default:
+
+<RangeEvalDetails />
+
+Stamina Gate reads the default stamina snapshot (`100`) unless you use an **Attribute Gate**. Attribute Scorers and Gates read live GameplayAttributes. Same classes as actions: see [Scorers & Gates](/docs/soulslike-combat/action-system#scorers--gates). Custom scorers stay **stateless**; `SeededRandom` is fixed on the reaction path (`Seed` stays `0`).
+
 ---
 
-## Gameplay Tags
+## Debug Tools
 
-| Tag | Purpose |
-|-----|---------|
-| `SEC.Reaction.End` | Default end tag for reactions |
-| `SEC.Reaction.BlockReactions` | Blocks ALL reactions when present on ASC |
-| `SEC.Action.BlockActions` | Blocks ALL actions when present on ASC |
-| `SEC.State.ReactionActive` | Convenience tag for reaction-to-reaction blocking |
+```cpp
+ReactionEvalComp->bDebugLogReactions = true;
+```
+
+Console variable `SEC.Debug.LogReactions 1` enables the same logging globally.
 
 ---
 
@@ -364,11 +271,52 @@ if (Chosen.IsValid())
 
 | System | How It Connects |
 |--------|-----------------|
-| [Action System](/docs/soulslike-combat/action-system) | Reactions can cancel actions and block new ones via AddTags. Resolution chain mirrors `SECActionSetComponent`. |
-| [Combat Roles](/docs/soulslike-combat/combat-roles) | Role changes trigger automatic ReactionSet swaps via `SECReactionSetComponent` |
-| [Melee Trace](/docs/soulslike-combat/melee-trace) | `OnMeleeHitResponse` delegate triggers reactions on attack; `ISECDamageable` returns parry/block results |
-| [Threat Detection](/docs/soulslike-combat/threat-detection) | ThreatLevel can inform which reaction category to evaluate |
-| [Multiplayer](/docs/soulslike-combat/multiplayer) | Reaction state replicates to clients via `SECReactionSetComponent`. Cosmetics use Gameplay Cues. |
+| [Action System](/docs/soulslike-combat/action-system) | Reactions cancel actions (`bCancelCurrentAction`) and can block new ones via `SEC.Action.BlockActions` in `AddTags`. Same resolution chain pattern. |
+| [Combat Roles](/docs/soulslike-combat/combat-roles) | Role changes sync ReactionSets via `SECReactionSetComponent::SyncForCombatRole`. |
+| [Melee Trace](/docs/soulslike-combat/melee-trace) | `OnMeleeHitResponse` on `SECMeleeTraceComponent` is a typical hook to fire or evaluate reactions after a hit. |
+| [Multiplayer](/docs/soulslike-combat/multiplayer) | Reaction execution state and cooldowns replicate through `SECReactionSetComponent`. |
+
+<Callout type="info">
+  **Custom character classes:** `ReactionEvaluationComponent` resolves the ASC from the possessed pawn via `IAbilitySystemInterface`, same as actions. Pawns without it cause reaction abilities to fail silently.
+</Callout>
+
+---
+
+## Key API
+
+<Collapsible title="Component and delegate reference" badge="Advanced">
+| Component | Location | Role |
+|-----------|----------|------|
+| `ReactionEvaluationComponent` | Controller | Execution, optional selection, cooldowns |
+| `SECReactionSetComponent` | Pawn | Resolution, replication, overrides |
+
+**ReactionEvaluationComponent (Controller)**
+- `ExecuteReaction(ReactionId, Context)` - Fire a reaction (primary path).
+- `CanReact(ReactionId, TargetOverride)` - Gate check without executing.
+- `EvaluateBestReaction(CategoryTag, TargetOverride)` - Optional selection when multiple reactions compete.
+- `StopCurrentReaction(bSuccess)` - Manually end the running reaction.
+- `IsReactionExecuting()` / `GetCurrentReactionId()` - Runtime state.
+- `OnReactionStarted` / `OnReactionCompleted` - Controller-local delegates (with full context).
+
+**SECReactionSetComponent (Pawn)**
+- `SetRuntimeOverride(ReactionSet, SwapMode)` / `ClearRuntimeOverride(SwapMode)` - Boss phase override.
+- `SyncForCombatRole(RoleTag, SwapMode)` - Apply resolved set for a combat role.
+- `GetReactionSetForRole(RoleTag)` - Query the resolution chain without applying.
+- Replicated execution and cooldown delegates; see [Assigning the ReactionSet](#assigning-the-reactionset).
+</Collapsible>
+
+---
+
+## Gameplay Tags
+
+| Tag | Purpose |
+|-----|---------|
+| `SEC.Reaction.End` | Common default for `AbilityEndTag` |
+| `SEC.Reaction.BlockReactions` | Blocks all reactions when on the ASC |
+| `SEC.Action.BlockActions` | Blocks all actions when on the ASC |
+| `SEC.State.ReactionActive` | Convenience tag for reaction-to-reaction blocking |
+
+`ReactionCategory` tags are project-defined. Filter with them in `EvaluateBestReaction` only when using optional selection.
 
 ---
 

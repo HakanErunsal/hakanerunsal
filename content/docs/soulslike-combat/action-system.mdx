@@ -14,7 +14,7 @@ order: 5
     { label: "Action System" }
 ]} />
 
-> Scores every action against live battlefield data: distance, angle, health, threat, and context tags.
+> Scores every action against live battlefield data: distance, angle, health, and context tags.
 
 <ActionFlowVisualizer />
 
@@ -31,9 +31,13 @@ order: 5
 
 ## How Scoring Works
 
-On every evaluation, all valid actions compete. The highest score wins.
+On every evaluation, all valid actions compete. The highest score above zero wins.
 
 <ActionScoreFormula />
+
+**Runtime modifiers** scale every action's score: `SetGlobalMultiplier` buffs or nerfs the whole moveset (`0` blocks all selection), and `SetActionOverride(ActionId, Multiplier)` targets one action. They multiply together in the formula.
+
+A small **jitter** factor (deterministic ±5% from the decision context seed) breaks ties so two enemies with the same data do not pick identically every tick.
 
 Two base numbers sit on every action:
 
@@ -74,7 +78,7 @@ An action's **Cooldown** group controls reuse. `Cooldown Duration` is the base d
 
 <ActionCooldownDetails />
 
-An action commits its cooldown only **after** the ability activates. If a [`CanActivateAbility`](#contextual-execution) override (or any other GAS gate) refuses activation, the action stays off cooldown and can retry next tick.
+An action commits its cooldown only **after** `BeginExecute` succeeds and [PreExecute](#lifecycle-hooks) hooks do not veto. If activation fails or a hook sets `bVetoExecution`, no cooldown is stamped and the action can retry next tick. A [`CanActivateAbility`](#contextual-execution) refusal during ability activation follows the same rule: off cooldown, free to retry.
 
 ### Recovery Time
 
@@ -119,6 +123,11 @@ Before scoring, every action runs hard gates. Fail one and the action drops out 
 
 | Gate | Blocks the action when |
 |------|------------------------|
+| **Enabled** (`bEnabled`) | The action is toggled off in the ActionSet. |
+| **`SEC.Action.BlockActions`** | The tag sits on the AI's ability system component (add it via a reaction's `AddTags` to freeze offense). |
+| **Valid execution method** | The action has no configured method, or `HasValidData` returns false. |
+| **Cooldown / repeat limit** | The action is still cooling down, or `Max Consecutive Uses` is exhausted. |
+| **Recovery** | The AI is in a post-action recovery window (chain follow-ups excepted). |
 | `RequiresTags` | The combined Self/Target/World tags don't hold all of them. |
 | `BlockTags` | Any of them sits on Self, Target, or World. |
 | **Require Line Of Sight** | The box is ticked and the AI has no clear view of its target. |
@@ -393,7 +402,7 @@ An action with an empty Scoring list scores on `SelectionWeight` alone. No score
 
 **Favor a heavy attack as rage builds.** Add an **Attribute Scorer**, set `Attribute = Rage`, `NormalizeBy = MaxRage`, and shape the curve to peak near full. The attack scores higher as rage fills.
 
-The same Scorers and Gates work on reactions, with the snapshot caveat below. See [Reaction System](/docs/soulslike-combat/reaction-system#scorers--gates).
+The same Scorers and Gates work on reactions. On the reaction path the component builds a live spatial snapshot (distance, angle, speed, health) from the pawn and `TargetOverride` instead of the action decision context. See [Reaction System](/docs/soulslike-combat/reaction-system#scorers--gates).
 
 ### Custom Scorers & Gates
 
@@ -420,7 +429,7 @@ Subclass `USECScorer` or `USECGate` and override its one function (`ScoreMultipl
 | `HealthPercentage` | AI health as a 0-1 fraction. |
 | `Stamina` | AI stamina (default scale 0-100). |
 
-These fields fill on the **action path only**. On the reaction path they hold defaults (`0` / `0` / `0` / `1.0` / `100`), so distance, angle, health, speed scorers and the Stamina Gate do nothing useful on reactions. Score reactions with priority, weight, tags, and Attribute Scorers or Gates.
+These fields fill from the **action decision context** on the action path. On the **reaction path**, `ReactionEvaluationComponent` builds a separate live snapshot (distance, angle, speed, health from the pawn and `TargetOverride`; stamina stays at the default `100` unless you use an Attribute Gate). Pass `TargetOverride` when evaluating reactions so spatial scorers measure against the attacker.
 
 **Labeling.** Each scorer and gate reports a display name through overridable `GetDisplayName()` (`BlueprintNativeEvent`). It defaults to the class display name and drives the decision log, the score breakdown, and the editor array row title on UE 5.7+. Override it for a custom or dynamic label (fold the configured range into the name).
 </Collapsible>
@@ -469,7 +478,7 @@ A hook has three phases:
 
 | Phase | When it runs | Gives you |
 |-------|--------------|-----------|
-| **PreExecute** | Before the action's started effects | A chance to abort: set `bVetoExecution` to stop the action before it begins. |
+| **PreExecute** | After `BeginExecute` succeeds, before cooldown commit, `AddTags`, and started delegates | A chance to abort: set `bVetoExecution` to tear down the start without stamping cooldown. |
 | **TickExecute** | Each tick while the action executes | Per-frame work. Off by default; set `bWantsTick` to opt in. |
 | **PostExecute** | When the action ends, on every exit path | The end reason (Completed, Interrupted, Cancelled, TimedOut, or Failed). |
 
@@ -627,7 +636,8 @@ The `SEC.Debug.LogActionDecisions 1` console variable does the same globally wit
 - `EvaluateBestAction(Context, Time, OutChosen)` - Run the scoring pipeline.
 - `ExecuteAction(ActionId)` - Force-execute a specific action.
 - `ExecuteActionWithContext(Id, Context)` - Execute with custom data (Target, etc.).
-- `SetActionOverride(ActionId, Multiplier)` - Runtime buff/nerf a specific action's score.
+- `SetGlobalMultiplier(Multiplier)` - Runtime buff/nerf for every action (`0` blocks all selection).
+- `SetActionOverride(ActionId, Multiplier)` - Per-action multiplier, folded with the global value.
 - `CanExecuteAction()` / `ModifyActionScore()` - Override hooks (see above).
 
 **SECActionSetComponent (Pawn)**

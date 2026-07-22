@@ -176,8 +176,9 @@ export const ACTION_SCORE_FACTORS: UeFormulaFactor[] = [
   { label: "Selection Weight" },
   { label: "Risk Penalty", op: "÷" },
   { label: "Tag Multipliers", op: "×" },
-  { label: "Novelty Bonus", op: "×" },
+  { label: "Novelty", op: "×", note: "Penalizes recent use" },
   { label: "Chain Bonus", op: "×" },
   { label: "Scorers", op: "×", note: "Distance · Angle · Health · Speed · custom" },
-  { label: "Runtime Override", op: "×" },
+  { label: "Runtime Modifiers", op: "×", note: "GlobalMultiplier × SetActionOverride" },
+  { label: "Jitter", op: "×", note: "±5%, deterministic" },
 ];

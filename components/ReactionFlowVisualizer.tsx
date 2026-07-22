@@ -94,6 +94,8 @@ export default function ReactionFlowVisualizer() {
         phase === 'complete' ? 'bg-[#6CC644]' :
         'bg-[#FFB800] animate-pulse';
 
+    const isBlocked = phase === 'gates-blocked';
+
     return (
         <UePanel
             title="Reaction Evaluation Flow"
@@ -103,12 +105,12 @@ export default function ReactionFlowVisualizer() {
                 <>Reactions are <span className="text-[#FFB800]">event-driven</span> — your code decides <em>when</em>, the system decides <em>what</em>. <span className="text-[#FF4444]">Every 3rd cycle shows a blocked reaction.</span></>
             }
         >
-            <div className={cn(ueStatusBar(phase !== 'idle'), "mb-6 justify-center")}>
+            <div className={cn(ueStatusBar(phase !== 'idle'), "mb-6 min-h-[2.25rem] justify-center")}>
                 <div className={cn("h-2 w-2 rounded-full transition-colors duration-300", statusDotColor)} />
                 <span className="font-mono text-[#888888]">{phaseLabels[phase]}</span>
             </div>
 
-            <div className="mx-auto max-w-md space-y-0">
+            <div className="mx-auto min-h-[420px] max-w-md space-y-0">
                 <UeBlueprintNode
                     title="Stimulus (Your Code)"
                     subtitle="OnDamageReceived, OnSenseDetected…"
@@ -122,53 +124,54 @@ export default function ReactionFlowVisualizer() {
                 <UeBlueprintNode
                     title="EvaluateBestReaction(Category)"
                     subtitle={
-                        phase === 'gates-blocked'
+                        isBlocked
                             ? "❌ BlockReactions tag present on ASC"
-                            : "Priority → Weighted random → Gate checks"
+                            : "Gates → Scorers → Priority → Weighted random"
                     }
-                    category={phase === 'gates-blocked' ? 'gate' : 'function'}
+                    category={isBlocked ? 'gate' : 'function'}
                     icon={<Tag className="h-4 w-4" />}
                     active={isActive(['gates', 'gates-blocked'])}
                 />
 
-                {phase !== 'gates-blocked' && (
-                    <>
-                        <div className={ueConnector(isActive(['cancel-action', 'activate', 'running', 'complete']) || isPast(['gates']))} />
+                <div className={ueConnector(!isBlocked && (isActive(['cancel-action', 'activate', 'running', 'complete']) || isPast(['gates'])))} />
 
-                        <UeBlueprintNode
-                            title="Cancel Current Action"
-                            subtitle="StopCurrentAction() if bCancelCurrentAction"
-                            category="event"
-                            icon={<XCircle className="h-4 w-4" />}
-                            active={isActive(['cancel-action'])}
-                        />
+                <UeBlueprintNode
+                    title="Cancel Current Action"
+                    subtitle={isBlocked ? "Skipped — evaluation returned none" : "StopCurrentAction() if bCancelCurrentAction"}
+                    category="event"
+                    icon={<XCircle className="h-4 w-4" />}
+                    active={!isBlocked && isActive(['cancel-action'])}
+                    disabled={isBlocked}
+                />
 
-                        <div className={ueConnector(isActive(['activate', 'running', 'complete']) || isPast(['cancel-action']))} />
+                <div className={ueConnector(!isBlocked && (isActive(['activate', 'running', 'complete']) || isPast(['cancel-action'])))} />
 
-                        <UeBlueprintNode
-                            title="ExecuteReaction(Id, Context)"
-                            subtitle={
-                                phase === 'running'
-                                    ? "Ability running… waiting for AbilityEndTag"
-                                    : "AddTags → Pack context → Activate ability"
-                            }
-                            category="reaction"
-                            icon={<Zap className="h-4 w-4" />}
-                            active={isActive(['activate', 'running'])}
-                            trailing={phase === 'running' ? <Clock className="h-4 w-4 animate-spin" /> : undefined}
-                        />
+                <UeBlueprintNode
+                    title="ExecuteReaction(Id, Context)"
+                    subtitle={
+                        isBlocked
+                            ? "Skipped — no reaction to execute"
+                            : phase === 'running'
+                                ? "Ability running… waiting for AbilityEndTag"
+                                : "AddTags → Pack context → Activate ability"
+                    }
+                    category="reaction"
+                    icon={<Zap className="h-4 w-4" />}
+                    active={!isBlocked && isActive(['activate', 'running'])}
+                    disabled={isBlocked}
+                    trailing={!isBlocked && phase === 'running' ? <Clock className="h-4 w-4 animate-spin" /> : undefined}
+                />
 
-                        <div className={ueConnector(isActive(['complete']) || isPast(['running']))} />
+                <div className={ueConnector(!isBlocked && (isActive(['complete']) || isPast(['running'])))} />
 
-                        <UeBlueprintNode
-                            title="OnReactionCompleted"
-                            subtitle="Remove AddTags → Fire delegate → Reset"
-                            category="action"
-                            icon={<CheckCircle className="h-4 w-4" />}
-                            active={isActive(['complete'])}
-                        />
-                    </>
-                )}
+                <UeBlueprintNode
+                    title="OnReactionCompleted"
+                    subtitle={isBlocked ? "Skipped — flow ended at evaluation" : "Remove AddTags → Fire delegate → Reset"}
+                    category="action"
+                    icon={<CheckCircle className="h-4 w-4" />}
+                    active={!isBlocked && isActive(['complete'])}
+                    disabled={isBlocked}
+                />
             </div>
         </UePanel>
     );

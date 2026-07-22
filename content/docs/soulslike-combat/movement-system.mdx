@@ -124,7 +124,7 @@ In this mode the component stays tactical-only and issues no path-following move
 The automated path: the combat role picks the profile.
 
 1. In your **EnemyAIConfig**, assign a `MovementBehaviorProfile` to each combat role (e.g. Attacker gets an aggressive profile, Waiter gets a patient one).
-2. `SECCombatControllerComponent` calls `SyncForCombatRole` when the role changes, applying the matching profile.
+2. `SECCombatControllerComponent::SyncStateForCombatRole` calls `MovementEvaluatorComponent::SyncForCombatRole` when the role changes, applying the matching profile.
 
 No wiring needed on `EnemyControllerBase`. See [Combat Roles](/docs/soulslike-combat/combat-roles).
 
