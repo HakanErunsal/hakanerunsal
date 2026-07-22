@@ -281,52 +281,27 @@ Distance, angle, health, speed, and stamina are opt-in. Add an entry to an actio
 
 **Used by:** [Movement System](/docs/soulslike-combat/movement-system)
 
-Contains all parameters for `MovementEvaluatorComponent`.
+The role-swappable data asset. It holds only the fields a combat role changes. The rest of the movement tuning (avoidance, hybrid switching, detour, navmesh sampling, strafe feel) lives on the `MovementEvaluatorComponent` itself, the same for every role. See the [Movement System](/docs/soulslike-combat/movement-system#tuning-the-component) for that surface.
 
 ### Full Structure
 
 ```cpp
 // Distance
-float DesiredMinDistance;         // Approach until this close
-float DesiredMaxDistance;         // Retreat if farther than this
-float DistanceTolerance;          // Acceptable variance (0.0-1.0)
+float DesiredDistance;            // Ideal distance to hold (cm), default 400
+float DistanceTolerance;          // Comfort band as a fraction of desired (0.05-0.5), default 0.2
 
-// Strafing
-bool EnableStrafe;                // Allow lateral movement
-bool AutoStrafeSwap;              // Randomly change direction
-float StrafeSpeedPenalty;         // Speed multiplier when strafing
+// Strafe Rest (fatigue)
+bool  bEnableStrafeRest;          // Rest after continuous strafing, default true
+float StrafeRestTimeLimit;        // Seconds of strafing before a rest (3-60), default 10
+float StrafeRestDuration;         // Rest length in seconds (0.5-10), default 1.5
 
-// Strafe Fatigue
-bool EnableStrafeRest;            // Pause strafing periodically
-float StrafeTimeLimit;            // Seconds before rest
-float StrafeRestDuration;         // Rest duration
-
-// Avoidance
-bool EnableAvoidance;             // Avoid other pawns
-float AvoidanceRadius;            // Distance to maintain
-
-// Hybrid Navigation
-bool EnableHybridMovement;        // Switch pathfind/direct
-float HybridSwitchDistance;       // Distance threshold
-
-// Detour Escalation (pathfind around corners/walls)
-bool EnableDetourEscalation;      // Escalate when the route is a real detour
-float DetourEnterRatio;           // Route/straight ratio to engage a far detour (1.6)
-float DetourMinExcess;            // Extra walk required alongside the ratio, cm (200)
-bool DetourEscalateOnStall;       // Also escalate at a tight corner the ratio misses
-float DetourStallSpeed;           // Closing speed below which a blocked approach is stalled, cm/s (60)
-float DetourRecheckInterval;      // Seconds between route measurements (0.5)
-bool DetourUseLineOfSightPreGate; // Skip the query while the target is in sight
-
-// Navmesh Sampling
-bool EnableNavAwareSampling;      // Avoid ledges, walls, hazards
-float NavProbeDistance;           // How far ahead to check (cm)
-float NavScoreWeight;             // Strength of the navmesh term (0 = off)
-bool GuardLedgeDrops;             // Ease speed down at a true ledge
-TMap<TSubclassOf<UNavArea>, float> HazardAreaAvoidance;  // Hazard areas to avoid (0-1)
+// Threat Response
+bool  bSwapStrafeOnHighThreat;    // Swap strafe side under high threat, default false
+bool  bAdjustDistanceByThreat;    // Back off as threat rises, default false
+float ThreatDistanceScale;        // How strongly threat pushes distance out (0-5), default 1.0
 
 // Custom Rules
-TArray<UPositioningRule*> PositioningRules;  // Custom direction modifiers
+TArray<UPositioningRule*> PositioningRules;  // Instanced direction modifiers, empty by default
 ```
 
 ### Example Profile
@@ -334,36 +309,34 @@ TArray<UPositioningRule*> PositioningRules;  // Custom direction modifiers
 ```cpp /DA_AggressiveMelee/
 Name: DA_AggressiveMelee
 
-DesiredMinDistance: 200
-DesiredMaxDistance: 350
+DesiredDistance: 300
 DistanceTolerance: 0.15
 
-EnableStrafe: true
-AutoStrafeSwap: true
-StrafeSpeedPenalty: 0.8
+bEnableStrafeRest: true
+StrafeRestTimeLimit: 15.0
+StrafeRestDuration: 0.5
 
-EnableStrafeRest: true
-StrafeTimeLimit: 5.0
-StrafeRestDuration: 1.0
-
-EnableAvoidance: true
-AvoidanceRadius: 125
+bSwapStrafeOnHighThreat: false
+bAdjustDistanceByThreat: false
+ThreatDistanceScale: 1.0
 
 PositioningRules: []
 ```
 
 ### Built-in Presets
 
-For quick setup without data assets:
+`FMovementBehaviorConfig` factory methods fill the profile-level fields for common archetypes (applied in C++ via `ApplyBehaviorConfig`):
 
 ```cpp
-FMovementBehaviorConfig::MakeAttacker();   // Close-range aggressive
-FMovementBehaviorConfig::MakeWaiter();     // Mid-range patient
-FMovementBehaviorConfig::MakeFlanker();    // Wide circling
-FMovementBehaviorConfig::MakeCoward();     // Maintains distance
+FMovementBehaviorConfig::MakeDefault();     // Balanced (400 cm)
+FMovementBehaviorConfig::MakeAttacker();    // Close, aggressive, minimal rest (300 cm)
+FMovementBehaviorConfig::MakeWaiter();      // Far, patient, frequent rest (600 cm)
+FMovementBehaviorConfig::MakeFlanker();     // Medium, quick repositioning (400 cm)
+FMovementBehaviorConfig::MakeSupporter();   // Medium-far, moderate rest (500 cm)
+FMovementBehaviorConfig::MakeElite();       // Relentless pressure, very short rest (350 cm)
 ```
 
-> **Positioning Rules** are editor-instanced UObjects. Inherit from `UPositioningRule` and override `EvaluateDirection()` to create custom direction scoring.
+> **Positioning Rules** are instanced UObjects. Inherit from `UPositioningRule` and override `EvaluateDirection()` for custom direction scoring. The built-in `UAnglePreferenceRule` covers flanking, backstab, and frontal positioning.
 
 ---
 

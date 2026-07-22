@@ -31,6 +31,7 @@ export { UeDetailsSection, UePropertyRow, UeAssetPicker, UeAssetThumbnail } from
 export {
   UeDetailsPanel,
   MOVEMENT_EVALUATOR_DETAILS,
+  MOVEMENT_PROFILE_DETAILS,
   type UeDetailCategory,
   type UeDetailProperty,
   type UeDetailValue,

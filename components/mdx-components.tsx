@@ -25,6 +25,7 @@ import ScorerStackVisualizer from '@/components/ScorerStackVisualizer';
 import StateTreeDiagram from '@/components/StateTreeDiagram';
 import ArchitectureFlowDiagram from '@/components/ArchitectureFlowDiagram';
 import MovementEvaluatorDetails from '@/components/MovementEvaluatorDetails';
+import MovementProfileDetails from '@/components/MovementProfileDetails';
 import Reviews from '@/components/Reviews';
 
 const useMDXComponent = (code: string) => {
@@ -59,6 +60,7 @@ const components = {
   StateTreeDiagram,
   ArchitectureFlowDiagram,
   MovementEvaluatorDetails,
+  MovementProfileDetails,
   Reviews,
   // Prevent hydration errors from block elements nested inside <p>
   p: ({ children, ...props }: React.HTMLAttributes<HTMLParagraphElement>) => (

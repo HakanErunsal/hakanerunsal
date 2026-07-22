@@ -94,9 +94,9 @@ function UeNumericField({
   const hasRange = min != null && max != null && max > min;
   const fill = hasRange ? Math.min(1, Math.max(0, (value - min!) / (max! - min!))) : 0;
   return (
-    <div className={cn("ue-dp-num relative", disabled && "opacity-50")}>
+    <div className={cn("ue-dp-num relative flex items-center", disabled && "opacity-50")}>
       {hasRange && <div className="ue-dp-num-fill absolute inset-y-0 left-0" style={{ width: `${fill * 100}%` }} aria-hidden />}
-      <span className="relative pl-1.5 text-[11px] leading-[18px] text-[#c9c9c9]">{formatNumber(value, decimals)}</span>
+      <span className="relative pl-1.5 text-[11px] text-[#c9c9c9]">{formatNumber(value, decimals)}</span>
     </div>
   );
 }
@@ -307,5 +307,41 @@ export const MOVEMENT_EVALUATOR_DETAILS: UeDetailCategory[] = [
         ],
       },
     ],
+  },
+];
+
+//=========================================================================
+// Template data: UMovementBehaviorProfile defaults (the role-swappable asset)
+// Verified against Plugins/SoulslikeEnemyCombat/.../MovementBehaviorProfile.h
+//=========================================================================
+
+export const MOVEMENT_PROFILE_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Distance",
+    properties: [
+      { label: "Desired Distance", value: n(400) },
+      { label: "Distance Tolerance", value: n(0.2, 0.05, 0.5) },
+    ],
+  },
+  {
+    title: "Rest Behavior",
+    properties: [
+      { label: "Enable Strafe Rest", value: b(true) },
+      { label: "Strafe Rest Time Limit", value: n(10, 3, 60) },
+      { label: "Strafe Rest Duration", value: n(1.5, 0.5, 10) },
+    ],
+  },
+  {
+    title: "Threat Response",
+    properties: [
+      { label: "Swap Strafe On High Threat", value: b(false) },
+      { label: "Adjust Distance By Threat", value: b(false) },
+      // EditCondition bAdjustDistanceByThreat is false by default, so this is greyed out.
+      { label: "Threat Distance Scale", value: n(1, 0, 5), disabled: true },
+    ],
+  },
+  {
+    title: "Positioning Rules",
+    properties: [{ label: "Positioning Rules", value: { kind: "text", value: "0 Array elements" } }],
   },
 ];

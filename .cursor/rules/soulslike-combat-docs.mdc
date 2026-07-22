@@ -43,7 +43,13 @@ Order comes from an `order:` number in each doc's frontmatter (`velite.config.ts
 - **Core Architecture (2):** lean concept page only (two-layer model, component map linking to system pages, runtime flow, scope). No deep C++ API.
 - **API Reference (new):** home for deep C++ tables moved out of architecture.
 - **Step-by-Step Enemy (3):** integration capstone. Do not re-teach pawn/controller/ability basics; link to Getting Started. Unique value = multi-action moveset with combos + testing. Weapon walkthrough is NOT here.
-- **Melee Trace (11):** owns the full weapon walkthrough (`ASECWeaponBase`, trace sockets, `SECMeleeTraceWindow` notify, damage config). Needs an accuracy pass: it currently cites `ISECDamageable::ProcessDamage()` (real method is `ApplyDamage`), an `OnMeleeHit` delegate vs `OnMeleeHitResponse`, and damage fields `BaseDamage`/`ImpulseStrength` vs the real `Damage`/`KnockbackStrength`.
+- **Movement System (4):** DONE. Designer-first: concepts up top, deep C++/advanced in collapsibles, `<MovementEvaluatorDetails />` renders the accurate component tuning surface. Key model: a `MovementBehaviorProfile` swaps only a small set (`DesiredDistance`, `DistanceTolerance`, 3 strafe-rest fields, 3 threat-response fields, `PositioningRules`); everything else is set on the `MovementEvaluatorComponent` and is not role-swapped. Presets are `FMovementBehaviorConfig::Make*` (Default/Attacker/Waiter/Flanker/Supporter/Elite); `MakeCoward` does not exist.
+- **Configuration Reference (12):** movement-profiles section fixed to the real fields. STILL FABRICATED: the `DamageConfig` section invents `BaseDamage`/`ImpulseStrength`/`bCanCritical`/`CriticalMultiplier`/`CriticalChance`. Verify against `SECDamageConfig` and reconcile with the melee-trace and step-by-step pages when doing the Melee Trace pass.
+- **Melee Trace (11):** owns the full weapon walkthrough (`ASECWeaponBase`, trace sockets, `SECMeleeTraceWindow` notify, damage config). Needs an accuracy pass: it currently cites `ISECDamageable::ProcessDamage()` (real method is `ApplyDamage`), an `OnMeleeHit` delegate vs `OnMeleeHitResponse`, and damage fields `BaseDamage`/`ImpulseStrength` vs the real `Damage`/`KnockbackStrength` (three pages disagree on `SECDamageConfig` fields; pick the source-verified set).
+
+## Accurate data-driven components
+
+`components/ue-editor/UeDetailsPanel.tsx` exports verified `UeDetailCategory[]` datasets: `MOVEMENT_EVALUATOR_DETAILS` (component, from `MovementEvaluatorComponent.h`) and `MOVEMENT_PROFILE_DETAILS` (the `MovementBehaviorProfile` data asset). Wrappers `<MovementEvaluatorDetails />` and `<MovementProfileDetails />` render them; both are registered in `mdx-components.tsx`. Prefer these over hand-written property tables, and verify any new dataset against the header before use. Numeric rows must center via flex (fixed a vertical clip where the value sat on the inline baseline inside the 18px box).
 
 ## UE-editor components
 
@@ -59,3 +65,4 @@ Order comes from an `order:` number in each doc's frontmatter (`velite.config.ts
 - `FRangeEval` is a real USTRUCT.
 - Scoring in 2.3.0: distance/angle no longer auto-score. Add a Distance Scorer or Angle Scorer to the action's Scoring list. Per-scorer values live in `FScoreBreakdown.CustomScores`, keyed by each scorer's `GetDisplayName()`, folded into the `Custom` factor.
 - Debug flags: `ActionEvaluationComponent` → `bDebugLogDecisions` / `bDebugLogExecution`; `MovementEvaluatorComponent` → `bDebugLogScoring` / `bDebugDrawScoring`. There is no `bDebugLog`.
+- Root-motion (evaluate-only) movement is a Blueprint path, not C++: set `bApplyMovementInput` false, then read the BlueprintCallable getters `GetCurrentDirectionAngle` / `GetCurrentDirectionLocal` / `GetCurrentDirection` each tick and feed them to the Anim BP blendspace whose root motion drives the pawn. Badge it `Alternative`, not `C++`.
