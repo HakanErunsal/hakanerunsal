@@ -8,6 +8,8 @@ interface UePanelProps {
   breadcrumb?: string[];
   subtitle?: string;
   assetType?: UeAssetType;
+  /** When false, the tab title renders without a leading asset icon. */
+  showTitleIcon?: boolean;
   toolbarRight?: React.ReactNode;
   headerRight?: React.ReactNode;
   caption?: React.ReactNode;
@@ -23,6 +25,7 @@ export function UePanel({
   breadcrumb,
   subtitle,
   assetType = "visualizer",
+  showTitleIcon = true,
   toolbarRight,
   headerRight,
   caption,
@@ -38,7 +41,7 @@ export function UePanel({
       {/* Tab bar — Background #151515, active tab #242424 */}
       <div className="flex items-stretch border-b border-[#0F0F0F] bg-[#151515]">
         <div className="ue-panel-tab flex items-center gap-2 px-3 py-1">
-          <UeAssetIcon type={assetType} showLabel={false} />
+          {showTitleIcon && <UeAssetIcon type={assetType} showLabel={false} />}
           <span className="text-[11px] text-[#C8C8C8]">{title}</span>
         </div>
         {(headerRight || toolbarRight) && (

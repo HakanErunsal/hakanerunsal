@@ -1,10 +1,15 @@
-import { UeDetailsPanel, AWARENESS_ENEMY_AI_CONFIG_DETAILS } from "@/components/ue-editor";
+import { UeComponentDetailsPanel, AWARENESS_ENEMY_AI_CONFIG_DETAILS } from "@/components/ue-editor";
 
 /** UEnemyAIConfig awareness fields. Verified against EnemyAIConfig.h. */
 export default function AwarenessEnemyAIConfigDetails() {
   return (
-    <div className="my-6 max-w-[520px]">
-      <UeDetailsPanel categories={AWARENESS_ENEMY_AI_CONFIG_DETAILS} />
-    </div>
+    <UeComponentDetailsPanel
+      displayName="Enemy AI Config"
+      sourceClass="EnemyAIConfig"
+      sourceKind="asset"
+      attachTo="DA_EnemyAIConfig"
+      note="Awareness category on the config asset assigned to the pawn via IEnemyAIConfigProvider."
+      categories={AWARENESS_ENEMY_AI_CONFIG_DETAILS}
+    />
   );
 }

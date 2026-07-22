@@ -61,6 +61,8 @@ export {
   SEC_DAMAGE_CONFIG_DETAILS,
   MELEE_TRACE_NOTIFY_DETAILS,
   WEAPON_TRACE_SOCKET_DETAILS,
+  COMBAT_ROLE_REPLICATED_DETAILS,
+  MULTIPLAYER_ACTION_STATE_DETAILS,
   type UeDetailCategory,
   type UeDetailProperty,
   type UeDetailValue,
@@ -72,6 +74,7 @@ export {
   type UeFormulaGraphProps,
 } from "./UeFormulaGraph";
 export { UeComponentRow } from "./UeComponentRow";
+export { UeComponentDetailsPanel, type UeComponentDetailsPanelProps, type UeDetailsSourceKind } from "./UeComponentDetailsPanel";
 export * from "./ue-theme";
 export * from "./ue-blueprint-theme";
 export * from "./icons/UeIcons";

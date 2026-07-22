@@ -50,6 +50,8 @@ import MeleeTraceComponentDetails from '@/components/MeleeTraceComponentDetails'
 import SECDamageConfigDetails from '@/components/SECDamageConfigDetails';
 import MeleeTraceNotifyDetails from '@/components/MeleeTraceNotifyDetails';
 import WeaponTraceSocketDetails from '@/components/WeaponTraceSocketDetails';
+import CombatRoleReplicatedDetails from '@/components/CombatRoleReplicatedDetails';
+import MultiplayerActionStateDetails from '@/components/MultiplayerActionStateDetails';
 import ThreatDetectionDetails from '@/components/ThreatDetectionDetails';
 import ThreatResponseWiringDetails from '@/components/ThreatResponseWiringDetails';
 import ThreatResponseProfileDetails from '@/components/ThreatResponseProfileDetails';
@@ -114,6 +116,8 @@ const components = {
   SECDamageConfigDetails,
   MeleeTraceNotifyDetails,
   WeaponTraceSocketDetails,
+  CombatRoleReplicatedDetails,
+  MultiplayerActionStateDetails,
   RegisterCombatTargetBlueprint,
   ThreatDetectionDetails,
   ThreatResponseWiringDetails,

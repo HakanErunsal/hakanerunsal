@@ -1,10 +1,15 @@
-import { UeDetailsPanel, AWARENESS_CONFIG_MEMORY_DETAILS } from "@/components/ue-editor";
+import { UeComponentDetailsPanel, AWARENESS_CONFIG_MEMORY_DETAILS } from "@/components/ue-editor";
 
-/** USECAwarenessConfig memory, proximity, and loss hysteresis. Verified against SECAwarenessConfig.h. */
+/** USECAwarenessConfig memory and loss fields. Verified against SECAwarenessConfig.h. */
 export default function AwarenessConfigMemoryDetails() {
   return (
-    <div className="my-6 max-w-[520px]">
-      <UeDetailsPanel categories={AWARENESS_CONFIG_MEMORY_DETAILS} />
-    </div>
+    <UeComponentDetailsPanel
+      displayName="SEC Awareness Config"
+      sourceClass="SECAwarenessConfig"
+      sourceKind="asset"
+      attachTo="DA_AwarenessConfig"
+      note="Memory category on the awareness config asset."
+      categories={AWARENESS_CONFIG_MEMORY_DETAILS}
+    />
   );
 }

@@ -1,6 +1,6 @@
 ---
 title: "Multiplayer Support"
-description: "Replication architecture, what runs where, and how to use the plugin in listen server and dedicated server games."
+description: "Server-authoritative AI with replicated pawn state for client UI, animation, and feedback."
 date: 2025-12-31
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Multiplayer", "Replication"]
@@ -8,227 +8,191 @@ parent: "SoulslikeCombatDocs"
 order: 13
 ---
 
-
 <Breadcrumb items={[
     { label: "Docs", href: "/docs" },
     { label: "SoulslikeCombat", href: "/docs/SoulslikeCombatDocs" },
     { label: "Multiplayer" }
 ]} />
 
-> The plugin works in listen server and dedicated server configurations. AI decisions run on the server; relevant state replicates to clients.
+> **`AAIController`** and its SEC components exist only on the server. Clients read replicated pawn fields for telegraphs, combat roles, equipped weapons, and GAS montages.
 
-## Overview
+## When to Use This
 
-AI in Unreal Engine is server-authoritative. AI controllers only exist on the server, and all decision-making happens there. The challenge is giving clients enough information to display what the AI is doing (animations, VFX, UI indicators) without duplicating logic.
+- Listen server or dedicated server co-op.
+- Client HUD for enemy health, current action, or combat role.
+- Server-side hit resolution with client-facing attack animation through GAS.
 
-The approach: **replicate output state**, not logic. The server runs the full decision pipeline, and lightweight replicated components on the pawn broadcast the results to clients.
+Single-player needs no extra replication wiring.
 
 ---
 
-## Architecture: What Runs Where
+## How It Works
 
-### Server Only
+Unreal runs AI on the server. The plugin splits work three ways:
 
-These components live on the AI controller and only exist on the server:
+1. **Server brain:** score actions, move, assign roles, trace melee, run awareness, evaluate reactions.
+2. **Bridge:** on possession, **`SECCombatControllerComponent`** binds eval delegates to pawn notify methods and pushes role tags through **`SetCombatRole`**.
+3. **Client mirror:** bind UI and VFX to replicated pawn delegates and GAS montage playback.
 
-| Component | Purpose |
-|-----------|---------|
-| `SECCombatControllerComponent` | AIConfig resolution, combat role handling, sync |
-| `ActionEvaluationComponent` | Scores and selects actions |
-| `MovementEvaluatorComponent` | Tactical positioning |
-| `ThreatDetectionComponent` | Tracks player camera attention |
-| `AICombatRoleSubsystem` | Assigns roles across all AI |
+---
 
-This is the brain. Clients never run action evaluation or movement scoring. `SECCombatControllerComponent` is the central integration point that connects all these systems together.
+## Server Side
 
-### Replicated to Clients
+### AI controller
 
-These components live on the pawn and replicate automatically:
+These components live on **`AEnemyControllerBase`** (or your controller). AI controllers exist only on the server, so none of this replicates to clients:
 
-| Component | What Replicates |
+| Component | Role |
+|-----------|------|
+| **`SECCombatControllerComponent`** | AIConfig cache, role sync, delegate bridge to pawn |
+| **`ActionEvaluationComponent`** | Action selection and execution |
+| **`ReactionEvaluationComponent`** | Reaction selection and execution |
+| **`MovementEvaluatorComponent`** | Tactical movement input |
+| **`USECAwarenessComponent`** | Perception memory (header: server-only) |
+| **`ThreatDetectionComponent`** | Player stare detection |
+| **`USECBrainComponent`** | StateTree or native loop |
+
+World subsystems (server authority, not pawn components):
+
+| Subsystem | Role |
+|-----------|------|
+| **`UAICombatRoleSubsystem`** | Role assignment, combat targets |
+| **`USECWorldTagSubsystem`** | World tag writes |
+
+### Pawn (authority only)
+
+These stay on the possessed pawn but skip client simulation:
+
+| Piece | Notes |
+|-------|-------|
+| **`USECMeleeTraceComponent`** | **`StartTracing`** and tick check **`HasAuthority`**. See [Melee Trace](/docs/soulslike-combat/melee-trace). |
+| **Melee damage** | **`ISECDamageable::ApplyDamage`** or legacy **`ApplyPointDamage`** on authority. |
+
+Clients see swings through GAS montage replication. **`OnMeleeHitResponse`** fires on authority; route hit VFX through replicated health, gameplay cues, or your own RPC layer.
+
+---
+
+## Replicated on the Pawn
+
+**`AEnemyCharacterBase`** also creates **`USECMeleeTraceComponent`** by default (authority-only; see above). These four replicate combat state to clients:
+
+| Component | Clients receive |
 |-----------|-----------------|
-| `SECActionSetComponent` | Current action ID, execution state, active ActionSet reference, cooldown state |
-| `SECReactionSetComponent` | Current reaction ID, execution state, active ReactionSet reference, cooldown state |
-| `SECCombatRoleComponent` | Current combat role tag |
-| `BasicHealthComponent` | Current health value |
-| `SECWeaponBase` | Actor replication (attachment, visibility) |
-| `SECMeleeTraceComponent` | Server-authoritative only (traces run on server, damage applied on server) |
+| **`SECActionSetComponent`** | Current action id, executing flag, active action set, equipped weapon ref, cooldown events |
+| **`SECReactionSetComponent`** | Current reaction id, executing flag, active reaction set, cooldown events |
+| **`SECCombatRoleComponent`** | **`CombatRole`** gameplay tag |
+| **`UAbilitySystemComponent`** | GAS state and montages |
 
-### Client-Side Available
+Panels below show **replicated runtime fields** on each pawn component (what clients receive during play, not Blueprint defaults you set once in the editor):
 
-Clients can read all replicated state and bind to delegates. This is enough for:
-- Health bars and damage numbers
-- Action name indicators ("Charging Heavy Attack...")
-- Role-based outline colors or overhead icons
-- Animation (handled by standard GAS montage replication)
+<MultiplayerActionStateDetails />
 
----
+<CombatRoleReplicatedDetails />
 
-## Component Breakdown
+**`SECCombatControllerComponent`** wires controller delegates into pawn notify methods: **`NotifyActionStarted`**, **`NotifyActionCompleted`**, **`NotifyCooldownStarted`**, **`NotifyCooldownExpired`**, and **`USECCombatRoleComponent::SetCombatRole`**. Reaction evaluation uses the same bridge with **`NotifyReactionStarted`**, **`NotifyReactionCompleted`**, and matching cooldown notifies on **`SECReactionSetComponent`**.
 
-### Gameplay Abilities
+Clients bind **`OnActionExecutionStarted`**, **`OnCombatRoleChanged`**, **`OnReactionExecutionStarted`**, and related cooldown delegates on the pawn.
 
-All abilities derived from `GameplayAbilityBase` are configured with:
+**`ASECWeaponBase`** sets **`bReplicates = true`**. Attachment replicates with the character mesh.
 
-```cpp
-NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::ServerInitiated;
-ReplicationPolicy = EGameplayAbilityReplicationPolicy::ReplicateYes;
-```
-
-This means:
-- Abilities are activated on the server
-- GAS replicates the ability state and montage playback to clients
-- Clients see the correct animations without any extra work
-
-### Melee Trace (SECMeleeTraceComponent)
-
-Melee traces run **only on the server**. The component's `TickComponent` checks for authority before processing traces. Damage is applied server-side via `ApplyDamage`.
-
-Clients see the attack animation (via GAS montage replication) but don't run traces. Hit reactions, damage numbers, and VFX should be driven by the replicated health change or gameplay cues.
-
-### Weapons (SECWeaponBase)
-
-Weapons replicate as actors (`bReplicates = true`). Attachment to the character skeleton happens on the server and replicates to clients, so weapons are visible on all machines.
-
-### Health (BasicHealthComponent)
-
-Health is replicated with `OnRep`. The `OnHealthDecreased` delegate fires on **both server and clients** because it is triggered inside `OnRep_Health`, not inside `DecreaseHealth`. This means client-side UI can bind directly:
-
-```cpp
-HealthComponent->OnHealthDecreased.AddDynamic(this, &UMyWidget::OnDamaged);
-// This fires on both server and clients when health drops.
-```
-
-### Action State (SECActionSetComponent)
-
-The `SECCombatControllerComponent` pushes execution events to the pawn's `SECActionSetComponent`, which replicates them:
-
-```cpp
-// Server-side (automatic, handled by controller):
-ActionSetComponent->NotifyActionStarted("HeavyAttack");
-ActionSetComponent->NotifyActionCompleted("HeavyAttack", true);
-
-// Client-side (read in widgets, HUD, etc.):
-ActionSetComponent->OnActionExecutionStarted.AddDynamic(...);
-ActionSetComponent->OnActionExecutionCompleted.AddDynamic(...);
-ActionSetComponent->OnActionSetChanged.AddDynamic(...);
-
-// Cooldown tracking (for ability cooldown UI):
-ActionSetComponent->OnActionCooldownStarted.AddDynamic(...);  // (ActionId, Duration)
-ActionSetComponent->OnActionCooldownExpired.AddDynamic(...);  // (ActionId)
-float Remaining = ActionSetComponent->GetRemainingCooldown("HeavyAttack");
-bool bOnCD = ActionSetComponent->IsActionOnCooldown("HeavyAttack");
-```
-
-### Reaction State (SECReactionSetComponent)
-
-The same bridge pattern applies to reactions. The `SECCombatControllerComponent` pushes reaction events to the pawn's `SECReactionSetComponent`:
-
-```cpp
-// Client-side (read in widgets, HUD, etc.):
-ReactionSetComponent->OnReactionExecutionStarted.AddDynamic(...);
-ReactionSetComponent->OnReactionExecutionCompleted.AddDynamic(...);
-ReactionSetComponent->OnReactionSetChanged.AddDynamic(...);
-
-// Cooldown tracking:
-ReactionSetComponent->OnReactionCooldownStarted.AddDynamic(...);
-ReactionSetComponent->OnReactionCooldownExpired.AddDynamic(...);
-float Remaining = ReactionSetComponent->GetRemainingCooldown("BlockReaction");
-```
-
-### Combat Role (SECCombatRoleComponent)
-
-The role subsystem assigns roles to controllers (server-only). When a role changes, the `SECCombatControllerComponent` writes it to the pawn's `SECCombatRoleComponent`, which replicates the tag:
-
-```cpp
-// Client-side:
-FGameplayTag Role = CombatRoleComponent->GetCombatRole();
-CombatRoleComponent->OnCombatRoleChanged.AddDynamic(...);
-```
-
-See [Combat Roles — Client Role Visibility](/docs/soulslike-combat/combat-roles#client-role-visibility) for details.
-
-### Movement
-
-`MovementEvaluatorComponent` runs on the server and feeds input to Unreal's `CharacterMovementComponent` (CMC). The CMC handles replication natively. Position, velocity, and rotation all sync to clients through Unreal's built-in character movement replication. No additional work needed.
+**`UGameplayAbilityBase`** (used by **`GA_SEC_Attack`**) defaults to server-initiated execution with replicated montages. Exact enum values sit in the **GameplayAbilityBase defaults** collapsible.
 
 ---
 
 ## Setup
 
-If you're already using the plugin in single-player, there's almost nothing to change for multiplayer.
+### 1. Register player targets
 
-### What You Need
-
-1. **Register combat targets.** In multiplayer, register each player pawn as a combat target. The [Targeting System](/docs/soulslike-combat/targeting-system) handles multi-target distribution.
+Call **`RegisterCombatTarget`** for each player pawn from GameMode or player spawn:
 
 ```cpp
-// In GameMode or Player setup:
-UAICombatRoleSubsystem* Subsystem = GetWorld()->GetSubsystem<UAICombatRoleSubsystem>();
-Subsystem->RegisterCombatTarget(PlayerPawn, /*bAutoAssignUnassigned=*/ true);
+UAICombatRoleSubsystem* Roles = GetWorld()->GetSubsystem<UAICombatRoleSubsystem>();
+Roles->RegisterCombatTarget(PlayerPawn, /*bAutoAssignUnassigned=*/ true);
 ```
 
-2. **Drive client UI from replicated state.** Use the delegates on `SECActionSetComponent`, `SECCombatRoleComponent`, and `BasicHealthComponent` for client-side feedback.
+Co-op needs one entry per player. See [Targeting System](/docs/soulslike-combat/targeting-system).
 
-3. **Damage handling.** If you're using custom damage handling (not Unreal's built-in `ApplyDamage`), make sure your system is server-authoritative. The melee trace only runs on the server, so all hit events originate there.
+### 2. Bind client UI to pawn components
 
-### What You Don't Need To Do
+```cpp
+USECActionSetComponent* Actions = Enemy->FindComponentByClass<USECActionSetComponent>();
+Actions->OnActionExecutionStarted.AddDynamic(this, &UMyHUD::OnEnemyAction);
 
-- No need to configure replication on components; it's set up by default
-- No need to manually sync animations; GAS handles montage replication
-- No need to replicate movement; CMC does this natively
-- No need to run AI logic on clients; everything is server-authoritative
+USECCombatRoleComponent* Role = Enemy->FindComponentByClass<USECCombatRoleComponent>();
+Role->OnCombatRoleChanged.AddDynamic(this, &UMyHUD::OnRoleChanged);
+```
+
+Mirror the same pattern on **`SECReactionSetComponent`** with **`OnReactionExecutionStarted`** (and completion/cooldown delegates as needed).
+
+### 3. Optional health component
+
+**`UBasicHealthComponent`** is not on **`EnemyCharacterBase`** by default. Add it in Blueprint for replicated **`Health`**. **`OnHealthChanged`** and **`OnHealthDecreased`** fire when health updates ( **`OnRep_Health`** on clients; **`SetHealth`** calls the same path on the server).
+
+**`SECCombatControllerComponent`** binds **`OnHealthZero`** to **`HandleDeath`** when **`bAutoBindBasicHealthComponent`** is true (default). Disable that flag if you drive death from GAS or a custom health system.
+
+**`ISECDamageable`** on **`EnemyCharacterBase`** is the preferred damage path for SEC actors.
+
+### 4. Dedicated server animation
+
+**`AEnemyCharacterBase::BeginPlay`** sets **`AlwaysTickPoseAndRefreshBones`** on dedicated servers. Without it, DS socket positions stay at bind pose and melee traces miss.
 
 ---
 
-## Common Multiplayer Patterns
+## Integration
 
-### Co-op with Target Distribution
+| System | Multiplayer note |
+|--------|------------------|
+| [Action System](/docs/soulslike-combat/action-system) | Execution on server; state on **`SECActionSetComponent`**. |
+| [Reaction System](/docs/soulslike-combat/reaction-system) | Same bridge via **`SECReactionSetComponent`**. |
+| [Combat Roles](/docs/soulslike-combat/combat-roles) | Subsystem on server; tag on **`SECCombatRoleComponent`**. |
+| [Melee Trace](/docs/soulslike-combat/melee-trace) | Traces and damage on authority only. |
+| [Awareness System](/docs/soulslike-combat/awareness-system) | Server-only perception. |
+| [Movement System](/docs/soulslike-combat/movement-system) | **`MovementEvaluatorComponent`** on server; **`CharacterMovementComponent`** replicates pose. |
+
+---
+
+<Collapsible title="GameplayAbilityBase defaults" badge="Advanced">
+
+**`UGameplayAbilityBase`** constructor sets:
 
 ```cpp
-// Register both players
-Subsystem->RegisterCombatTarget(Player1);
-Subsystem->RegisterCombatTarget(Player2);
-
-// AI distributes across players using TargetSelectors
-// See Targeting System docs for selector options
+NetExecutionPolicy = ServerInitiated;
+ReplicationPolicy = ReplicateYes;
+InstancingPolicy = InstancedPerActor;
 ```
 
-### Client-Side Enemy HUD
+Server activates abilities; GAS replicates montage playback to clients.
+
+</Collapsible>
+
+<Collapsible title="World tags on clients" badge="Advanced">
+
+**`USECWorldTagSubsystem`** mutators are server-only. For client reads, add **`USECWorldTagComponent`** to **`GameState`**. It mirrors subsystem tags through **`OnRep_Tags`**. **`USECWorldTagLibrary`** read helpers route by net mode.
+
+</Collapsible>
+
+<Collapsible title="Client HUD example" badge="Advanced">
 
 ```cpp
-// In your enemy health bar widget:
-void UEnemyHUD::Setup(APawn* EnemyPawn)
+void UEnemyHUD::BindToPawn(APawn* Enemy)
 {
-    auto* Health = EnemyPawn->FindComponentByClass<UBasicHealthComponent>();
-    Health->OnHealthChanged.AddDynamic(this, &UEnemyHUD::UpdateHealthBar);
-    Health->OnHealthDecreased.AddDynamic(this, &UEnemyHUD::FlashDamage);
-
-    auto* ActionSet = EnemyPawn->FindComponentByClass<USECActionSetComponent>();
-    ActionSet->OnActionExecutionStarted.AddDynamic(this, &UEnemyHUD::ShowActionIndicator);
-    
-    auto* Role = EnemyPawn->FindComponentByClass<USECCombatRoleComponent>();
-    Role->OnCombatRoleChanged.AddDynamic(this, &UEnemyHUD::UpdateRoleIcon);
+    if (auto* Health = Enemy->FindComponentByClass<UBasicHealthComponent>())
+    {
+        Health->OnHealthChanged.AddDynamic(this, &UEnemyHUD::RefreshBar);
+        Health->OnHealthDecreased.AddDynamic(this, &UEnemyHUD::FlashDamage);
+    }
+    if (auto* Actions = Enemy->FindComponentByClass<USECActionSetComponent>())
+    {
+        Actions->OnActionExecutionStarted.AddDynamic(this, &UEnemyHUD::ShowTelegraph);
+    }
+    if (auto* Role = Enemy->FindComponentByClass<USECCombatRoleComponent>())
+    {
+        Role->OnCombatRoleChanged.AddDynamic(this, &UEnemyHUD::SetRoleIcon);
+    }
 }
 ```
 
-### Dedicated Server
-
-No special configuration needed. The plugin is fully compatible with dedicated servers. AI controllers exist on the dedicated server, and all replicated state flows to connected clients.
-
----
-
-## Integration Points
-
-| System | Multiplayer Relevance |
-|--------|----------------------|
-| [Action System](/docs/soulslike-combat/action-system) | Actions replicate via SECActionSetComponent |
-| [Combat Roles](/docs/soulslike-combat/combat-roles) | Roles replicate via SECCombatRoleComponent |
-| [Melee Trace](/docs/soulslike-combat/melee-trace) | Server-authoritative only, no client traces |
-| [Targeting System](/docs/soulslike-combat/targeting-system) | Multi-target handles co-op player distribution |
-| [Movement System](/docs/soulslike-combat/movement-system) | Relies on CMC native replication |
-
----
+</Collapsible>
 
 <DocNav
   prev={{ title: "Configuration Reference", href: "/docs/soulslike-combat/configuration" }}

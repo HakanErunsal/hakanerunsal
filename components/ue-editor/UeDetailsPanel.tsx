@@ -874,6 +874,30 @@ export const WEAPON_TRACE_SOCKET_DETAILS: UeDetailCategory[] = [
   },
 ];
 
+/** USECCombatRoleComponent replicated field — verified against SECCombatRoleComponent.h */
+export const COMBAT_ROLE_REPLICATED_DETAILS: UeDetailCategory[] = [
+  {
+    title: "AI|Combat Role",
+    properties: [{ label: "Combat Role", value: { kind: "text", value: "SEC.Role.Attacker" } }],
+  },
+];
+
+/** USECActionSetComponent replicated client-visible state — verified against SECActionSetComponent.h */
+export const MULTIPLAYER_ACTION_STATE_DETAILS: UeDetailCategory[] = [
+  {
+    title: "SEC|Action State",
+    properties: [
+      { label: "Current Action Id", value: { kind: "text", value: "None" } },
+      { label: "Action Executing", value: b(false) },
+      { label: "Active Action Set", value: { kind: "asset", value: "DA_EnemyActions" } },
+    ],
+  },
+  {
+    title: "Weapon",
+    properties: [{ label: "Equipped Weapon", value: { kind: "asset", value: "BP_EnemySword" } }],
+  },
+];
+
 /** SECMeleeTraceComponent TeamFilter — verified against SECMeleeTraceComponent.h */
 export const MELEE_TRACE_TEAM_FILTER_DETAILS: UeDetailCategory[] = [
   {
