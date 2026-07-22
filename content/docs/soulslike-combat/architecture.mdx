@@ -1,10 +1,11 @@
 ---
 title: "Core Architecture"
-description: "Understanding the StateTree + Behavior Tree hybrid architecture."
+description: "The mental model: how the plugin separates strategy from execution, and how a decision flows from perception to movement."
 date: 2025-12-10
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Architecture"]
 parent: "SoulslikeCombatDocs"
+order: 2
 ---
 
 
@@ -14,11 +15,9 @@ parent: "SoulslikeCombatDocs"
     { label: "Architecture" }
 ]} />
 
-## The StateTree + Behavior Tree Hybrid
+## Two layers: strategy and execution
 
-The plugin separates **strategic thinking** from **tactical execution**. A single massive Behavior Tree mixing strategy and execution logic quickly becomes unmaintainable.
-
-**StateTree (The Brain)** handles high-level decisions. **Actions (The Hands)** handle tactical execution. The two layers communicate through components, never directly.
+The plugin splits the AI into a layer that decides and a layer that acts. The decision layer picks what to do; the execution layer carries it out. The two talk through components, never directly, so you can change either side without touching the other.
 
 <ArchitectureDiagram
   layers={[
@@ -44,178 +43,85 @@ The plugin separates **strategic thinking** from **tactical execution**. A singl
       ]
     }
   ]}
-  caption="The StateTree drives decisions. Actions are executed through Gameplay Abilities or Behavior Tree sequences."
+  caption="The strategic layer drives decisions. Actions run through Gameplay Abilities or Behavior Tree sequences."
 />
 
-> **When to use each execution method:** Use the Gameplay Ability method for straightforward attacks (play montage, apply damage). Use the Behavior Tree Sequence method for complex multi-step actions that need conditional branches (charge attack, check stamina, branch to heavy or light version).
+<Callout type="info">
+**Two ways to run an action.** A **Gameplay Ability** suits a self-contained move: play a montage, apply damage. A **Behavior Tree Sequence** suits a multi-step move with branches: close the gap, check stamina, commit to a heavy or light finisher. You pick per action in the ActionSet.
+</Callout>
 
 ---
 
-## Controller Architecture
+## The pieces
 
-The plugin supports two controller setups:
+An enemy is a pawn and an AI controller, each carrying components. `EnemyCharacterBase` and `EnemyControllerBase` create them for you. [Getting Started](/docs/soulslike-combat/getting-started) covers setup, including how to reparent your own classes.
 
-### Option A: EnemyControllerBase (Quick Start)
+**On the pawn:**
 
-A pre-configured AI controller that creates all common SEC components as default subobjects. Best for getting started quickly.
+| Component | Job |
+|-----------|-----|
+| `AbilitySystemComponent` | Runs the gameplay abilities that actions trigger |
+| `SECMeleeTraceComponent` | [Melee hit detection](/docs/soulslike-combat/melee-trace) |
+| `SECActionSetComponent` | Holds and replicates the [action set](/docs/soulslike-combat/action-system) |
+| `SECReactionSetComponent` | Holds and replicates the [reaction set](/docs/soulslike-combat/reaction-system) |
+| `SECCombatRoleComponent` | Replicates the assigned [combat role](/docs/soulslike-combat/combat-roles) |
 
-```
-AEnemyControllerBase (convenience wrapper)
-├── SECCombatControllerComponent   ← handles AIConfig, combat roles, sync
-├── MovementEvaluatorComponent     ← tactical positioning
-├── ActionEvaluationComponent      ← action scoring and execution
-├── ReactionEvaluationComponent    ← event-driven reaction selection
-├── ThreatDetectionComponent       ← player attention tracking
-├── SECBrainComponent              ← runs the StateTree or a native combat loop
-└── BehaviorTreeComponent (helper) ← for action BT sequences
-```
+**On the controller:**
 
-On top of the component setup, `EnemyControllerBase` also provides:
-- **Smooth focus rotation** with interpolation (`SmoothFocusInterpSpeed`)
-- **Rotation lock** for committed attacks (`LockRotationBy`, `UnlockRotationBy`, `ForceUnlockRotation`; the keyless `LockRotation`/`UnlockRotation` remain for back-compat). Pass the owning ability or montage as the owner; the pin defaults to self. A lock keyed to an ability self-releases if that ability is interrupted or destroyed without unlocking, so a cancelled attack cannot leave the AI stuck facing one way. `UGameplayAbilityBase` does this via `bLockAIRotation`.
-- **Team ID** via `ISECTeamInterface` and Unreal's `IGenericTeamAgentInterface` (integrates with AI Perception and EQS)
-- **K2 Blueprint events** forwarded from the combat component (`OnCombatRoleAssigned`, `OnCombatTargetLost`)
+| Component | Job |
+|-----------|-----|
+| `SECCombatControllerComponent` | The hub: config resolution, role registration, death teardown |
+| `SECBrainComponent` | Runs a StateTree or the native combat loop (see below) |
+| `ActionEvaluationComponent` | Scores and runs [actions](/docs/soulslike-combat/action-system) |
+| `ReactionEvaluationComponent` | Runs event-driven [reactions](/docs/soulslike-combat/reaction-system) |
+| `MovementEvaluatorComponent` | [Tactical positioning](/docs/soulslike-combat/movement-system) |
+| `ThreatDetectionComponent` | [Player attention tracking](/docs/soulslike-combat/threat-detection), disabled by default |
+| `AwarenessComponent` | [Perception memory](/docs/soulslike-combat/awareness-system): sight, hearing, damage |
 
-### Option B: Custom AAIController + SECCombatControllerComponent
-
-Add `SECCombatControllerComponent` to any AAIController Blueprint. This is the minimal path for integrating with existing controllers.
-
-```
-YourCustomAIController
-├── SECCombatControllerComponent   ← add this
-├── (your own components)
-└── (pick which SEC components you need)
-```
-
-> **When to use which:** Use `EnemyControllerBase` for new projects where you want everything pre-wired. Use a custom controller + component when integrating into an existing project or when you need a different controller hierarchy.
+`SECCombatControllerComponent` is the one piece every setup needs. Add it to any `AAIController` and the combat system works; the other controller components are opt-in. Its full API lives in the [API Reference](/docs/soulslike-combat/api-reference).
 
 ---
 
-## SECCombatControllerComponent
+## How a decision flows
 
-This is the **single source of truth** for all combat system integration. It handles:
-- AIConfig resolution (from pawn via `IEnemyAIConfigProvider`, or from its own `DefaultAIConfig`)
-- Combat role registration and unregistration with `AICombatRoleSubsystem`
-- Role-based sync of action sets, reaction sets, and movement profiles
-- Action and reaction execution state delegation to pawn components for replication
-- Threat-to-movement auto-wiring (if both `ThreatDetectionComponent` and `MovementEvaluatorComponent` are present on the same controller)
+Every evaluation runs the same loop:
 
-All SEC subsystems and StateTree tasks communicate through this component. If an AI controller has it, the full combat system works.
-
-**Overridable Hooks (BlueprintNativeEvent):**
-
-You can subclass `SECCombatControllerComponent` in Blueprint and override these functions:
-
-| Function | Purpose |
-|----------|---------|
-| `SyncStateForCombatRole` | Called when role changes. Override to add custom sync logic (animation sets, VFX, StateTree swaps). Call parent to keep default action set and movement profile sync. |
-| `HandleCombatTargetLost` | Called when combat target is destroyed or unregistered. Override to add custom fallback behavior (patrol, aggro switch). |
-| `HandleDeath` | Shuts down all combat systems in order: blocks action evaluation → stops brain logic → cancels actions/reactions → stops melee traces → drops weapon (if `bDropWeaponOnDeath`) → disables threat detection → unregisters from role subsystem → clears focus → broadcasts `OnDeath`. Override to insert custom teardown steps. |
-
-**Blueprint-Callable API:**
-
-| Function | Purpose |
-|----------|---------|
-| `ApplyLocalCombatRole` | Adopt a combat role locally without subsystem registration. Syncs ActionSet and MovementProfile exactly like a subsystem-assigned role, but does not consume slots or participate in coordination. Designed for boss AI or solo enemies. |
-
-**Delegates:**
-
-| Delegate | When |
-|----------|------|
-| `OnCombatRoleChanged` | Fires when the combat role changes (from subsystem assignment or local apply). Provides new and old role tags. |
-| `OnCombatTargetLost` | Fires when the combat target is destroyed or unregistered. |
-| `OnCombatRoleSystemReady` | Fires after successful registration with `AICombatRoleSubsystem`. Safe to call `ForceAssignRole` or read the initial role in this handler. |
-| `OnDeath` | Fires at the end of `HandleDeath()`. All SEC systems are already shut down. Safe to enable ragdoll, spawn VFX, or destroy the actor. |
-
----
-
-## SECBrainComponent
-
-The brain. `AEnemyControllerBase` creates it as a default subobject. On possession it reads the resolved `AIConfig`:
-
-- `DefaultStateTree` set: the brain creates a `BotStateTreeAIComponent` at runtime and runs that StateTree.
-- `DefaultStateTree` empty: the brain runs a native C++ combat loop (build the decision context, move, then poll and execute the best action each tick). No StateTree is created.
-
-It takes the controller's brain slot, so `HandleDeath` stops it and the per-action behavior-tree swap restores to it. When the `AIConfig` changes, the brain tears down the previous brain before starting the new one; `RefreshBrain()` re-runs that choice on demand. The native loop covers combat; graph-authored structure (patrol, investigate, boss phases) needs a StateTree.
-
-| Property | Purpose |
-|----------|---------|
-| `EvaluationCooldown` | Seconds between action evaluations in the native loop (default `0.1`). |
-
----
-
-## BotStateTreeAIComponent
-
-`SECBrainComponent` creates this at runtime when the config names a StateTree. It extends Unreal's `UStateTreeAIComponent` and initializes the StateTree on registration.
-
-**How initialization works:**
-
-1. Controller possesses a pawn
-2. Component resolves AIConfig (via `SECCombatControllerComponent` if present, or fallback)
-3. Loads the StateTree from `AIConfig.DefaultStateTree`
-4. Falls back to `FallbackStateTree` if no AIConfig or no StateTree is set
-
-| Property | Purpose |
-|----------|---------|
-| `bAutoInitializeFromConfig` | If true (default), automatically loads StateTree from AIConfig on possession. Disable for manual control. |
-| `FallbackStateTree` | StateTree to use when no AIConfig is available. Useful for custom controller setups that do not use `EnemyAIConfig`. |
-
-| Function | Purpose |
-|----------|---------|
-| `InitializeFromAIConfig` | Manually initialize StateTree from an AIConfig asset. Call this if `bAutoInitializeFromConfig` is disabled. |
-| `AddLinkedStateTreeOverride` | Add a linked StateTree override for a specific gameplay tag. Useful for swapping sub-trees per enemy variant. |
-
----
-
-## System Flow
-
-### Component Lifecycle Convention
-
-All controller-side components (`SECCombatControllerComponent`, `SECBrainComponent`, `ActionEvaluationComponent`, `MovementEvaluatorComponent`, `ThreatDetectionComponent`) follow the same lifecycle pattern:
-
-1. **`OnRegister`** - Subscribe to `AAIController::OnPossessedPawnChanged`. If the controller already has a pawn, handle it immediately.
-2. **`OnPossessedPawnChanged` callback** - Cache pawn reference, resolve ASC (if needed), initialize actions/state for the new pawn.
-3. **`OnUnregister`** - Unsubscribe from `OnPossessedPawnChanged`.
-
-Components work correctly regardless of when the controller possesses the pawn, and handle re-possession cleanly.
-
-> **Why not BeginPlay?** Controller components' `BeginPlay` fires before possession. `OnRegister` + the possession delegate guarantees the pawn exists when the component initializes.
-
-1. **The brain** (`SECBrainComponent`) drives the behavior loop: a StateTree via `BotStateTreeAIComponent` when `DefaultStateTree` is set, or a native C++ loop when it is empty
-2. **`STTask_BuildDecisionContext`** builds the `FDecisionContext` snapshot (distance, angle, health, threat, tags) via `USECDecisionLibrary::CalculateDecisionContext`, and **`ActionEvaluationComponent`** consumes it to score actions
-3. **ActionSet** scores all available actions using:
-   - Per-action Scorers (distance, angle, health, speed, attribute, custom) and Gates
-   - Cooldown status
-   - Context tags (player blocking, low health, etc.)
-   - Novelty decay (anti-repetition)
-4. **Best action selected** and executed as:
-   - **Gameplay Ability** (via AbilitySystemComponent), or
-   - **Behavior Tree sequence** (via the helper BT component)
-5. **MovementEvaluatorComponent** evaluates directions simultaneously:
-   - Scores each for distance, angle, avoidance
-   - Blends pathfinding with direct input
-   - Applies strafing, retreat, or approach behavior
+1. **Perceive.** Awareness and Threat Detection update what the AI knows about its target.
+2. **Decide.** The brain builds a decision context (distance, angle, health, stamina, tags), and `ActionEvaluationComponent` scores every action in the set against it.
+3. **Act.** The highest-scoring valid action runs, as a Gameplay Ability or a Behavior Tree sequence.
+4. **Move.** `MovementEvaluatorComponent` scores directions in parallel and strafes, approaches, or retreats.
 
 <ArchitectureFlowDiagram />
 
 ---
 
+## The brain: StateTree or native loop
+
+`SECBrainComponent` reads the AI config on possession and picks how the AI runs:
+
+- **A StateTree is set** (`DefaultStateTree`): the brain creates a StateTree at runtime and runs it. Use this for graph-authored structure such as patrol, investigate, or boss phases.
+- **No StateTree**: the brain runs a native C++ loop: build the decision context, move, then score and run an action each tick. This covers combat on its own.
+
+The scoring and movement components do the same work in both modes. See [StateTree Tasks](/docs/soulslike-combat/statetree) for the graph nodes, and the [API Reference](/docs/soulslike-combat/api-reference) for the brain's properties.
+
+---
+
 ## Scope
 
-**What the plugin provides:**
+**The plugin provides:**
 - Enemy AI decision-making and tactical movement
-- Melee combat hit detection (can also be used for player characters)
-- Action scoring and execution framework
+- Melee hit detection, usable on player characters too
+- Action scoring and execution
 - Event-driven reaction evaluation and execution
-- Pawn-side resolution components (`SECActionSetComponent`, `SECReactionSetComponent`) with full replication
-- Multi-enemy coordination with role-based behavior
-- Multiplayer support (listen server and dedicated server)
-- Modular component system: mix and match for different enemy types
-- Data-driven configuration with full Blueprint support
-- Working showcase enemy to study and extend
+- Replicated pawn-side state (`SECActionSetComponent`, `SECReactionSetComponent`)
+- Multi-enemy coordination through combat roles
+- Multiplayer support on listen and dedicated servers
+- A modular component set you mix per enemy type
+- Data-driven configuration with full Blueprint access
+- A showcase enemy to study and extend
 
-**What you still need:**
-- UI/HUD (health bars, lock-on indicators, damage numbers)
+**You still build:**
+- UI and HUD: health bars, lock-on indicators, damage numbers
 - Level design and encounter placement
 - Progression and difficulty balancing
 

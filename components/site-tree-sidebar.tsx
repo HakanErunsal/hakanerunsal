@@ -31,7 +31,12 @@ function buildDocTree(): TreeNode[] {
     return rootDocs.map(rootDoc => {
         const children = publishedDocs
             .filter(d => d.parent === rootDoc.slugAsParams)
-            .sort((a, b) => a.title.localeCompare(b.title));
+            .sort((a, b) => {
+                const ao = a.order ?? Number.MAX_SAFE_INTEGER;
+                const bo = b.order ?? Number.MAX_SAFE_INTEGER;
+                if (ao !== bo) return ao - bo;
+                return a.title.localeCompare(b.title);
+            });
 
         return {
             title: rootDoc.title,

@@ -62,6 +62,7 @@ const docs = defineCollection({
       published: s.boolean().default(true),
       tags: s.array(s.string()).optional(),
       parent: s.string().optional(),
+      order: s.number().optional(),
       body: s.mdx(),
     })
     .transform(computedFields),

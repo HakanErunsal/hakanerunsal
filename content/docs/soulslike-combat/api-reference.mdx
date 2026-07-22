@@ -1,0 +1,155 @@
+---
+title: "API Reference"
+description: "Controller-side C++ and Blueprint API: SECCombatControllerComponent, EnemyControllerBase, SECBrainComponent, and BotStateTreeAIComponent."
+date: 2025-12-10
+published: true
+tags: ["Documentation", "Unreal Engine", "AI", "Reference"]
+parent: "SoulslikeCombatDocs"
+order: 18
+---
+
+
+<Breadcrumb items={[
+    { label: "Docs", href: "/docs" },
+    { label: "SoulslikeCombat", href: "/docs/SoulslikeCombatDocs" },
+    { label: "API Reference" }
+]} />
+
+The controller-side classes and their public members. For building an enemy, start with [Getting Started](/docs/soulslike-combat/getting-started); this page is the reference you reach for when extending the system in Blueprint or C++.
+
+---
+
+## SECCombatControllerComponent
+
+The hub every setup needs. Add it to any `AAIController` and the combat system works. It resolves the AI config, registers combat roles, syncs role-based state, and orchestrates death.
+
+<Callout type="info">
+To read the config or role from outside the component, call the static helpers instead of casting to `AEnemyControllerBase`. They work on any controller carrying the component.
+</Callout>
+
+**Static helpers**
+
+| Function | Returns |
+|----------|---------|
+| `ResolveAIConfig(Controller)` | The controller's cached config, or the pawn's config via `IEnemyAIConfigProvider`, or null |
+| `ResolveCurrentCombatRole(Controller)` | The current combat role tag, or an empty tag |
+
+**Instance accessors**
+
+| Function | Returns |
+|----------|---------|
+| `GetCachedAIConfig()` | The resolved `UEnemyAIConfig` in use |
+| `GetCurrentCombatRole()` | The current combat role tag |
+
+**Overridable hooks** (`BlueprintNativeEvent`, call the parent to keep default behavior)
+
+| Function | Purpose |
+|----------|---------|
+| `SyncStateForCombatRole(RoleTag)` | Runs when the role changes. Override to swap animation sets, trigger effects, or switch StateTree assets. Call Super to keep the default action set and movement profile sync. |
+| `HandleCombatTargetLost(LostTarget)` | Runs when the target is destroyed or unregistered. Override for fallback behavior (patrol, switch aggro). The default broadcasts `OnCombatTargetLost`. |
+
+**Blueprint-callable**
+
+| Function | Purpose |
+|----------|---------|
+| `ApplyLocalCombatRole(RoleTag)` | Adopt a role locally without registering with the subsystem. Syncs the action set and movement profile like a subsystem-assigned role, but consumes no slots and joins no coordination. For bosses and solo enemies. |
+| `HandleDeath()` | Full SEC shutdown, idempotent. Stops the brain, cancels the in-flight action and reaction, stops melee tracing, disables threat detection, unregisters from the role subsystem, clears focus, then broadcasts `OnDeath`. Does not unpossess or destroy the pawn. |
+
+**Properties**
+
+| Property | Default | Purpose |
+|----------|---------|---------|
+| `DefaultAIConfig` | null | Fallback config when the pawn provides none via `IEnemyAIConfigProvider` |
+| `bAutoRegisterForCombatRoles` | true | Register with the combat role subsystem on possession |
+| `RoleRegistrationParams` | n/a | Registration parameters used when the pawn has no config |
+| `bEnableThreatDetection` | true | Enable threat detection on BeginPlay when a `ThreatDetectionComponent` is present |
+| `bAutoBindBasicHealthComponent` | true | Call `HandleDeath()` automatically when a `BasicHealthComponent` reaches zero |
+| `bDropWeaponOnDeath` | true | Drop the weapon with a 10-second physics lifespan on death |
+
+**Delegates**
+
+| Delegate | Fires |
+|----------|-------|
+| `OnCombatRoleChanged(NewRole, OldRole)` | When the role changes, from subsystem assignment or local apply |
+| `OnCombatTargetLost(LostTarget)` | When the target is destroyed or unregistered |
+| `OnCombatRoleSystemReady(Controller)` | After registration with the role subsystem. Safe to read the initial role here |
+| `OnDeath()` | At the end of `HandleDeath()`, once every system is stopped. Safe to ragdoll, spawn VFX, or destroy |
+
+---
+
+## EnemyControllerBase
+
+The convenience controller. It creates every combat component as a default subobject and adds facing and rotation behavior on top of `SECCombatControllerComponent`.
+
+**Rotation lock** (freezes facing during a committed attack)
+
+| Function | Purpose |
+|----------|---------|
+| `LockRotationBy(LockOwner)` | Hold a rotation lock keyed to an owner. Releases when the owner is destroyed, or when an `InstancedPerActor` ability goes inactive. Defaults to the caller. |
+| `UnlockRotationBy(LockOwner)` | Release that owner's lock |
+| `LockRotation()` / `UnlockRotation()` | Keyless counter-based lock; balance each call |
+| `ForceUnlockRotation()` | Clear both the counter and the owner set |
+| `IsRotationLocked()` | True while any lock holds |
+
+`UGameplayAbilityBase` locks rotation through this API when `bLockAIRotation` is set, so montage-driven attacks commit without extra wiring.
+
+**Facing**
+
+| Member | Default | Purpose |
+|--------|---------|---------|
+| `GetDesiredFacingLocation(OutLocation)` | n/a | `BlueprintNativeEvent` returning the world location to face. Override for custom facing |
+| `SmoothFocusInterpSpeed` | 165.0 | Interpolation speed for smooth focus rotation |
+| `bFaceLastKnownWhenNotDetected` | true | Track the live target only while Detected; otherwise face its last-known location instead of through walls |
+
+**Team**
+
+| Member | Purpose |
+|--------|---------|
+| `TeamId` | Editable per instance. 0 = player, 1 = enemy (default), 255 = neutral |
+| `ISECTeamInterface` | `GetSECTeamId` / `SetSECTeamId` |
+| `IGenericTeamAgentInterface` | Integrates with AI Perception and EQS |
+
+**Blueprint events** (forwarded from the combat component)
+
+| Event | Fires |
+|-------|-------|
+| `K2_OnCombatRoleAssigned(NewRole, OldRole)` | On role assignment |
+| `K2_OnCombatTargetLost(LostTarget)` | When the target is lost |
+| `K2_OnReactionSetApplied(RoleTag, ReactionSet)` | When a reaction set is applied via role sync |
+| `K2_OnDeath()` | After `HandleDeath()` completes; safe to ragdoll or play a death montage |
+
+`HandleDeath()` on the controller is a convenience wrapper around the component's `HandleDeath()`. Component accessors: `GetCombatControllerComponent`, `GetHelperBTComponent`, `GetReactionEvaluationComponent`, `GetAwarenessComponent`. Delegates: `OnFocusSet`, `OnActionStateChanged`.
+
+---
+
+## SECBrainComponent
+
+Chooses how the AI runs from its config: a StateTree when one is named, otherwise a native C++ combat loop.
+
+| Member | Default | Purpose |
+|--------|---------|---------|
+| `RefreshBrain()` | n/a | Re-evaluate the config and switch brains if the StateTree choice changed. Call after changing the config at runtime without re-possessing |
+| `IsRunningNativeBrain()` | n/a | True while the native loop drives the AI |
+| `EvaluationCooldown` | 0.1 | Seconds between action evaluations in the native loop |
+
+In native mode the component holds the controller's brain slot, so `HandleDeath` stops it and the per-action behavior-tree swap restores it.
+
+---
+
+## BotStateTreeAIComponent
+
+Extends Unreal's `UStateTreeAIComponent`. `SECBrainComponent` creates it at runtime when the config names a StateTree. It resolves the config on possession in this order:
+
+1. The controller's `SECCombatControllerComponent` cached config
+2. A pawn implementing `IEnemyAIConfigProvider`
+3. The `FallbackStateTree` on this component
+
+| Member | Default | Purpose |
+|--------|---------|---------|
+| `InitializeFromAIConfig(AIConfig)` | n/a | Load and set the StateTree from the config's `DefaultStateTree`. Returns true on success |
+| `AddLinkedStateTreeOverride(StateTag, StateTreeReference)` | n/a | Swap a sub-tree per gameplay tag, for enemy variants |
+| `bAutoInitializeFromConfig` | true | Initialize from the config automatically on possession. Disable for manual control |
+| `FallbackStateTree` | null | Used when no config is found or the config names no StateTree |
+
+
+<DocNav prev={{ title: "Performance", href: "/docs/soulslike-combat/performance" }} />
