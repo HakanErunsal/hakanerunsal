@@ -9,12 +9,11 @@ export default function ThreatVisualizer() {
 
     const mousePosRef = useRef({ x: 200, y: 80 });
     const lookDurationRef = useRef(0);
-    const currentTimeThresholdRef = useRef(1.5);
+    const currentTimeThresholdRef = useRef(3);
     const strafeDirRef = useRef(1);
     const orbitAngleRef = useRef(-Math.PI / 2);
     const displayRadiusRef = useRef(68);
     const swapFlashRef = useRef(0);
-    const randomSwapTimerRef = useRef(6);
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -25,26 +24,16 @@ export default function ThreatVisualizer() {
         const PLAYER = { x: 200, y: 175 };
         const ANGLE_THRESHOLD_DEG = 15;
         const ANGLE_THRESHOLD = (ANGLE_THRESHOLD_DEG * Math.PI) / 180;
-        const BASE_TIME_THRESHOLD = 1.5;
+        const BASE_TIME_THRESHOLD = 3;
         const BASE_RADIUS = 68;
-        const THREAT_DISTANCE_SCALE = 0.35;
+        const THREAT_DISTANCE_SCALE = 1;
         const ORBIT_SPEED = 0.28;
         const CONE_LENGTH = 120;
-        const RANDOM_SWAP_MIN = 5;
-        const RANDOM_SWAP_MAX = 10;
-
-        const scheduleRandomSwap = () => {
-            randomSwapTimerRef.current =
-                RANDOM_SWAP_MIN +
-                Math.random() * (RANDOM_SWAP_MAX - RANDOM_SWAP_MIN);
-        };
 
         const swapStrafe = () => {
             strafeDirRef.current *= -1;
             swapFlashRef.current = 1.2;
         };
-
-        scheduleRandomSwap();
 
         let animationFrameId: number;
         let lastTime = performance.now();
@@ -52,12 +41,6 @@ export default function ThreatVisualizer() {
         const render = (now: number) => {
             const delta = Math.min((now - lastTime) / 1000, 0.05);
             lastTime = now;
-
-            randomSwapTimerRef.current -= delta;
-            if (randomSwapTimerRef.current <= 0) {
-                swapStrafe();
-                scheduleRandomSwap();
-            }
 
             const orbitAngle = orbitAngleRef.current;
             orbitAngleRef.current += ORBIT_SPEED * strafeDirRef.current * delta;
@@ -87,7 +70,8 @@ export default function ThreatVisualizer() {
 
             const rawDot = lookDir.x * toEnemy.x + lookDir.y * toEnemy.y;
             const isLooking = rawDot >= Math.cos(ANGLE_THRESHOLD);
-            const threatLevel = isLooking ? Math.min(Math.max(rawDot, 0), 1) : 0;
+            const threatLevel =
+                rawDot > 0 ? Math.min(Math.max(rawDot, 0), 1) : 0;
 
             const distanceMultiplier = 1 + threatLevel * THREAT_DISTANCE_SCALE;
             const targetRadius = BASE_RADIUS * distanceMultiplier;
@@ -104,7 +88,6 @@ export default function ThreatVisualizer() {
                 lookDurationRef.current += delta;
                 if (lookDurationRef.current >= timeThreshold) {
                     swapStrafe();
-                    scheduleRandomSwap();
                     lookDurationRef.current = 0;
                     currentTimeThresholdRef.current =
                         BASE_TIME_THRESHOLD +
@@ -176,7 +159,7 @@ export default function ThreatVisualizer() {
             const tangentAngle = orbitAngle + (strafeDirRef.current > 0 ? Math.PI / 2 : -Math.PI / 2);
             ctx.beginPath();
             ctx.arc(enemyPos.x, enemyPos.y, 9, 0, Math.PI * 2);
-            ctx.fillStyle = isLooking ? '#ef4444' : '#64748b';
+            ctx.fillStyle = threatLevel > 0 ? '#ef4444' : '#64748b';
             ctx.fill();
 
             ctx.beginPath();
@@ -250,7 +233,7 @@ export default function ThreatVisualizer() {
             title="Viewport"
             breadcrumb={["LVL_SEC_Showcase", "Threat"]}
             assetType="visualizer"
-            caption="Enemy strafes slowly and may flip direction on its own. Aim inside the 15° cone to build threat and push the orbit outward; hold for 1.5s to force a strafe swap."
+            caption="Enemy strafes around the player. Aim toward the AI to raise threat (even outside the 15° cone); hold inside the cone for 3s to fire OnThreatDurationExceeded and swap strafe side when the profile allows it."
         >
             <UeViewport
                 ref={containerRef}

@@ -7,7 +7,7 @@ export default function ThreatResponseWiringDetails() {
       displayName="SEC Combat Controller Component"
       sourceClass="SECCombatControllerComponent"
       attachTo="AEnemyControllerBase"
-      note="Wires threat delegates to MovementEvaluatorComponent when bEnableThreatDetection is true."
+      note="Binds threat delegates on BeginPlay when ThreatDetectionComponent exists. Enable Threat Detection only controls SetThreatDetectionEnabled(true) on BeginPlay."
       categories={THREAT_RESPONSE_WIRING_DETAILS}
     />
   );

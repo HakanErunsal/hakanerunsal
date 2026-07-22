@@ -7,7 +7,7 @@ export default function ThreatDetectionDetails() {
       displayName="Threat Detection Component"
       sourceClass="ThreatDetectionComponent"
       attachTo="AEnemyControllerBase"
-      note="AI controller component. Disabled by default; SECCombatControllerComponent enables it when AIConfig is assigned."
+      note="AI controller component. Evaluation starts disabled in EnemyControllerBase; SECCombatControllerComponent calls SetThreatDetectionEnabled(true) on BeginPlay when Enable Threat Detection is on."
       categories={THREAT_DETECTION_DETAILS}
     />
   );

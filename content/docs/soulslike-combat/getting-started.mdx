@@ -75,13 +75,13 @@ Set it up like any character:
 
 `EnemyCharacterBase` already ships these components:
 
-| Component | Purpose |
-|-----------|---------|
-| `AbilitySystemComponent` | Runs the attack abilities |
-| `SECMeleeTraceComponent` | Frame-rate independent melee hits |
-| `SECActionSetComponent` | Holds and replicates the action set |
-| `SECReactionSetComponent` | Holds and replicates the reaction set |
-| `SECCombatRoleComponent` | Replicates the assigned combat role to clients |
+| Component | Class |
+|-----------|-------|
+| Ability System Component | `UAbilitySystemComponent` |
+| Melee Trace Component | `USECMeleeTraceComponent` |
+| Action Set Component | `USECActionSetComponent` |
+| Reaction Set Component | `USECReactionSetComponent` |
+| Combat Role Component | `USECCombatRoleComponent` |
 
 <Collapsible title="Use your own character, no C++" badge="Alternative">
 Already have a character Blueprint? Reparent it to `EnemyCharacterBase` instead of rebuilding it. No code required.
@@ -127,13 +127,14 @@ It comes pre-wired with every component the AI needs:
 | `ThreatDetectionComponent` | Tracks when the player looks at the AI (disabled by default) |
 | `AwarenessComponent` | Per-AI perception memory (sight, hearing, damage) |
 | `SECBrainComponent` | Runs your StateTree, or a native combat loop if none is set |
+| `HelperBTComponent` | Runs short behavior-tree sequences for Do Action (not the brain) |
 
 <Collapsible title="Use your own AI controller, no C++" badge="Alternative">
 Already have an AI controller Blueprint? Reparent it to `EnemyControllerBase`. No code required.
 
 1. Open your controller Blueprint.
 2. **File → Reparent Blueprint**, then pick `EnemyControllerBase`.
-3. You inherit all eight combat components, the committed-attack rotation lock, smooth focus, and awareness-based facing.
+3. You inherit the combat evaluators, **`HelperBTComponent`** (Do Action BT helper), the committed-attack rotation lock, smooth focus, and awareness-based facing.
 
 Adding the SEC components to a bare `AAIController` is not equivalent. `EnemyControllerBase` overrides `UpdateControlRotation` to hold the AI's facing during an attack and to face a target's last-known location, and the attack abilities lock rotation by casting the controller to `AEnemyControllerBase`. A plain controller keeps tracking the target mid-swing and loses that facing logic, since none of it is exposed to Blueprint. Reparent to `EnemyControllerBase`, or subclass it in C++ if you need a different base.
 </Collapsible>
@@ -144,7 +145,7 @@ Right-click → **Blueprint Class** → search `GA_SEC_Attack`. Name it `GA_Ligh
 
 Set it up:
 - Assign your attack montage. Assign several montages and the ability plays a random one each activation.
-- Override **Event_MontageNotifyBegin** and **Event_MontageNotifyEnd** to run logic at your notify windows: enable the melee trace, spawn VFX, apply effects.
+- Wire **On Notify Begin** and **On Notify End** on the montage task (`USECAbilityTask_PlayMontage` in `GA_SEC_Attack`) to run logic at notify windows: enable the melee trace, spawn VFX, apply effects.
 
 That covers a basic attack. `GA_SEC_Attack` inherits from `GameplayAbilityBase`, so the action system detects when the attack starts and ends.
 
@@ -187,15 +188,17 @@ Then add a scorer so the AI only picks this attack at the right distance. In the
 <Collapsible title="How an action is scored" badge="Advanced">
 Each action produces a score, and the highest valid one wins:
 
-`FinalScore = SelectionWeight × Distance × Angle × Health × TagMods × Novelty × Chain × (1 / RiskPenalty)`
+`FinalScore = SelectionWeight × CtxMult × Novelty × Chain × (1 / RiskPenalty) × RuntimeMod × CustomMod × Jitter`
 
-Every factor is opt-in. A dimension only counts when you add its scorer:
+**CustomMod** folds every scorer you add (distance, angle, health, speed, custom). Distance, angle, health, and speed are not automatic: each needs its own scorer in the **Scoring → Scorers** list.
 
-- **Distance / Angle / Health / Speed Scorer.** Score against an `FRangeEval` sweet spot.
-- **Attribute Scorer.** Score against any GAS attribute (mana, rage).
-- **Attribute Gate / Stamina Gate.** Hard veto below a threshold.
+Other factors:
 
-Actions scoring zero or failing a gate are skipped. Chaining (`Preferred Follow-Up Action` + `Chain Bonus Multiplier`) boosts a combo follow-up once the current action ends.
+- **Attribute Scorer / Attribute Gate / Stamina Gate** for GAS-backed rules.
+- **RuntimeMod** from `SetGlobalMultiplier` and per-action overrides on `ActionEvaluationComponent`.
+- **Jitter** is a deterministic ±5% tie-breaker from the decision context seed.
+
+Actions scoring zero or failing a gate are skipped. Chaining (`Preferred Follow-Up Action` on the source action plus **Chain Bonus Multiplier** on the follow-up) boosts a combo once the current action **completes**.
 </Collapsible>
 
 ### Step 5: Create the AI config
@@ -203,7 +206,7 @@ Actions scoring zero or failing a gate are skipped. Chaining (`Preferred Follow-
 Right-click → **Miscellaneous → Data Asset** → `EnemyAIConfig`. Name it `DA_MyAIConfig`. Set:
 
 - **Default Action Set** → `DA_MyEnemyActions`
-- **Default State Tree** → leave empty to run the native combat loop (build context, move, then pick and run the best action each tick). Set it to `Content/SoulslikeEnemyCombat/Showcase/AI/StateTree/StateTree_SEC_Core` to drive the AI with that StateTree instead.
+- **Default State Tree** → leave empty to run the native combat loop (build context, move, then pick and run the best action on the brain's evaluation cadence, default **0.1 s**). Set it to `Content/SoulslikeEnemyCombat/Showcase/AI/StateTree/StateTree_SEC_Core` to drive the AI with that StateTree instead.
 - **Default Reaction Set** → optional. Assign one if you built a `ReactionSet`. See the [Reaction System](/docs/soulslike-combat/reaction-system).
 
 <Collapsible title="Per-role overrides and config resolution" badge="Advanced">
@@ -239,7 +242,7 @@ No NavMesh means no pathfinding. If the enemy will not move, add a **NavMeshBoun
 </Callout>
 
 <Collapsible title="Watch the decision-making" badge="Advanced">
-Turn on the component debug flags to watch the AI decide. On `MovementEvaluatorComponent`, `bDebugDrawScoring` draws the scored movement directions; on the action side, the score breakdown reports each factor per action. Enable these in the editor only, never in a shipping build.
+Turn on the component debug flags to watch the AI decide. On **`MovementEvaluatorComponent`**, enable **`bDebugDrawScoring`** (or `SEC.Debug.Movement.DrawScoring 1`) to draw scored movement directions. On **`ActionEvaluationComponent`**, enable **`bDebugLogDecisions`** (or `SEC.Debug.LogActionDecisions 1`) to print each action's score breakdown. Enable these in the editor only, never in a shipping build.
 </Collapsible>
 
 <DocNav next={{ title: "Core Architecture", href: "/docs/soulslike-combat/architecture" }} />

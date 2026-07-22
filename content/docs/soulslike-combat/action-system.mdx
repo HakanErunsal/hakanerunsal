@@ -14,7 +14,7 @@ order: 5
     { label: "Action System" }
 ]} />
 
-> Scores every action against live battlefield data: distance, angle, health, and context tags.
+> Scores every action against live battlefield data: context tags, plus distance, angle, and health when you add scorers for those dimensions.
 
 <ActionFlowVisualizer />
 
@@ -44,7 +44,7 @@ Two base numbers sit on every action:
 - **Selection Weight** biases the action up or down. Weight `2.0` doubles its score against a weight `1.0` action.
 - **Risk Penalty** divides the final score to hold risky moves back. `1.0` is no penalty, `2.0` halves the score (a high-risk heavy attack), `0.5` doubles it (a safe move).
 
-**Scorers** (distance, angle, health, speed, and custom ones) fold in as multipliers. Leave them off and that dimension does not affect the score. An action with no Distance Scorer scores the same at any range.
+**Scorers** (distance, angle, health, speed, and custom ones) fold in as multipliers. Leave them off and that dimension does not affect the score. An action with no Distance Scorer scores the same at any range. A scorer that returns **0** zeroes the whole product for that action.
 
 ### Distance, Angle, Health & Speed Scorers
 
@@ -102,6 +102,7 @@ To watch the gate at runtime, set `SEC.Debug.LogActionDecisions 1`. While an ene
 - **Completed** uses the action's effective recovery (the override if set, otherwise the global `ActionRecoveryTime`).
 - **Interrupted or cancelled** uses `InterruptRecoveryTime`.
 - **Timed out** uses the global `ActionRecoveryTime`, never the per-action override.
+- **Failed** stamps no recovery window.
 
 **Combos flow through recovery.** An action's preferred follow-up (`PreferredNextActionId`) can still be selected while the enemy recovers, for `ChainFollowupWindowSeconds` after the action ends. Set that window on the evaluation component (default `0.6`). `0` makes the follow-up wait out recovery like any other action. Only the named follow-up bypasses the gate. A non-completion end (interrupt or cancel) clears it, so a parried enemy cannot combo through its own recovery.
 
@@ -131,7 +132,7 @@ Before scoring, every action runs hard gates. Fail one and the action drops out 
 | `RequiresTags` | The combined Self/Target/World tags don't hold all of them. |
 | `BlockTags` | Any of them sits on Self, Target, or World. |
 | **Require Line Of Sight** | The box is ticked and the AI has no clear view of its target. |
-| **Gates** | Any `USECGate` in the action's Scoring list returns false. See [Scorers & Gates](#scorers--gates). |
+| **Gates** | Any `USECGate` in the action's **CustomScoring → Gates** array returns false. See [Scorers & Gates](#scorers--gates). |
 
 Stamina only blocks when you add a **Stamina Gate** (`MinStamina`) to the Scoring list, or an **Attribute Gate** for a GAS stamina pool. Decision-context Stamina defaults to 100, so an action with no Stamina Gate ignores stamina.
 

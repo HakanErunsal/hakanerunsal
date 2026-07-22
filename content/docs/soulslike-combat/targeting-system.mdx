@@ -72,7 +72,7 @@ Set **Target Selector** to **Awareness Filtered Target Selector**, then fill the
 
 | Field | Notes |
 |-------|-------|
-| **Min Required State** | Target awareness on this AI must be `>=` this state (`static_cast` on enum order). Default **Lost** passes **Lost** and **Detected**; **Suspicious** and below fail. |
+| **Min Required State** | Target awareness on this AI must be `>=` this state (`static_cast` on enum order). Default **Lost** passes **Lost** and **Detected**; **Unknown**, **Forgotten**, and **Suspicious** fail. |
 | **Inner Selector** | Runs on the filtered list. Null picks closest by squared distance. |
 | **Missing awareness component** | Warns once per controller, then runs the inner selector (or closest fallback) on the unfiltered list. |
 
@@ -119,10 +119,10 @@ With `bAutoAssignUnassigned = true`, waiting combatants get this target directly
 1. Combatants on that target lose `AssignedTarget`; role resets to `SEC.Role.None` where applicable.
 2. **`OnCombatTargetUnregistered`** broadcasts.
 3. `SECCombatControllerComponent::HandleCombatTargetLost` fires **`OnCombatTargetLost`** on each orphaned controller.
-4. Subsystem calls `SelectTargetForCombatant(..., bIsTargetLossReselection = true)` and `AssignCombatantToTarget` if the selector returns an actor.
+4. Subsystem calls `SelectTargetForCombatant(..., bIsTargetLossReselection = true)` and `AssignCombatantToTarget` if the selector returns an actor. (`SelectTargetFor` does not set this flag.)
 5. **`OnCombatantsOrphaned`** broadcasts with the lost target and orphaned controllers.
 
-Return **`nullptr`** from `SelectTarget` with `Context.bIsTargetLossReselection` set to skip auto-reassign. Handle the orphan in `OnCombatTargetLost`.
+Return **`nullptr`** from `SelectTarget` when `Context.bIsTargetLossReselection` is true to skip auto-reassign on the orphan path. Handle the orphan in `OnCombatTargetLost`.
 
 `EnemyControllerBase` exposes Blueprint event **`K2_OnCombatTargetLost`** on the same path.
 
@@ -184,7 +184,7 @@ Subclass **`UTargetSelector`** in C++ or Blueprint. Override **`SelectTarget`**.
 
 <TargetSelectionContextDetails />
 
-The subsystem strips the AI's own pawn and friendly actors (`USECTeamHelpers::AreFriendly`) from the candidate list. Return **`nullptr`** with `bIsTargetLossReselection` to defer auto-reassign.
+The subsystem strips the AI's own pawn and friendly actors (`USECTeamHelpers::AreFriendly`) from the candidate list. Return **`nullptr`** when `Context.bIsTargetLossReselection` is true to defer auto-reassign on the orphan path (`SelectTargetForCombatant` only).
 
 </Collapsible>
 
@@ -196,6 +196,8 @@ Actors with **`ISECTeamInterface`** expose a team ID on the actor or its control
 - `RegisterCombatTarget` auto-assign
 - Registration fallback (first non-friendly target)
 - `SetPrimaryTargetAndAssignAll` and `BalanceCombatantsAcrossTargets`
+
+**Exception:** `TransferCombatantsToTarget` moves combatants between pools as-is; it does not team-filter.
 
 Actors without the interface count as neutral and stay valid targets for everyone.
 

@@ -57,17 +57,17 @@ Look duration hits **`CurrentThreatTimeThreshold`** and `OnThreatDurationExceede
 
 ### 1. Component on the AI controller
 
-`AEnemyControllerBase` adds `ThreatDetectionComponent` in its constructor and leaves ticking off until `SECCombatControllerComponent` enables it on BeginPlay.
+`AEnemyControllerBase` adds `ThreatDetectionComponent` in its constructor and calls `SetThreatDetectionEnabled(false)` until `SECCombatControllerComponent` turns evaluation on at BeginPlay.
 
 On a custom controller, add **Threat Detection Component** to the AIController, not the pawn.
 
-### 2. Enable ticking
+### 2. Enable evaluation
 
 `SECCombatControllerComponent` binds threat delegates on BeginPlay when it finds `ThreatDetectionComponent` on the same controller:
 
 <ThreatResponseWiringDetails />
 
-**Enable Threat Detection** defaults to on; BeginPlay calls `SetThreatDetectionEnabled(true)`. Uncheck it to stop ticking. Delegates still bind. `EnemyControllerBase` creates the component disabled; this flag turns ticking back on.
+**Enable Threat Detection** defaults to on; BeginPlay calls `SetThreatDetectionEnabled(true)`. Uncheck it to skip threat evaluation (the component may still tick for debug draw). Delegates bind whenever the component exists. `EnemyControllerBase` starts with evaluation off; this flag turns it on.
 
 ### 3. Focus target
 
@@ -113,7 +113,7 @@ Bind **`On Threat Level Changed`** for continuous updates. Bind **`On Threat Dur
 | [Targeting System](/docs/soulslike-combat/targeting-system) | Focus actor from assigned combat target / `SetFocus`. |
 | [Movement System](/docs/soulslike-combat/movement-system) | Threat response fields on `MovementBehaviorProfile`; `SECCombatControllerComponent` wires them. |
 | [Action System](/docs/soulslike-combat/action-system) | Optional custom `USECScorer` reads `GetCurrentThreatLevel()` (see Advanced). |
-| [Combat Roles](/docs/soulslike-combat/combat-roles) | Each role can use a movement profile with its own threat toggles. |
+| [Combat Roles](/docs/soulslike-combat/combat-roles) | Each role can use a movement profile with its own threat toggles. Threat does not feed role assignment. |
 
 ---
 
@@ -126,7 +126,7 @@ Bind **`On Threat Level Changed`** for continuous updates. Bind **`On Threat Dur
 | `GetCurrentThreatLevel()` | Raw alignment `0-1` |
 | `GetPlayerLookDuration()` | Seconds accumulated this look session (resets on look-away) |
 | `IsPlayerLookingAtMe()` | Focus target inside `PlayerLookAngleThreshold` cone |
-| `SetThreatDetectionEnabled` / `IsThreatDetectionEnabled` | Toggle ticking; disabling clears threat state |
+| `SetThreatDetectionEnabled` / `IsThreatDetectionEnabled` | Toggle evaluation; disabling clears threat state (tick may still run for debug) |
 | `SetTickInterval` | Throttle tick rate (`0` = every frame) |
 
 `ThreatDetectionComponent` belongs on the **AIController**, not the pawn. It never touches `MovementEvaluatorComponent`. `SECCombatControllerComponent::OnThreatLevelUpdated` and `OnThreatDurationExceeded` hold the movement hooks. `HandleDeath` calls `SetThreatDetectionEnabled(false)`.
