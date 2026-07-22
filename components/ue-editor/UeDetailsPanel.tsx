@@ -630,3 +630,57 @@ export const COOLDOWN_ROLE_EVALUATOR_DETAILS: UeDetailCategory[] = [
     properties: [{ label: "Current Role Penalty", value: n(0.5, 0, 1) }],
   },
 ];
+
+//=========================================================================
+// Template data: targeting fields on EnemyAIConfig + project settings
+// Verified against EnemyAIConfig.h and SoulslikeEnemyCombatSettings.h
+//=========================================================================
+
+export const TARGETING_CONFIG_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Combat Role",
+    properties: [
+      { label: "Target Selector", value: { kind: "asset", value: "None" } },
+      { label: "Ignore Target Redistribution", value: b(false) },
+    ],
+  },
+];
+
+export const PROJECT_TARGETING_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Target Selection",
+    properties: [{ label: "Default Target Selector", value: { kind: "asset", value: "None" } }],
+  },
+];
+
+/** UAwarenessFilteredTargetSelector — verified against AwarenessFilteredTargetSelector.h */
+export const AWARENESS_FILTERED_TARGET_SELECTOR_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Awareness Filter",
+    properties: [
+      { label: "Min Required State", value: { kind: "enum", value: "Lost" } },
+      { label: "Inner Selector", value: { kind: "asset", value: "None" } },
+    ],
+  },
+];
+
+/** FTargetSelectionContext — runtime struct passed to SelectTarget (TargetSelector.h). */
+export const TARGET_SELECTION_CONTEXT_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Target Selection Context",
+    properties: [
+      { label: "Current Target", value: { kind: "asset", value: "None" } },
+      { label: "Combatant Count Per Target", value: { kind: "text", value: "0 Map elements" } },
+      { label: "Distance Squared Per Target", value: { kind: "text", value: "0 Map elements" } },
+      { label: "Is Target Loss Reselection", value: b(false) },
+    ],
+  },
+];
+
+/** SECMeleeTraceComponent TeamFilter — verified against SECMeleeTraceComponent.h */
+export const MELEE_TRACE_TEAM_FILTER_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Damage",
+    properties: [{ label: "Team Filter", value: { kind: "enum", value: "No Filter" } }],
+  },
+];

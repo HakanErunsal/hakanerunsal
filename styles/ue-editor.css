@@ -514,6 +514,34 @@
   height: 10px;
 }
 
+/* World / game subsystem getter — dark compact node, output pin only */
+.ue-bp-subsystem-node {
+  border-radius: 11px;
+  border: 1px solid rgba(0, 0, 0, 0.72);
+  background: linear-gradient(180deg, rgba(34, 34, 38, 0.98) 0%, rgba(14, 14, 16, 0.99) 100%);
+  box-shadow:
+    0 3px 10px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  min-height: 92px;
+}
+
+.ue-bp-subsystem-node__gloss {
+  position: absolute;
+  inset: 0;
+  border-radius: 11px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, transparent 38%);
+  pointer-events: none;
+}
+
+.ue-bp-subsystem-node__pin {
+  width: 14px;
+  height: 14px;
+  border-width: 2px;
+  box-shadow:
+    0 0 1px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
 /* Pure operator node */
 .ue-bp-operator {
   border-radius: 6px;

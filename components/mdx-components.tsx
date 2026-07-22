@@ -37,6 +37,12 @@ import CombatRoleConfigDetails from '@/components/CombatRoleConfigDetails';
 import CombatRoleTimingDetails from '@/components/CombatRoleTimingDetails';
 import DistanceRoleEvaluatorDetails from '@/components/DistanceRoleEvaluatorDetails';
 import CooldownRoleEvaluatorDetails from '@/components/CooldownRoleEvaluatorDetails';
+import TargetingConfigDetails from '@/components/TargetingConfigDetails';
+import ProjectTargetingDetails from '@/components/ProjectTargetingDetails';
+import AwarenessFilteredTargetSelectorDetails from '@/components/AwarenessFilteredTargetSelectorDetails';
+import TargetSelectionContextDetails from '@/components/TargetSelectionContextDetails';
+import MeleeTraceTeamFilterDetails from '@/components/MeleeTraceTeamFilterDetails';
+import RegisterCombatTargetBlueprint from '@/components/RegisterCombatTargetBlueprint';
 import ActionScoreFormula from '@/components/ActionScoreFormula';
 import Reviews from '@/components/Reviews';
 
@@ -84,6 +90,12 @@ const components = {
   CombatRoleTimingDetails,
   DistanceRoleEvaluatorDetails,
   CooldownRoleEvaluatorDetails,
+  TargetingConfigDetails,
+  ProjectTargetingDetails,
+  AwarenessFilteredTargetSelectorDetails,
+  TargetSelectionContextDetails,
+  MeleeTraceTeamFilterDetails,
+  RegisterCombatTargetBlueprint,
   ActionScoreFormula,
   Reviews,
   // Prevent hydration errors from block elements nested inside <p>

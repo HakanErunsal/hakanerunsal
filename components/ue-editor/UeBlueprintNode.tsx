@@ -3,6 +3,7 @@ import { UE_NODE_HEADERS, type UeNodeCategory } from "./ue-theme";
 import {
   getBlueprintTitleColor,
   UE_BP_NODE,
+  UE_BP_PIN_SRGB,
   type UeBlueprintNodeKind,
 } from "./ue-blueprint-theme";
 import {
@@ -17,6 +18,8 @@ export type { UeBlueprintPinDef };
 interface UeBlueprintNodeProps {
   title: string;
   subtitle?: string;
+  /** Stacked label lines for subsystem-get nodes (e.g. AICombat / Role / Subsystem). */
+  titleLines?: string[];
   /** Semantic Blueprint node type — drives official UE header color */
   kind?: UeBlueprintNodeKind;
   /** Legacy category from flow visualizers — used when kind is not set */
@@ -79,6 +82,43 @@ function splitPins(pins: UeBlueprintPinDef[]) {
   return { exec, inputs, outputs };
 }
 
+/** Dark compact world/game subsystem getter — no inputs, object ref output only. */
+function SubsystemGetNode({
+  lines,
+  active,
+  disabled,
+  className,
+}: {
+  lines: string[];
+  active?: boolean;
+  disabled?: boolean;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "ue-bp-subsystem-node relative inline-flex min-w-[160px] items-center justify-center px-6 py-4",
+        active && "ue-bp-node--active",
+        disabled && "ue-bp-node--disabled",
+        className,
+      )}
+    >
+      <div className="ue-bp-subsystem-node__gloss" aria-hidden />
+      <div className="relative z-[1] flex flex-col items-center gap-0.5 text-center">
+        {lines.map((line) => (
+          <span key={line} className="text-[15px] font-bold leading-tight text-[#b4b4ba]">
+            {line}
+          </span>
+        ))}
+      </div>
+      <span
+        className="ue-bp-data-pin ue-bp-data-pin--connected ue-bp-subsystem-node__pin absolute right-0 top-1/2 translate-x-1/2 -translate-y-1/2"
+        style={{ "--pin-color": UE_BP_PIN_SRGB.object } as React.CSSProperties}
+        aria-hidden
+      />
+    </div>
+  );
+}
 /** Pill-shaped variable getter / setter — Graph.VarNode */
 function VariableGetNode({
   title,
@@ -327,6 +367,7 @@ function FlowNode({
 export function UeBlueprintNode({
   title,
   subtitle,
+  titleLines,
   kind,
   category = "default",
   headerColor,
@@ -366,6 +407,17 @@ export function UeBlueprintNode({
           {icon}
         </div>
       </div>
+    );
+  }
+
+  if (kind === "subsystem-get") {
+    return (
+      <SubsystemGetNode
+        lines={titleLines ?? title.split(/\s+/).filter(Boolean)}
+        active={active}
+        disabled={disabled}
+        className={className}
+      />
     );
   }
 
@@ -466,6 +518,23 @@ export function UeBlueprintBreakStructNode(
       impure={false}
       icon={props.icon ?? <UeBreakStructIcon className="h-3.5 w-3.5" />}
       pins={props.pins ?? []}
+    />
+  );
+}
+
+/** Preset: world subsystem getter (dark compact node, output only). */
+export function UeBlueprintSubsystemNode(
+  props: Omit<UeBlueprintNodeProps, "kind" | "variant" | "pins"> & {
+    titleLines?: string[];
+  },
+) {
+  return (
+    <UeBlueprintNode
+      {...props}
+      kind="subsystem-get"
+      title={props.title ?? "Subsystem"}
+      titleLines={props.titleLines ?? ["AICombat", "Role", "Subsystem"]}
+      pins={[]}
     />
   );
 }

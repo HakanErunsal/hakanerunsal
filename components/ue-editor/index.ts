@@ -4,6 +4,7 @@ export {
   UeBlueprintFunctionNode,
   UeBlueprintBreakStructNode,
   UeBlueprintGetterNode,
+  UeBlueprintSubsystemNode,
   type UeBlueprintPinDef,
 } from "./UeBlueprintNode";
 export { UeBlueprintPinRow, UeBlueprintExecRow } from "./UeBlueprintPin";
@@ -44,6 +45,11 @@ export {
   COMBAT_ROLE_TIMING_DETAILS,
   DISTANCE_ROLE_EVALUATOR_DETAILS,
   COOLDOWN_ROLE_EVALUATOR_DETAILS,
+  TARGETING_CONFIG_DETAILS,
+  PROJECT_TARGETING_DETAILS,
+  AWARENESS_FILTERED_TARGET_SELECTOR_DETAILS,
+  TARGET_SELECTION_CONTEXT_DETAILS,
+  MELEE_TRACE_TEAM_FILTER_DETAILS,
   type UeDetailCategory,
   type UeDetailProperty,
   type UeDetailValue,

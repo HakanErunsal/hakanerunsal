@@ -26,7 +26,7 @@ function linearToSrgbHex(r: number, g: number, b: number): string {
 export const UE_BP_TITLE = {
   event: linearToHex(1, 0, 0),
   function: linearToHex(0.190525, 0.583898, 1),
-  pure: linearToHex(0.4, 0.85, 0.35),
+  pure: linearToHex(0.1, 0.45, 0.2),
   parentFunction: linearToHex(1, 0.17, 0),
   terminator: linearToHex(0.6, 0, 1),
   branch: linearToHex(1, 1, 1),
@@ -70,6 +70,7 @@ export type UeBlueprintNodeKind =
   | "make-struct"
   | "variable-get"
   | "variable-set"
+  | "subsystem-get"
   | "branch"
   | "sequence"
   | "operator"
