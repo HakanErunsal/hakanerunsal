@@ -1,6 +1,7 @@
 import Image from "next/image";
 import * as runtime from "react/jsx-runtime";
 import { Callout } from "./callout";
+import { Collapsible } from "./collapsible";
 import { Protip } from '@/components/Protip';
 import ZoomableImage from "@/components/ZoomableImage";
 import GameStatusBadge from './GameStatusBadge';
@@ -34,6 +35,7 @@ const useMDXComponent = (code: string) => {
 const components = {
   Image,
   Callout,
+  Collapsible,
   Protip,
   ZoomableImage,
   VideoLoop,
