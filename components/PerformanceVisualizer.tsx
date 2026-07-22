@@ -3,11 +3,12 @@
 import { useState } from "react";
 import { UePanel, ueConsole } from "@/components/ue-editor";
 
+/** Illustrative per-AI ms costs for the slider model (not a live profile). */
+const PER_ENEMY_MOVEMENT = 0.0035;
+const PER_ENEMY_THREAT = 0.0004;
+
 export default function PerformanceVisualizer() {
     const [enemyCount, setEnemyCount] = useState(20);
-
-    const PER_ENEMY_MOVEMENT = 0.0035;
-    const PER_ENEMY_THREAT = 0.0004;
 
     const movementOverhead = parseFloat((enemyCount * PER_ENEMY_MOVEMENT).toFixed(4));
     const threatOverhead = parseFloat((enemyCount * PER_ENEMY_THREAT).toFixed(4));
@@ -31,10 +32,10 @@ export default function PerformanceVisualizer() {
             <div className="mb-8">
                 <div className="mb-4 flex items-center justify-between">
                     <label htmlFor="enemy-slider" className="text-xs text-[#888888]">
-                        Enemy Count
+                        Active SEC enemies
                     </label>
                     <span className="rounded-sm border border-[#0078d4]/40 bg-[#0078d4]/10 px-3 py-1 font-mono text-xs font-bold text-[#00A2FF]">
-                        {enemyCount} Enemies
+                        {enemyCount} enemies
                     </span>
                 </div>
                 <input
@@ -48,46 +49,44 @@ export default function PerformanceVisualizer() {
                     className="ue-slider w-full"
                 />
                 <div className="mt-2 flex justify-between text-[10px] text-[#666666]">
-                    <span>1 (Duel)</span>
-                    <span>50 (Horde)</span>
-                    <span>150 (Stress Test)</span>
+                    <span>1 duel</span>
+                    <span>50 horde</span>
+                    <span>150 stress</span>
                 </div>
             </div>
 
             <div className={ueConsole()}>
                 <div className="mb-2 border-b border-[#3e3e42] pb-2 text-[#888888]">
-                    Output Log — stat SEC
+                    Illustrative scaling — run <span className="font-mono text-[#cccccc]">stat SEC</span> in your level for real numbers
                 </div>
 
                 <div className="grid grid-cols-[1fr_auto] gap-x-8 gap-y-1">
-                    <div className="col-span-2 mb-1 text-[#4ec9b0]">Authenticated user: Client 1</div>
-
-                    <div className="pl-2 text-[#cccccc]">SEC_MovementEvaluator</div>
+                    <div className="pl-2 text-[#cccccc]">MovementEvaluator - Total</div>
                     <div className="text-[#b5cea8]">{movementOverhead.toFixed(3)} ms</div>
 
-                    <div className="pl-4 text-[#888888]">SEC_DirectionScoring (16 samples)</div>
+                    <div className="pl-4 text-[#888888]">MovementEvaluator - Direction Scoring</div>
                     <div className="text-[#888888]">{(movementOverhead * 0.9).toFixed(3)} ms</div>
 
-                    <div className="pl-4 text-[#888888]">SEC_Avoidance</div>
+                    <div className="pl-4 text-[#888888]">MovementEvaluator - Avoidance</div>
                     <div className="text-[#888888]">{avoidanceOverhead.toFixed(3)} ms</div>
 
-                    <div className="pl-2 text-[#cccccc]">SEC_RoleDistribution</div>
+                    <div className="pl-2 text-[#cccccc]">RoleSubsystem - Role Distribution</div>
                     <div className="text-[#b5cea8]">{roleOverhead.toFixed(3)} ms</div>
 
-                    <div className="pl-2 text-[#cccccc]">SEC_ThreatDetection</div>
+                    <div className="pl-2 text-[#cccccc]">ThreatDetection - Tick</div>
                     <div className="text-[#b5cea8]">{threatOverhead.toFixed(3)} ms</div>
 
                     <div className="col-span-2 my-1 border-t border-[#3e3e42]" />
 
-                    <div className="pl-0 font-bold text-white">Total SEC Overhead</div>
+                    <div className="pl-0 font-bold text-white">Estimated SEC overhead</div>
                     <div className="font-bold text-[#4ec9b0]">{totalOverhead.toFixed(3)} ms</div>
                 </div>
             </div>
 
             <div className="mt-6">
                 <div className="mb-1 flex justify-between text-[10px] text-[#888888]">
-                    <span>Frame Budget Usage (60fps target)</span>
-                    <span>{percentage}% of 16.6ms</span>
+                    <span>Share of 60 fps frame budget (16.6 ms)</span>
+                    <span>{percentage}%</span>
                 </div>
                 <div className="h-2.5 w-full overflow-hidden rounded-sm border border-[#36363a] bg-[#1e1e22]">
                     <div
@@ -97,7 +96,7 @@ export default function PerformanceVisualizer() {
                 </div>
                 {parseFloat(percentage) < 5 && (
                     <p className="mt-2 text-xs font-medium text-[#6CC644]">
-                        Negligible impact
+                        Low share at this count
                     </p>
                 )}
             </div>

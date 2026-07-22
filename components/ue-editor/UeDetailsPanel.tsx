@@ -754,6 +754,56 @@ export const TARGET_SELECTION_CONTEXT_DETAILS: UeDetailCategory[] = [
   },
 ];
 
+/** UActionEvaluationComponent debug flags — verified against ActionEvaluationComponent.h */
+export const ACTION_EVAL_DEBUG_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Debug",
+    properties: [
+      { label: "Debug Log Decisions", value: b(false) },
+      { label: "Debug Log Execution", value: b(false) },
+    ],
+  },
+];
+
+/** UMovementEvaluatorComponent debug flags — verified against MovementEvaluatorComponent.h */
+export const MOVEMENT_EVAL_DEBUG_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Debug | Draw",
+    properties: [
+      { label: "Debug Draw Scoring", value: b(false) },
+      { label: "Debug Draw Avoidance", value: b(false) },
+      { label: "Debug Draw Nav", value: b(false) },
+    ],
+  },
+  {
+    title: "Debug | Log",
+    properties: [
+      { label: "Debug Log Movement", value: b(false) },
+      { label: "Debug Log Tick", value: b(false) },
+      { label: "Debug Log Scoring", value: b(false) },
+      { label: "Debug Log Avoidance", value: b(false) },
+      { label: "Debug Log Strafe Swap", value: b(false) },
+      { label: "Debug Log Strafe State", value: b(false) },
+    ],
+  },
+];
+
+/** UMovementEvaluatorComponent performance tuning — verified against MovementEvaluatorComponent.h */
+export const PERFORMANCE_MOVEMENT_TUNING_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Movement Evaluator",
+    properties: [
+      { label: "Num Samples", value: n(16, 4, 32, 0) },
+      { label: "Enable Avoidance", value: b(true) },
+      { label: "Enable Nav Aware Sampling", value: b(true) },
+    ],
+  },
+  {
+    title: "Nav Sampling",
+    properties: [{ label: "Nav Check Interval", value: n(0.1, 0.05, 0.5) }],
+  },
+];
+
 /** UThreatDetectionComponent — verified against ThreatDetectionComponent.h */
 export const THREAT_DETECTION_DETAILS: UeDetailCategory[] = [
   {
@@ -870,6 +920,41 @@ export const WEAPON_TRACE_SOCKET_DETAILS: UeDetailCategory[] = [
       { label: "End Socket Or Bone Name", value: { kind: "text", value: "blade_end" } },
       { label: "Radius", value: n(15, 1) },
       { label: "Trace Channel", value: { kind: "enum", value: "Pawn" } },
+    ],
+  },
+];
+
+/** UEnemyAIConfig StateTree + decision context — verified against EnemyAIConfig.h + SECDecisionTypes.h */
+export const STATE_TREE_BEHAVIOR_CONFIG_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Behavior",
+    properties: [
+      {
+        label: "Default State Tree",
+        value: { kind: "text", value: "Content/SoulslikeEnemyCombat/.../StateTree_SEC_Core" },
+      },
+    ],
+    children: [
+      {
+        title: "Decision Context Params",
+        properties: [
+          { label: "Aggression Level", value: n(1, 0, 2) },
+          { label: "Window Id Interval Seconds", value: n(1, 0, undefined, 1) },
+          { label: "LOS Trace Channel", value: { kind: "enum", value: "Visibility" } },
+          { label: "LOS Trace Complex", value: b(false) },
+        ],
+      },
+    ],
+  },
+];
+
+/** UBotStateTreeAIComponent runtime init — verified against BotStateTreeAIComponent.h */
+export const BOT_STATE_TREE_AI_DETAILS: UeDetailCategory[] = [
+  {
+    title: "AI|StateTree",
+    properties: [
+      { label: "Auto Initialize From Config", value: b(true) },
+      { label: "Fallback State Tree", value: { kind: "asset", value: "None" } },
     ],
   },
 ];

@@ -52,6 +52,11 @@ import MeleeTraceNotifyDetails from '@/components/MeleeTraceNotifyDetails';
 import WeaponTraceSocketDetails from '@/components/WeaponTraceSocketDetails';
 import CombatRoleReplicatedDetails from '@/components/CombatRoleReplicatedDetails';
 import MultiplayerActionStateDetails from '@/components/MultiplayerActionStateDetails';
+import StateTreeBehaviorConfigDetails from '@/components/StateTreeBehaviorConfigDetails';
+import BotStateTreeAIConfigDetails from '@/components/BotStateTreeAIConfigDetails';
+import PerformanceMovementTuningDetails from '@/components/PerformanceMovementTuningDetails';
+import ActionEvaluationDebugDetails from '@/components/ActionEvaluationDebugDetails';
+import MovementEvaluatorDebugDetails from '@/components/MovementEvaluatorDebugDetails';
 import ThreatDetectionDetails from '@/components/ThreatDetectionDetails';
 import ThreatResponseWiringDetails from '@/components/ThreatResponseWiringDetails';
 import ThreatResponseProfileDetails from '@/components/ThreatResponseProfileDetails';
@@ -118,7 +123,12 @@ const components = {
   WeaponTraceSocketDetails,
   CombatRoleReplicatedDetails,
   MultiplayerActionStateDetails,
+  StateTreeBehaviorConfigDetails,
+  BotStateTreeAIConfigDetails,
   RegisterCombatTargetBlueprint,
+  PerformanceMovementTuningDetails,
+  ActionEvaluationDebugDetails,
+  MovementEvaluatorDebugDetails,
   ThreatDetectionDetails,
   ThreatResponseWiringDetails,
   ThreatResponseProfileDetails,

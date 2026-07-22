@@ -1,6 +1,6 @@
 ---
 title: "Debugging & Troubleshooting"
-description: "Debug logging, visual debugging, FAQs, and common issue solutions."
+description: "Debug flags, console variables, common failures, and FAQ."
 date: 2025-12-10
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "FAQ"]
@@ -8,25 +8,31 @@ parent: "SoulslikeCombatDocs"
 order: 16
 ---
 
-
 <Breadcrumb items={[
     { label: "Docs", href: "/docs" },
     { label: "SoulslikeCombat", href: "/docs/SoulslikeCombatDocs" },
     { label: "Troubleshooting" }
 ]} />
 
-## Enable Debug Logging
+> Flip **Debug** flags on the combat components or run **`SEC.Debug.*`** console variables when an enemy misbehaves. Match log output to the sections below.
 
-**In AI Controller Blueprint:**
+---
 
-```
+## Component Debug Flags
 
-ActionEvaluation → bDebugLog: true
-MovementEvaluator → bDebugLog: true
-ThreatDetection → bDebugLog: true
-```
+Toggle these on the AI controller (reactions live on the pawn's **`ReactionEvaluationComponent`**).
 
-**Output Log Messages:**
+<ActionEvaluationDebugDetails />
+
+<MovementEvaluatorDebugDetails />
+
+**Threat:** **`bDebugLogThreat`** / **`bDebugDrawThreat`** on **`UThreatDetectionComponent`**. See [Threat Detection](/docs/soulslike-combat/threat-detection).
+
+**Reactions:** **`bDebugLogReactions`** on **`UReactionEvaluationComponent`**, or **`SEC.Debug.LogReactions 1`**.
+
+**Melee traces:** **`bDrawDebug`** on **`USECMeleeTraceComponent`**, or **`SEC.Debug.Melee.DrawTracing 1`**.
+
+With **`bDebugLogDecisions`** or **`SEC.Debug.LogActionDecisions 1`**, the Output Log prints lines like:
 
 ```
 [EvalComp] Evaluating 3 actions...
@@ -34,210 +40,207 @@ ThreatDetection → bDebugLog: true
 [EvalComp] HeavyAttack: Ctx=1.00 Nov=1.00 Chain=1.00 Risk=1.00 Runtime=1.00 Custom=0.60 -> 0.60 (cooldown:1.2s)
 ```
 
-`Custom` folds every scorer on the action (Distance, Angle, Health, Speed, and any you add). Per-scorer values live in the score breakdown, keyed by each scorer's display name.
+**`Custom`** folds every scorer on the action (Distance, Angle, Health, Speed, plus any you add). Per-scorer values sit in the score breakdown under each scorer's display name.
+
+Component flags and their matching CVars stack: either one turns the output on.
 
 ---
 
-## Visual Debugging
+## Console Commands
 
-**Console Commands:**
+All commands are cheat CVars. Pass **`0`** or **`1`** unless noted.
 
-```cpp
-// Show debug for entire SEC system
-Evaluator.Debug.DrawAvoidance 0-1
-Evaluator.Debug.DrawScoring 0-1
-Evaluator.Debug.LogAvoidance 0-1
-Evaluator.Debug.LogMovement 0-1
-Evaluator.Debug.LogScoring 0-1
-Evaluator.Debug.LogStrafeState 0-1
-Evaluator.Debug.LogStrafeSwap 0-1
-
-Melee.Debug.DrawTracing 0-1
-```
+| Console variable | Output |
+|------------------|--------|
+| **`SEC.Debug.LogActionDecisions`** | Action scoring and selection |
+| **`SEC.Debug.LogActionExecution`** | Start, end, cooldowns |
+| **`SEC.Debug.LogReactions`** | Reaction evaluation and execution |
+| **`SEC.Debug.LogRoleAssignments`** | Role assignment (**`2`** = verbose) |
+| **`SEC.Debug.Threat.Log`** | Threat events |
+| **`SEC.Debug.Threat.Draw`** | Threat cone, progress arc, AI color grading |
+| **`SEC.Debug.Movement.DrawScoring`** | Direction sample lines (red low, green high) |
+| **`SEC.Debug.Movement.DrawAvoidance`** | Avoidance radius and blocked pawns |
+| **`SEC.Debug.Movement.DrawNav`** | Nav sample validity (blue blocked, white walkable) |
+| **`SEC.Debug.Movement.LogMovement`** | Layer changes, pathfinding, stuck, detour |
+| **`SEC.Debug.Movement.LogTick`** | Per-tick state dump (high frequency) |
+| **`SEC.Debug.Movement.LogScoring`** | Direction scoring |
+| **`SEC.Debug.Movement.LogAvoidance`** | Avoidance detection |
+| **`SEC.Debug.Movement.LogStrafeSwap`** | Strafe swap decisions |
+| **`SEC.Debug.Movement.LogStrafeState`** | Strafe state and timers |
+| **`SEC.Debug.Melee.DrawTracing`** | Weapon sweep shapes |
 
 ---
 
 ## Common Issues
 
-> Logs handle most issues. For specific cases:
+<Collapsible badge="" title="AI doesn't attack">
 
-### AI doesn't attack
+**Check first:**
+- The ASC on the pawn holds the ability with a tag that matches the **`ActionSet`** entry.
+- The action is off cooldown and **`FinalScore > 0`** after scorers run.
+- **`ActiveActionSet`** on **`ActionEvaluationComponent`** points at the set you expect.
 
-**Possible Causes:**
-- Ability not granted to ASC and ExecuteAbility is not marked with GrantAbilityIfMissing.
-- AbilityTag mismatch, update ability tags on the DataAssets if you changed them somewhere else.
-- Action on cooldown, check your cooldowns and cooldown randomization
-- No valid actions in ActionSet
-- **Custom character class missing `IAbilitySystemInterface`** - if your pawn doesn't implement this interface, `ActionEvaluationComponent` cannot find the ASC and all ability-based actions will silently fail.
-- **ByEvent mode: Ability missing Trigger entry** - when using `ActivationMode = ByEvent`, the ability class must have a **Trigger** entry in its class defaults with the matching tag and source set to **Gameplay Event**. Without it, `HandleGameplayEvent` fires but no ability reacts.
+**Ability not granted:** Grant the ability on the ASC during init. **`BTTask_ActivateAbility`** exposes **`bGrantAbilityIfMissing`** for standalone BT setups. The action system's **`Activate Blackboard Ability`** task does not grant abilities for you.
 
-**Solutions:**
-- Check ASC grants ability with correct tag
-- Verify ActionSet AbilityTag matches ability's tags
-- Enable bDebugLog to see why action isn't selected
-- Check the Range on the action's Distance Scorer and Angle Scorer (an action with no Distance Scorer ignores range and stays distance-agnostic)
-- If using a custom character class, ensure it implements `IAbilitySystemInterface` and returns a valid `UAbilitySystemComponent` from `GetAbilitySystemComponent()`. See the [Getting Started](/docs/soulslike-combat/getting-started) guide for details.
-- For ByEvent abilities, open the ability class defaults, go to **Triggers**, add an entry with your event tag and set **Trigger Source** to **Gameplay Event**.
+**Tag mismatch:** **`TryActivateAbilitiesByTag`** matches tags on the ability CDO's **`AbilityTags`**. If the ability has no tags there, switch the execution method to **ByEvent** or add the tag in class defaults.
 
----
+**ByEvent path:** The ability class needs a **Trigger** entry with **Trigger Source = Gameplay Event** for the event tag.
 
-### Enemy pauses between attacks or stops attacking mid-combat
+**No ASC found:** Custom pawns must implement **`IAbilitySystemInterface`** and return a valid ASC. The no-C++ path is reparenting to **`EnemyCharacterBase`**. See [Getting Started](/docs/soulslike-combat/getting-started).
 
-The enemy starts an attack, then stands off and strafes instead of swinging again. That is recovery time holding back offensive action selection while movement and reactions keep running, by design. It is a separate clock from cooldown.
+**Range:** Add a **Distance Scorer** to the action and tune its **`Range`**. An action with no Distance Scorer ignores distance.
 
-**Possible Causes:**
-- `ActionRecoveryTime` set longer than the attack cadence you want.
-- `InterruptRecoveryTime` set too high, so a parry or stagger locks the enemy out for too long.
-- A per-action `RecoveryTime` override that is longer than intended (it replaces the global for that action).
+**Debug:** Enable **`bDebugLogDecisions`** and read why each action failed or lost selection.
 
-**Solutions:**
-- Open `UEnemyAIConfig`, **Recovery** section. Recovery is off when every field is `0`; an enemy that paused has a non-zero value somewhere.
-- Lower `ActionRecoveryTime` for a faster attacker, or add `ActionRecoveryTimeRandomization` to stagger a pack instead of pausing every enemy the same amount.
-- Keep `InterruptRecoveryTime` below `ActionRecoveryTime` so a parry or stagger does not double-stun.
-- Check any action with `bOverrideRecoveryTime` enabled; its `RecoveryTime` replaces the global for that action.
-- Set `SEC.Debug.LogActionDecisions 1` and watch for `Recovering (X.Xs remaining)` to confirm recovery is the cause and read the live timer. `IsActionRecovering()` exposes the same value to a debug widget.
+</Collapsible>
 
----
+<Collapsible badge="" title="Enemy pauses between attacks">
 
-### ByEvent activation silently falls back to ByTag (BehaviorTree mode)
+Recovery time blocks offensive action selection while movement and reactions keep running. Cooldown is separate.
 
-**Cause:** The `SEC_ActivationMode` key is missing from your Blackboard Data Asset. When the Action System writes `"ByEvent"` to this key and the key does not exist in the asset, the write is silently ignored. The BT task reads an empty value and falls back to ByTag.
+**Tune on `UEnemyAIConfig`, Recovery section:**
+- **`ActionRecoveryTime`**: gap between attacks. All zeros disable recovery.
+- **`InterruptRecoveryTime`**: lockout after parry or stagger. Keep it below **`ActionRecoveryTime`**.
+- Per-action **`RecoveryTime`** when **`bOverrideRecoveryTime`** is on replaces the global for that action only.
 
-**Solution:**
-Open your Blackboard Data Asset and add a **Name** key called `SEC_ActivationMode`. Also verify that all other `SEC_` keys exist: `SEC_ActionId` (Name), `SEC_AbilityTag` (String), `SEC_AbilityEndTag` (String), `SEC_TargetActor` (Object), `SEC_SelfActor` (Object), `SEC_Distance` (Float).
+**Confirm:** **`SEC.Debug.LogActionDecisions 1`** prints **`Recovering (X.Xs remaining)`**. **`IsActionRecovering()`** exposes the same timer to a debug widget.
 
----
+</Collapsible>
 
-### AI gets stuck after attacking
+<Collapsible badge="" title="ByEvent activation falls back to ByTag">
 
-**Cause:** End event not sent
+**Cause:** **`SEC_ActivationMode`** is missing from the Blackboard Data Asset. **`SECExecutionMethod`** writes **`ByEvent`** with **`SetValueAsName`**. A missing key drops the write. **`BTTask_ActivateBlackboardAbility`** reads an empty value and falls back to **ByTag**.
 
-**Solution:**
-- Verify that you are using GameplayAbilityBase, it is necessary for end ability to be detected by SEC components.
-- Check ability sends event on completion, cancellation, AND interruption
-- Look for "Waiting for action to complete..." in log (means no end event received)
+**Fix:** Add these keys to the blackboard asset:
 
----
+| Key | Type |
+|-----|------|
+| **`SEC_ActivationMode`** | Name |
+| **`SEC_ActionId`** | Name |
+| **`SEC_AbilityTag`** | Name |
+| **`SEC_AbilityEndTag`** | Name |
+| **`SEC_TargetActor`** | Object |
+| **`SEC_SelfActor`** | Object |
+| **`SEC_Distance`** | Float |
 
-### Weapon doesn't deal damage
+</Collapsible>
 
-**Possible Causes:**
-- Socket ID mismatch
-- Trace channel not configured
-- Damage config not set
-- No MeleeTraceComponent on character
+<Collapsible badge="" title="AI stuck after attacking">
 
-**Solutions:**
-- Verify notify state Socket IDs match weapon TraceSockets IDs exactly
-- Check trace channel, debug and see if it actually hits
-- Assign DamageConfig to weapon
-- Ensure character has USECMeleeTraceComponent (inherited from base)
+**Cause:** The behavior tree or StateTree task never sees the ability end tag.
 
----
+**Fix:**
+- Derive attack abilities from **`GameplayAbilityBase`**. It sends **`AbilityEndTag`** on end, cancel, and interrupt.
+- In the log, **`ActivateBlackboardAbility: Waiting for end tag ...`** means the task is still waiting. No end tag arrived.
+- Match **`AbilityEndTag`** on the ability CDO to what the execution method writes to **`SEC_AbilityEndTag`**.
 
-### AI doesn't move
+</Collapsible>
 
-**Possible Causes:**
-- Movement task not ticking
-- NavMesh not present (tactical sampling reads it below the hybrid range, strategic pathfinding above it)
-- DirectControlThreshold too high/low
+<Collapsible badge="" title="Weapon doesn't deal damage">
 
-**Solutions:**
-- Verify STTask_AIMovement is in root state with [Tick]
-- Press P in viewport to show NavMesh
-- Adjust DirectControlThreshold (try 500-700)
-- Enable MovementEvaluator debug logging
+**Check:**
+- Socket IDs on the anim notify match **`TraceSockets`** on the weapon exactly.
+- Trace channel hits the target mesh (use **`SEC.Debug.Melee.DrawTracing 1`**).
+- The pawn has **`USECMeleeTraceComponent`** (**`EnemyCharacterBase`** adds it by default).
+- **`Default Damage Config`** on the trace component or **`Damage Config`** on the melee notify state supplies a **`USECDamageConfig`**. Damage does not come from the weapon actor class alone.
 
----
+See [Melee Trace](/docs/soulslike-combat/melee-trace).
 
-### AI walks off ledges or into hazards
+</Collapsible>
 
-**Possible Causes:**
-- No NavMesh over the combat area, so navmesh-aware sampling stays inert
-- NavMesh extends past the visual edge, so the AI reads the drop as walkable
-- `bEnableNavAwareSampling` disabled, or `NavScoreWeight` set to 0
-- Hazard painted as a high-cost area with no Hazard Areas entry (cost alone does not stop close-range strafing)
+<Collapsible badge="" title="AI doesn't move">
 
-**Solutions:**
-- Press P in viewport and confirm the NavMesh stops before the ledge
-- Enable `SEC.Debug.Movement.DrawNav 1` (blue spheres mark blocked directions)
-- Lower `NavProbeDistance` (~60) in tight spaces; raise it for fast enemies
-- For a hazard the AI should still cross, mark a Nav Modifier Volume with a NavArea subclass and add it to the component's Hazard Areas (see [Movement System](/docs/soulslike-combat/movement-system#hazard-areas))
+**Check:**
+- A **NavMeshBoundsVolume** covers the play area. Press **P** in the viewport to visualize it.
+- In a StateTree graph, **AI Movement** stays in a running state during combat so **`STTask_AIMovement`** can tick. See [StateTree Integration](/docs/soulslike-combat/statetree).
+- **`HybridSwitchDistance`** on **`MovementEvaluatorComponent`** (default **800** cm) sets where tactical sampling hands off to strategic pathfinding. Lower it if the enemy never switches to pathfinding at range; raise it if it pathfinds too close.
 
----
+Enable **`bDebugLogMovement`** or **`SEC.Debug.Movement.LogMovement 1`** for layer and pathfinding events.
 
-### AI grinds against a wall instead of going around it
+</Collapsible>
 
-The target slipped behind a wall or around a corner. The AI sits close to it in a straight line but a long walk away on the navmesh, so it strafes into the wall trying to reach a target it cannot orbit to.
+<Collapsible badge="" title="AI walks off ledges or into hazards">
 
-**Possible Causes:**
-- `bEnableDetourEscalation` disabled on the movement component
-- No NavMesh over the area, so there is no route to measure
-- The target is just past a tight corner, so the route is barely longer than the straight line and the ratio test can't see it. This is the reactive (stall) case: if `bDetourEscalateOnStall` is off or `DetourStallSpeed` is too low, the grind isn't caught
-- `DetourEnterRatio` or `DetourMinExcess` set too high, so a longer detour reads as minor
-- The target has no complete path (walled off, or on a separate navmesh island), so the AI stays tactical rather than walking to a dead end
+**Check:**
+- NavMesh ends before the visual drop (press **P**).
+- **`bEnableNavAwareSampling`** is on and **`NavScoreWeight`** is above **0**.
+- A hazard painted only as high nav cost still reads as walkable at close range. Add a **NavArea** subclass to **Hazard Areas** on the movement component when the AI should treat it as dangerous.
 
-**Solutions:**
-- Confirm `bEnableDetourEscalation` is on (movement component, **Hybrid Movement > Detour**)
-- Press P in viewport and confirm a NavMesh routes around the obstacle
-- For a tight corner: keep `bDetourEscalateOnStall` on and raise `DetourStallSpeed` so a slow grind counts as stalled
-- For a longer detour: lower `DetourEnterRatio` (try 1.4) or `DetourMinExcess`
-- Enable `SEC.Debug.Movement.LogMovement 1` and watch for `Detour escalation ENGAGED` / `CLEARED` (it notes `(stalled at cover)` when the tight-corner path fired)
-- See [Detour Escalation](/docs/soulslike-combat/movement-system#detour-escalation-around-corners) for the full tuning guide
+**Debug:** **`SEC.Debug.Movement.DrawNav 1`** marks blocked directions with blue spheres.
+
+Tune **`NavProbeDistance`** (default **120**): lower in tight spaces, higher for fast movers. See [Movement System](/docs/soulslike-combat/movement-system#hazard-areas).
+
+</Collapsible>
+
+<Collapsible badge="" title="AI grinds against a wall">
+
+The target sits behind cover. Straight-line distance stays short while the nav path is long, so the AI strafes into geometry.
+
+**Check on `MovementEvaluatorComponent`, Hybrid Movement > Detour:**
+- **`bEnableDetourEscalation`** is on.
+- NavMesh routes around the obstacle.
+- **`bDetourEscalateOnStall`** catches tight corners; raise **`DetourStallSpeed`** if a slow grind does not register.
+- Lower **`DetourEnterRatio`** (try **1.4**) or **`DetourMinExcess`** when a longer detour still reads as minor.
+
+**Debug:** **`SEC.Debug.Movement.LogMovement 1`** logs **`Detour escalation ENGAGED`** / **`CLEARED`**.
+
+See [Detour Escalation](/docs/soulslike-combat/movement-system#detour-escalation-around-corners).
+
+</Collapsible>
 
 ---
 
 ## FAQ
 
-### Can I use this with my existing character?
+<Collapsible badge="" title="Can I use this with my existing character?">
 
-Yes. Add `SECCombatControllerComponent` to your AI controller and the necessary pawn components to your character. Create an ActionSet and configure an AIConfig. Leave the AIConfig's DefaultStateTree empty to run the native C++ combat loop, or assign a StateTree to drive the AI with one. The plugin integrates with existing projects without requiring inheritance from `EnemyControllerBase` or `EnemyCharacterBase`.
+Add **`SECCombatControllerComponent`** to your AI controller and the pawn components from [Getting Started](/docs/soulslike-combat/getting-started). Assign an **`EnemyAIConfig`** and **`ActionSet`**. Leave **`Default State Tree`** empty for the native combat loop, or assign a StateTree asset. You do not need to inherit **`EnemyControllerBase`** or **`EnemyCharacterBase`**.
 
-### Does this work with multiplayer?
+</Collapsible>
 
-Yes. The plugin supports both listen server and dedicated server configurations. AI logic runs on the server, and key state (health, action execution, combat roles, active ActionSet) replicates to clients. See the [Multiplayer](/docs/soulslike-combat/multiplayer) docs for details.
+<Collapsible badge="" title="Does this work with multiplayer?">
 
-### Can I use this without Gameplay Ability System?
+Yes. AI logic runs on the server. Health, action execution, combat roles, and the active **`ActionSet`** replicate to clients. See [Multiplayer](/docs/soulslike-combat/multiplayer).
 
-The melee trace system works standalone, but action execution relies on GAS. A non-GAS path works with Behavior Tree execution only. GAS unlocks ability blocking, tagging, and cooldown integration, so it is worth exploring if you haven't already.
+</Collapsible>
 
-### What Unreal Engine versions are supported?
+<Collapsible badge="" title="Can I use this without GAS?">
 
-UE 5.6 and 5.7. StateTree APIs have breaking changes between versions, so older versions are not compatible.
+Melee trace works without GAS. Action execution through abilities needs GAS for blocking tags, cooldown integration, and **`GameplayAbilityBase`** end-tag wiring. Behavior Tree-only execution methods skip ability activation when you wire them that way.
 
-### Can I make bosses with this?
+</Collapsible>
 
-Yes. The system scales well. Use ActionSets with phase-specific actions, swap sets at health thresholds, and combine with custom Behavior Tree sequences for scripted attacks.
+<Collapsible badge="" title="What engine versions are supported?">
 
-### How do I make ranged enemies?
+UE **5.6**, **5.7**, and **5.8**. Plugin version **2.3.0**.
 
-There is already an example for Supporter role. Study the Supporter role example and adapt the ranged ability to your needs.
+</Collapsible>
 
-### Is source code included?
+<Collapsible badge="" title="How do I handle death (ragdoll, weapon drop, dissolve)?">
 
-Yes. Full C++ source is included under MIT license.
+Call **`HandleDeath()`** on **`SECCombatControllerComponent`**. It shuts down SEC systems in order and fires **`OnDeath`**.
 
-### How do I handle death (ragdoll, weapon drop, dissolve)?
+**Weapon drop:** **`HandleDeath`** unequips with **`bSimulatePhysics = true`**. Override **`K2_OnUnequipped`** on the weapon Blueprint for mesh physics and impulse. Set **`bDropWeaponOnDeath`** to **`false`** on the combat controller to handle the drop yourself (for example from a death montage notify).
 
-Call `HandleDeath()` on the `SECCombatControllerComponent` when the AI should die. This shuts down all SEC combat systems in the correct order and broadcasts the `OnDeath` delegate.
+**Ragdoll:** Enable it from **`OnDeath`** or **`K2_OnDeath`**. Combat systems are already off.
 
-**Weapon drop** is automatic: `HandleDeath` unequips the weapon with `bSimulatePhysics = true` in the unequip context. Override `K2_OnUnequipped` on your weapon Blueprint to enable physics on the mesh and apply an impulse. Set `bDropWeaponOnDeath` to `false` on the combat controller to handle the drop manually (e.g. from a death montage AnimNotify).
+**Dissolve / destroy:** Use **`SetLifeSpan`** or a timer in **`K2_OnDeath`** before destroying the actor.
 
-**Ragdoll**: enable it in the `OnDeath` delegate or the `K2_OnDeath` Blueprint event on your controller. By then all combat systems are shut down, so it's safe to call `SetSimulatePhysics` on the character mesh.
+</Collapsible>
 
-**Dissolve/destroy**: use `SetLifeSpan` or a timer in your `K2_OnDeath` handler to delay actor destruction, giving time for a material dissolve effect.
+<Collapsible badge="" title="Is source code included?">
+
+Yes. Full C++ source ships with the plugin.
+
+</Collapsible>
 
 ---
 
-## Support & Resources
+## Support
 
-**Purchase:** [Fab Marketplace](https://www.fab.com/)
+**Purchase and updates:** [Fab Marketplace](https://www.fab.com/)
 
-**Support:** Contact through Discord, Fab Marketplace or via email
-
-**Updates:** Plugin updates delivered through Fab Marketplace
-
-**Feature Requests:** Contact via Discord, Fab Marketplace, or via email
+**Support and feature requests:** Discord, Fab Marketplace, or email (contact details on the product page).
 
 ---
 

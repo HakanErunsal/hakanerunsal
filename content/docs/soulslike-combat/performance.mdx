@@ -1,7 +1,7 @@
 ---
 title: "Performance"
 image: "../../images/docs_performance.png"
-description: "Benchmark results, profiling tools, and optimization guidance for Soulslike Enemy Combat."
+description: "Cost model, profiling with stat SEC, and tuning knobs for large enemy counts."
 date: 2025-12-29
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Performance"]
@@ -15,131 +15,116 @@ order: 17
     { label: "Performance" }
 ]} />
 
-## Overview
-
-At 150 enemies, the plugin consumes less than 4% of a 60fps frame budget. Calculations are simple vector math: direction samples, dot products, and distance checks.
+> **`MovementEvaluatorComponent`** direction sampling dominates SEC CPU time. Role assignment, action polling, awareness, and avoidance run on timers or only while a feature is active.
 
 ---
 
-## Benchmark Results
+## Cost Model
 
-The chart below shows how cost scales with enemy count.
-Benchmarks are performed on a **Ryzen 9950x**.
+The slider below shows **linear scaling** from illustrative per-enemy costs (~**0.0035 ms** movement, ~**0.0004 ms** threat). It is a planning aid, not a profile of your map. Run **`stat SEC`** in PIE to read real numbers on your hardware.
 
 <PerformanceVisualizer />
 
-**Context**: At 60fps, you have 16.6ms per frame. Even with 150 enemies, the plugin uses less than **4%** of your frame budget.
+At 60 fps you have **16.6 ms** per frame. Even at **150** active SEC enemies, this model lands near **4%** of frame budget for the plugin slice alone (animation, rendering, and game logic sit on top).
 
 ---
 
-## System Breakdown
+## What Runs When
 
-### MovementEvaluatorComponent
+| System | Cadence | Cost driver |
+|--------|---------|-------------|
+| **Movement evaluator** | Every tick while **`EvaluateAndMove`** / **AI Movement** runs | **`NumSamples`** direction loop (default **16**) |
+| **Avoidance** | Overlap refresh at **10 Hz** (`0.1 s`) | **`bEnableAvoidance`**, radius |
+| **Nav sampling** | Cache refresh at **`NavCheckInterval`** (default **0.1 s**), staggered by **`NavStaggerStride`** | **`bEnableNavAwareSampling`**, probe count |
+| **Detour queries** | On detour recheck interval while hybrid movement is active | Nav path length vs straight line |
+| **Action evaluation** | **`EvaluationCooldown`** (default **0.1 s** on native brain / **Poll Action**) | Scorer count per action |
+| **Action execution tick** | Only while an action runs and a hook sets **`bWantsTick`** | Custom hook work |
+| **Role subsystem** | **`RoleReassignmentInterval`** (project default **8 s**) | Combatant × role candidate count |
+| **Threat detection** | Every tick by default; throttle with **`SetTickInterval`** | Dot product on focus actor |
+| **Awareness** | **`EvaluationInterval`** on config (default **0.1 s**) | Perceived actor count |
+| **Melee trace** | Tick only between **`StartTracing`** and **`StopTracing`** | Active socket count |
 
-The main per-frame cost. Handles tactical positioning via direction sampling.
+---
 
-| Metric          | Value                    |
-|-----------------|--------------------------|
-| Default samples | 16 directions            |
-| Cost per AI     | ~0.004ms                 |
-| Scaling         | Linear with enemy count  |
+## Tuning for Scale
 
-**Optimization options:**
-- Reduce `NumSamples` property (default 16, can go as low as 8)
-- Disable avoidance if not needed
+<PerformanceMovementTuningDetails />
 
-### Avoidance System
+**`Num Samples`:** Range **4–32**. Halving samples roughly halves direction-scoring work. Start at **8** for horde crowds if strafing still looks acceptable.
 
-Prevents AI from bunching up. Already optimized with throttling.
+**`bEnableAvoidance`:** Turn off when enemies never pack tightly (solo bosses, sparse open fields).
 
-| Metric       | Value                                    |
-|--------------|------------------------------------------|
-| Update rate  | 10Hz (every 0.1s)                        |
-| Cost         | Negligible                               |
-| Configurable | `AvoidanceRadius`, `bEnableAvoidance`    |
+**`bEnableNavAwareSampling`:** Turn off only when you accept ledge/hazard blind spots. Keeps **`NavCheckInterval`** and **`NavStaggerStride`** from doing nav probes.
 
-### Role Assignment Subsystem
+**Hybrid movement:** Distant enemies pathfind; close enemies use tactical sampling. **`HybridSwitchDistance`** (default **800** cm) controls the handoff. See [Movement System](/docs/soulslike-combat/movement-system).
 
-Manages combat roles (Attacker, Waiter, Flanker, etc.)
+<Collapsible badge="" title="Project-wide timers">
 
-| Metric      | Value                             |
-|-------------|-----------------------------------|
-| Update rate | Timer-based (configurable interval) |
-| Cost        | Negligible                        |
-| Note        | Not per-frame                     |
+Role and target timing live in **Project Settings → Soulslike Enemy Combat → Combat Roles → Timing**:
 
-### Threat Detection
+<CombatRoleTimingDetails />
 
-Tracks player look direction to influence AI behavior.
+**`Role Reassignment Interval`:** How often **`UAICombatRoleSubsystem`** re-runs global assignment. Default **8 s**. Set **0** to drive reassignment manually.
 
-| Metric      | Value                  |
-|-------------|------------------------|
-| Update rate | Per-tick               |
-| Cost        | ~0.0004ms per AI       |
-| Note        | Simple dot product math |
+**Native brain / Poll Action:** **`EvaluationCooldown`** on **`USECBrainComponent`** or **`STTask_PollAction`** (default **0.1 s**) spaces action picks. Raise it for background grunts that do not need 10 Hz decisions.
+
+**Threat:** Call **`SetTickInterval`** on **`UThreatDetectionComponent`** to skip frames when you only need coarse player-look reactions.
+
+</Collapsible>
 
 ---
 
 ## Built-in Profiling
 
-The plugin includes custom stat groups for real-time profiling.
-
-### Console Command
-
-Open the console (~) and run:
+Open the console (**~**) and run:
 
 ```
 stat SEC
 ```
 
-### Stats Available
+Registered cycle stats (from **`STATGROUP_SEC`**):
 
-| Stat Name                            | Description                      |
-|--------------------------------------|----------------------------------|
-| MovementEvaluator - Total            | Full per-AI movement cost        |
-| MovementEvaluator - Direction Scoring | 16-sample scoring loop           |
-| MovementEvaluator - Avoidance        | Overlap queries and avoidance    |
-| RoleSubsystem - Role Distribution    | Role assignment algorithm        |
-| ThreatDetection - Tick              | Per-tick threat calculation      |
+| Stat | Scope |
+|------|--------|
+| **MovementEvaluator - Total** | Full per-AI movement pass |
+| **MovementEvaluator - Direction Scoring** | Sample loop over **`NumSamples`** |
+| **MovementEvaluator - Avoidance** | Throttled overlap scoring |
+| **MovementEvaluator - Nav Sampling** | Nav validity cache refresh |
+| **MovementEvaluator - Detour Query** | Path-length detour check |
+| **RoleSubsystem - Role Distribution** | Global role assignment pass |
+| **ThreatDetection - Tick** | Per-tick threat level |
 
-### Unreal Insights
+**Unreal Insights:** filter CPU trace events **`SEC_MovementEvaluator`**, **`SEC_DirectionScoring`**, **`SEC_Avoidance`**, **`SEC_NavSampling`**, **`SEC_DetourQuery`**, **`SEC_RoleDistribution`**, **`SEC_ThreatDetection`**.
 
-All stats are also visible in **Unreal Insights**. Filter for `SEC_*` trace events:
-- `SEC_MovementEvaluator`
-- `SEC_DirectionScoring`
-- `SEC_Avoidance`
-- `SEC_RoleDistribution`
-- `SEC_ThreatDetection`
+For log-based diagnosis, see [Debugging & Troubleshooting](/docs/soulslike-combat/troubleshooting).
 
 ---
 
-## Scaling Recommendations
+## Optimizations Already in Code
 
-| Use Case           | Expected Enemies | Performance Impact       |
-|--------------------|------------------|--------------------------|
-| Soulslike (typical) | 3-5              | Negligible (&lt;0.05ms)     |
-| Action RPG         | 10-20            | Negligible (~0.1ms)      |
-| Horde mode         | 50-100           | Low (~0.2-0.4ms)         |
-| Stress test        | 150+             | Acceptable (~0.6ms+)     |
-
----
-
-## Key Optimizations Built-In
-
-1. **Precomputed trigonometry** - Sample directions cached at startup
-2. **Throttled avoidance** - Overlap queries run at 10Hz, not every frame
-3. **Timer-based roles** - Role reassignment doesn't run per-frame
-4. **Hybrid movement** - Distant AI use cheaper pathfinding, close AI use tactical sampling
-5. **Conditional ticking** - Melee traces only tick during active attacks
+1. **Unit-circle sample cache:** trigonometry for direction samples is precomputed when **`NumSamples`** changes.
+2. **Throttled avoidance:** overlap queries run at **10 Hz**, not every frame.
+3. **Throttled nav cache:** **`NavCheckInterval`** plus **`NavStaggerStride`** spread nav sweeps across frames in a pack.
+4. **Timer-based roles:** reassignment runs on **`RoleReassignmentInterval`**, not per frame.
+5. **Hybrid movement:** strategic pathfinding only past **`HybridSwitchDistance`** (or while detour escalation is active).
+6. **Conditional melee tick:** **`USECMeleeTraceComponent`** starts with tick disabled; tracing enables tick only for active swings.
+7. **Conditional action tick:** **`ActionEvaluationComponent`** ticks only during action execution (hook dispatch), not while idle.
 
 ---
 
-## Summary
+## Scaling Guide
 
-- **&lt;0.1ms** for typical Soulslike scenarios (3-10 enemies)
-- **~0.2ms** for medium-scale encounters (50 enemies)
-- **~0.6ms** for extreme stress tests (150 enemies)
-- Linear scaling with enemy count
-- Built-in `stat SEC` command for real-time profiling
+Rough totals from the cost model above (movement + threat + small avoidance/role share). Measure your encounter in PIE before shipping horde modes.
+
+| Scenario | Active SEC enemies | Estimated plugin CPU |
+|----------|-------------------|----------------------|
+| Soulslike duel | 1–5 | &lt; 0.02 ms |
+| Action RPG pack | 10–20 | ~0.05–0.1 ms |
+| Horde | 50–100 | ~0.2–0.4 ms |
+| Stress test | 150+ | ~0.6 ms+ |
+
+Cost scales roughly linearly with enemies that run movement + threat every frame. Idle or off-mesh actors cost less.
+
+---
 
 <DocNav prev={{ title: "Troubleshooting", href: "/docs/soulslike-combat/troubleshooting" }} next={{ title: "API Reference", href: "/docs/soulslike-combat/api-reference" }} />
