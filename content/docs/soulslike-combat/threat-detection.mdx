@@ -1,13 +1,12 @@
 ---
 title: "Threat Detection"
-description: "Track player camera attention and react when being observed."
-date: 2025-12-27
+description: "Track whether the focus target is looking at this AI and react through movement or custom logic."
+date: 2026-03-23
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Threat Detection"]
 parent: "SoulslikeCombatDocs"
 order: 9
 ---
-
 
 <Breadcrumb items={[
     { label: "Docs", href: "/docs" },
@@ -15,216 +14,165 @@ order: 9
     { label: "Threat Detection" }
 ]} />
 
-> The AI knows when you're watching and responds.
+> Each tick, `ThreatDetectionComponent` checks whether the focus target's aim aligns with this AI. Alignment sets threat level; sustained stare inside the cone fires duration events.
 
 <ThreatVisualizer />
 
 ## When to Use This
 
-- Soulslike games where enemies react to player attention
-- Stealth/horror games with awareness mechanics
-- Dynamic difficulty that punishes passive observation
-- Any AI that should behave differently when the spotlight is on them
+- Enemies that swap strafe side or back off when the player stares at them.
+- Per-role threat response through [movement profiles](/docs/soulslike-combat/movement-system): turn flags on for one profile, leave them off for another.
+- Custom barks, animations, or action score boosts on `OnThreatLevelChanged` or `OnThreatDurationExceeded`.
+- An optional layer on [Targeting](/docs/soulslike-combat/targeting-system); you need a focus actor first.
 
-> This component can be used independently of the other plugin systems.
-
----
-
-## Core Concepts
-
-### How It Works
-
-It samples whether the **player's camera** points at the AI:
-
-```
-Player Camera
-      \
-       \  < 15° (configurable)
-        \
-         ↘ [AI]  ← "I'm being watched!"
-```
-
-When the player looks at the AI:
-1. **Threat level** starts accumulating (0.0 → 1.0)
-2. The longer they stare, the higher the threat
-3. When threat reaches threshold, the AI reacts
-
-When the player looks away:
-- Threat level **decays** over time back to 0
-
-### Threat Level
-
-A normalized value from **0.0 to 1.0**:
-
-| Value | Meaning |
-|-------|---------|
-| 0.0 | Not observed at all |
-| 0.0 - 0.5 | Casually glanced at |
-| 0.5 - 0.8 | Player is watching |
-| 0.8 - 1.0 | Player is staring |
-
-Use this value to:
-- Modify action scores (defensive actions score higher when threatened)
-- Trigger strafe direction changes
-- Enable/disable certain behaviors
+The component ticks each frame. Movement and actions stay separate: `SECCombatControllerComponent` binds delegates when it finds `ThreatDetectionComponent`, and built-in movement handlers run only if `MovementEvaluatorComponent` exists and the active profile enables them.
 
 ---
 
-## Quick Setup
+## How It Works
 
-The component is automatically added to `AEnemyControllerBase`. For custom AI controllers, add `ThreatDetectionComponent` in the Components panel.
+Each tick, the component reads **`AAIController::GetFocusActor()`**:
 
-### Threat Response Wiring
+- **Pawn focus:** `GetControlRotation()` (camera / control rotation).
+- **Other actor:** actor forward vector.
+- **No focus:** threat level goes to `0`.
 
-The `SECCombatControllerComponent` automatically wires threat responses if both `ThreatDetectionComponent` and `MovementEvaluatorComponent` are present on the controller.
+The component builds a look dot from the focus target toward this AI:
 
-**On `SECCombatControllerComponent`** (wiring toggle):
+| Signal | Source | Range |
+|--------|--------|-------|
+| **Threat level** | `Clamp(LookDot, 0, 1)` when `LookDot > 0`, else `0` | Instant alignment, not time-based |
+| **`IsPlayerLookingAtMe()`** | `LookDot >= cos(PlayerLookAngleThreshold)` | Inside the angle cone; duration timer runs only while this is true |
+| **Look duration** | `PlayerLookAccumulatedTime` while `IsPlayerLookingAtMe()` | Drives `OnThreatDurationExceeded`; uses `CurrentThreatTimeThreshold` (starts at `PlayerLookTimeThreshold`) |
 
-| Property | Default | Purpose |
-|----------|---------|----------|
-| `bEnableThreatDetection` | `true` | Enable threat detection on BeginPlay |
+Threat level can read above zero while `IsPlayerLookingAtMe()` stays false: the focus target aims toward the AI but sits outside the cone.
 
-**On `MovementBehaviorProfile`** (per-role behavior - switches automatically with combat role):
+Threat level follows aim alignment each tick. `OnThreatLevelChanged` fires when the value moves by more than `0.01`.
 
-| Property | Default | Purpose |
-|----------|---------|----------|
-| `bSwapStrafeOnHighThreat` | `false` | Swap strafe direction when threat duration is exceeded |
-| `bAdjustDistanceByThreat` | `false` | Adjust movement distance multiplier based on threat |
-| `ThreatDistanceScale` | `1.0` | Scale factor for distance adjustment: `1.0 + ThreatLevel * Scale` |
-
-Because threat response settings live on the movement profile, they automatically change when the AI switches combat roles. A cautious "Waiter" role can react to threat with distance adjustments, while an aggressive "Attacker" profile ignores threat entirely. No per-AI configuration needed.
-
-### Configure Thresholds
-
-In your AI Controller Blueprint → ThreatDetectionComponent:
-
-```cpp
-PlayerLookAngleThreshold = 15.0f;   // Degrees - how directly must player look
-PlayerLookTimeThreshold = 3.0f;     // Seconds to reach max threat
-```
-
-### Read Threat Level
-
-```cpp
-// In StateTree, Blueprint, or C++:
-float Threat = ThreatDetection->GetCurrentThreatLevel();
-
-if (Threat > 0.7f)
-{
-    // Player is really staring - do something about it
-}
-```
+Look duration hits **`CurrentThreatTimeThreshold`** and `OnThreatDurationExceeded` fires. The timer resets; the next threshold picks a random value in **`[PlayerLookTimeThreshold, PlayerLookTimeThreshold × 2]`**. Look-away clears duration and restores the base threshold.
 
 ---
 
-## Key Properties
+## Setup
 
-| Property | Default | Purpose |
-|----------|---------|---------|
-| `PlayerLookAngleThreshold` | 15.0° | How directly the player must look to count as looking at the AI |
-| `PlayerLookTimeThreshold` | 3.0s | Look time before `OnThreatDurationExceeded` fires; resets on look-away |
-| `bDebugLogThreat` | false | Log threat and player-look events |
-| `bDebugDrawThreat` | false | Draw the threat cone and color the AI by threat level |
+### 1. Component on the AI controller
+
+`AEnemyControllerBase` adds `ThreatDetectionComponent` in its constructor and leaves ticking off until `SECCombatControllerComponent` enables it on BeginPlay.
+
+On a custom controller, add **Threat Detection Component** to the AIController, not the pawn.
+
+### 2. Enable ticking
+
+`SECCombatControllerComponent` binds threat delegates on BeginPlay when it finds `ThreatDetectionComponent` on the same controller:
+
+<ThreatResponseWiringDetails />
+
+**Enable Threat Detection** defaults to on; BeginPlay calls `SetThreatDetectionEnabled(true)`. Uncheck it to stop ticking. Delegates still bind. `EnemyControllerBase` creates the component disabled; this flag turns ticking back on.
+
+### 3. Focus target
+
+Register and assign a combat target so the AI sets focus on the player pawn ([Targeting System](/docs/soulslike-combat/targeting-system)). No focus means threat stays at zero.
+
+### 4. Tune detection
+
+<ThreatDetectionDetails />
+
+| Field | Notes |
+|-------|-------|
+| **Player Look Angle Threshold** | Half-angle cone in degrees. Default `15`. |
+| **Player Look Time Threshold** | Seconds of continuous look before `OnThreatDurationExceeded`. Resets on look-away. |
+
+### 5. Movement responses (per combat role)
+
+`SECCombatControllerComponent` reads threat fields on the active **`UMovementBehaviorProfile`** and applies strafe swap or distance scaling when that profile enables them (profile swaps with [combat role](/docs/soulslike-combat/combat-roles)):
+
+<ThreatResponseProfileDetails />
+
+| Field | Notes |
+|-------|-------|
+| **Swap Strafe On High Threat** | On duration exceeded, `SECCombatControllerComponent` calls `MovementEvaluatorComponent::SwapStrafeSide()`. |
+| **Adjust Distance By Threat** | Each threat update sets `DistanceMultiplier = 1.0 + ThreatLevel × ThreatDistanceScale`. |
+| **Threat Distance Scale** | Requires adjust-by-threat. Clamped `0-5`. |
+
+Assign profiles in `EnemyAIConfig → RoleMovementProfiles`. `MakeAttacker()` and `MakeWaiter()` leave threat fields at `false`; enable them on each `MovementBehaviorProfile` asset you assign.
 
 ---
 
-## Key Functions
+## Read Threat Level
 
-```cpp
-// Current threat level [0.0 - 1.0]
-float GetCurrentThreatLevel() const;
+Call **`Get Current Threat Level`** on `ThreatDetectionComponent` (BlueprintCallable, returns `0.0-1.0`).
 
-// Accumulated time the player has been looking at this AI
-float GetPlayerLookDuration() const;
-
-// Is the player looking at this AI right now (within the angle threshold)?
-bool IsPlayerLookingAtMe() const;
-
-// Enable or disable detection ticking, and query it
-void SetThreatDetectionEnabled(bool bEnabled);
-bool IsThreatDetectionEnabled() const;
-```
+Bind **`On Threat Level Changed`** for continuous updates. Bind **`On Threat Duration Exceeded`** for stare-duration reactions; `SECCombatControllerComponent` wires strafe swap when the profile allows it.
 
 ---
 
-## Usage Examples
+## Integration
 
-### Strafe Direction Swap
+| System | Link |
+|--------|------|
+| [Targeting System](/docs/soulslike-combat/targeting-system) | Focus actor from assigned combat target / `SetFocus`. |
+| [Movement System](/docs/soulslike-combat/movement-system) | Threat response fields on `MovementBehaviorProfile`; `SECCombatControllerComponent` wires them. |
+| [Action System](/docs/soulslike-combat/action-system) | Optional custom `USECScorer` reads `GetCurrentThreatLevel()` (see Advanced). |
+| [Combat Roles](/docs/soulslike-combat/combat-roles) | Each role can use a movement profile with its own threat toggles. |
 
-The `SECCombatControllerComponent` automatically handles strafe swaps when threat duration is exceeded. Enable `bSwapStrafeOnHighThreat` on the component:
+---
+
+<Collapsible title="Delegates and runtime API" badge="Advanced">
+
+| Delegate / function | When |
+|---------------------|------|
+| `OnThreatLevelChanged` | Threat level moves by more than `0.01` since last broadcast |
+| `OnThreatDurationExceeded` | Continuous look within angle threshold reaches the time threshold |
+| `GetCurrentThreatLevel()` | Raw alignment `0-1` |
+| `GetPlayerLookDuration()` | Seconds accumulated this look session (resets on look-away) |
+| `IsPlayerLookingAtMe()` | Focus target inside `PlayerLookAngleThreshold` cone |
+| `SetThreatDetectionEnabled` / `IsThreatDetectionEnabled` | Toggle ticking; disabling clears threat state |
+| `SetTickInterval` | Throttle tick rate (`0` = every frame) |
+
+`ThreatDetectionComponent` belongs on the **AIController**, not the pawn. It never touches `MovementEvaluatorComponent`. `SECCombatControllerComponent::OnThreatLevelUpdated` and `OnThreatDurationExceeded` hold the movement hooks. `HandleDeath` calls `SetThreatDetectionEnabled(false)`.
+
+</Collapsible>
+
+<Collapsible title="Custom action scoring" badge="Advanced">
+
+Add a Blueprint or C++ **`USECScorer`** to an action's scoring list. Read threat from the controller:
 
 ```cpp
-// Configured via SECCombatControllerComponent properties:
-// bSwapStrafeOnHighThreat = true
-// When OnThreatDurationExceeded fires, MovementEvaluator->SwapStrafeSide() is called automatically
-```
-
-No extra code needed if you're using `SECCombatControllerComponent` with both `ThreatDetectionComponent` and `MovementEvaluatorComponent`.
-
-To also adjust distance based on threat, enable `bAdjustDistanceByThreat`:
-
-```cpp
-// Distance multiplier formula: 1.0 + ThreatLevel * ThreatDistanceScale
-// At ThreatLevel = 0.8 with ThreatDistanceScale = 1.0 → multiplier = 1.8
-// AI backs away further when the player is staring
-```
-
-### Defensive Action Bonus
-
-To make threat influence action scores, write a custom `USECScorer` (C++ or Blueprint) and add it to the action's Scoring list. The scorer reads the threat level and returns a multiplier (1.0 = no effect):
-
-```cpp
-// Custom USECScorer subclass:
 float ScoreMultiplier_Implementation(const FSECScoringContext& Context) const override
 {
     const UThreatDetectionComponent* Threat =
         Context.Controller->FindComponentByClass<UThreatDetectionComponent>();
     const float Level = Threat ? Threat->GetCurrentThreatLevel() : 0.f;
-    return 1.f + Level * 0.5f;  // Up to +50% on a defensive action when threatened
+    return 1.f + Level * 0.5f;
 }
 ```
 
-### "I See You" Bark
+You write and tune the curve; the plugin ships no default scorer for threat.
 
-Trigger audio/visual feedback:
+</Collapsible>
 
-```cpp
-void OnThreatLevelChanged(float OldThreat, float NewThreat)
-{
-    if (OldThreat < 0.5f && NewThreat >= 0.5f)
-    {
-        PlayBarkSound("ISeeYou");
-    }
-}
+<Collapsible title="Debug" badge="Advanced">
+
+Per-instance flags on the component (**Debug Log Threat**, **Debug Draw Threat**) or global console cheats:
+
+```
+SEC.Debug.Threat.Draw 1
+SEC.Debug.Threat.Log 1
 ```
 
----
+Draw mode shows the look cone from the focus target and a progress arc on the AI while stared at (white → orange → red).
 
-## Debug Tools
+</Collapsible>
 
-**Enable Logging:**
-```cpp
-ThreatDetection->bDebugLogThreat = true;
-```
+<Collapsible title="Manual wiring without SECCombatControllerComponent" badge="Alternative">
 
-**Console Commands:**
-```
-SEC.Debug.Threat.Draw 1   // Visualize the detection cone for all AI
-SEC.Debug.Threat.Log 1    // Log threat events for all AI
-```
+Add `ThreatDetectionComponent` to your AIController and call `SetThreatDetectionEnabled(true)`.
 
----
+Bind `OnThreatDurationExceeded` to your handler (strafe swap, bark, etc.). The component header documents no movement coupling; you wire the pairing.
 
-## Integration Points
+</Collapsible>
 
-| System | How Threat Detection Connects |
-|--------|------------------------------|
-| [Movement System](/docs/soulslike-combat/movement-system) | `SECCombatControllerComponent` auto-wires strafe swap and distance adjustment based on threat |
-| [Action System](/docs/soulslike-combat/action-system) | Threat level can boost defensive action scores |
-
----
-
-<DocNav 
-  prev={{ title: "Multiplayer", href: "/docs/soulslike-combat/multiplayer" }} 
-  next={{ title: "Awareness System", href: "/docs/soulslike-combat/awareness-system" }} 
+<DocNav
+  prev={{ title: "Targeting System", href: "/docs/soulslike-combat/targeting-system" }}
+  next={{ title: "Awareness System", href: "/docs/soulslike-combat/awareness-system" }}
 />

@@ -677,6 +677,44 @@ export const TARGET_SELECTION_CONTEXT_DETAILS: UeDetailCategory[] = [
   },
 ];
 
+/** UThreatDetectionComponent — verified against ThreatDetectionComponent.h */
+export const THREAT_DETECTION_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Threat Detection",
+    properties: [
+      { label: "Player Look Angle Threshold", value: n(15, 5, 90) },
+      { label: "Player Look Time Threshold", value: n(3, 0.1, 10) },
+    ],
+  },
+  {
+    title: "Debug",
+    properties: [
+      { label: "Debug Log Threat", value: b(false) },
+      { label: "Debug Draw Threat", value: b(false) },
+    ],
+  },
+];
+
+/** USECCombatControllerComponent threat wiring toggle — verified against SECCombatControllerComponent.h */
+export const THREAT_RESPONSE_WIRING_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Threat Response",
+    properties: [{ label: "Enable Threat Detection", value: b(true) }],
+  },
+];
+
+/** UMovementBehaviorProfile threat fields — verified against MovementBehaviorProfile.h */
+export const THREAT_RESPONSE_PROFILE_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Threat Response",
+    properties: [
+      { label: "Swap Strafe On High Threat", value: b(false) },
+      { label: "Adjust Distance By Threat", value: b(false) },
+      { label: "Threat Distance Scale", value: n(1, 0, 5), disabled: true },
+    ],
+  },
+];
+
 /** SECMeleeTraceComponent TeamFilter — verified against SECMeleeTraceComponent.h */
 export const MELEE_TRACE_TEAM_FILTER_DETAILS: UeDetailCategory[] = [
   {

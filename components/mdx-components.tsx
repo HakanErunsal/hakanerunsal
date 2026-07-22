@@ -42,6 +42,9 @@ import ProjectTargetingDetails from '@/components/ProjectTargetingDetails';
 import AwarenessFilteredTargetSelectorDetails from '@/components/AwarenessFilteredTargetSelectorDetails';
 import TargetSelectionContextDetails from '@/components/TargetSelectionContextDetails';
 import MeleeTraceTeamFilterDetails from '@/components/MeleeTraceTeamFilterDetails';
+import ThreatDetectionDetails from '@/components/ThreatDetectionDetails';
+import ThreatResponseWiringDetails from '@/components/ThreatResponseWiringDetails';
+import ThreatResponseProfileDetails from '@/components/ThreatResponseProfileDetails';
 import RegisterCombatTargetBlueprint from '@/components/RegisterCombatTargetBlueprint';
 import ActionScoreFormula from '@/components/ActionScoreFormula';
 import Reviews from '@/components/Reviews';
@@ -96,6 +99,9 @@ const components = {
   TargetSelectionContextDetails,
   MeleeTraceTeamFilterDetails,
   RegisterCombatTargetBlueprint,
+  ThreatDetectionDetails,
+  ThreatResponseWiringDetails,
+  ThreatResponseProfileDetails,
   ActionScoreFormula,
   Reviews,
   // Prevent hydration errors from block elements nested inside <p>
