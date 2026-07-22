@@ -27,6 +27,9 @@ import ArchitectureFlowDiagram from '@/components/ArchitectureFlowDiagram';
 import MovementEvaluatorDetails from '@/components/MovementEvaluatorDetails';
 import MovementProfileDetails from '@/components/MovementProfileDetails';
 import DistanceBandVisualizer from '@/components/DistanceBandVisualizer';
+import ActionCooldownDetails from '@/components/ActionCooldownDetails';
+import RangeEvalDetails from '@/components/RangeEvalDetails';
+import ActionScoreFormula from '@/components/ActionScoreFormula';
 import Reviews from '@/components/Reviews';
 
 const useMDXComponent = (code: string) => {
@@ -63,6 +66,9 @@ const components = {
   MovementEvaluatorDetails,
   MovementProfileDetails,
   DistanceBandVisualizer,
+  ActionCooldownDetails,
+  RangeEvalDetails,
+  ActionScoreFormula,
   Reviews,
   // Prevent hydration errors from block elements nested inside <p>
   p: ({ children, ...props }: React.HTMLAttributes<HTMLParagraphElement>) => (

@@ -345,3 +345,47 @@ export const MOVEMENT_PROFILE_DETAILS: UeDetailCategory[] = [
     properties: [{ label: "Positioning Rules", value: { kind: "text", value: "0 Array elements" } }],
   },
 ];
+
+//=========================================================================
+// Template data: FActionCooldown defaults (the action's Cooldown group)
+// Verified against Plugins/SoulslikeEnemyCombat/.../Abilities/ActionSet.h
+//=========================================================================
+
+export const ACTION_COOLDOWN_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Cooldown",
+    properties: [
+      // ClampMin 0, no ClampMax -> no fill bar (unbounded), Units s.
+      { label: "Cooldown Duration", value: n(5) },
+      { label: "Initial Cooldown", value: n(0) },
+      // ClampMin 0, ClampMax 0.5 -> fill bar.
+      { label: "Randomization (%)", value: n(0.2, 0, 0.5) },
+      // ClampMin 0, ClampMax 1 -> fill bar.
+      { label: "Spawn Cooldown Chance", value: n(0, 0, 1) },
+      // int32, no clamp -> no fill bar. -1 is unlimited.
+      { label: "Max Consecutive Uses", value: n(-1, undefined, undefined, 0) },
+    ],
+  },
+];
+
+//=========================================================================
+// Template data: FRangeEval on a Distance Scorer (melee preset default)
+// Verified against Plugins/SoulslikeEnemyCombat/.../Abilities/ActionSet.h
+// Distance Scorer's Range defaults to MakeMeleeRange() = 0/100/250/500.
+//=========================================================================
+
+export const RANGE_EVAL_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Range",
+    properties: [
+      // Bounds are ClampMin 0 with no ClampMax -> no fill bar.
+      { label: "Min Value", value: n(0) },
+      { label: "Optimal Min", value: n(100) },
+      { label: "Optimal Max", value: n(250) },
+      { label: "Max Value", value: n(500) },
+      // ClampMin 0.1, ClampMax 10 -> fill bar.
+      { label: "Exponent", value: n(2, 0.1, 10) },
+      { label: "Clamp To Zero", value: b(true) },
+    ],
+  },
+];

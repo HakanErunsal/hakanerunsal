@@ -32,10 +32,18 @@ export {
   UeDetailsPanel,
   MOVEMENT_EVALUATOR_DETAILS,
   MOVEMENT_PROFILE_DETAILS,
+  ACTION_COOLDOWN_DETAILS,
+  RANGE_EVAL_DETAILS,
   type UeDetailCategory,
   type UeDetailProperty,
   type UeDetailValue,
 } from "./UeDetailsPanel";
+export {
+  UeFormulaGraph,
+  ACTION_SCORE_FACTORS,
+  type UeFormulaFactor,
+  type UeFormulaGraphProps,
+} from "./UeFormulaGraph";
 export { UeComponentRow } from "./UeComponentRow";
 export * from "./ue-theme";
 export * from "./ue-blueprint-theme";

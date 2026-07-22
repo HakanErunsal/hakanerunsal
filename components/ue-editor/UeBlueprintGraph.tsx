@@ -6,17 +6,24 @@ interface UeBlueprintGraphProps {
   className?: string;
   /** Show major/minor grid like GraphPanel */
   grid?: boolean;
+  /** Padding class for the content wrapper. Default p-6. */
+  bodyClassName?: string;
 }
 
 /** Blueprint graph canvas — dark grid background for node layouts */
-export function UeBlueprintGraph({ children, className, grid = true }: UeBlueprintGraphProps) {
+export function UeBlueprintGraph({
+  children,
+  className,
+  grid = true,
+  bodyClassName,
+}: UeBlueprintGraphProps) {
   return (
     <div
       className={cn("ue-bp-graph relative overflow-auto rounded-[2px] border border-[#0F0F0F]", className)}
       style={{ backgroundColor: UE_BP_NODE.graphBg }}
     >
       {grid && <div className="ue-bp-graph__grid pointer-events-none absolute inset-0" aria-hidden />}
-      <div className="relative p-6">{children}</div>
+      <div className={cn("relative p-6", bodyClassName)}>{children}</div>
     </div>
   );
 }
