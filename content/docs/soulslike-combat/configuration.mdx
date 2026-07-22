@@ -269,7 +269,7 @@ Distance, angle, health, speed, and stamina are opt-in. Add an entry to an actio
 | **Speed Scorer** | `Range` (FRangeEval) | `MakeAlwaysOne()` | AI horizontal speed (cm/s) | |
 | **Stamina Gate** | `MinStamina` | `0` | Decision-context Stamina (100 by default) | Vetoes unless Stamina >= `MinStamina`; for a GAS stamina attribute use an Attribute Gate |
 | **Attribute Scorer** | `Attribute`, `NormalizeBy`, `ValueEval` (FRangeEval) | n/a | A `GameplayAttribute` on the owning ASC | Optionally divide by `NormalizeBy` (e.g. Mana / MaxMana) before scoring |
-| **Attribute Gate** | `Attribute`, `MinValue`, `MaxValue` | `0` / `0` | A `GameplayAttribute` on the owning ASC | Pass when the attribute is in `[MinValue, MaxValue]`; `MaxValue` <= 0 disables the upper bound |
+| **Attribute Gate** | `Attribute`, `MinValue`, `MaxValue` | `0` / `0` | A `GameplayAttribute` on the owning ASC | Pass when the attribute is in `[MinValue, MaxValue]`; `MaxValue <= 0` disables the upper bound |
 
 > The decision context never reads GAS health or stamina attributes. Health comes from `UBasicHealthComponent` (else 1.0) and Stamina is fixed at 100. For GameplayAttribute-backed health, stamina, mana, or any other pool, use an **Attribute Scorer** or **Attribute Gate** on the action.
 

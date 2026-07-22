@@ -524,7 +524,8 @@ export function UeBlueprintBreakStructNode(
 
 /** Preset: world subsystem getter (dark compact node, output only). */
 export function UeBlueprintSubsystemNode(
-  props: Omit<UeBlueprintNodeProps, "kind" | "variant" | "pins"> & {
+  props: Omit<UeBlueprintNodeProps, "kind" | "variant" | "pins" | "title"> & {
+    title?: string;
     titleLines?: string[];
   },
 ) {
