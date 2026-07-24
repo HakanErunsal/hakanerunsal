@@ -84,7 +84,7 @@ export function extractHeadings(raw: string): ParsedHeading[] {
   const slugger = new GithubSlugger();
   const headings: ParsedHeading[] = [];
 
-  for (const match of text.matchAll(/^(#{2,3})\s+(.+)$/gm)) {
+  for (const match of Array.from(text.matchAll(/^(#{2,3})\s+(.+)$/gm))) {
     const level = match[1].length;
     const title = match[2]
       .replace(/`([^`]+)`/g, "$1")
