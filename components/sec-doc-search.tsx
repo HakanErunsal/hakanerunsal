@@ -54,10 +54,14 @@ export function SecDocSearch({ className }: SecDocSearchProps) {
     return engine
       .search(trimmed, { combineWith: "AND" })
       .slice(0, 8)
-      .map((hit) => ({
-        ...(hit as SecSearchIndexEntry),
-        score: hit.score,
-      }));
+      .flatMap((hit) => {
+        const entry = secSearchIndex.documents.find((doc) => doc.id === hit.id);
+        if (!entry) {
+          return [];
+        }
+
+        return [{ ...entry, score: hit.score }];
+      });
   }, [engine, query]);
 
   const closeSearch = useCallback(() => {
