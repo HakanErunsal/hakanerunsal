@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { docs, articles, projects } from "#site/content";
+import { SecDocSearch } from "@/components/sec-doc-search";
 
 // ──────────────────────────────────────
 //  Types
@@ -88,6 +89,11 @@ function getSection(pathname: string): Section {
     if (pathname.startsWith("/projects")) return "projects";
     if (pathname.startsWith("/about")) return "about";
     return "home";
+}
+
+function isSecDocsPath(pathname: string): boolean {
+    return pathname === "/docs/SoulslikeCombatDocs"
+        || pathname.startsWith("/docs/soulslike-combat/");
 }
 
 // ──────────────────────────────────────
@@ -260,6 +266,10 @@ export function SiteTreeSidebar() {
                     </Link>
                 ))}
             </div>
+
+            {section === "docs" && isSecDocsPath(pathname) && (
+                <SecDocSearch />
+            )}
 
             {/* Section-specific content */}
             <nav className="flex-1 overflow-y-auto px-3 py-4">

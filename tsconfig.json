@@ -27,6 +27,9 @@
       ],
       "#site/content": [
         "./.velite"
+      ],
+      "#site/sec-search-index": [
+        "./.velite/sec-search-index.json"
       ]
     }
   },

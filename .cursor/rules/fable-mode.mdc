@@ -1,0 +1,41 @@
+---
+description: Fable-mode execution discipline for this repo — staged plans, delegation, verification.
+alwaysApply: true
+---
+
+# Fable Mode (project default)
+
+This repo uses [fable-mode v3](https://github.com/mrtooher/fable-mode) for agent workflow.
+
+## Always on
+
+Read and follow `.cursor/skills/execution-guardrails/SKILL.md` on **every** task (verify-before-flag, warning threshold, safe find-and-replace).
+
+## When to use fable-mode
+
+Use `.cursor/skills/fable-mode/SKILL.md` when a task:
+
+- spans multiple files, sources, or sessions
+- the user asks for thorough / systematic / "deep work" handling
+- needs staged verification (docs validation, large refactors, multi-page rewrites)
+
+Skip fable-mode for single-pass tasks with one obvious approach.
+
+## Delegation (installed agents)
+
+Project agents live in `.cursor/agents/`:
+
+| Agent | Role |
+|-------|------|
+| `fable-orchestrator` | Stage map + delegate (no Write/Edit) |
+| `fable-worker-sonnet` | Reasoning / code / synthesis stages |
+| `fable-worker-haiku` | Bulk mechanical stages |
+| `fable-verifier` | Cold re-check of deliverables |
+
+For peak quality on large work, route through **fable-orchestrator** (see `fable-opus` skill). For balanced cost, use **fable-sonnet**. For cheap bulk passes, **fable-haiku**.
+
+## Skills
+
+- `.cursor/skills/fable-mode/` — default inline loop
+- `.cursor/skills/fable-opus/` / `fable-sonnet/` / `fable-haiku/` — model-pinned variants
+- `.cursor/skills/execution-guardrails/` — always-on rules

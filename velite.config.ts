@@ -1,8 +1,13 @@
+import path from "node:path";
 import { defineConfig, defineCollection, s } from "velite";
 import rehypeSlug from "rehype-slug";
 import rehypePrettyCode from "rehype-pretty-code";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import { SiteConfig, siteConfig } from "./config/site";
+import {
+  buildSecSearchIndex,
+  writeSecSearchIndex,
+} from "./lib/build-sec-search-index";
 
 const computedFields = <T extends { slug: string }>(data: T) => ({
   ...data,
@@ -100,5 +105,11 @@ export default defineConfig({
       ],
     ],
     remarkPlugins: [],
+  },
+  complete: (data) => {
+    const contentRoot = path.join(process.cwd(), "content");
+    const outputPath = path.join(process.cwd(), ".velite", "sec-search-index.json");
+    const index = buildSecSearchIndex(data.docs, contentRoot);
+    writeSecSearchIndex(index, outputPath);
   },
 });

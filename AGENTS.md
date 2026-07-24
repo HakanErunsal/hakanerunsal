@@ -12,6 +12,14 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 
 There is no test runner configured.
 
+## Agent workflow (Fable Mode)
+
+This repo uses [fable-mode v3](https://github.com/mrtooher/fable-mode). Skills live in `.cursor/skills/`; subagents in `.cursor/agents/`. See `.cursor/rules/fable-mode.mdc`.
+
+- **Always on:** `execution-guardrails` skill (verify before flagging, batch minor warnings, safe edits).
+- **Large / multi-file tasks:** read `fable-mode` skill — stage map, failable checks, self-critique.
+- **Delegated runs:** `fable-orchestrator` → workers → optional `fable-verifier`.
+
 ## Architecture
 
 This is a Next.js 14 App Router portfolio + docs site. Content is authored in MDX, compiled by Velite at build time into typed JS modules, and consumed by the App Router pages.
