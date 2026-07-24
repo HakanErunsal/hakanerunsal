@@ -6,9 +6,10 @@ import { createPortal } from 'react-dom';
 interface VideoLoopProps {
   src: string;
   className?: string;
+  title?: string;
 }
 
-const VideoLoop: React.FC<VideoLoopProps> = ({ src, className }) => {
+const VideoLoop: React.FC<VideoLoopProps> = ({ src, className, title = "The Last Line | Official Gameplay Trailer" }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -64,6 +65,8 @@ const VideoLoop: React.FC<VideoLoopProps> = ({ src, className }) => {
         ref={videoRef}
         src={src}
         className={`cursor-pointer ${className}`}
+        title={title}
+        aria-label={title}
         autoPlay
         loop
         muted
@@ -79,6 +82,8 @@ const VideoLoop: React.FC<VideoLoopProps> = ({ src, className }) => {
             ref={fullScreenVideoRef}
             src={src}
             className="max-w-full max-h-full transform transition-transform duration-500 cursor-pointer"
+            title={title}
+            aria-label={title}
             autoPlay
             loop
             playsInline
