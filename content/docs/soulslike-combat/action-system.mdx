@@ -136,7 +136,7 @@ Before scoring, every action runs hard gates. Fail one and the action drops out 
 
 Stamina only blocks when you add a **Stamina Gate** (`MinStamina`) to the Scoring list, or an **Attribute Gate** for a GAS stamina pool. Decision-context Stamina defaults to 100, so an action with no Stamina Gate ignores stamina.
 
-**Require Line Of Sight** reads `FDecisionContext::bHasLOS`. The [Build Decision Context](/docs/soulslike-combat/statetree#sttask_builddecisioncontext) task traces from the AI's eyes to the target each tick. Tick the box for ranged shots and gap-closers. Leave it off for moves that land blind (radial slam, taunt).
+**Require Line Of Sight** reads `FDecisionContext::bHasLOS`. The [Build Decision Context](/docs/soulslike-combat/statetree#combat-and-decision) task traces from the AI's eyes to the target each tick. Tick the box for ranged shots and gap-closers. Leave it off for moves that land blind (radial slam, taunt).
 
 <Callout type="info">
   While an action runs it applies its `AddTags` to the AI's ability system component. `SEC.State.IsMovementBlocked` ships in that list by default and holds the enemy still mid-swing. Remove it from `AddTags` to let the AI move during that action.
@@ -403,7 +403,7 @@ An action with an empty Scoring list scores on `SelectionWeight` alone. No score
 
 **Favor a heavy attack as rage builds.** Add an **Attribute Scorer**, set `Attribute = Rage`, `NormalizeBy = MaxRage`, and shape the curve to peak near full. The attack scores higher as rage fills.
 
-The same Scorers and Gates work on reactions. On the reaction path the component builds a live spatial snapshot (distance, angle, speed, health) from the pawn and `TargetOverride` instead of the action decision context. See [Reaction System](/docs/soulslike-combat/reaction-system#scorers--gates).
+The same Scorers and Gates work on reactions. On the reaction path the component builds a live spatial snapshot (distance, angle, speed, health) from the pawn and `TargetOverride` instead of the action decision context. See [Reaction System](/docs/soulslike-combat/reaction-system#scorers-on-reactions).
 
 ### Custom Scorers & Gates
 
