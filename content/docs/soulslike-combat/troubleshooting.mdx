@@ -182,9 +182,25 @@ The target sits behind cover. Straight-line distance stays short while the nav p
 - **`bDetourEscalateOnStall`** catches tight corners; raise **`DetourStallSpeed`** if a slow grind does not register.
 - Lower **`DetourEnterRatio`** (try **1.4**) or **`DetourMinExcess`** when a longer detour still reads as minor.
 
-**Debug:** **`SEC.Debug.Movement.LogMovement 1`** logs **`Detour escalation ENGAGED`** / **`CLEARED`**.
+**Debug:** **`SEC.Debug.Movement.LogMovement 1`** logs detour recheck lines (`ENGAGE`, `HOLD`, `release`).
 
-See [Detour Escalation](/docs/soulslike-combat/movement-system#detour-escalation-around-corners).
+See [Detour tuning knobs](/docs/soulslike-combat/movement-system#rounding-corners-detour-escalation).
+
+</Collapsible>
+
+<Collapsible badge="" title="Waiter or Flanker freezes after the player jumps a gap">
+
+The player sits close in a straight line but the walkable route still wraps around the pit. Waiter and Flanker can already be inside their desired-distance band, so tactical steering idles at the rim while sight stays clear across the gap.
+
+**Check on `MovementEvaluatorComponent`, Hybrid Movement > Detour:**
+- **`bEnableDetourEscalation`** is on.
+- Both sides of the gap sit on connected navmesh. A route that stops at the rim means there is no walkable way across, and the AI correctly stays tactical rather than walking into a dead end.
+- Leave **`bDetourUseLineOfSightPreGate`** on. It reads the navmesh along the straight line, so a gap engages the detour with sight clear.
+- Lower **`DetourReleaseRatio`** only if the AI gives up the route too early on a short way around.
+
+**Debug:** **`SEC.Debug.Movement.LogMovement 1`** prints `Detour eval: active, HOLD` while the route still detours, and `Detour eval: skip (no reachable route)` when the far side is not connected.
+
+See [Detour tuning knobs](/docs/soulslike-combat/movement-system#rounding-corners-detour-escalation).
 
 </Collapsible>
 
