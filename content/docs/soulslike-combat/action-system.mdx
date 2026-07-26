@@ -64,11 +64,11 @@ The four built-ins and their `Range` defaults:
 | **Speed Scorer** | AI horizontal speed in cm/s | `MakeAlwaysOne()` |
 
 **`FRangeEval` presets** to assign to a scorer's `Range`:
-- `MakeMeleeRange()` - Close-range distance band (0-100-250-500)
-- `MakeRangedRange()` - Long-range distance band (300-500-1000-1800)
-- `MakeFrontalAngle()` - Forward-facing cone (0-0-30-90, Angle Scorer)
-- `MakeLowHealthRange()` - Peaks at low health (0-0-0.25-0.5, Health Scorer, for desperate moves)
-- `MakeAlwaysOne()` - Always returns 1.0 (no preference)
+- `MakeMeleeRange()`: Close-range distance band (0-100-250-500)
+- `MakeRangedRange()`: Long-range distance band (300-500-1000-1800)
+- `MakeFrontalAngle()`: Forward-facing cone (0-0-30-90, Angle Scorer)
+- `MakeLowHealthRange()`: Peaks at low health (0-0-0.25-0.5, Health Scorer, for desperate moves)
+- `MakeAlwaysOne()`: Always returns 1.0 (no preference)
 
 A Health Scorer or Speed Scorer left at its `MakeAlwaysOne()` default has no effect. Shape the Health Scorer's `Range` to favor low or high health. Use the Speed Scorer for pace-dependent moves (a running attack that should score only while sprinting). For health or stamina backed by a GameplayAttribute, use an [Attribute Scorer or Attribute Gate](#scorers--gates).
 
@@ -185,7 +185,7 @@ The pawn must carry a `UMotionWarpingComponent`. `AEnemyCharacterBase` does not 
 | Property | Default | Effect |
 | --- | --- | --- |
 | `MotionWarpingTargetName` | `Target` | Warp target key. Must match the Warp Target Name on the montage's Motion Warp notify. Set to None to disable warp setup for the ability. |
-| `MotionWarpingOffset` | `100.0` | Warp point offset in cm, placed in front of the target toward the AI. Doubles as a switch-off distance: once the AI is closer than this, root-motion warping pauses so the attack does not overshoot. The pause condition is created only while the offset is above 0. |
+| `MotionWarpingOffset` | `100.0` | Warp point offset in cm, placed in front of the target toward the AI. Doubles as a switch-off distance: once the AI is closer than this, root-motion warping pauses so the attack does not overshoot. The ability sets up that pause only while the offset is above 0. |
 | `MaxWarpDistance` | `0.0` | Skip gate. If the AI is closer than this when the ability activates, no warp target is set up. The default of 0 leaves the gate off (any distance warps). |
 | `bLockAIRotation` | `true` | Stops the controller from yawing the pawn toward focus during the ability. Warping runs on a separate path and still rotates the pawn during the notify window. |
 
@@ -258,9 +258,9 @@ Before the first tree starts, the method writes these blackboard keys:
 The plugin provides two Behavior Tree tasks for activating abilities inside a BT:
 
 **Activate Blackboard Ability** reads the ability tag and activation mode from the blackboard keys above, then activates the ability the Behavior Tree Sequence granted. Its `ActivationMode` property has three options:
-- `FromBlackboard` (default) - reads `SEC_ActivationMode`, falling back to ByTag if the key is empty.
-- `ByTag` - always uses tag-based activation.
-- `ByEvent` - always uses event-based activation.
+- `FromBlackboard` (default): reads `SEC_ActivationMode`, falling back to ByTag if the key is empty.
+- `ByTag`: always uses tag-based activation.
+- `ByEvent`: always uses event-based activation.
 
 **Activate Ability** is a standalone task where you set the ability class directly. It has `ActivationMode` (ByTag / ByEvent) and an `EventTag` field that appears only in ByEvent mode. Use it to activate a specific ability from a BT without going through the Action System.
 </Collapsible>
@@ -278,6 +278,7 @@ Override the phases you need:
 
 | Function | When it runs | What to do |
 |----------|--------------|------------|
+| `PreloadAssets` | The AI takes on the action set, before any action runs | Start loading soft references in your payload so the first execution does not stall on them. |
 | `BeginExecute` | The action starts | Start your work. Return `false` to fail the start; the action charges no cooldown and can retry. |
 | `TickExecute` | Each frame while running | Poll or advance. Runs only when `bWantsTick` is set. |
 | `AbortExecute` | The action is interrupted or cancelled | Tear down: cancel timers, destroy spawned actors, unbind callbacks, restore state. |
@@ -413,7 +414,7 @@ For anything the built-ins miss, write your own. `USECScorer` and `USECGate` are
 Subclass `USECScorer` or `USECGate` and override its one function (`ScoreMultiplier` or `PassesGate`). `FSECScoringContext` carries the controller, target, owning ASC, the seed that `SeededRandom` uses, and a decision-context snapshot (below).
 
 <Callout type="warning">
-  Keep scorer and gate subclasses **stateless**. One instance is shared across every AI using the asset, so mutable fields alias across enemies. For randomness, use the `SeededRandom` helper.
+  Keep scorer and gate subclasses **stateless**. Every AI using the asset shares one instance, so mutable fields alias across enemies. For randomness, use the `SeededRandom` helper.
 </Callout>
 
 <Callout type="info">
@@ -446,14 +447,14 @@ Built-in scorers and gates cover per-action rules. For logic that applies to **e
 <Collapsible title="CanExecuteAction and ModifyActionScore" badge="Advanced">
 `ActionEvaluationComponent` exposes two `BlueprintNativeEvent` hooks (Blueprint or C++). Prefer [Scorers & Gates](#scorers--gates) for per-action rules.
 
-**CanExecuteAction** - Veto an action after all built-in gates pass.
+**CanExecuteAction**: Veto an action after all built-in gates pass.
 
 ```cpp
 bool CanExecuteAction(FName ActionId, const FDecisionContext& Context);
 // Return false to block the action.
 ```
 
-**ModifyActionScore** - Adjust the score after the pipeline computes it.
+**ModifyActionScore**: Adjust the score after the pipeline computes it.
 
 ```cpp
 float ModifyActionScore(FName ActionId, float BaseScore, const FDecisionContext& Context);
@@ -634,21 +635,21 @@ The `SEC.Debug.LogActionDecisions 1` console variable does the same globally wit
 | `SECCombatControllerComponent` | Controller | Orchestrates sync on role changes |
 
 **ActionEvaluationComponent (Controller)**
-- `EvaluateBestAction(Context, Time, OutChosen)` - Run the scoring pipeline.
-- `ExecuteAction(ActionId)` - Force-execute a specific action.
-- `ExecuteActionWithContext(Id, Context)` - Execute with custom data (Target, etc.).
-- `SetGlobalMultiplier(Multiplier)` - Runtime buff/nerf for every action (`0` blocks all selection).
-- `SetActionOverride(ActionId, Multiplier)` - Per-action multiplier, folded with the global value.
-- `CanExecuteAction()` / `ModifyActionScore()` - Override hooks (see above).
+- `EvaluateBestAction(Context, Time, OutChosen)`: Run the scoring pipeline.
+- `ExecuteAction(ActionId)`: Force-execute a specific action.
+- `ExecuteActionWithContext(Id, Context)`: Execute with custom data (Target, etc.).
+- `SetGlobalMultiplier(Multiplier)`: Runtime buff/nerf for every action (`0` blocks all selection).
+- `SetActionOverride(ActionId, Multiplier)`: Per-action multiplier, folded with the global value.
+- `CanExecuteAction()` / `ModifyActionScore()`: Override hooks (see above).
 
 **SECActionSetComponent (Pawn)**
-- `SetEquippedWeapon(Actor)` - Weapon-driven action set override.
-- `SetRuntimeOverride(ActionSet)` / `ClearRuntimeOverride()` - Boss phase override.
-- `GrantAction()` / `RevokeAction()` - Runtime action management.
-- `OnActionExecutionStarted` / `OnActionExecutionCompleted` - Replicated delegates for client UI/FX.
-- `OnActionSetChanged` - Fires when the active ActionSet changes (replicated).
-- `OnActionCooldownStarted(ActionId, Duration)` / `OnActionCooldownExpired(ActionId)` - Cooldown lifecycle delegates (replicated).
-- `GetRemainingCooldown(ActionId)` / `IsActionOnCooldown(ActionId)` / `GetAllActiveCooldowns()` - Query current cooldown state.
+- `SetEquippedWeapon(Actor)`: Weapon-driven action set override.
+- `SetRuntimeOverride(ActionSet)` / `ClearRuntimeOverride()`: Boss phase override.
+- `GrantAction()` / `RevokeAction()`: Runtime action management.
+- `OnActionExecutionStarted` / `OnActionExecutionCompleted`: Replicated delegates for client UI/FX.
+- `OnActionSetChanged`: Fires when the active ActionSet changes (replicated).
+- `OnActionCooldownStarted(ActionId, Duration)` / `OnActionCooldownExpired(ActionId)`: Cooldown lifecycle delegates (replicated).
+- `GetRemainingCooldown(ActionId)` / `IsActionOnCooldown(ActionId)` / `GetAllActiveCooldowns()`: Query current cooldown state.
 </Collapsible>
 
 <Collapsible title="Upgrading from an older version" badge="Advanced">

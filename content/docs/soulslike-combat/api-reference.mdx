@@ -146,7 +146,7 @@ Extends Unreal's `UStateTreeAIComponent`. `SECBrainComponent` creates it at runt
 
 | Member | Default | Purpose |
 |--------|---------|---------|
-| `InitializeFromAIConfig(AIConfig)` | n/a | Load and set the StateTree from the config's `DefaultStateTree`. Returns true on success |
+| `InitializeFromAIConfig(AIConfig)` | n/a | Set and start the config's `StateTree`. Returns true on success |
 | `AddLinkedStateTreeOverride(StateTag, StateTreeReference)` | n/a | Swap a sub-tree per gameplay tag, for enemy variants |
 | `bAutoInitializeFromConfig` | true | Initialize from the config automatically on possession. Disable for manual control |
 | `FallbackStateTree` | null | Used when no config is found or the config names no StateTree |

@@ -291,17 +291,17 @@ Console variable `SEC.Debug.LogReactions 1` enables the same logging globally.
 | `SECReactionSetComponent` | Pawn | Resolution, replication, overrides |
 
 **ReactionEvaluationComponent (Controller)**
-- `ExecuteReaction(ReactionId, Context)` - Fire a reaction (primary path).
-- `CanReact(ReactionId, TargetOverride)` - Gate check without executing.
-- `EvaluateBestReaction(CategoryTag, TargetOverride)` - Optional selection when multiple reactions compete.
-- `StopCurrentReaction(bSuccess)` - Manually end the running reaction.
-- `IsReactionExecuting()` / `GetCurrentReactionId()` - Runtime state.
-- `OnReactionStarted` / `OnReactionCompleted` - Controller-local delegates (with full context).
+- `ExecuteReaction(ReactionId, Context)`: Fire a reaction (primary path).
+- `CanReact(ReactionId, TargetOverride)`: Gate check without executing.
+- `EvaluateBestReaction(CategoryTag, TargetOverride)`: Optional selection when multiple reactions compete.
+- `StopCurrentReaction(bSuccess)`: Manually end the running reaction.
+- `IsReactionExecuting()` / `GetCurrentReactionId()`: Runtime state.
+- `OnReactionStarted` / `OnReactionCompleted`: Controller-local delegates (with full context).
 
 **SECReactionSetComponent (Pawn)**
-- `SetRuntimeOverride(ReactionSet, SwapMode)` / `ClearRuntimeOverride(SwapMode)` - Boss phase override.
-- `SyncForCombatRole(RoleTag, SwapMode)` - Apply resolved set for a combat role.
-- `GetReactionSetForRole(RoleTag)` - Query the resolution chain without applying.
+- `SetRuntimeOverride(ReactionSet, SwapMode)` / `ClearRuntimeOverride(SwapMode)`: Boss phase override.
+- `SyncForCombatRole(RoleTag, SwapMode)`: Apply resolved set for a combat role.
+- `GetReactionSetForRole(RoleTag)`: Query the resolution chain without applying.
 - Replicated execution and cooldown delegates; see [Assigning the ReactionSet](#assigning-the-reactionset).
 </Collapsible>
 

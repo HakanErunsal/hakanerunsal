@@ -76,7 +76,7 @@ UTargetSelector* TargetSelector;      // Per-AI target selector (instanced)
 bool bIgnoreTargetRedistribution;     // Opt out of periodic target reshuffling
 
 // Behavior
-FSoftObjectPath DefaultStateTree;     // Optional StateTree; empty = native C++ combat loop
+UStateTree* StateTree;                // Optional StateTree; empty = native C++ combat loop
 FSECDecisionContextParams DecisionContextParams; // Tunables for the decision context
 
 // Action Set Management
@@ -118,7 +118,7 @@ FitnessEvaluators
   - BP_RandomEvaluator
 
 Behavior
-  DefaultStateTree: StateTree_SEC_Core   // optional; leave empty to run the native C++ combat loop
+  StateTree: StateTree_SEC_Core   // optional; leave empty to run the native C++ combat loop
 
 ActionSets
   ManageActionSetsAutomatically: true

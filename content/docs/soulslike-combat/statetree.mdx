@@ -14,7 +14,7 @@ order: 14
     { label: "StateTree Integration" }
 ]} />
 
-> **`USECBrainComponent`** reads **`UEnemyAIConfig::DefaultStateTree`**. A path runs a runtime **`UBotStateTreeAIComponent`**; an empty path runs the native loop (build context, move, poll, execute) with no graph.
+> **`USECBrainComponent`** reads **`UEnemyAIConfig::StateTree`**. Set it and the brain runs a runtime **`UBotStateTreeAIComponent`**; leave it empty and the brain runs the native loop (build context, move, poll, execute) with no graph.
 
 ## When to Use This
 
@@ -30,8 +30,8 @@ Leave **`Default State Tree`** empty when pure combat is enough. Scoring, moveme
 
 On possession, **`SECBrainComponent`** resolves the config through **`SECCombatControllerComponent::ResolveAIConfig`**:
 
-1. **`DefaultStateTree` set:** **`SECBrainComponent`** spawns **`UBotStateTreeAIComponent`**, takes the brain slot, and the component loads the asset on possession.
-2. **`DefaultStateTree` empty:** tick the native loop on **`SECBrainComponent`** (`EvaluationCooldown` default 0.1s).
+1. **`StateTree` set:** **`SECBrainComponent`** spawns **`UBotStateTreeAIComponent`**, takes the brain slot, and hands it the tree.
+2. **`StateTree` empty:** tick the native loop on **`SECBrainComponent`** (`EvaluationCooldown` default 0.1s).
 3. **StateTree fails to start:** log a warning and fall back to the native loop.
 
 Call **`RefreshBrain()`** after you change the config at runtime without re-possessing.
@@ -42,7 +42,7 @@ Both paths call the same components: **`USECDecisionLibrary`**, **`MovementEvalu
 
 ## Setup
 
-Assign **`Default State Tree`** on **`UEnemyAIConfig`**. Copy Reference on the asset in the Content Browser and paste the soft path.
+Assign **`Default State Tree`** on **`UEnemyAIConfig`**.
 
 <StateTreeBehaviorConfigDetails />
 

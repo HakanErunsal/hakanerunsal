@@ -99,7 +99,7 @@ Every evaluation runs the same loop:
 
 `SECBrainComponent` reads the AI config on possession and picks how the AI runs:
 
-- **A StateTree is set** (`DefaultStateTree`): the brain creates a StateTree at runtime and runs it. Use this for graph-authored structure such as patrol, investigate, or boss phases.
+- **A StateTree is set** (`StateTree`): the brain creates a StateTree at runtime and runs it. Use this for graph-authored structure such as patrol, investigate, or boss phases.
 - **No StateTree**: the brain runs a native C++ loop: build the decision context, move, then score and run an action each tick. This covers combat on its own.
 
 The scoring and movement components do the same work in both modes. See [StateTree Tasks](/docs/soulslike-combat/statetree) for the graph nodes, and the [API Reference](/docs/soulslike-combat/api-reference) for the brain's properties.
