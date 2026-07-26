@@ -43,6 +43,12 @@ The AI holds a band around its `DesiredDistance` instead of a single exact range
 
 The AI circles the target while holding distance. It swaps sides automatically when the other side scores better (`bAutoStrafeSwap`), and it rests after strafing too long so the motion stays natural (`bEnableStrafeRest`, which fires `OnStrafeResting`). Under sustained player attention it can swap sides on threat, configured per profile (needs [Threat Detection](/docs/soulslike-combat/threat-detection)).
 
+### Sideways speed penalty
+
+Strafe animations read wrong at full run speed, so the pawn slows as its heading turns away from the direction it faces. `StrafeSpeedPenalty` (0.75) sets the cost, `StrafeFreeAngle` (15 degrees) is the band around straight ahead that costs nothing, and `StrafeFullPenaltyAngle` (40 degrees) is where the cost tops out. At the defaults a heading keeps all its speed out to 15 degrees, 82% at 22.5, and 44% at 40 or wider. It applies on the Tactical layer only; pathfinding, detour, and attack approach move the pawn along a path and never reach it.
+
+Raise `StrafeFreeAngle` if an enemy closing distance looks like it is jogging. Direction scoring angles the approach a few degrees while the AI holds a strafe side or steps around another enemy, and those degrees cost speed. Set it to 0 to charge the penalty at any angle off forward.
+
 ### Two movement layers
 
 The component switches strategy by distance:

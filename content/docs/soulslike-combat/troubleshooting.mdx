@@ -159,6 +159,16 @@ Enable **`bDebugLogMovement`** or **`SEC.Debug.Movement.LogMovement 1`** for lay
 
 </Collapsible>
 
+<Collapsible badge="" title="Enemy jogs instead of running while closing distance">
+
+**Cause:** sideways movement costs speed, and direction scoring angles the approach a few degrees while the AI holds a strafe side or steps around another enemy.
+
+**Fix:** raise **`StrafeFreeAngle`** on **`MovementEvaluatorComponent`** (default **15** degrees), the band around straight ahead that costs no speed. **`StrafeSpeedPenalty`** (**0.75**) softens the cost everywhere including real circling, and **0** turns it off. Also check the run window in your locomotion graph, since a 30 degree approach keeps 65% of its speed by design.
+
+See [Sideways speed penalty](/docs/soulslike-combat/movement-system#sideways-speed-penalty).
+
+</Collapsible>
+
 <Collapsible badge="" title="AI walks off ledges or into hazards">
 
 **Check:**
