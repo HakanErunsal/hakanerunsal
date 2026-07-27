@@ -1,7 +1,7 @@
 ---
 title: "API Reference"
 description: "Controller-side C++ and Blueprint API: SECCombatControllerComponent, EnemyControllerBase, SECBrainComponent, and BotStateTreeAIComponent."
-date: 2025-12-10
+date: 2026-07-27
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Reference"]
 parent: "SoulslikeCombatDocs"
@@ -53,7 +53,8 @@ To read the config or role from outside the component, call the static helpers i
 | Function | Purpose |
 |----------|---------|
 | `ApplyLocalCombatRole(RoleTag)` | Adopt a role locally without registering with the subsystem. Syncs the action set and movement profile like a subsystem-assigned role, but consumes no slots and joins no coordination. For bosses and solo enemies. |
-| `HandleDeath()` | Full SEC shutdown, idempotent. Stops the brain, cancels the in-flight action and reaction, stops melee tracing, disables threat detection, unregisters from the role subsystem, clears focus, then broadcasts `OnDeath`. Does not unpossess or destroy the pawn. |
+| `HandleDeath()` | Full SEC shutdown, idempotent. Cancels the in-flight action and reaction, stops the brain, stops melee tracing, disables threat detection, unregisters from the role subsystem, clears focus, then broadcasts `OnDeath`. Does not unpossess or destroy the pawn. |
+| `HandleRevive()` | Brings a dead enemy back under AI control: releases the action block death took, restarts the brain, and turns threat detection, perception and role registration back on, then broadcasts `OnRevive`. Call it on a revive or when a pooled enemy is reused. A controller that died stays blocked from acting until it runs. |
 
 **Properties**
 
@@ -74,6 +75,7 @@ To read the config or role from outside the component, call the static helpers i
 | `OnCombatTargetLost(LostTarget)` | When the target is destroyed or unregistered |
 | `OnCombatRoleSystemReady(Controller)` | After registration with the role subsystem. Safe to read the initial role here |
 | `OnDeath()` | At the end of `HandleDeath()`, once every system is stopped. Safe to ragdoll, spawn VFX, or destroy |
+| `OnRevive()` | At the end of `HandleRevive()`, once every system is running again |
 
 ---
 

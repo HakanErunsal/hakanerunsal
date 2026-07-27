@@ -297,6 +297,7 @@ Console variable `SEC.Debug.LogReactions 1` enables the same logging globally.
 - `StopCurrentReaction(bSuccess)`: Manually end the running reaction.
 - `IsReactionExecuting()` / `GetCurrentReactionId()`: Runtime state.
 - `OnReactionStarted` / `OnReactionCompleted`: Controller-local delegates (with full context).
+- `OnReactionCompletedWithReason`: same completion, plus why it ended. `Completed` for a reaction that ran to the end, `Interrupted` for one something cancelled, `TimedOut` for one whose ability never ended. Bind this when a timeout has to be told apart from a clean finish.
 
 **SECReactionSetComponent (Pawn)**
 - `SetRuntimeOverride(ReactionSet, SwapMode)` / `ClearRuntimeOverride(SwapMode)`: Boss phase override.
