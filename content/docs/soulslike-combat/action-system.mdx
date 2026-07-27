@@ -159,10 +159,9 @@ Pick a method once per action. Its fields appear inline under it: ability action
 
 Pick an ability class. That is the setup. SEC grants the ability to the character, works out how to start it from the ability's own class defaults, and finishes the action when the ability ends.
 
-| Field | Sets |
-|-------|------|
-| **Ability Class** | The ability this action runs. |
-| **Ability Timeout** | Safety limit in seconds for one run. 0 leaves the ability's own end as the only limit, backed by a 30 second safety. Advanced. |
+<AbilityExecutionMethodDetails />
+
+**Ability Class** is the ability this action runs. **Ability Timeout** sits under Advanced and caps one run in seconds; 0 leaves the ability's own end as the only limit, backed by a 30 second safety.
 
 Two siblings cover the cases a class does not:
 
@@ -237,12 +236,11 @@ AbilityTag = "SEC.Action.Attack.SweepEvent";  // Used as the event tag
 
 Runs one or more Behavior Trees in order. Use it for multi-stage behaviors: circling, investigating, boss sequences. Set these on the method:
 
-| Field | Sets |
-|-------|------|
-| `BehaviorTreeSequence` | The trees to run, in order. |
-| `BehaviorTreeTimeout` | Per-tree timeout in seconds. 0 waits for each tree to finish. |
-| **Payload** | Data the action hands to its trees. Leave it None for a sequence that needs nothing. Pick **Ability Payload** to name a gameplay ability, which SEC grants so an Activate Blackboard Ability node can start it. |
-| **Payload Key Name** | Blackboard key the payload is written to, `SEC_Payload` by default. Shown once a payload is set. Advanced. |
+<BehaviorTreeExecutionMethodDetails />
+
+**Behavior Tree Sequence** lists the trees to run, in order. **Behavior Tree Timeout** caps each tree in seconds; 0 waits for each one to finish.
+
+**Payload** is the data the action hands to its trees. Leave it None for a sequence that needs nothing. Pick **Ability Payload** to name a gameplay ability, which SEC grants so an Activate Blackboard Ability node can start it. Setting a payload reveals **Payload Key Name** under Advanced, the blackboard key the payload is written to, `SEC_Payload` by default.
 
 <Collapsible title="Carrying your own data into a tree" badge="Advanced">
 Subclass **Behavior Tree Payload** in Blueprint to carry fields of your own: a montage, a damage multiplier, a socket name. Assign your subclass on the action, and read it inside any tree in the sequence with **Get Action Payload**, whose output pin resolves to your subclass with no cast node.

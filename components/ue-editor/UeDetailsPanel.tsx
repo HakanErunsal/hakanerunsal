@@ -392,6 +392,66 @@ export const MOVEMENT_PROFILE_DETAILS: UeDetailCategory[] = [
 ];
 
 //=========================================================================
+// Template data: FActionSpec Execution category, Gameplay Ability method
+// Verified against Plugins/SoulslikeEnemyCombat/.../Abilities/SECExecutionMethod.h
+// ExecutionMethod is an Instanced UPROPERTY, so the row shows the picked
+// class's DisplayName and the sub-object's own Category nests beneath it.
+//=========================================================================
+
+export const ABILITY_EXECUTION_METHOD_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Execution",
+    properties: [{ label: "Execution Method", value: { kind: "enum", value: "Gameplay Ability" } }],
+    children: [
+      {
+        title: "Ability",
+        properties: [
+          { label: "Ability Class", value: { kind: "asset", value: "GA_SEC_TwoHanded_DoubleAttack" } },
+          // AdvancedDisplay, ClampMin 0 with no ClampMax -> no fill bar. Units s.
+          { label: "Ability Timeout", value: n(0) },
+        ],
+      },
+    ],
+  },
+];
+
+//=========================================================================
+// Template data: FActionSpec Execution category, Behavior Tree Sequence
+// method carrying an Ability Payload.
+// Verified against Plugins/SoulslikeEnemyCombat/.../Abilities/SECExecutionMethod.h
+// and .../Abilities/SECBehaviorTreePayload.h. Array elements and the payload's
+// own fields are authored as child groups, which is how the editor indents them.
+//=========================================================================
+
+export const BEHAVIOR_TREE_EXECUTION_METHOD_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Execution",
+    properties: [{ label: "Execution Method", value: { kind: "enum", value: "Behavior Tree Sequence" } }],
+    children: [
+      {
+        title: "Behavior Tree",
+        properties: [
+          { label: "Behavior Tree Sequence", value: { kind: "text", value: "1 Array element" } },
+          { label: "Index [ 0 ]", value: { kind: "asset", value: "BT_SEC_ComboAttack" } },
+          { label: "Behavior Tree Timeout", value: n(0) },
+          { label: "Payload", value: { kind: "enum", value: "Ability Payload" } },
+          // AdvancedDisplay, EditConditionHides on Payload != nullptr.
+          { label: "Payload Key Name", value: { kind: "text", value: "SEC_Payload" } },
+        ],
+        children: [
+          {
+            title: "Payload",
+            properties: [
+              { label: "Ability Class", value: { kind: "asset", value: "GA_SEC_TwoHanded_TripleAttack" } },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+];
+
+//=========================================================================
 // Template data: FActionCooldown defaults (the action's Cooldown group)
 // Verified against Plugins/SoulslikeEnemyCombat/.../Abilities/ActionSet.h
 //=========================================================================

@@ -28,6 +28,8 @@ import MovementEvaluatorDetails from '@/components/MovementEvaluatorDetails';
 import MovementProfileDetails from '@/components/MovementProfileDetails';
 import DistanceBandVisualizer from '@/components/DistanceBandVisualizer';
 import ActionCooldownDetails from '@/components/ActionCooldownDetails';
+import AbilityExecutionMethodDetails from '@/components/AbilityExecutionMethodDetails';
+import BehaviorTreeExecutionMethodDetails from '@/components/BehaviorTreeExecutionMethodDetails';
 import RangeEvalDetails from '@/components/RangeEvalDetails';
 import ReactionSpecDetails from '@/components/ReactionSpecDetails';
 import ReactionPreconditionDetails from '@/components/ReactionPreconditionDetails';
@@ -99,6 +101,8 @@ const components = {
   MovementProfileDetails,
   DistanceBandVisualizer,
   ActionCooldownDetails,
+  AbilityExecutionMethodDetails,
+  BehaviorTreeExecutionMethodDetails,
   RangeEvalDetails,
   ReactionSpecDetails,
   ReactionPreconditionDetails,
