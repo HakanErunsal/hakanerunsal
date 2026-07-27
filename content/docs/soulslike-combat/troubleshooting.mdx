@@ -1,7 +1,7 @@
 ---
 title: "Debugging & Troubleshooting"
 description: "Debug flags, console variables, common failures, and FAQ."
-date: 2025-12-10
+date: 2026-07-27
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "FAQ"]
 parent: "SoulslikeCombatDocs"
@@ -107,32 +107,32 @@ Recovery time blocks offensive action selection while movement and reactions kee
 
 </Collapsible>
 
-<Collapsible badge="" title="ByEvent activation falls back to ByTag">
+<Collapsible badge="" title="A behavior tree action starts nothing">
 
-**Cause:** **`SEC_ActivationMode`** is missing from the Blackboard Data Asset. **`SECExecutionMethod`** writes **`ByEvent`** with **`SetValueAsName`**. A missing key drops the write. **`BTTask_ActivateBlackboardAbility`** reads an empty value and falls back to **ByTag**.
+**Cause:** The blackboard has no key for the action's payload, so the tree receives nothing to act on. A blackboard write to a missing key is dropped by the engine, and the log names the key once per blackboard: `could not hand its payload to the behavior tree`.
 
 **Fix:** Add these keys to the blackboard asset:
 
-| Key | Type |
-|-----|------|
-| **`SEC_ActivationMode`** | Name |
-| **`SEC_ActionId`** | Name |
-| **`SEC_AbilityTag`** | Name |
-| **`SEC_AbilityEndTag`** | Name |
-| **`SEC_TargetActor`** | Object |
-| **`SEC_SelfActor`** | Object |
-| **`SEC_Distance`** | Float |
+| Key | Type | Base Class |
+|-----|------|-----------|
+| **`SEC_Payload`** | Object | **`SECBehaviorTreePayload`** |
+| **`SEC_ActionId`** | Name | |
+| **`SEC_TargetActor`** | Object | |
+| **`SEC_SelfActor`** | Object | |
+| **`SEC_Distance`** | Float | |
+
+Then point the **Payload Key** on the Activate Blackboard Ability node at `SEC_Payload`.
 
 </Collapsible>
 
 <Collapsible badge="" title="AI stuck after attacking">
 
-**Cause:** The behavior tree or StateTree task never sees the ability end tag.
+**Cause:** The ability the action started never ends, so the action keeps waiting on it.
 
 **Fix:**
-- Derive attack abilities from **`GameplayAbilityBase`**. It sends **`AbilityEndTag`** on end, cancel, and interrupt.
-- In the log, **`ActivateBlackboardAbility: Waiting for end tag ...`** means the task is still waiting. No end tag arrived.
-- Match **`AbilityEndTag`** on the ability CDO to what the execution method writes to **`SEC_AbilityEndTag`**.
+- Give the ability a path that reaches **End Ability** on completion, on cancel, and on interrupt. An ability that plays a montage through **Play Montage and Wait** ends when the montage does.
+- Set **Ability Timeout** on the action to bound the wait. A 30 second safety limit catches it either way, and logs the action and ability that hit it.
+- For an ability that is meant to keep running, use the **Gameplay Ability (Fire And Forget)** method so the action finishes immediately without waiting.
 
 </Collapsible>
 

@@ -1,7 +1,7 @@
 ---
 title: "Action System"
 description: "Action selection that scores available moves and picks the highest for the current context."
-date: 2026-02-12
+date: 2026-07-27
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Actions"]
 parent: "SoulslikeCombatDocs"
@@ -157,18 +157,22 @@ Pick a method once per action. Its fields appear inline under it: ability action
 
 ### Gameplay Ability
 
-Activates a Gameplay Ability and listens for its end tag. Set these on the method:
+Pick an ability class. That is the setup. SEC grants the ability to the character, works out how to start it from the ability's own class defaults, and finishes the action when the ability ends.
 
 | Field | Sets |
 |-------|------|
-| `AbilityClass` | The ability to activate. Auto-granted to the character's ASC. |
-| `ActivationMode` | ByTag or ByEvent (see [Activation Modes](#activation-modes)). |
-| `AbilityTag` | Activation tag in ByTag mode, event tag in ByEvent mode. Auto-filled from the ability's class defaults. |
-| `AbilityEndTag` | Tag the system waits for to end the action. Auto-filled from the ability. |
-| `AbilityTimeout` | Seconds to wait for the end tag before giving up. 0 waits indefinitely. |
+| **Ability Class** | The ability this action runs. |
+| **Ability Timeout** | Safety limit in seconds for one run. 0 leaves the ability's own end as the only limit, backed by a 30 second safety. Advanced. |
 
-<Callout type="warning">
-  Your ability class **must** inherit from `UGameplayAbilityBase`. It handles the end-event handshake that tells the Action System when the ability finishes. Without it, the AI gets stuck waiting.
+Two siblings cover the cases a class does not:
+
+| Method | Use it for |
+|--------|-----------|
+| **Gameplay Ability By Tag** | An ability granted somewhere else. Takes an Activation Tag instead of a class, and finishes when that ability ends. |
+| **Gameplay Ability (Fire And Forget)** | A buff, a shout, or anything the AI should not stand still for. Starts the ability and finishes the action in the same frame without cancelling it. Use the action's Recovery Time to hold off the next action. |
+
+<Callout type="info">
+  Nothing has to report back. SEC watches the ability system for the ability it started, so an ability that reaches **End Ability** on completion, cancel, and interrupt works with no extra wiring.
 </Callout>
 
 `UGameplayAbilityBase` provides rotation lock (`bLockAIRotation`: the AI commits to the attack direction with no mid-swing tracking), motion warping toward the target, and the action context (target, distance, direction, magnitude, tags) on activation.
@@ -205,7 +209,9 @@ Where the AI tracks versus commits depends on the notify window: rotation warps 
 Most abilities activate by tag (the default). Switch to event activation when the ability needs its payload on the first frame.
 
 <Collapsible title="ByTag vs ByEvent activation" badge="Advanced">
-The ability method's `ActivationMode` chooses how the ability is triggered:
+SEC picks the route from the ability. An ability whose only Blueprint graph is **Activate Ability From Event** starts through a gameplay event so that graph receives the payload; anything else starts directly on its granted ability. An action fired through `ExecuteActionWithContext` takes the event route, since that is how its payload reaches the ability.
+
+The behavior tree Activate Ability node states its route directly:
 
 | Mode | How It Works |
 |------|-------------|
@@ -235,8 +241,14 @@ Runs one or more Behavior Trees in order. Use it for multi-stage behaviors: circ
 |-------|------|
 | `BehaviorTreeSequence` | The trees to run, in order. |
 | `BehaviorTreeTimeout` | Per-tree timeout in seconds. 0 waits for each tree to finish. |
-| `AbilityToGrant` | Optional ability granted to the ASC so a BT task in the sequence can trigger it by tag. Setting it auto-fills the tags below. |
-| `AbilityTag`, `AbilityEndTag`, `ActivationMode` | Passed to the blackboard for a BT task that activates the tagged ability. |
+| **Payload** | Data the action hands to its trees. Leave it None for a sequence that needs nothing. Pick **Ability Payload** to name a gameplay ability, which SEC grants so an Activate Blackboard Ability node can start it. |
+| **Payload Key Name** | Blackboard key the payload is written to, `SEC_Payload` by default. Shown once a payload is set. Advanced. |
+
+<Collapsible title="Carrying your own data into a tree" badge="Advanced">
+Subclass **Behavior Tree Payload** in Blueprint to carry fields of your own: a montage, a damage multiplier, a socket name. Assign your subclass on the action, and read it inside any tree in the sequence with **Get Action Payload**, whose output pin resolves to your subclass with no cast node.
+
+**Get Action Payload For Pawn** reads the same payload from a pawn, for use inside an ability the tree started or in an animation notify.
+</Collapsible>
 
 <Collapsible title="Blackboard keys and the ability-activation BT tasks" badge="Advanced">
 Before the first tree starts, the method writes these blackboard keys:
@@ -244,25 +256,22 @@ Before the first tree starts, the method writes these blackboard keys:
 | Blackboard Key | Type | Value |
 |----------------|------|-------|
 | `SEC_ActionId` | Name | The action's `ActionId` |
-| `SEC_AbilityTag` | Name | The `AbilityTag`, written as the tag's full name |
-| `SEC_AbilityEndTag` | Name | The `AbilityEndTag`, written as the tag's full name |
-| `SEC_ActivationMode` | Name | `"ByTag"` or `"ByEvent"` |
+| `SEC_Payload` | Object | The action's payload. Set the key's Base Class to `SECBehaviorTreePayload` so tree nodes offer it. |
 | `SEC_TargetActor` | Object | The current target (focus) actor |
 | `SEC_SelfActor` | Object | The AI pawn |
 | `SEC_Distance` | Float | Distance to target |
 
 <Callout type="warning">
-  These keys must exist in your **Blackboard Data Asset**, with the exact types above, for the writes to succeed. A missing key or a type mismatch (for example a String key where the plugin writes a Name) is silently ignored. Add all `SEC_` keys to your Blackboard asset.
+  These keys must exist in your **Blackboard Data Asset** with the exact types above, or the writes are dropped by the engine. A missing payload key is reported in the log once per blackboard, naming the key to add.
 </Callout>
 
 The plugin provides two Behavior Tree tasks for activating abilities inside a BT:
 
-**Activate Blackboard Ability** reads the ability tag and activation mode from the blackboard keys above, then activates the ability the Behavior Tree Sequence granted. Its `ActivationMode` property has three options:
-- `FromBlackboard` (default): reads `SEC_ActivationMode`, falling back to ByTag if the key is empty.
-- `ByTag`: always uses tag-based activation.
-- `ByEvent`: always uses event-based activation.
+**Activate Blackboard Ability** reads the payload key, starts the ability that payload names, and waits for it to end. Point its **Payload Key** at `SEC_Payload`. **Fallback Activation Tag** covers a tree running outside the action system, and **Fail When No Ability** decides whether a branch with nothing to start fails or succeeds.
 
-**Activate Ability** is a standalone task where you set the ability class directly. It has `ActivationMode` (ByTag / ByEvent) and an `EventTag` field that appears only in ByEvent mode. Use it to activate a specific ability from a BT without going through the Action System.
+**Activate Ability** is a standalone task where you set the ability class directly. Its **Activation Mode** is By Tag or By Event, and an **Activation Tag** field appears on the By Event route. Use it to start a specific ability from a tree without going through the action system.
+
+Both nodes wait for the ability to end, and both fail the branch when something cancels it. Untick **Wait For Ability End** for a node that should start an ability and move on.
 </Collapsible>
 
 ### Custom Execution Methods
@@ -280,7 +289,7 @@ Override the phases you need:
 |----------|--------------|------------|
 | `PreloadAssets` | The AI takes on the action set, before any action runs | Start loading soft references in your payload so the first execution does not stall on them. |
 | `BeginExecute` | The action starts | Start your work. Return `false` to fail the start; the action charges no cooldown and can retry. |
-| `TickExecute` | Each frame while running | Poll or advance. Runs only when `bWantsTick` is set. |
+| `TickExecute` | Each frame while running | Poll or advance. A method that implements it receives the per-frame call. |
 | `AbortExecute` | The action is interrupted or cancelled | Tear down: cancel timers, destroy spawned actors, unbind callbacks, restore state. |
 
 Call `FinishExecution(bSuccess, Reason)` when your work ends. The component completes the action on the next tick, so completion never re-enters your `BeginExecute`. The ability method calls it from the ability's end-tag event; the behavior-tree method calls it when the last tree finishes.
@@ -481,7 +490,7 @@ A hook has three phases:
 | Phase | When it runs | Gives you |
 |-------|--------------|-----------|
 | **PreExecute** | After `BeginExecute` succeeds, before cooldown commit, `AddTags`, and started delegates | A chance to abort: set `bVetoExecution` to tear down the start without stamping cooldown. |
-| **TickExecute** | Each tick while the action executes | Per-frame work. Off by default; set `bWantsTick` to opt in. |
+| **TickExecute** | Each tick while the action executes | Per-frame work. A Blueprint method that implements this event receives the call; nothing to opt into. |
 | **PostExecute** | When the action ends, on every exit path | The end reason (Completed, Interrupted, Cancelled, TimedOut, or Failed). |
 
 Attach a hook in two places. Per action: `FActionSpec.Hook`. For the whole enemy: `UEnemyAIConfig.GlobalHook` (under **Recovery**), which runs for every action it commits.

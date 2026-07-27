@@ -1,7 +1,7 @@
 ---
 title: "StateTree Integration"
 description: "Graph-authored AI structure on top of the same combat pipeline as the native brain."
-date: 2025-12-10
+date: 2026-07-27
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "StateTree"]
 parent: "SoulslikeCombatDocs"
@@ -93,7 +93,7 @@ Build Decision Context → Poll Action → Do Action
 
 **Poll Action** outputs **`OutChosenAction`** and **`bHasValidAction`**. Wire **`InChosenAction`** on **Do Action** from that output.
 
-**Do Action** does not poll **`SEC.Action.End`**. It binds **`ActionEvaluationComponent::OnActionExecutionCompleted`** and finishes the StateTree task when execution ends.
+**Do Action** polls nothing. It binds **`ActionEvaluationComponent::OnActionExecutionCompleted`** and finishes the StateTree task when execution ends.
 
 ---
 
