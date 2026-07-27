@@ -662,7 +662,8 @@ The `SEC.Debug.LogActionDecisions 1` console variable does the same globally wit
 <Collapsible title="Upgrading from an older version" badge="Advanced">
 ActionSet assets migrate once on load; behavior is unchanged, and re-saving the asset persists the migration.
 
-- **Execution methods.** Each action's old execution mode becomes an Execution Method: a Gameplay Ability action becomes a **Gameplay Ability** method carrying the same ability, tags, and timeout; a Behavior Tree action becomes a **Behavior Tree Sequence** method carrying the same trees and timeout.
+- **Execution methods.** Each action's execution mode becomes an Execution Method carrying the same ability or trees and the same timeout. An ability action lands on **Gameplay Ability**, on **Gameplay Ability By Tag** when it named a tag and no class, or on **Gameplay Ability (Fire And Forget)** when it was set not to wait. A Behavior Tree action becomes **Behavior Tree Sequence**, and the ability fields it carried become an **Ability Payload** on that method.
+- **Ability end tags.** SEC watches the ability system for the ability it started, so the end tag fields are removed along with the `SEC_AbilityEndTag` blackboard key. An ability that reaches End Ability needs no other wiring. One that never ends is caught by Ability Timeout, or by a 30 second safety when that is 0.
 - **Scorers and gates (from v1.6).** Each action's old distance and angle evaluations become a Distance Scorer and Angle Scorer, a non-default health or speed range becomes a Health or Speed Scorer, and a stamina cost above 0 becomes a Stamina Gate. New actions you author ship with no scorers, so they are distance-agnostic until you add a Distance Scorer.
 - **Display names.** `GetDisplayName()` replaces the old `ScorerName` / `GateName` text fields, which are removed. Any label typed into them on a pre-existing asset is lost on load; re-label through a `GetDisplayName()` override.
 </Collapsible>
