@@ -126,9 +126,9 @@ export default function ExecutionMethodExplorer({
   const categories: UeDetailCategory[] = [{ title: "Execution", properties: [methodRow], children }];
 
   return (
-    <div className="my-6 max-w-[520px]">
+    <div className="my-6 max-w-[560px]">
       <UeDetailsPanel categories={categories} />
-      <p className="mt-2 text-[12px] leading-snug text-muted-foreground">{METHOD_SUMMARY[method]}</p>
+      <p className="mt-2 text-[13px] leading-snug text-muted-foreground">{METHOD_SUMMARY[method]}</p>
     </div>
   );
 }

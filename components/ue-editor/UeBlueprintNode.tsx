@@ -148,11 +148,11 @@ function VariableGetNode({
       <div className="ue-bp-var-node__spill" aria-hidden />
       <div className="ue-bp-var-node__gloss" aria-hidden />
       {kind === "variable-set" && (
-        <span className="absolute left-2 top-1 text-[9px] font-bold uppercase tracking-wide text-white/70">
+        <span className="absolute left-2 top-1 text-[10px] font-bold uppercase tracking-wide text-white/70">
           SET
         </span>
       )}
-      <span className="relative z-[1] text-[11px] font-normal text-[#E8E8E8]">{title}</span>
+      <span className="relative z-[1] text-[13px] font-normal text-[#E8E8E8]">{title}</span>
       <span
         className="ue-bp-data-pin ue-bp-data-pin--connected ue-bp-var-node__pin absolute right-0 top-1/2 translate-x-1/2 -translate-y-1/2"
         style={{ "--pin-color": headerColor } as React.CSSProperties}
@@ -192,7 +192,7 @@ function OperatorNode({
       style={{ "--bp-header": headerColor } as React.CSSProperties}
     >
       <div className="ue-bp-operator__header" aria-hidden />
-      <span className="relative z-[1] font-mono text-[12px] font-bold text-white">{title}</span>
+      <span className="relative z-[1] font-mono text-[14px] font-bold text-white">{title}</span>
       {inputs.length > 0 && (
         <span className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2">
           {inputs.map((p, i) => (
@@ -270,9 +270,9 @@ function GraphNode({
           <div className="relative flex items-start gap-2">
             {icon && <span className="mt-0.5 shrink-0 opacity-95">{icon}</span>}
             <div className="min-w-0 flex-1">
-              <div className="truncate text-[12px] font-semibold leading-tight text-white">{title}</div>
+              <div className="truncate text-[14px] font-semibold leading-tight text-white">{title}</div>
               {subtitle && (
-                <div className="mt-0.5 truncate text-[10px] italic leading-snug text-[#9a9aa4]">
+                <div className="mt-0.5 truncate text-[12px] italic leading-snug text-[#9a9aa4]">
                   {subtitle}
                 </div>
               )}
@@ -299,7 +299,7 @@ function GraphNode({
           </div>
 
           {inputs.length === 0 && outputs.length === 0 && maxRows === 1 && children && (
-            <div className="px-1 py-1 text-[11px] text-[#A0A0A8]">{children}</div>
+            <div className="px-1 py-1 text-[13px] text-[#A0A0A8]">{children}</div>
           )}
         </div>
       </div>
@@ -348,13 +348,13 @@ function FlowNode({
           <div className="ue-bp-node__highlight" aria-hidden />
           <div className="relative flex items-center gap-2">
             {icon && <span className="shrink-0 opacity-90">{icon}</span>}
-            <span className="min-w-0 flex-1 truncate text-[11px] font-bold text-white">{title}</span>
+            <span className="min-w-0 flex-1 truncate text-[13px] font-bold text-white">{title}</span>
             {trailing && <span className="shrink-0">{trailing}</span>}
           </div>
         </div>
 
         {(subtitle || children) && (
-          <div className="px-2 py-1.5 text-[11px] leading-snug" style={{ color: UE_BP_NODE.subtitle }}>
+          <div className="px-2 py-1.5 text-[13px] leading-snug" style={{ color: UE_BP_NODE.subtitle }}>
             {subtitle && <div>{subtitle}</div>}
             {children}
           </div>

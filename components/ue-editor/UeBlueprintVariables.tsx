@@ -59,7 +59,7 @@ function VariableTreeItem({
     <div className="ue-mybp-item">
       <div
         className={cn(
-          "ue-mybp-row flex min-h-[22px] items-center gap-0.5 pr-2",
+          "ue-mybp-row flex min-h-[26px] items-center gap-0.5 pr-2",
           item.selected && "ue-mybp-row--selected",
           isCategory && "ue-mybp-row--category",
         )}
@@ -81,13 +81,13 @@ function VariableTreeItem({
           <span className="inline-block w-[14px] shrink-0" aria-hidden />
         )}
 
-        <span className="min-w-0 flex-1 truncate text-[11px] text-[#BBBBBB]">{item.name}</span>
+        <span className="min-w-0 flex-1 truncate text-[13px] text-[#BBBBBB]">{item.name}</span>
 
         {item.type && (
           <span className="ml-2 flex shrink-0 items-center gap-1.5">
             <UeVariableTypePill type={item.type} />
             {typeLabel && (
-              <span className="max-w-[120px] truncate text-[11px] text-[#888888]">{typeLabel}</span>
+              <span className="max-w-[120px] truncate text-[13px] text-[#888888]">{typeLabel}</span>
             )}
             <span className="ue-mybp-row-icons ml-1 flex items-center gap-1 text-[#6a6a6a]">
               <Bell className={cn("h-3 w-3", item.fieldNotify && "text-[#c0c0c0]")} />
@@ -154,7 +154,7 @@ export function UeMyBlueprintPanel({
   return (
     <div className={cn("ue-mybp-panel overflow-hidden rounded-[2px] border border-[#0F0F0F]", className)}>
       <div className="border-b border-[#0F0F0F] bg-[#1A1A1A] px-2 py-1">
-        <span className="text-[11px] font-normal text-[#C8C8C8]">{title}</span>
+        <span className="text-[13px] font-normal text-[#C8C8C8]">{title}</span>
       </div>
       <div className="bg-[#121212] py-1">
         <UeBlueprintVariables items={items} hideComponentLabels={hideComponentLabels} />
