@@ -409,6 +409,8 @@ export const ACTION_COOLDOWN_DETAILS: UeDetailCategory[] = [
       { label: "Initial Cooldown", value: n(0) },
       // ClampMin 0, ClampMax 0.5 -> fill bar.
       { label: "Randomization (%)", value: n(0.2, 0, 0.5) },
+      // ClampMin 0, ClampMax 1 -> fill bar. 0 hands nothing back.
+      { label: "Interrupt Refund (%)", value: n(0, 0, 1) },
       // ClampMin 0, ClampMax 1 -> fill bar.
       { label: "Spawn Cooldown Chance", value: n(0, 0, 1) },
       // int32, no clamp -> no fill bar. -1 is unlimited.

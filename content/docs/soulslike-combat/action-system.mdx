@@ -74,7 +74,7 @@ A Health Scorer or Speed Scorer left at its `MakeAlwaysOne()` default has no eff
 
 ### Cooldowns & Variance
 
-An action's **Cooldown** group controls reuse. `Cooldown Duration` is the base delay. `Initial Cooldown` blocks the move at spawn so enemies cannot open with a heavy hit. `Randomization (%)` adds ±variance (`0.2` = ±20%). `Spawn Cooldown Chance` rolls a starting cooldown so a pack does not attack in lockstep. `Max Consecutive Uses` (`-1` = unlimited, `2` = must switch after two uses) stops spam. Defaults:
+An action's **Cooldown** group controls reuse. `Cooldown Duration` is the base delay. `Initial Cooldown` blocks the move at spawn so enemies cannot open with a heavy hit. `Randomization (%)` adds ±variance (`0.2` = ±20%). `Spawn Cooldown Chance` rolls a starting cooldown so a pack does not attack in lockstep. `Max Consecutive Uses` (`-1` = unlimited, `2` = must switch after two uses) stops spam. `Interrupt Refund (%)` hands part of the cooldown back when the action is cut short. Defaults:
 
 <ActionCooldownDetails />
 
@@ -83,6 +83,8 @@ An action commits its cooldown only **after** `BeginExecute` succeeds and [PreEx
 ### Recovery Time
 
 Recovery time suspends offensive action selection for a set number of seconds after an enemy commits a move. The enemy still strafes, repositions, and reacts (parry, dodge, counter). It does not start a new attack. Use it when a relentless attacker needs gaps between swings.
+
+An action commits its cooldown the moment it starts, so an attack interrupted in its windup pays the same price as one that landed. Set **Interrupt Refund (%)** to hand back that share of the time left: `0.5` halves the remaining wait when a reaction or a transition takes the action away. A clean finish and a timeout still pay in full. It defaults to `0`, so nothing changes until you set it.
 
 Cooldown gates re-use of one move. Recovery gates **all** offensive actions after one ends. Tune the global windows on `UEnemyAIConfig` under **Recovery**. Every field defaults to `0`, so recovery stays off until you set a value.
 
@@ -176,7 +178,7 @@ Two siblings cover the cases a class does not:
   Nothing has to report back. SEC watches the ability system for the ability it started, so an ability that reaches **End Ability** on completion, cancel, and interrupt works with no extra wiring.
 </Callout>
 
-`UGameplayAbilityBase` provides rotation lock (`bLockAIRotation`: the AI commits to the attack direction with no mid-swing tracking), motion warping toward the target, and the action context (target, distance, direction, magnitude, tags) on activation.
+`UGameplayAbilityBase` provides rotation lock (`bLockAIRotation`: the AI commits to the attack direction with no mid-swing tracking), a ledge guard so a root-motion attack does not walk the enemy off an edge, motion warping toward the target, and the action context (target, distance, direction, magnitude, tags) on activation.
 
 #### Motion Warping
 
@@ -193,6 +195,17 @@ The pawn must carry a `UMotionWarpingComponent`. `AEnemyCharacterBase` does not 
 | `MotionWarpingOffset` | `100.0` | Warp point offset in cm, placed in front of the target toward the AI. Doubles as a switch-off distance: once the AI is closer than this, root-motion warping pauses so the attack does not overshoot. The ability sets up that pause only while the offset is above 0. |
 | `MaxWarpDistance` | `0.0` | Skip gate. If the AI is closer than this when the ability activates, no warp target is set up. The default of 0 leaves the gate off (any distance warps). |
 | `bLockAIRotation` | `true` | Stops the controller from yawing the pawn toward focus during the ability. Warping runs on a separate path and still rotates the pawn during the notify window. |
+| `bPreventLedgeFallDuringAbility` | `true` | Keeps the character on the ledge while the ability runs, so an attack or backward dodge with root motion slides along the edge instead of dropping over it. The character's own **Can Walk Off Ledges** setting comes back when the ability ends, including on cancel and interrupt. |
+
+<Collapsible title="What the ledge guard does not cover" badge="Advanced">
+Ground movement only. Montage root motion keeps the character in walking mode, which is where the engine's ledge check runs, so attacks and dodges are covered. An ability that calls **Launch Character**, or one using a root motion source with vertical velocity, leaves the ground on purpose and still drops.
+
+To stop an enemy dropping at any time, untick **Can Walk Off Ledges** on its Character Movement component instead. That holds for the pawn's whole life, which also means it can never take a drop-down nav link, and is why the plugin does this per ability.
+
+Several things can hold the guard at once. Two overlapping abilities release independently, and the authored value returns only when nothing is asking for it. Hold the same window from an anim notify through the **SEC Movement Guard** subsystem's **Acquire Ledge Guard** and **Release Ledge Guard**.
+
+In multiplayer the guard applies wherever the ability runs. SEC's AI abilities run on both sides, so enemies are covered. A player ability derived from this base needs a net execution policy that also runs on the owning client, otherwise the client predicts the drop and gets corrected.
+</Collapsible>
 
 Setup:
 
