@@ -159,7 +159,9 @@ Pick a method once per action. Its fields appear inline under it: ability action
 
 Pick an ability class. That is the setup. SEC grants the ability to the character, works out how to start it from the ability's own class defaults, and finishes the action when the ability ends.
 
-<AbilityExecutionMethodDetails />
+<ExecutionMethodExplorer initialMethod="Gameplay Ability" />
+
+The **Execution Method** combo above is live. Pick another method to see the properties that class exposes.
 
 **Ability Class** is the ability this action runs. **Ability Timeout** sits under Advanced and caps one run in seconds; 0 leaves the ability's own end as the only limit, backed by a 30 second safety.
 
@@ -236,7 +238,7 @@ AbilityTag = "SEC.Action.Attack.SweepEvent";  // Used as the event tag
 
 Runs one or more Behavior Trees in order. Use it for multi-stage behaviors: circling, investigating, boss sequences. Set these on the method:
 
-<BehaviorTreeExecutionMethodDetails />
+<ExecutionMethodExplorer initialMethod="Behavior Tree Sequence" />
 
 **Behavior Tree Sequence** lists the trees to run, in order. **Behavior Tree Timeout** caps each tree in seconds; 0 waits for each one to finish.
 
