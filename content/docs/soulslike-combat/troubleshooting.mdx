@@ -136,6 +136,14 @@ Then point the **Payload Key** on the Activate Blackboard Ability node at `SEC_P
 
 </Collapsible>
 
+<Collapsible badge="" title="A revived or pooled enemy never acts again">
+
+**Cause:** Death blocks action evaluation on that controller, and only a revive releases it. An enemy brought back, or a controller reused from a pool, is still holding the block.
+
+**Fix:** Call **`HandleRevive()`** on the **SEC Combat Controller** component when the enemy comes back. It releases the block, restarts the brain, and turns threat detection, perception and role registration back on. Re-equip the weapon yourself; death dropped it.
+
+</Collapsible>
+
 <Collapsible badge="" title="Weapon doesn't deal damage">
 
 **Check:**

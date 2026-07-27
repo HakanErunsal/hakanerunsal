@@ -169,7 +169,7 @@ Two siblings cover the cases a class does not:
 
 | Method | Use it for |
 |--------|-----------|
-| **Gameplay Ability By Tag** | An ability granted somewhere else. Takes an Activation Tag instead of a class, and finishes when that ability ends. |
+| **Gameplay Ability By Tag** | An ability granted somewhere else. Takes an Activation Tag instead of a class. Every granted ability carrying the tag starts, and the action finishes when the first of them ends. |
 | **Gameplay Ability (Fire And Forget)** | A buff, a shout, or anything the AI should not stand still for. Starts the ability and finishes the action in the same frame without cancelling it. Use the action's Recovery Time to hold off the next action. |
 
 <Callout type="info">
@@ -240,7 +240,7 @@ Runs one or more Behavior Trees in order. Use it for multi-stage behaviors: circ
 
 <ExecutionMethodExplorer initialMethod="Behavior Tree Sequence" />
 
-**Behavior Tree Sequence** lists the trees to run, in order. **Behavior Tree Timeout** caps each tree in seconds; 0 waits for each one to finish.
+**Behavior Tree Sequence** lists the trees to run, in order. **Behavior Tree Timeout** caps each tree in seconds; 0 waits for each one to finish, backed by a 30 second safety on the action.
 
 **Payload** is the data the action hands to its trees. Leave it None for a sequence that needs nothing. Pick **Ability Payload** to name a gameplay ability, which SEC grants so an Activate Blackboard Ability node can start it. Setting a payload reveals **Payload Key Name** under Advanced, the blackboard key the payload is written to, `SEC_Payload` by default.
 
