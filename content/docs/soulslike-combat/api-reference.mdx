@@ -1,11 +1,11 @@
 ---
 title: "API Reference"
 description: "Controller-side C++ and Blueprint API: SECCombatControllerComponent, EnemyControllerBase, SECBrainComponent, and BotStateTreeAIComponent."
-date: 2025-12-10
+date: 2026-07-27
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Reference"]
 parent: "SoulslikeCombatDocs"
-order: 18
+order: 20
 ---
 
 
@@ -53,7 +53,8 @@ To read the config or role from outside the component, call the static helpers i
 | Function | Purpose |
 |----------|---------|
 | `ApplyLocalCombatRole(RoleTag)` | Adopt a role locally without registering with the subsystem. Syncs the action set and movement profile like a subsystem-assigned role, but consumes no slots and joins no coordination. For bosses and solo enemies. |
-| `HandleDeath()` | Full SEC shutdown, idempotent. Stops the brain, cancels the in-flight action and reaction, stops melee tracing, disables threat detection, unregisters from the role subsystem, clears focus, then broadcasts `OnDeath`. Does not unpossess or destroy the pawn. |
+| `HandleDeath()` | Full SEC shutdown, idempotent. Cancels the in-flight action and reaction, stops the brain, stops melee tracing, disables threat detection, unregisters from the role subsystem, clears focus, then broadcasts `OnDeath`. Does not unpossess or destroy the pawn. |
+| `HandleRevive()` | Brings a dead enemy back under AI control: releases the action block death took, restarts the brain, and turns threat detection, perception and role registration back on, then broadcasts `OnRevive`. Call it on a revive or when a pooled enemy is reused. A controller that died stays blocked from acting until it runs. The weapon death unequipped is not re-equipped, and perception returns only when the AI Config manages it. |
 
 **Properties**
 
@@ -63,7 +64,7 @@ To read the config or role from outside the component, call the static helpers i
 | `bAutoRegisterForCombatRoles` | true | Register with the combat role subsystem on possession |
 | `RoleRegistrationParams` | n/a | Registration parameters used when the pawn has no config |
 | `bEnableThreatDetection` | true | Enable threat detection on BeginPlay when a `ThreatDetectionComponent` is present |
-| `bAutoBindBasicHealthComponent` | true | Call `HandleDeath()` automatically when a `BasicHealthComponent` reaches zero |
+| `bAutoHandleDeathOnHealthDepleted` | true | Call `HandleDeath()` automatically when the pawn's [health vital](/docs/soulslike-combat/vitals) empties |
 | `bDropWeaponOnDeath` | true | Drop the weapon with a 10-second physics lifespan on death |
 
 **Delegates**
@@ -74,6 +75,7 @@ To read the config or role from outside the component, call the static helpers i
 | `OnCombatTargetLost(LostTarget)` | When the target is destroyed or unregistered |
 | `OnCombatRoleSystemReady(Controller)` | After registration with the role subsystem. Safe to read the initial role here |
 | `OnDeath()` | At the end of `HandleDeath()`, once every system is stopped. Safe to ragdoll, spawn VFX, or destroy |
+| `OnRevive()` | At the end of `HandleRevive()`, once every system is running again |
 
 ---
 
@@ -146,7 +148,7 @@ Extends Unreal's `UStateTreeAIComponent`. `SECBrainComponent` creates it at runt
 
 | Member | Default | Purpose |
 |--------|---------|---------|
-| `InitializeFromAIConfig(AIConfig)` | n/a | Load and set the StateTree from the config's `DefaultStateTree`. Returns true on success |
+| `InitializeFromAIConfig(AIConfig)` | n/a | Set and start the config's `StateTree`. Returns true on success |
 | `AddLinkedStateTreeOverride(StateTag, StateTreeReference)` | n/a | Swap a sub-tree per gameplay tag, for enemy variants |
 | `bAutoInitializeFromConfig` | true | Initialize from the config automatically on possession. Disable for manual control |
 | `FallbackStateTree` | null | Used when no config is found or the config names no StateTree |

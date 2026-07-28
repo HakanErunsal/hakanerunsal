@@ -42,7 +42,7 @@ export function UeBlueprintPinRow({ pin }: UeBlueprintPinProps) {
   return (
     <div
       className={cn(
-        "ue-bp-pin-row flex min-h-[22px] items-center gap-1.5 text-[11px]",
+        "ue-bp-pin-row flex min-h-[26px] items-center gap-1.5 text-[13px]",
         isInput ? "justify-start" : "justify-end",
       )}
     >

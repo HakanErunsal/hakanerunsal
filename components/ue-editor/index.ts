@@ -15,6 +15,7 @@ export {
   SEC_BLUEPRINT_VARIABLES,
   type UeBlueprintVariable,
 } from "./UeBlueprintVariables";
+export { UeClassPickerCombo } from "./UeClassPickerCombo";
 export { UeVariableTypePill } from "./UeVariableTypePill";
 export { UeViewport } from "./UeViewport";
 export {
@@ -68,6 +69,7 @@ export {
   MULTIPLAYER_ACTION_STATE_DETAILS,
   STATE_TREE_BEHAVIOR_CONFIG_DETAILS,
   BOT_STATE_TREE_AI_DETAILS,
+  VITALS_COMPONENT_DETAILS,
   type UeDetailCategory,
   type UeDetailProperty,
   type UeDetailValue,

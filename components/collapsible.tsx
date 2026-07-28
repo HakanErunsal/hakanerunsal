@@ -1,9 +1,10 @@
 import { cn } from "@/lib/utils";
+import { collapsibleSlug } from "@/lib/collapsible-slug";
 import { ChevronRight } from "lucide-react";
 import { ReactNode } from "react";
 
 interface CollapsibleProps {
-  /** Header text shown on the closed drawer. */
+  /** Header text shown on the closed drawer. Also generates the section's anchor id, so search results can deep link to it. */
   title: string;
   /** Small tag on the left of the title. Defaults to "C++". Pass "" to hide. */
   badge?: string;
@@ -26,13 +27,14 @@ const badgeStyles: Record<string, string> = {
 export function Collapsible({ title, badge = "C++", defaultOpen = false, children }: CollapsibleProps) {
   return (
     <details
+      id={collapsibleSlug(title)}
       open={defaultOpen}
       className={cn(
-        "group my-6 w-full overflow-hidden rounded border border-border/60 bg-muted/20",
+        "ue-collapsible group my-6 w-full overflow-hidden rounded border border-border/60 bg-muted/20",
       )}
     >
       <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-medium select-none hover:bg-muted/40 [&::-webkit-details-marker]:hidden">
-        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-90" />
+        <ChevronRight className="ue-collapsible-arrow h-4 w-4 shrink-0 text-muted-foreground transition-transform" />
         {badge && (
           <span
             className={cn(

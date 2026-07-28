@@ -28,6 +28,7 @@ import MovementEvaluatorDetails from '@/components/MovementEvaluatorDetails';
 import MovementProfileDetails from '@/components/MovementProfileDetails';
 import DistanceBandVisualizer from '@/components/DistanceBandVisualizer';
 import ActionCooldownDetails from '@/components/ActionCooldownDetails';
+import ExecutionMethodExplorer from '@/components/ExecutionMethodExplorer';
 import RangeEvalDetails from '@/components/RangeEvalDetails';
 import ReactionSpecDetails from '@/components/ReactionSpecDetails';
 import ReactionPreconditionDetails from '@/components/ReactionPreconditionDetails';
@@ -62,6 +63,7 @@ import ThreatResponseWiringDetails from '@/components/ThreatResponseWiringDetail
 import ThreatResponseProfileDetails from '@/components/ThreatResponseProfileDetails';
 import RegisterCombatTargetBlueprint from '@/components/RegisterCombatTargetBlueprint';
 import ActionScoreFormula from '@/components/ActionScoreFormula';
+import VitalsComponentDetails from '@/components/VitalsComponentDetails';
 import Reviews from '@/components/Reviews';
 
 const useMDXComponent = (code: string) => {
@@ -99,6 +101,7 @@ const components = {
   MovementProfileDetails,
   DistanceBandVisualizer,
   ActionCooldownDetails,
+  ExecutionMethodExplorer,
   RangeEvalDetails,
   ReactionSpecDetails,
   ReactionPreconditionDetails,
@@ -133,6 +136,7 @@ const components = {
   ThreatResponseWiringDetails,
   ThreatResponseProfileDetails,
   ActionScoreFormula,
+  VitalsComponentDetails,
   Reviews,
   // Prevent hydration errors from block elements nested inside <p>
   p: ({ children, ...props }: React.HTMLAttributes<HTMLParagraphElement>) => (

@@ -17,8 +17,8 @@ export function UeDetailsSection({
 }: UeDetailsSectionProps) {
   return (
     <details open={defaultOpen} className={cn("ue-details-section group", className)}>
-      <summary className="ue-details-section-header flex cursor-pointer list-none items-center gap-1.5 px-2 py-1.5 text-[11px] font-normal text-[#cccccc] select-none [&::-webkit-details-marker]:hidden">
-        <ChevronDown className="h-3 w-3 shrink-0 text-[#888888] transition-transform group-open:rotate-0 -rotate-90" />
+      <summary className="ue-details-section-header flex cursor-pointer list-none items-center gap-1.5 px-2 py-1.5 text-[13px] font-normal text-[#cccccc] select-none [&::-webkit-details-marker]:hidden">
+        <ChevronDown className="ue-details-arrow h-3 w-3 shrink-0 text-[#888888] transition-transform" />
         {title}
       </summary>
       <div className="ue-details-section-body">{children}</div>
@@ -35,8 +35,8 @@ interface UePropertyRowProps {
 /** Details panel property row — label column + value column. */
 export function UePropertyRow({ label, children, className }: UePropertyRowProps) {
   return (
-    <div className={cn("ue-property-row flex min-h-[28px] items-stretch border-b border-[#111111]", className)}>
-      <div className="flex w-[38%] min-w-[100px] shrink-0 items-center border-r border-[#111111] bg-[#151515] px-2 py-1 text-[11px] text-[#888888]">
+    <div className={cn("ue-property-row flex min-h-[32px] items-stretch border-b border-[#111111]", className)}>
+      <div className="flex w-[38%] min-w-[100px] shrink-0 items-center border-r border-[#111111] bg-[#151515] px-2 py-1 text-[13px] text-[#888888]">
         {label}
       </div>
       <div className="flex flex-1 items-center bg-[#1a1a1a] px-2 py-1">{children}</div>
@@ -57,7 +57,7 @@ export function UeAssetPicker({
   return (
     <div className={cn("flex min-w-0 flex-1 items-center gap-1", className)}>
       <div className="ue-asset-picker flex min-w-0 flex-1 items-center justify-between gap-1 rounded-full border border-[#333333] bg-[#0a0a0a] px-2.5 py-0.5">
-        <span className="truncate text-[11px] text-[#cccccc]">{value ?? placeholder}</span>
+        <span className="truncate text-[13px] text-[#cccccc]">{value ?? placeholder}</span>
         <ChevronDown className="h-3 w-3 shrink-0 text-[#666666]" />
       </div>
     </div>

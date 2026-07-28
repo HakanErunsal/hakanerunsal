@@ -42,7 +42,7 @@ export function UePanel({
       <div className="flex items-stretch border-b border-[#0F0F0F] bg-[#151515]">
         <div className="ue-panel-tab flex items-center gap-2 px-3 py-1">
           {showTitleIcon && <UeAssetIcon type={assetType} showLabel={false} />}
-          <span className="text-[11px] text-[#C8C8C8]">{title}</span>
+          <span className="text-[13px] text-[#C8C8C8]">{title}</span>
         </div>
         {(headerRight || toolbarRight) && (
           <div className="ml-auto flex items-center gap-2 px-2">{headerRight ?? toolbarRight}</div>
@@ -52,7 +52,7 @@ export function UePanel({
       {!compact && (crumbs.length > 0 || toolbarRight) && (
         <div className="flex items-center gap-2 border-b border-[#0F0F0F] bg-[#1A1A1A] px-2 py-1">
           {crumbs.length > 0 && (
-            <div className="flex min-w-0 flex-1 items-center gap-0.5 truncate text-[11px] text-[#808080]">
+            <div className="flex min-w-0 flex-1 items-center gap-0.5 truncate text-[13px] text-[#808080]">
               {crumbs.map((crumb, i) => (
                 <span key={i} className="flex items-center gap-0.5">
                   {i > 0 && <span className="text-[#575757]">&gt;</span>}

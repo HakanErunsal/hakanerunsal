@@ -5,6 +5,7 @@ import {
   SEC_DOC_SEARCH_KEYWORDS,
   SEC_GLOBAL_SEARCH_KEYWORDS,
 } from "@/config/sec-doc-search-keywords";
+import { collapsibleSlug } from "@/lib/collapsible-slug";
 
 export interface SecSearchIndexEntry {
   id: string;
@@ -36,6 +37,15 @@ interface ParsedHeading {
   level: number;
   title: string;
   id: string;
+  /** Raw markdown between this heading and the next heading (any level). */
+  body: string;
+}
+
+interface ParsedCollapsible {
+  title: string;
+  id: string;
+  /** Raw markdown between the opening and closing Collapsible tags. */
+  body: string;
 }
 
 const SEC_ROOT_SLUG = "SoulslikeCombatDocs";
@@ -82,9 +92,11 @@ export function stripMdxToPlainText(raw: string): string {
 export function extractHeadings(raw: string): ParsedHeading[] {
   const text = stripFrontmatter(raw);
   const slugger = new GithubSlugger();
+  const matches = Array.from(text.matchAll(/^(#{2,3})\s+(.+)$/gm));
   const headings: ParsedHeading[] = [];
 
-  for (const match of Array.from(text.matchAll(/^(#{2,3})\s+(.+)$/gm))) {
+  for (let i = 0; i < matches.length; i++) {
+    const match = matches[i];
     const level = match[1].length;
     const title = match[2]
       .replace(/`([^`]+)`/g, "$1")
@@ -96,14 +108,47 @@ export function extractHeadings(raw: string): ParsedHeading[] {
       continue;
     }
 
+    const bodyStart = match.index + match[0].length;
+    const bodyEnd = matches[i + 1]?.index ?? text.length;
+
     headings.push({
       level,
       title,
       id: slugger.slug(title),
+      body: text.slice(bodyStart, bodyEnd),
     });
   }
 
   return headings;
+}
+
+/** Reads title="..." off a Collapsible opening tag's attribute string. */
+function readCollapsibleTitle(attrs: string): string {
+  const match = attrs.match(/title="([^"]*)"/);
+  return match ? match[1].trim() : "";
+}
+
+/** Finds every `<Collapsible title="...">...</Collapsible>` block in the page. */
+export function extractCollapsibles(raw: string): ParsedCollapsible[] {
+  const text = stripFrontmatter(raw);
+  const collapsibles: ParsedCollapsible[] = [];
+
+  for (const match of Array.from(
+    text.matchAll(/<Collapsible\b([^>]*)>([\s\S]*?)<\/Collapsible>/g),
+  )) {
+    const title = readCollapsibleTitle(match[1]);
+    if (!title) {
+      continue;
+    }
+
+    collapsibles.push({
+      title,
+      id: collapsibleSlug(title),
+      body: match[2],
+    });
+  }
+
+  return collapsibles;
 }
 
 function readMdxSource(contentRoot: string, slug: string): string {
@@ -120,7 +165,7 @@ function collectKeywords(doc: VeliteDocMeta): string[] {
   return [...SEC_GLOBAL_SEARCH_KEYWORDS, ...pageKeywords, ...tagKeywords];
 }
 
-function snippet(text: string, maxLength = 140): string {
+function snippet(text: string, maxLength = 1800): string {
   if (text.length <= maxLength) {
     return text;
   }
@@ -148,6 +193,7 @@ function buildDocEntries(
   });
 
   for (const heading of extractHeadings(rawMdx)) {
+    const sectionText = stripMdxToPlainText(heading.body);
     entries.push({
       id: `${doc.slugAsParams}#${heading.id}`,
       title: doc.title,
@@ -155,7 +201,19 @@ function buildDocEntries(
       description,
       section: heading.title,
       keywords: keywords.join(" "),
-      content: snippet(plainText),
+      content: snippet(sectionText || plainText),
+    });
+  }
+
+  for (const collapsible of extractCollapsibles(rawMdx)) {
+    entries.push({
+      id: `${doc.slugAsParams}#${collapsible.id}`,
+      title: doc.title,
+      href: `${hrefBase}#${collapsible.id}`,
+      description,
+      section: collapsible.title,
+      keywords: keywords.join(" "),
+      content: snippet(stripMdxToPlainText(collapsible.body)),
     });
   }
 

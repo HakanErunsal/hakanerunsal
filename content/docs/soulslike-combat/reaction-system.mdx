@@ -1,7 +1,7 @@
 ---
 title: "Reaction System"
 description: "Event-driven AI reactions: parry, dodge, counter. They respond to game events in real time."
-date: 2026-02-26
+date: 2026-07-27
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Reactions"]
 parent: "SoulslikeCombatDocs"
@@ -47,7 +47,7 @@ Each entry in the **Reactions** array is an `FReactionSpec`. Defaults from the p
 
 <ReactionSpecDetails />
 
-Assign **Ability Class** to a `UGameplayAbilityBase` subclass: the editor auto-fills **Ability Tag** and **Ability End Tag**. **Activation Mode** defaults to **By Event** on reactions (actions default to By Tag).
+Assign **Ability Class** and the reaction is set up. SEC grants the ability and sends it the reaction's payload (the attacker, the direction, the magnitude) as a gameplay event, so an **Activate Ability From Event** graph receives it.
 
 **Reaction Category**, **Priority**, and **Selection Weight** on the spec matter only when you use [`EvaluateBestReaction`](#choosing-a-reaction-optional). For direct `ExecuteReaction("Parry", …)` calls, the ID alone selects the reaction.
 
@@ -169,8 +169,8 @@ Inside `ExecuteReaction` (same gates as above, re-checked against `Context.GetTa
 3. Apply **Add Tags** to the ASC.
 4. Pack `FSECExecutionContext` into the gameplay event payload.
 5. Activate the ability (**By Event** or **By Tag**).
-6. On success: commit cooldown, listen for **Ability End Tag** (or timeout), fire `OnReactionStarted`.
-7. On end tag or timeout: remove **Add Tags**, fire `OnReactionCompleted`.
+6. On success: commit cooldown, watch for the ability to end, fire `OnReactionStarted`.
+7. When the ability ends, or the timeout is reached: remove **Add Tags**, fire `OnReactionCompleted`.
 
 A failed activation tears down immediately: tags removed, no cooldown committed. Cooldown commits only **after** activation succeeds; a [`CanActivateAbility`](/docs/soulslike-combat/action-system#contextual-execution) refusal leaves the reaction off cooldown.
 
@@ -247,13 +247,13 @@ Add **Gates** under the Scoring array to hard-veto. Add **Scorers** to scale **S
 
 ### Scorers on reactions
 
-Built-in Distance, Angle, Health, and Speed Scorers read **live** values from the AI pawn and `TargetOverride` (or focus actor). Pass the attacker to `EvaluateBestReaction(CategoryTag, Attacker)`.
+Built-in Distance, Angle, Health, Speed, and Vital Scorers read **live** values from the AI pawn and `TargetOverride` (or focus actor). Pass the attacker to `EvaluateBestReaction(CategoryTag, Attacker)`.
 
 Distance Scorer **Range** at the melee-preset default:
 
 <RangeEvalDetails />
 
-Stamina Gate reads the default stamina snapshot (`100`) unless you use an **Attribute Gate**. Attribute Scorers and Gates read live GameplayAttributes. Same classes as actions: see [Scorers & Gates](/docs/soulslike-combat/action-system#scorers--gates). Custom scorers stay **stateless**; `SeededRandom` is fixed on the reaction path (`Seed` stays `0`).
+Stamina Gate reads the pawn's stamina [vital](/docs/soulslike-combat/vitals) live, falling back to the same `100` default as actions when the pawn carries no vitals component or no row for the tag. Vital Scorer and Vital Gate read any named vital the same way. Attribute Scorers and Gates read live GameplayAttributes. Same classes as actions: see [Scorers & Gates](/docs/soulslike-combat/action-system#scorers--gates). Custom scorers stay **stateless**; `SeededRandom` is fixed on the reaction path (`Seed` stays `0`).
 
 ---
 
@@ -272,6 +272,7 @@ Console variable `SEC.Debug.LogReactions 1` enables the same logging globally.
 | System | How It Connects |
 |--------|-----------------|
 | [Action System](/docs/soulslike-combat/action-system) | Reactions cancel actions (`bCancelCurrentAction`) and can block new ones via `SEC.Action.BlockActions` in `AddTags`. Same resolution chain pattern. |
+| [Vitals](/docs/soulslike-combat/vitals) | Health, Stamina, Vital Scorer, and Vital Gate all read the pawn's vitals live. |
 | [Combat Roles](/docs/soulslike-combat/combat-roles) | Role changes sync ReactionSets via `SECReactionSetComponent::SyncForCombatRole`. |
 | [Melee Trace](/docs/soulslike-combat/melee-trace) | `OnMeleeHitResponse` on `SECMeleeTraceComponent` is a typical hook to fire or evaluate reactions after a hit. |
 | [Multiplayer](/docs/soulslike-combat/multiplayer) | Reaction execution state and cooldowns replicate through `SECReactionSetComponent`. |
@@ -291,17 +292,18 @@ Console variable `SEC.Debug.LogReactions 1` enables the same logging globally.
 | `SECReactionSetComponent` | Pawn | Resolution, replication, overrides |
 
 **ReactionEvaluationComponent (Controller)**
-- `ExecuteReaction(ReactionId, Context)` - Fire a reaction (primary path).
-- `CanReact(ReactionId, TargetOverride)` - Gate check without executing.
-- `EvaluateBestReaction(CategoryTag, TargetOverride)` - Optional selection when multiple reactions compete.
-- `StopCurrentReaction(bSuccess)` - Manually end the running reaction.
-- `IsReactionExecuting()` / `GetCurrentReactionId()` - Runtime state.
-- `OnReactionStarted` / `OnReactionCompleted` - Controller-local delegates (with full context).
+- `ExecuteReaction(ReactionId, Context)`: Fire a reaction (primary path).
+- `CanReact(ReactionId, TargetOverride)`: Gate check without executing.
+- `EvaluateBestReaction(CategoryTag, TargetOverride)`: Optional selection when multiple reactions compete.
+- `StopCurrentReaction(bSuccess)`: Manually end the running reaction.
+- `IsReactionExecuting()` / `GetCurrentReactionId()`: Runtime state.
+- `OnReactionStarted` / `OnReactionCompleted`: Controller-local delegates (with full context).
+- `OnReactionCompletedWithReason`: same completion, plus why it ended. `Completed` for a reaction that ran to the end, `Interrupted` for one something cancelled, `TimedOut` for one whose ability never ended. Bind this when a timeout has to be told apart from a clean finish.
 
 **SECReactionSetComponent (Pawn)**
-- `SetRuntimeOverride(ReactionSet, SwapMode)` / `ClearRuntimeOverride(SwapMode)` - Boss phase override.
-- `SyncForCombatRole(RoleTag, SwapMode)` - Apply resolved set for a combat role.
-- `GetReactionSetForRole(RoleTag)` - Query the resolution chain without applying.
+- `SetRuntimeOverride(ReactionSet, SwapMode)` / `ClearRuntimeOverride(SwapMode)`: Boss phase override.
+- `SyncForCombatRole(RoleTag, SwapMode)`: Apply resolved set for a combat role.
+- `GetReactionSetForRole(RoleTag)`: Query the resolution chain without applying.
 - Replicated execution and cooldown delegates; see [Assigning the ReactionSet](#assigning-the-reactionset).
 </Collapsible>
 
@@ -311,10 +313,10 @@ Console variable `SEC.Debug.LogReactions 1` enables the same logging globally.
 
 | Tag | Purpose |
 |-----|---------|
-| `SEC.Reaction.End` | Common default for `AbilityEndTag` |
 | `SEC.Reaction.BlockReactions` | Blocks all reactions when on the ASC |
 | `SEC.Action.BlockActions` | Blocks all actions when on the ASC |
 | `SEC.State.ReactionActive` | Convenience tag for reaction-to-reaction blocking |
+| `SEC.State.Invulnerable` | Starting tag for i-frames, held by a [montage window](/docs/soulslike-combat/animation-integration); your `ApplyDamage` reads it |
 
 `ReactionCategory` tags are project-defined. Filter with them in `EvaluateBestReaction` only when using optional selection.
 

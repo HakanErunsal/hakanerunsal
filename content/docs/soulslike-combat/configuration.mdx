@@ -5,7 +5,7 @@ date: 2025-12-10
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Configuration", "Reference"]
 parent: "SoulslikeCombatDocs"
-order: 12
+order: 14
 ---
 
 
@@ -21,7 +21,7 @@ order: 12
 
 <h2 id="combat-config">EnemyAIConfig</h2>
 
-**Used by:** [Combat Roles System](/docs/soulslike-combat/combat-roles), [SECCombatControllerComponent](/docs/soulslike-combat/architecture#controller-architecture)
+**Used by:** [Combat Roles System](/docs/soulslike-combat/combat-roles), [SECCombatControllerComponent](/docs/soulslike-combat/architecture#the-pieces)
 
 Defines combat role selection, behavior logic, and action set binding for an AI.
 
@@ -76,7 +76,7 @@ UTargetSelector* TargetSelector;      // Per-AI target selector (instanced)
 bool bIgnoreTargetRedistribution;     // Opt out of periodic target reshuffling
 
 // Behavior
-FSoftObjectPath DefaultStateTree;     // Optional StateTree; empty = native C++ combat loop
+UStateTree* StateTree;                // Optional StateTree; empty = native C++ combat loop
 FSECDecisionContextParams DecisionContextParams; // Tunables for the decision context
 
 // Action Set Management
@@ -118,7 +118,7 @@ FitnessEvaluators
   - BP_RandomEvaluator
 
 Behavior
-  DefaultStateTree: StateTree_SEC_Core   // optional; leave empty to run the native C++ combat loop
+  StateTree: StateTree_SEC_Core   // optional; leave empty to run the native C++ combat loop
 
 ActionSets
   ManageActionSetsAutomatically: true
@@ -159,7 +159,7 @@ RoleMovementProfiles
 | `LineOfSightTraceChannel` ("LOS Trace Channel") | `Visibility` | Collision channel for the line-of-sight trace. Point it at a dedicated visibility channel if the project has one. |
 | `bLineOfSightTraceComplex` ("LOS Trace Complex") | `false` | Trace against complex (per-poly) collision. Off uses simple collision (faster). |
 
-> Decision-context health comes from `UBasicHealthComponent` (else 1.0) and Stamina is fixed at 100. `FSECDecisionContextParams` holds no GAS attribute fields. For attribute-backed health or stamina scoring, use an Attribute Scorer or Attribute Gate on the action instead.
+> Decision-context health and stamina come from the pawn's [vitals](/docs/soulslike-combat/vitals) (health else 1.0, stamina else 100, when the pawn carries no vitals component or no row for the configured tag). `FSECDecisionContextParams` holds no GAS attribute fields. For attribute-backed health or stamina scoring, use an Attribute Scorer or Attribute Gate on the action instead.
 
 ### Recovery
 
@@ -224,7 +224,7 @@ struct FActionSpec
 };
 ```
 
-> Distance, angle, health, speed, and stamina are not fields on `FActionSpec`. They are opt-in entries in the `CustomScoring` list. Add a built-in **Distance Scorer**, **Angle Scorer**, **Health Scorer**, **Speed Scorer**, or **Stamina Gate** to score or gate on those dimensions. See [Built-in Scorers & Gates](#built-in-scorers--gates) below. An action with no Distance Scorer is distance-agnostic.
+> Distance, angle, health, speed, and stamina are not fields on `FActionSpec`. They are opt-in entries in the `CustomScoring` list. Add a built-in **Distance Scorer**, **Angle Scorer**, **Health Scorer**, **Speed Scorer**, **Stamina Gate**, **Vital Scorer**, or **Vital Gate** to score or gate on those dimensions. See [Built-in Scorers & Gates](#built-in-scorers--gates) below. An action with no Distance Scorer is distance-agnostic.
 
 ### FRangeEval Explained
 
@@ -265,13 +265,15 @@ Distance, angle, health, speed, and stamina are opt-in. Add an entry to an actio
 |---------------------|----------|---------|-------|-------|
 | **Distance Scorer** | `Range` (FRangeEval) | `MakeMeleeRange()` | AI-to-target distance (cm), 0 with no target | `Range` OptimalMin/Max also feed the positioning query (`GetIdealDistanceForAction`) |
 | **Angle Scorer** | `Range` (FRangeEval) | `MakeFrontalAngle()` | Absolute angle to target (deg), 0 facing it, 0 with no target | |
-| **Health Scorer** | `Range` (FRangeEval) | `MakeAlwaysOne()` | AI health 0-1 from the decision context (BasicHealthComponent) | For a GAS health attribute use an Attribute Scorer |
+| **Health Scorer** | `Range` (FRangeEval) | `MakeAlwaysOne()` | AI health 0-1, sourced from the pawn's health vital | For any other pool use Vital Scorer; for a GAS health attribute use an Attribute Scorer |
 | **Speed Scorer** | `Range` (FRangeEval) | `MakeAlwaysOne()` | AI horizontal speed (cm/s) | |
-| **Stamina Gate** | `MinStamina` | `0` | Decision-context Stamina (100 by default) | Vetoes unless Stamina >= `MinStamina`; for a GAS stamina attribute use an Attribute Gate |
+| **Vital Scorer** | `VitalTag`, `bUseFraction`, `Range` (FRangeEval) | `true` / `MakeAlwaysOne()` | Any named vital, as a fraction or raw value | The general form behind Health Scorer; no effect on a pawn without the vital |
+| **Stamina Gate** | `MinStamina` | `0` | Decision-context Stamina, sourced from the pawn's stamina vital (100 by default) | Vetoes unless Stamina >= `MinStamina`; for any other pool use Vital Gate, for a GAS stamina attribute use an Attribute Gate |
+| **Vital Gate** | `VitalTag`, `MinValue`, `bUseFraction` | `0` / `false` | Any named vital, as a fraction or raw value | The general form behind Stamina Gate; no effect on a pawn without the vital |
 | **Attribute Scorer** | `Attribute`, `NormalizeBy`, `ValueEval` (FRangeEval) | n/a | A `GameplayAttribute` on the owning ASC | Optionally divide by `NormalizeBy` (e.g. Mana / MaxMana) before scoring |
 | **Attribute Gate** | `Attribute`, `MinValue`, `MaxValue` | `0` / `0` | A `GameplayAttribute` on the owning ASC | Pass when the attribute is in `[MinValue, MaxValue]`; `MaxValue <= 0` disables the upper bound |
 
-> The decision context never reads GAS health or stamina attributes. Health comes from `UBasicHealthComponent` (else 1.0) and Stamina is fixed at 100. For GameplayAttribute-backed health, stamina, mana, or any other pool, use an **Attribute Scorer** or **Attribute Gate** on the action.
+> The decision context never reads GAS health or stamina attributes. Health and stamina come from the pawn's [vitals](/docs/soulslike-combat/vitals) (health else 1.0, stamina else 100). For GameplayAttribute-backed health, stamina, mana, or any other pool, use an **Attribute Scorer** or **Attribute Gate** on the action; for any other authored vital, use a **Vital Scorer** or **Vital Gate**.
 
 > **Auto-migration:** existing ActionSets migrate once on load. Each action's old `DistanceEval` becomes a Distance Scorer and `AngleEval` an Angle Scorer; a non-default Health or Speed range becomes a Health or Speed Scorer; a `StaminaCost` above 0 becomes a Stamina Gate. Scoring is unchanged. Re-save the asset to persist. New actions ship with an empty Scoring list (distance-agnostic until you add a Distance Scorer).
 
@@ -390,6 +392,6 @@ DamageConfig: DA_SwordDamage
 ---
 
 <DocNav
-  prev={{ title: "Melee Trace", href: "/docs/soulslike-combat/melee-trace" }}
+  prev={{ title: "Animation Integration", href: "/docs/soulslike-combat/animation-integration" }}
   next={{ title: "Multiplayer Support", href: "/docs/soulslike-combat/multiplayer" }}
 />

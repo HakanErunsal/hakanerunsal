@@ -129,7 +129,7 @@ export function UeFormulaGraph({
           </svg>
 
           <div className="pointer-events-none absolute left-1/2 top-1/2 z-[2] flex w-[84px] -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center text-center">
-            <span className="text-[12px] font-semibold leading-tight text-[#f0f0f2]">
+            <span className="text-[14px] font-semibold leading-tight text-[#f0f0f2]">
               {resultLabel}
             </span>
           </div>
@@ -156,10 +156,10 @@ export function UeFormulaGraph({
                 kind="variable-get"
                 title={s.factor.label}
                 headerColor={FLOAT}
-                className="[&_span.relative]:text-[12px] [&_span.relative]:font-medium [&_span.relative]:text-[#f2f2f2]"
+                className="[&_span.relative]:text-[14px] [&_span.relative]:font-medium [&_span.relative]:text-[#f2f2f2]"
               />
               {s.factor.note && (
-                <span className="max-w-[130px] text-center text-[10px] leading-tight text-[#9a9aa0]">
+                <span className="max-w-[130px] text-center text-[12px] leading-tight text-[#9a9aa0]">
                   {s.factor.note}
                 </span>
               )}

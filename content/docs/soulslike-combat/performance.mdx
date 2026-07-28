@@ -2,11 +2,11 @@
 title: "Performance"
 image: "../../images/docs_performance.png"
 description: "Cost model, profiling with stat SEC, and tuning knobs for large enemy counts."
-date: 2025-12-29
+date: 2026-07-27
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Performance"]
 parent: "SoulslikeCombatDocs"
-order: 17
+order: 19
 ---
 
 <Breadcrumb items={[
@@ -38,7 +38,7 @@ At 60 fps you have **16.6 ms** per frame. Even at **150** active SEC enemies, th
 | **Nav sampling** | Cache refresh at **`NavCheckInterval`** (default **0.1 s**), staggered by **`NavStaggerStride`** | **`bEnableNavAwareSampling`**, probe count |
 | **Detour queries** | On detour recheck interval while hybrid movement is active | Nav path length vs straight line |
 | **Action evaluation** | **`EvaluationCooldown`** (default **0.1 s** on native brain / **Poll Action**) | Scorer count per action |
-| **Action execution tick** | Only while an action runs and a hook sets **`bWantsTick`** | Custom hook work |
+| **Action execution tick** | Only while an action runs | Hook work when a hook sets **`bWantsTick`**, and sequence advance on a Behavior Tree Sequence action |
 | **Role subsystem** | **`RoleReassignmentInterval`** (project default **8 s**) | Combatant × role candidate count |
 | **Threat detection** | Every tick by default; throttle with **`SetTickInterval`** | Dot product on focus actor |
 | **Awareness** | **`EvaluationInterval`** on config (default **0.1 s**) | Perceived actor count |

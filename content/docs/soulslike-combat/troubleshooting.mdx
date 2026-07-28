@@ -1,11 +1,11 @@
 ---
 title: "Debugging & Troubleshooting"
 description: "Debug flags, console variables, common failures, and FAQ."
-date: 2025-12-10
+date: 2026-07-27
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "FAQ"]
 parent: "SoulslikeCombatDocs"
-order: 16
+order: 18
 ---
 
 <Breadcrumb items={[
@@ -107,32 +107,40 @@ Recovery time blocks offensive action selection while movement and reactions kee
 
 </Collapsible>
 
-<Collapsible badge="" title="ByEvent activation falls back to ByTag">
+<Collapsible badge="" title="A behavior tree action starts nothing">
 
-**Cause:** **`SEC_ActivationMode`** is missing from the Blackboard Data Asset. **`SECExecutionMethod`** writes **`ByEvent`** with **`SetValueAsName`**. A missing key drops the write. **`BTTask_ActivateBlackboardAbility`** reads an empty value and falls back to **ByTag**.
+**Cause:** The blackboard has no key for the action's payload, so the tree receives nothing to act on. A blackboard write to a missing key is dropped by the engine, and the log names the key once per blackboard: `could not hand its payload to the behavior tree`.
 
 **Fix:** Add these keys to the blackboard asset:
 
-| Key | Type |
-|-----|------|
-| **`SEC_ActivationMode`** | Name |
-| **`SEC_ActionId`** | Name |
-| **`SEC_AbilityTag`** | Name |
-| **`SEC_AbilityEndTag`** | Name |
-| **`SEC_TargetActor`** | Object |
-| **`SEC_SelfActor`** | Object |
-| **`SEC_Distance`** | Float |
+| Key | Type | Base Class |
+|-----|------|-----------|
+| **`SEC_Payload`** | Object | **`SECBehaviorTreePayload`** |
+| **`SEC_ActionId`** | Name | |
+| **`SEC_TargetActor`** | Object | |
+| **`SEC_SelfActor`** | Object | |
+| **`SEC_Distance`** | Float | |
+
+Then point the **Payload Key** on the Activate Blackboard Ability node at `SEC_Payload`.
 
 </Collapsible>
 
 <Collapsible badge="" title="AI stuck after attacking">
 
-**Cause:** The behavior tree or StateTree task never sees the ability end tag.
+**Cause:** The ability the action started never ends, so the action keeps waiting on it.
 
 **Fix:**
-- Derive attack abilities from **`GameplayAbilityBase`**. It sends **`AbilityEndTag`** on end, cancel, and interrupt.
-- In the log, **`ActivateBlackboardAbility: Waiting for end tag ...`** means the task is still waiting. No end tag arrived.
-- Match **`AbilityEndTag`** on the ability CDO to what the execution method writes to **`SEC_AbilityEndTag`**.
+- Give the ability a path that reaches **End Ability** on completion, on cancel, and on interrupt. An ability that plays a montage through **Play Montage and Wait** ends when the montage does.
+- Set **Ability Timeout** on the action to bound the wait. A 30 second safety limit catches it either way, and logs the action and ability that hit it.
+- For an ability that is meant to keep running, use the **Gameplay Ability (Fire And Forget)** method so the action finishes immediately without waiting.
+
+</Collapsible>
+
+<Collapsible badge="" title="A revived or pooled enemy never acts again">
+
+**Cause:** Death blocks action evaluation on that controller, and only a revive releases it. An enemy brought back, or a controller reused from a pool, is still holding the block.
+
+**Fix:** Call **`HandleRevive()`** on the **SEC Combat Controller** component when the enemy comes back. It releases the block, restarts the brain, and turns threat detection, perception and role registration back on. Re-equip the weapon yourself; death dropped it.
 
 </Collapsible>
 
@@ -159,6 +167,16 @@ Enable **`bDebugLogMovement`** or **`SEC.Debug.Movement.LogMovement 1`** for lay
 
 </Collapsible>
 
+<Collapsible badge="" title="Enemy jogs instead of running while closing distance">
+
+**Cause:** sideways movement costs speed, and direction scoring angles the approach a few degrees while the AI holds a strafe side or steps around another enemy.
+
+**Fix:** raise **`StrafeFreeAngle`** on **`MovementEvaluatorComponent`** (default **15** degrees), the band around straight ahead that costs no speed. **`StrafeSpeedPenalty`** (**0.75**) softens the cost everywhere including real circling, and **0** turns it off. Also check the run window in your locomotion graph, since a 30 degree approach keeps 65% of its speed by design.
+
+See [Sideways speed penalty](/docs/soulslike-combat/movement-system#sideways-speed-penalty).
+
+</Collapsible>
+
 <Collapsible badge="" title="AI walks off ledges or into hazards">
 
 **Check:**
@@ -168,7 +186,7 @@ Enable **`bDebugLogMovement`** or **`SEC.Debug.Movement.LogMovement 1`** for lay
 
 **Debug:** **`SEC.Debug.Movement.DrawNav 1`** marks blocked directions with blue spheres.
 
-Tune **`NavProbeDistance`** (default **120**): lower in tight spaces, higher for fast movers. See [Movement System](/docs/soulslike-combat/movement-system#hazard-areas).
+Tune **`NavProbeDistance`** (default **120**): lower in tight spaces, higher for fast movers. See [Movement System](/docs/soulslike-combat/movement-system#staying-on-the-navmesh).
 
 </Collapsible>
 
@@ -182,9 +200,25 @@ The target sits behind cover. Straight-line distance stays short while the nav p
 - **`bDetourEscalateOnStall`** catches tight corners; raise **`DetourStallSpeed`** if a slow grind does not register.
 - Lower **`DetourEnterRatio`** (try **1.4**) or **`DetourMinExcess`** when a longer detour still reads as minor.
 
-**Debug:** **`SEC.Debug.Movement.LogMovement 1`** logs **`Detour escalation ENGAGED`** / **`CLEARED`**.
+**Debug:** **`SEC.Debug.Movement.LogMovement 1`** logs detour recheck lines (`ENGAGE`, `HOLD`, `release`).
 
-See [Detour Escalation](/docs/soulslike-combat/movement-system#detour-escalation-around-corners).
+See [Detour tuning knobs](/docs/soulslike-combat/movement-system#rounding-corners-detour-escalation).
+
+</Collapsible>
+
+<Collapsible badge="" title="Waiter or Flanker freezes after the player jumps a gap">
+
+The player sits close in a straight line but the walkable route still wraps around the pit. Waiter and Flanker can already be inside their desired-distance band, so tactical steering idles at the rim while sight stays clear across the gap.
+
+**Check on `MovementEvaluatorComponent`, Hybrid Movement > Detour:**
+- **`bEnableDetourEscalation`** is on.
+- Both sides of the gap sit on connected navmesh. A route that stops at the rim means there is no walkable way across, and the AI correctly stays tactical rather than walking into a dead end.
+- Leave **`bDetourUseLineOfSightPreGate`** on. It reads the navmesh along the straight line, so a gap engages the detour with sight clear.
+- Lower **`DetourReleaseRatio`** only if the AI gives up the route too early on a short way around.
+
+**Debug:** **`SEC.Debug.Movement.LogMovement 1`** prints `Detour eval: active, HOLD` while the route still detours, and `Detour eval: skip (no reachable route)` when the far side is not connected.
+
+See [Detour tuning knobs](/docs/soulslike-combat/movement-system#rounding-corners-detour-escalation).
 
 </Collapsible>
 

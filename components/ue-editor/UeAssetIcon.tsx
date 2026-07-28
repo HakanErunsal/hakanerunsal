@@ -47,7 +47,7 @@ export function UeAssetIcon({ type, showLabel = true, className }: UeAssetIconPr
           <rect x="1" y="14" width="14" height="1.5" fill={color} />
         </svg>
       )}
-      {showLabel && <span className="text-[10px] text-[#808080]">{label}</span>}
+      {showLabel && <span className="text-[12px] text-[#808080]">{label}</span>}
     </div>
   );
 }
