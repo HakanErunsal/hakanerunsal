@@ -997,3 +997,19 @@ export const MELEE_TRACE_TEAM_FILTER_DETAILS: UeDetailCategory[] = [
     properties: [{ label: "Team Filter", value: { kind: "enum", value: "No Filter" } }],
   },
 ];
+
+/** USECVitalsComponent — one authored FSECVitalDefinition row (the default Health row on AEnemyCharacterBase), verified against SECVitalsComponent.h */
+export const VITALS_COMPONENT_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Vitals",
+    properties: [
+      { label: "Vital Tag", value: { kind: "text", value: "SEC.Vital.Health" } },
+      // ClampMin 0.0, no ClampMax -> no fill bar.
+      { label: "Max Value", value: n(100) },
+      { label: "Regen Rate Per Second", value: n(0) },
+      { label: "Regen Delay Seconds", value: n(0) },
+      { label: "Depleted Loose Tag", value: { kind: "text", value: "None" } },
+      { label: "Depleted Gameplay Event", value: { kind: "text", value: "None" } },
+    ],
+  },
+];

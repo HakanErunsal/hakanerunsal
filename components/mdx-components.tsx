@@ -63,6 +63,7 @@ import ThreatResponseWiringDetails from '@/components/ThreatResponseWiringDetail
 import ThreatResponseProfileDetails from '@/components/ThreatResponseProfileDetails';
 import RegisterCombatTargetBlueprint from '@/components/RegisterCombatTargetBlueprint';
 import ActionScoreFormula from '@/components/ActionScoreFormula';
+import VitalsComponentDetails from '@/components/VitalsComponentDetails';
 import Reviews from '@/components/Reviews';
 
 const useMDXComponent = (code: string) => {
@@ -135,6 +136,7 @@ const components = {
   ThreatResponseWiringDetails,
   ThreatResponseProfileDetails,
   ActionScoreFormula,
+  VitalsComponentDetails,
   Reviews,
   // Prevent hydration errors from block elements nested inside <p>
   p: ({ children, ...props }: React.HTMLAttributes<HTMLParagraphElement>) => (

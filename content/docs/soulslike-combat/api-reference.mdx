@@ -5,7 +5,7 @@ date: 2026-07-27
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Reference"]
 parent: "SoulslikeCombatDocs"
-order: 19
+order: 20
 ---
 
 
@@ -64,7 +64,7 @@ To read the config or role from outside the component, call the static helpers i
 | `bAutoRegisterForCombatRoles` | true | Register with the combat role subsystem on possession |
 | `RoleRegistrationParams` | n/a | Registration parameters used when the pawn has no config |
 | `bEnableThreatDetection` | true | Enable threat detection on BeginPlay when a `ThreatDetectionComponent` is present |
-| `bAutoBindBasicHealthComponent` | true | Call `HandleDeath()` automatically when a `BasicHealthComponent` reaches zero |
+| `bAutoHandleDeathOnHealthDepleted` | true | Call `HandleDeath()` automatically when the pawn's [health vital](/docs/soulslike-combat/vitals) empties |
 | `bDropWeaponOnDeath` | true | Drop the weapon with a 10-second physics lifespan on death |
 
 **Delegates**

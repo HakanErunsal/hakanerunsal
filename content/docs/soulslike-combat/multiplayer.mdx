@@ -5,7 +5,7 @@ date: 2025-12-31
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Multiplayer", "Replication"]
 parent: "SoulslikeCombatDocs"
-order: 14
+order: 15
 ---
 
 <Breadcrumb items={[
@@ -82,6 +82,7 @@ Clients see swings through GAS montage replication. **`OnMeleeHitResponse`** fir
 | **`SECReactionSetComponent`** | Current reaction id, executing flag, active reaction set, cooldown events |
 | **`SECCombatRoleComponent`** | **`CombatRole`** gameplay tag |
 | **`UAbilitySystemComponent`** | GAS state and montages |
+| **`USECVitalsComponent`** | Per-vital anchors (value, server timestamp, regen rate); every machine extrapolates the same smooth **`GetVitalValue`** from them. See [Vitals](/docs/soulslike-combat/vitals#multiplayer-anchor-replication-and-late-arriving-ability-systems). |
 
 Panels below show **replicated runtime fields** on each pawn component (what clients receive during play, not Blueprint defaults you set once in the editor):
 
@@ -124,11 +125,11 @@ Role->OnCombatRoleChanged.AddDynamic(this, &UMyHUD::OnRoleChanged);
 
 Mirror the same pattern on **`SECReactionSetComponent`** with **`OnReactionExecutionStarted`** (and completion/cooldown delegates as needed).
 
-### 3. Optional health component
+### 3. Vitals for client health UI
 
-**`UBasicHealthComponent`** is not on **`EnemyCharacterBase`** by default. Add it in Blueprint for replicated **`Health`**. **`OnHealthChanged`** and **`OnHealthDecreased`** fire when health updates ( **`OnRep_Health`** on clients; **`SetHealth`** calls the same path on the server).
+**`AEnemyCharacterBase`** ships with **`USECVitalsComponent`** (**Vitals**), authored with one Health row. Bind **`OnVitalChanged`** for a client health bar, or poll **`GetVitalValue`** / **`GetVitalFraction`** directly: every machine extrapolates the same value from the last replicated anchor, so a client reads it with no extra RPC. See [Vitals](/docs/soulslike-combat/vitals) for the full mutator, reader, and event surface.
 
-**`SECCombatControllerComponent`** binds **`OnHealthZero`** to **`HandleDeath`** when **`bAutoBindBasicHealthComponent`** is true (default). Disable that flag if you drive death from GAS or a custom health system.
+**`SECCombatControllerComponent`** binds **`HandleVitalDepleted`** to the pawn's **`OnVitalDepleted`** and calls **`HandleDeath`** when the depleted vital is the configured health tag, while **`bAutoHandleDeathOnHealthDepleted`** is true (default). Disable that flag if you drive death from GAS or a custom system.
 
 **`ISECDamageable`** on **`EnemyCharacterBase`** is the preferred damage path for SEC actors.
 
@@ -176,10 +177,9 @@ Server activates abilities; GAS replicates montage playback to clients.
 ```cpp
 void UEnemyHUD::BindToPawn(APawn* Enemy)
 {
-    if (auto* Health = Enemy->FindComponentByClass<UBasicHealthComponent>())
+    if (auto* Vitals = Enemy->FindComponentByClass<USECVitalsComponent>())
     {
-        Health->OnHealthChanged.AddDynamic(this, &UEnemyHUD::RefreshBar);
-        Health->OnHealthDecreased.AddDynamic(this, &UEnemyHUD::FlashDamage);
+        Vitals->OnVitalChanged.AddDynamic(this, &UEnemyHUD::OnVitalChanged);
     }
     if (auto* Actions = Enemy->FindComponentByClass<USECActionSetComponent>())
     {
@@ -188,6 +188,20 @@ void UEnemyHUD::BindToPawn(APawn* Enemy)
     if (auto* Role = Enemy->FindComponentByClass<USECCombatRoleComponent>())
     {
         Role->OnCombatRoleChanged.AddDynamic(this, &UEnemyHUD::SetRoleIcon);
+    }
+}
+
+// OnVitalChanged fires for every vital on the pawn; filter by tag for the health bar.
+void UEnemyHUD::OnVitalChanged(FGameplayTag VitalTag, float NewValue, float OldValue, float MaxValue)
+{
+    if (VitalTag != USoulslikeEnemyCombatSettings::GetHealthVitalTag())
+    {
+        return;
+    }
+    RefreshBar(NewValue / MaxValue);
+    if (NewValue < OldValue)
+    {
+        FlashDamage();
     }
 }
 ```

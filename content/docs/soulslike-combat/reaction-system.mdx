@@ -247,13 +247,13 @@ Add **Gates** under the Scoring array to hard-veto. Add **Scorers** to scale **S
 
 ### Scorers on reactions
 
-Built-in Distance, Angle, Health, and Speed Scorers read **live** values from the AI pawn and `TargetOverride` (or focus actor). Pass the attacker to `EvaluateBestReaction(CategoryTag, Attacker)`.
+Built-in Distance, Angle, Health, Speed, and Vital Scorers read **live** values from the AI pawn and `TargetOverride` (or focus actor). Pass the attacker to `EvaluateBestReaction(CategoryTag, Attacker)`.
 
 Distance Scorer **Range** at the melee-preset default:
 
 <RangeEvalDetails />
 
-Stamina Gate reads the default stamina snapshot (`100`) unless you use an **Attribute Gate**. Attribute Scorers and Gates read live GameplayAttributes. Same classes as actions: see [Scorers & Gates](/docs/soulslike-combat/action-system#scorers--gates). Custom scorers stay **stateless**; `SeededRandom` is fixed on the reaction path (`Seed` stays `0`).
+Stamina Gate reads the pawn's stamina [vital](/docs/soulslike-combat/vitals) live, falling back to the same `100` default as actions when the pawn carries no vitals component or no row for the tag. Vital Scorer and Vital Gate read any named vital the same way. Attribute Scorers and Gates read live GameplayAttributes. Same classes as actions: see [Scorers & Gates](/docs/soulslike-combat/action-system#scorers--gates). Custom scorers stay **stateless**; `SeededRandom` is fixed on the reaction path (`Seed` stays `0`).
 
 ---
 
@@ -272,6 +272,7 @@ Console variable `SEC.Debug.LogReactions 1` enables the same logging globally.
 | System | How It Connects |
 |--------|-----------------|
 | [Action System](/docs/soulslike-combat/action-system) | Reactions cancel actions (`bCancelCurrentAction`) and can block new ones via `SEC.Action.BlockActions` in `AddTags`. Same resolution chain pattern. |
+| [Vitals](/docs/soulslike-combat/vitals) | Health, Stamina, Vital Scorer, and Vital Gate all read the pawn's vitals live. |
 | [Combat Roles](/docs/soulslike-combat/combat-roles) | Role changes sync ReactionSets via `SECReactionSetComponent::SyncForCombatRole`. |
 | [Melee Trace](/docs/soulslike-combat/melee-trace) | `OnMeleeHitResponse` on `SECMeleeTraceComponent` is a typical hook to fire or evaluate reactions after a hit. |
 | [Multiplayer](/docs/soulslike-combat/multiplayer) | Reaction execution state and cooldowns replicate through `SECReactionSetComponent`. |

@@ -1,0 +1,154 @@
+---
+title: "Vitals"
+description: "Resource pools such as health, stamina, and poise that spend, regenerate, and gate or score actions by tag."
+date: 2026-07-28
+published: true
+tags: ["Documentation", "Unreal Engine", "AI", "Vitals", "Health"]
+parent: "SoulslikeCombatDocs"
+order: 12
+---
+
+<Breadcrumb items={[
+    { label: "Docs", href: "/docs" },
+    { label: "SoulslikeCombat", href: "/docs/SoulslikeCombatDocs" },
+    { label: "Vitals" }
+]} />
+
+> `USECVitalsComponent` holds resource pools, health, stamina, poise, or any tag you name, that spend, regenerate, and gate or score actions.
+
+## When to Use This
+
+- A resource pool that depletes and recovers: health, stamina, poise, mana, ammo.
+- Killing an enemy when its health empties, and reviving it later.
+- Gating a dodge or heavy attack behind a stamina cost.
+- Triggering a guard break, exhaustion, or stagger the moment a pool hits zero.
+- Favoring or disfavoring an action as a pool runs low, without a hard veto.
+
+`AEnemyCharacterBase` ships with a **SEC Vitals** component, authored with one row: Health at 100 with no regeneration. Add **SEC Vitals** to any other pawn you want in the loop.
+
+---
+
+## How It Works
+
+Each row in the component's **Vitals** array names one pool: a tag, a maximum, and how it regenerates. A vital starts full. Spend it, apply damage to it, or heal it through **`ModifyVital`**, **`DrainVital`**, **`SetVital`**, or **`FillVital`**; read it anytime with **`GetVitalValue`** or **`GetVitalFraction`**, no ticking required. A vital with no authored row stays inert: readers return `0`, mutators no-op, and a Vital Scorer or Vital Gate pointed at it has no effect.
+
+`SEC.Vital.Health`, `SEC.Vital.Stamina`, and `SEC.Vital.Stance` (poise, or what other soulslikes call posture) ship as ready-made tags. Any tag you author works the same way, so a mana pool or an ammo count costs nothing extra to add.
+
+---
+
+## Setup
+
+### 1. Author a row
+
+<VitalsComponentDetails />
+
+| Field | Sets |
+|-------|------|
+| **Vital Tag** | Which pool this row is. |
+| **Max Value** | The pool's upper bound; a row at `0` or below is skipped with a warning. |
+| **Regen Rate Per Second** | Passive regeneration once **Regen Delay Seconds** elapses since the last change. `0` disables regeneration. |
+| **Regen Delay Seconds** | Seconds after any change before regeneration resumes; every change restarts the delay. `0` resumes regeneration in the same change. |
+| **Depleted Loose Tag** | Held on the owner's ability system while the pool sits at zero with no regeneration running. Needs an `AbilitySystemComponent`. |
+| **Depleted Gameplay Event** | Sent to the owner once per depletion, on the authority only. Needs an `AbilitySystemComponent`. |
+
+A duplicate tag keeps the first row. Add one row per pool: a stamina or stance row works the same way as Health; point Vital Scorer and Vital Gate at its tag instead.
+
+### 2. Spend, heal, and read a vital
+
+| Function | Does |
+|----------|------|
+| **`ModifyVital(Tag, Delta)`** | Add or subtract `Delta`. A spend the pool cannot fully pay changes nothing and returns `false`; a gain clamps at max. |
+| **`DrainVital(Tag, Amount)`** | Take up to `Amount`, flooring at zero, and return how much came off (30 left, drain 50, empties and returns 30). |
+| **`SetVital(Tag, NewValue)`** | Set the pool to `NewValue`, clamped to `[0, Max]`. Restarts the regeneration delay even when the clamped value matches the current one. |
+| **`FillVital(Tag)`** | Set the pool to its maximum. |
+
+These four run on the authority only; a client call is ignored with a warning.
+
+| Function | Returns |
+|----------|---------|
+| **`GetVitalValue(Tag)`** | Current value, regeneration included. `0` for an unauthored tag. |
+| **`GetVitalFraction(Tag)`** | Current value as `0` to `1` of max. |
+| **`GetVitalMax(Tag)`** | Authored maximum, `0` for an unauthored tag. |
+| **`HasVital(Tag)`** | Whether the component carries a row for the tag. |
+| **`IsVitalDepleted(Tag)`** | Whether the pool currently sits at zero. |
+
+Readers work on any machine, any time: each computes the current value locally, so a client UI polls `GetVitalValue` directly with no extra wiring.
+
+### 3. React to depletion
+
+Three delegates cover the events a UI or an ability needs:
+
+| Delegate | Fires |
+|----------|-------|
+| **`OnVitalChanged`** | Every discrete change: a spend, damage, a set or fill, or regeneration completing at max. Regeneration's smooth rise between those points fires nothing; poll `GetVitalValue` for a smooth bar. |
+| **`OnVitalDepleted`** | Once per depletion episode. **Depleted Loose Tag** is already applied when it fires. |
+| **`OnVitalFull`** | When the pool reaches its maximum, by a gain or by regeneration. |
+
+A "guard breaks at zero poise" ability needs no delegate binding at all: point its activation at **Depleted Gameplay Event**, or check **Depleted Loose Tag** as a `RequiresTags` entry on an action or reaction. Both are fields on the row itself, so the wiring lives on the data.
+
+---
+
+## Health, Stamina, and Death
+
+Project Settings, under **Plugins → Soulslike Enemy Combat → Vitals**, names which authored tag counts as health and stamina for the plugin:
+
+| Setting | Default | Drives |
+|---------|---------|--------|
+| **Health Vital Tag** | `SEC.Vital.Health` | Death, the Health Scorer, and the decision context's health fraction. |
+| **Stamina Vital Tag** | `SEC.Vital.Stamina` | The decision context's stamina value and the Stamina Gate. |
+
+An AI with no vitals component, or no row for the configured tag, reads as full health (`1.0`) and `100` stamina everywhere these feed: the decision context, Health Scorer, and Stamina Gate.
+
+**`bAutoHandleDeathOnHealthDepleted`** on `SECCombatControllerComponent` (on by default) calls `HandleDeath()` the moment the health vital empties. Turn it off when a project drives death itself and calls `HandleDeath()` on its own trigger. See [API Reference](/docs/soulslike-combat/api-reference#seccombatcontrollercomponent) for the rest of the death sequence.
+
+---
+
+## Costing and Scoring Actions
+
+Vital Scorer and Vital Gate turn any authored pool into an action's cost or preference, the same way Health Scorer and Stamina Gate do for health and stamina specifically:
+
+| Class | Kind | Properties | Use |
+|-------|------|------------|-----|
+| **Vital Scorer** | Scorer | `VitalTag`, `bUseFraction` (default `true`), `Range` (`FRangeEval`, default `MakeAlwaysOne()`) | Favor or disfavor an action as a named pool rises or falls. |
+| **Vital Gate** | Gate | `VitalTag`, `MinValue` (default `0`), `bUseFraction` (default `false`) | Veto an action unless a named pool holds at least `MinValue`. |
+
+Add either to an action's **Scoring** list next to the other [Scorers & Gates](/docs/soulslike-combat/action-system#scorers--gates). Point a **Vital Gate** at `SEC.Vital.Stamina` with `MinValue = 30` for a stamina-costed dodge, or at a custom `SEC.Vital.Focus` tag for a magic system of your own. Both read the tag's `0` to `1` fraction or its raw value depending on `bUseFraction`, and both have no effect on a pawn that carries no vitals component or no row for the tag, so adding either to a shared ActionSet does not disable an enemy type that lacks the pool.
+
+The same two classes work on reactions: see [Reaction System](/docs/soulslike-combat/reaction-system#scorers-on-reactions).
+
+---
+
+## Integration
+
+| System | Link |
+|--------|------|
+| [Action System](/docs/soulslike-combat/action-system#scorers--gates) | Health Scorer, Stamina Gate, Vital Scorer, and Vital Gate all read a vital. |
+| [Reaction System](/docs/soulslike-combat/reaction-system#scorers-on-reactions) | The same scorers and gates evaluate live against the pawn's vitals. |
+| [StateTree Integration](/docs/soulslike-combat/statetree#combat-and-decision) | The decision context's health fraction and stamina value come from vitals. |
+| [Configuration Reference](/docs/soulslike-combat/configuration#combat-config) | `bAutoHandleDeathOnHealthDepleted` and the decision context params that read vitals. |
+| [Multiplayer](/docs/soulslike-combat/multiplayer) | Vitals replicate on their own anchor scheme, independent of the pawn components covered there. |
+
+---
+
+<Collapsible title="Multiplayer: anchor replication and late-arriving ability systems" badge="Advanced">
+
+The authority owns every value; mutators run there and clients receive the result automatically. Replication is anchor-based rather than per-tick: the authority replicates one `(value, server timestamp, regen rate)` record per discrete change, and every machine extrapolates the current value from that anchor against server world time, so a regenerating bar renders smooth at zero steady-state bandwidth between updates.
+
+Event edges (`OnVitalChanged`, `OnVitalDepleted`, `OnVitalFull`) derive from raw anchor values through one shared helper, run on the server and in the client `OnRep`, so both sides fire the same events for the same transition regardless of latency. Only the displayed value extrapolates; the events themselves never depend on the clock.
+
+**`RefreshAbilityState()`** re-applies **Depleted Loose Tag** after the owner's ability system appears or changes. A single-player pawn needs no manual call. In multiplayer, call it wherever a custom pawn initializes its ability system, since a late-arriving PlayerState ability system would otherwise miss a tag applied before it existed.
+
+The **Vitals** array itself is authored config, read at `BeginPlay` on every machine; it does not replicate. Only the runtime anchors do.
+
+</Collapsible>
+
+<Collapsible title="Debug surface" badge="Advanced">
+
+**`GetVitalAnchor(Tag, OutAnchor)`** copies the live replication anchor for a tag: the raw value, the server timestamp it was written at, and the regeneration rate running from it. Debug and test surface; gameplay code reads `GetVitalValue`.
+
+</Collapsible>
+
+<DocNav
+  prev={{ title: "Melee Trace", href: "/docs/soulslike-combat/melee-trace" }}
+  next={{ title: "Animation Integration", href: "/docs/soulslike-combat/animation-integration" }}
+/>

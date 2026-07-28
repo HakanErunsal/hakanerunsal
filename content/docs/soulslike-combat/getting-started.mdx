@@ -82,13 +82,14 @@ Set it up like any character:
 | Action Set Component | `USECActionSetComponent` |
 | Reaction Set Component | `USECReactionSetComponent` |
 | Combat Role Component | `USECCombatRoleComponent` |
+| Vitals Component | `USECVitalsComponent`, authored with one Health row |
 
 <Collapsible title="Use your own character, no C++" badge="Alternative">
 Already have a character Blueprint? Reparent it to `EnemyCharacterBase` instead of rebuilding it. No code required.
 
 1. Open your character Blueprint.
 2. **File → Reparent Blueprint**, then pick `EnemyCharacterBase`.
-3. Your existing components, variables, and graphs stay. You inherit the ability system component, the four SEC components (melee trace, action set, reaction set, combat role), the three combat interfaces, and the dedicated-server socket fix.
+3. Your existing components, variables, and graphs stay. You inherit the ability system component, the five SEC components (melee trace, action set, reaction set, combat role, vitals), the three combat interfaces, and the dedicated-server socket fix.
 4. If your Blueprint already added its own `AbilitySystemComponent` or any SEC component, delete the duplicates so only the inherited ones remain.
 5. Set **AIConfig** on the Blueprint (Step 5 covers this), then assign the mesh and controller as usual.
 
@@ -105,6 +106,7 @@ Reparenting fails when your character must inherit from a different C++ class. S
     - `USECActionSetComponent`
     - `USECCombatRoleComponent`
     - `USECReactionSetComponent`
+    - `USECVitalsComponent`, with at least a Health row so `bAutoHandleDeathOnHealthDepleted` has a vital to watch
 3. **Return the ability system component** from `GetAbilitySystemComponent()`. The action and reaction loops read the pawn's ASC through this interface, so this step is mandatory.
 4. **Return the config** from `GetAIConfig_Implementation()`. Expose an `EditAnywhere TObjectPtr<UEnemyAIConfig>` property and return it, so the controller reads a per-pawn config on possession. Return `nullptr` to fall back to the controller's config.
 5. **Keep dedicated-server sockets correct** in `BeginPlay`: when `GetNetMode() == NM_DedicatedServer`, set the mesh's `VisibilityBasedAnimTickOption` to `AlwaysTickPoseAndRefreshBones`. A dedicated server never renders, so without this the mesh holds its bind pose and socket-based melee traces fire from the wrong location.
@@ -193,7 +195,7 @@ Each action produces a score, and the highest valid one wins:
 
 Other factors:
 
-- **Attribute Scorer / Attribute Gate / Stamina Gate** for GAS-backed rules.
+- **Attribute Scorer / Attribute Gate** for GAS-backed rules; **Stamina Gate**, **Vital Scorer**, or **Vital Gate** for a pawn's [vitals](/docs/soulslike-combat/vitals).
 - **RuntimeMod** from `SetGlobalMultiplier` and per-action overrides on `ActionEvaluationComponent`.
 - **Jitter** is a deterministic ±5% tie-breaker from the decision context seed.
 

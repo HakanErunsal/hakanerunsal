@@ -60,7 +60,7 @@ The four built-ins and their `Range` defaults:
 |--------|-------|-----------------|
 | **Distance Scorer** | AI-to-target distance in cm (0 with no target) | `MakeMeleeRange()` |
 | **Angle Scorer** | Angle to target in degrees, 0 facing it, 180 away (0 with no target) | `MakeFrontalAngle()` |
-| **Health Scorer** | AI health, 0-1 fraction | `MakeAlwaysOne()` |
+| **Health Scorer** | AI health, 0-1 fraction from the health vital | `MakeAlwaysOne()` |
 | **Speed Scorer** | AI horizontal speed in cm/s | `MakeAlwaysOne()` |
 
 **`FRangeEval` presets** to assign to a scorer's `Range`:
@@ -70,7 +70,7 @@ The four built-ins and their `Range` defaults:
 - `MakeLowHealthRange()`: Peaks at low health (0-0-0.25-0.5, Health Scorer, for desperate moves)
 - `MakeAlwaysOne()`: Always returns 1.0 (no preference)
 
-A Health Scorer or Speed Scorer left at its `MakeAlwaysOne()` default has no effect. Shape the Health Scorer's `Range` to favor low or high health. Use the Speed Scorer for pace-dependent moves (a running attack that should score only while sprinting). For health or stamina backed by a GameplayAttribute, use an [Attribute Scorer or Attribute Gate](#scorers--gates).
+A Health Scorer or Speed Scorer left at its `MakeAlwaysOne()` default has no effect. Shape the Health Scorer's `Range` to favor low or high health. Use the Speed Scorer for pace-dependent moves (a running attack that should score only while sprinting). For a pool other than health, such as stamina or stance, use a [Vital Scorer or Vital Gate](/docs/soulslike-combat/vitals#costing-and-scoring-actions) instead. For health or stamina backed by a GameplayAttribute, use an [Attribute Scorer or Attribute Gate](#scorers--gates).
 
 ### Cooldowns & Variance
 
@@ -136,7 +136,7 @@ Before scoring, every action runs hard gates. Fail one and the action drops out 
 | **Require Line Of Sight** | The box is ticked and the AI has no clear view of its target. |
 | **Gates** | Any `USECGate` in the action's **CustomScoring → Gates** array returns false. See [Scorers & Gates](#scorers--gates). |
 
-Stamina only blocks when you add a **Stamina Gate** (`MinStamina`) to the Scoring list, or an **Attribute Gate** for a GAS stamina pool. Decision-context Stamina defaults to 100, so an action with no Stamina Gate ignores stamina.
+Stamina only blocks when you add a **Stamina Gate** (`MinStamina`) to the Scoring list, a [Vital Gate](/docs/soulslike-combat/vitals#costing-and-scoring-actions) for any named pool, or an **Attribute Gate** for a GAS stamina pool. Decision-context Stamina reads the AI's stamina vital when one is authored, else it defaults to 100, so an action with no Stamina Gate ignores stamina.
 
 **Require Line Of Sight** reads `FDecisionContext::bHasLOS`. The [Build Decision Context](/docs/soulslike-combat/statetree#combat-and-decision) task traces from the AI's eyes to the target each tick. Tick the box for ranged shots and gap-closers. Leave it off for moves that land blind (radial slam, taunt).
 
@@ -410,14 +410,16 @@ An action with an empty Scoring list scores on `SelectionWeight` alone. No score
 |-------|------|----------|-----|
 | **Distance Scorer** | Scorer | `Range` (default `MakeMeleeRange()`) | Score by AI-to-target distance in cm (0 with no target). The `Range` OptimalMin/OptimalMax also feed the positioning query. |
 | **Angle Scorer** | Scorer | `Range` (default `MakeFrontalAngle()`) | Score by angle to the target in degrees, 0 facing it, 180 away (0 with no target). |
-| **Health Scorer** | Scorer | `Range` (default `MakeAlwaysOne()`) | Score by AI health, a 0-1 fraction from the decision context. For a GAS health attribute, use Attribute Scorer. |
+| **Health Scorer** | Scorer | `Range` (default `MakeAlwaysOne()`) | Score by AI health, a 0-1 fraction sourced from the pawn's health vital. For any other pool, use Vital Scorer; for a GAS health attribute, use Attribute Scorer. |
 | **Speed Scorer** | Scorer | `Range` (default `MakeAlwaysOne()`) | Score by AI horizontal speed in cm/s. |
-| **Stamina Gate** | Gate | `MinStamina` (default `0`) | Veto unless decision-context Stamina is at least `MinStamina`. Stamina is 100 by default; for a GAS stamina attribute, use Attribute Gate. |
+| **Vital Scorer** | Scorer | `VitalTag`, `bUseFraction` (default `true`), `Range` (default `MakeAlwaysOne()`) | Score by any named vital, the general form behind Health Scorer. No effect on a pawn with no vitals component or no row for the tag. |
+| **Stamina Gate** | Gate | `MinStamina` (default `0`) | Veto unless decision-context Stamina is at least `MinStamina`, sourced from the pawn's stamina vital when authored (else the 100 default). For any other pool, use Vital Gate; for a GAS stamina attribute, use Attribute Gate. |
+| **Vital Gate** | Gate | `VitalTag`, `MinValue` (default `0`), `bUseFraction` (default `false`) | Veto unless a named vital holds at least `MinValue`, the general form behind Stamina Gate. No effect on a pawn with no vitals component or no row for the tag. |
 | **Attribute Scorer** | Scorer | `Attribute`, `NormalizeBy`, `ValueEval` | Scale by a GameplayAttribute through an `FRangeEval` curve. Optional normalize-by attribute (e.g. Mana / MaxMana). |
 | **Attribute Gate** | Gate | `Attribute`, `MinValue`, `MaxValue` | Allow only while an attribute sits between a min and a max. |
 
 <Callout type="info">
-  **Health or stamina backed by a GameplayAttribute?** The decision context does not read GAS attributes. Health Scorer and Stamina Gate read the decision-context snapshot (BasicHealthComponent health, default-100 stamina). Point an **Attribute Scorer** or **Attribute Gate** at your attribute.
+  **Health or stamina backed by a GameplayAttribute?** The decision context does not read GAS attributes. Health Scorer and Stamina Gate read the decision-context snapshot, sourced from the pawn's health and stamina vitals (full health and 100 stamina without a vitals component or a row for the configured tag). Point an **Attribute Scorer** or **Attribute Gate** at your attribute, or a [Vital Scorer or Vital Gate](/docs/soulslike-combat/vitals#costing-and-scoring-actions) at a specific vital tag.
 </Callout>
 
 ### Examples
@@ -443,7 +445,7 @@ Subclass `USECScorer` or `USECGate` and override its one function (`ScoreMultipl
   `SeededRandom` draws from the per-action seed in `FSECScoringContext`. On the reaction path that seed is 0, so `SeededRandom` returns a fixed value. Vary reaction randomness through a built-in factor or your own context read.
 </Callout>
 
-**The scoring context snapshot.** `FSECScoringContext` copies a decision-context snapshot once per evaluation. Built-in Distance/Angle/Health/Speed Scorers and the Stamina Gate read from it:
+**The scoring context snapshot.** `FSECScoringContext` copies a decision-context snapshot once per evaluation. Built-in Distance/Angle/Health/Speed Scorers and the Stamina Gate read from it; Vital Scorer and Vital Gate read the pawn's vitals component directly through the `Vitals` field instead:
 
 | Field | Meaning |
 |-------|---------|
@@ -452,8 +454,9 @@ Subclass `USECScorer` or `USECGate` and override its one function (`ScoreMultipl
 | `Speed` | AI horizontal movement speed in cm/s. |
 | `HealthPercentage` | AI health as a 0-1 fraction. |
 | `Stamina` | AI stamina (default scale 0-100). |
+| `Vitals` | The pawn's [vitals component](/docs/soulslike-combat/vitals), or null when the pawn carries none. |
 
-These fields fill from the **action decision context** on the action path. On the **reaction path**, `ReactionEvaluationComponent` builds a separate live snapshot (distance, angle, speed, health from the pawn and `TargetOverride`; stamina stays at the default `100` unless you use an Attribute Gate). Pass `TargetOverride` when evaluating reactions so spatial scorers measure against the attacker.
+These fields fill from the **action decision context** on the action path. On the **reaction path**, `ReactionEvaluationComponent` builds a separate live snapshot (distance, angle, speed, health, and stamina from the pawn and `TargetOverride`). Pass `TargetOverride` when evaluating reactions so spatial scorers measure against the attacker.
 
 **Labeling.** Each scorer and gate reports a display name through overridable `GetDisplayName()` (`BlueprintNativeEvent`). It defaults to the class display name and drives the decision log, the score breakdown, and the editor array row title on UE 5.7+. Override it for a custom or dynamic label (fold the configured range into the name).
 </Collapsible>
@@ -639,6 +642,7 @@ The `SEC.Debug.LogActionDecisions 1` console variable does the same globally wit
 | [Movement System](/docs/soulslike-combat/movement-system) | Provides distance/angle for scoring context |
 | [Combat Roles](/docs/soulslike-combat/combat-roles) | Role changes trigger automatic ActionSet swaps |
 | [Threat Detection](/docs/soulslike-combat/threat-detection) | Threat level feeds into `FDecisionContext` |
+| [Vitals](/docs/soulslike-combat/vitals) | Health and stamina in the scoring context come from the pawn's vitals; Vital Scorer and Vital Gate cost or favor actions by any pool |
 | [Multiplayer](/docs/soulslike-combat/multiplayer) | Action state replicates to clients via `SECActionSetComponent` |
 
 <Callout type="info">

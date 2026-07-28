@@ -5,7 +5,7 @@ date: 2026-07-27
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "StateTree"]
 parent: "SoulslikeCombatDocs"
-order: 15
+order: 16
 ---
 
 <Breadcrumb items={[
@@ -156,6 +156,7 @@ Combat tasks use **`USECDecisionLibrary`** and eval/movement components. Role po
 | [Movement System](/docs/soulslike-combat/movement-system) | **AI Movement**; profiles sync on role change or **Sync Movement Profile** |
 | [Awareness System](/docs/soulslike-combat/awareness-system) | **Awareness State At Least**; **Poll Last Known Location** |
 | [Combat Roles](/docs/soulslike-combat/combat-roles) | **Poll Combat Role**; Core tree checks role before Combat |
+| [Vitals](/docs/soulslike-combat/vitals) | Self health and stamina in the decision context read the pawn's vitals |
 | [Multiplayer Support](/docs/soulslike-combat/multiplayer) | Same server-side pipeline; graph runs on authority |
 
 ---
@@ -167,7 +168,7 @@ Resolved once on EnterState from **`UEnemyAIConfig::DecisionContextParams`** via
 Each tick fills **`FDecisionContext`**:
 
 - **Spatial:** distance, angle, **`bHasLOS`** (eyes-to-eyes trace on **`LineOfSightTraceChannel`**).
-- **Self:** **`HealthPercentage`** from **`BasicHealthComponent`** if present, else 1.0; **`Stamina`** fixed at 100; **`Speed`** from pawn velocity; **`AggressionLevel`** from params.
+- **Self:** **`HealthPercentage`** from the pawn's [health vital](/docs/soulslike-combat/vitals) if present, else 1.0; **`Stamina`** from the pawn's stamina vital if present, else 100; **`Speed`** from pawn velocity; **`AggressionLevel`** from params.
 - **Target:** **`ThreatLevel`** from focus distance and facing (not **`ThreatDetectionComponent`**).
 - **Tags:** ASC tags on self and target; **`WorldTags`** from **`USECWorldTagSubsystem`** on the server.
 
