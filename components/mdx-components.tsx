@@ -30,6 +30,7 @@ import DistanceBandVisualizer from '@/components/DistanceBandVisualizer';
 import ActionCooldownDetails from '@/components/ActionCooldownDetails';
 import ExecutionMethodExplorer from '@/components/ExecutionMethodExplorer';
 import RangeEvalDetails from '@/components/RangeEvalDetails';
+import CombatControllerDetails from '@/components/CombatControllerDetails';
 import ReactionSpecDetails from '@/components/ReactionSpecDetails';
 import ReactionPreconditionDetails from '@/components/ReactionPreconditionDetails';
 import ReactionScoringDetails from '@/components/ReactionScoringDetails';
@@ -103,6 +104,7 @@ const components = {
   ActionCooldownDetails,
   ExecutionMethodExplorer,
   RangeEvalDetails,
+  CombatControllerDetails,
   ReactionSpecDetails,
   ReactionPreconditionDetails,
   ReactionScoringDetails,

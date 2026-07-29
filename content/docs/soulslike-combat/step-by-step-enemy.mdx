@@ -34,14 +34,18 @@ You already made these in Getting Started: a Blueprint from `EnemyCharacterBase`
 
 One action is enough to see the AI attack; a fight needs several that win at different ranges and moments. Open your ActionSet and add these to the **Actions** array. For the full field reference, see the [Action System](/docs/soulslike-combat/action-system).
 
+A new action ships with an empty **Scorers** list, so it scores the same at every distance and angle until you add scorers to it. This is the flow for adding one:
+
+<ScorerStackVisualizer />
+
 ### Light attack, close range
 
 | Property | Value | Notes |
 |----------|-------|-------|
 | **Action ID** | `LightAttack` | Used for chaining and cooldowns |
 | **Execution Method** | `Gameplay Ability` | Set its **Ability Class** to `GA_LightAttack` |
-| **Scoring → Distance Scorer** | `0 / 100 / 250 / 400` | Min / OptimalMin / OptimalMax / Max, in cm |
-| **Scoring → Angle Scorer** | `0 / 0 / 30 / 90` | Ideal within 30 degrees of facing |
+| **Scoring → Scorers** | Add a **Distance Scorer** | Set its **Range** to `0 / 100 / 250 / 400`, in cm |
+| **Scoring → Scorers** | Add an **Angle Scorer** | Set its **Range** to `0 / 0 / 30 / 90`, in degrees |
 | **Cooldown → Cooldown Duration** | `2.0` | Two seconds between uses |
 | **Cooldown → Initial Cooldown** | `1.0` | Cannot open with it in the first second |
 | **Selection Weight** | `1.0` | Base weight |
@@ -52,7 +56,7 @@ One action is enough to see the AI attack; a fight needs several that win at dif
 |----------|-------|-------|
 | **Action ID** | `HeavyAttack` | |
 | **Execution Method** | `Gameplay Ability` | Ability Class `GA_HeavyAttack` |
-| **Scoring → Distance Scorer** | `0 / 150 / 300 / 450` | Slightly farther than the light |
+| **Scoring → Scorers** | Add a **Distance Scorer** | Set its **Range** to `0 / 150 / 300 / 450` |
 | **Cooldown → Cooldown Duration** | `4.0` | Longer than the light |
 | **Selection Weight** | `0.8` | Comes up less often on its own |
 | **Risk Penalty** | `1.5` | Divides the score, biasing against it |
@@ -65,7 +69,7 @@ To chain light into heavy, set **Preferred Follow-Up Action** to `HeavyAttack` o
 |----------|-------|-------|
 | **Action ID** | `QuickRetreat` | |
 | **Execution Method** | `Behavior Tree Sequence` | Set **Behavior Tree Sequence** to `[BT_QuickBackstep]` |
-| **Scoring → Distance Scorer** | `0 / 0 / 100 / 200` | Best when very close |
+| **Scoring → Scorers** | Add a **Distance Scorer** | Set its **Range** to `0 / 0 / 100 / 200` |
 | **Cooldown → Cooldown Duration** | `3.0` | |
 | **Selection Weight** | `1.5` | Higher priority in range |
 | **Tag Score Multipliers** | `State.PlayerAttacking → 2.0` | Doubles the score while the player attacks |
@@ -90,7 +94,7 @@ The attacks play, but nothing lands until the weapon runs melee traces. The full
 
 ## 5. StateTree, if you want authored structure
 
-Leave the config's `Default State Tree` empty and the native loop runs the combat you just built. Set it to `StateTree_SEC_Core`, or author your own, when you need patrol, investigation, or boss phases on top. The [StateTree Tasks](/docs/soulslike-combat/statetree) page covers the graph nodes.
+Leave the config's `Default State Tree` empty and the native loop runs the combat you built. Set it to `StateTree_SEC_Core`, or author your own, when you need patrol, investigation, or boss phases on top. The [StateTree Tasks](/docs/soulslike-combat/statetree) page covers the graph nodes.
 
 ---
 
@@ -105,10 +109,9 @@ Turn on the decision logs while tuning:
 The decision log reads something like:
 
 ```
-LogEvaluation: Evaluating 3 actions for BP_MyEnemy...
-LogEvaluation: LightAttack  -> 0.95
-LogEvaluation: HeavyAttack  -> 0.60
-LogEvaluation: QuickRetreat -> 0.10
+LogEvaluation: [EvalComp] LightAttack: Ctx=0.95 Nov=1.00 Chain=1.00 Risk=1.00 Runtime=1.00 Custom=0.95 -> 0.90
+LogEvaluation: [EvalComp] HeavyAttack: Ctx=0.40 Nov=1.00 Chain=1.00 Risk=0.67 Runtime=1.00 Custom=0.40 -> 0.11
+LogEvaluation: [EvalComp] Committed to: LightAttack (score 0.90)
 ```
 
 Expect the enemy to close to its scored range, strafe, open with a light attack, sometimes chain into the heavy, and retreat when you crowd it or press an attack.
@@ -122,10 +125,10 @@ Per-scorer values live in `FScoreBreakdown.CustomScores`, keyed by each scorer's
 | Problem | Cause | Fix |
 |---------|-------|-----|
 | AI does not attack | No ability on the action | Set the Execution Method's Ability Class, and confirm the ability activates |
-| AI repeats one action | Only one scores well | Add actions with different distance and angle ranges |
+| AI repeats one action | Only one scores well, or the others have no scorers | Add a Distance Scorer and an Angle Scorer per action, with different ranges |
 | AI does not move | No NavMesh | Add a `NavMeshBoundsVolume` and build navigation |
 | Weapon does not hit | Socket ID mismatch | Match the notify's Socket IDs to the weapon's `TraceSockets` ID (see [Melee Trace](/docs/soulslike-combat/melee-trace)) |
-| AI stuck after an attack | End tag never sent | Inherit the ability from `GA_SEC_Attack` or `GameplayAbilityBase` |
+| AI stuck after an attack | The ability never ends | Confirm it reaches **End Ability** on every exit path. The Execution Method's **Ability Timeout** catches one that does not, and logs the action that hung. |
 
 
 <DocNav prev={{ title: "Core Architecture", href: "/docs/soulslike-combat/architecture" }} next={{ title: "Movement System", href: "/docs/soulslike-combat/movement-system" }} />

@@ -855,6 +855,30 @@ export const THREAT_RESPONSE_PROFILE_DETAILS: UeDetailCategory[] = [
   },
 ];
 
+/** USECCombatControllerComponent editable fields, verified against SECCombatControllerComponent.h */
+export const COMBAT_CONTROLLER_DETAILS: UeDetailCategory[] = [
+  {
+    title: "AI|SEC",
+    properties: [{ label: "Default AI Config", value: { kind: "asset", value: "None" } }],
+  },
+  {
+    title: "AI|SEC|Combat Role",
+    properties: [{ label: "Auto Register For Combat Roles", value: b(true) }],
+  },
+  {
+    title: "AI|SEC|Threat Response",
+    properties: [{ label: "Enable Threat Detection", value: b(true) }],
+  },
+  {
+    title: "AI|SEC|Weapon",
+    properties: [{ label: "Drop Weapon On Death", value: b(true) }],
+  },
+  {
+    title: "AI|SEC|Vitals",
+    properties: [{ label: "Auto Handle Death On Health Depleted", value: b(true) }],
+  },
+];
+
 /** USECMeleeTraceComponent core fields — verified against SECMeleeTraceComponent.h */
 export const MELEE_TRACE_COMPONENT_DETAILS: UeDetailCategory[] = [
   {

@@ -33,12 +33,15 @@ Set the config on the pawn for per-enemy customization, or on the `SECCombatCont
 
 ### SECCombatControllerComponent Properties
 
-| Property | Category | Default | Purpose |
-|----------|----------|---------|----------|
-| `DefaultAIConfig` | AI\|SEC | `nullptr` | Fallback AI Config when pawn doesn't provide one |
-| `bAutoRegisterForCombatRoles` | Combat Role | `true` | Auto-register with the role subsystem on possession |
-| `bEnableThreatDetection` | Threat Response | `true` | Enable `ThreatDetectionComponent` on BeginPlay |
-| `bDropWeaponOnDeath` | AI\|SEC\|Weapon | `true` | Auto-drop equipped weapon with physics on death. Set to `false` to handle weapon drop manually (e.g. via AnimNotify or `K2_OnDeath`). |
+<CombatControllerDetails />
+
+| Property | Purpose |
+|----------|----------|
+| **Default AI Config** | Fallback AI Config when the pawn provides none |
+| **Auto Register For Combat Roles** | Register with the role subsystem on possession |
+| **Enable Threat Detection** | Turn on `ThreatDetectionComponent` at BeginPlay |
+| **Drop Weapon On Death** | Drop the equipped weapon with physics on death. Untick to handle the drop yourself, from an AnimNotify or `K2_OnDeath`. |
+| **Auto Handle Death On Health Depleted** | Run `HandleDeath()` when the health vital empties |
 
 ### SECCombatControllerComponent Delegates
 
@@ -53,11 +56,9 @@ Set the config on the pawn for per-enemy customization, or on the `SECCombatCont
 
 These settings live on the `MovementBehaviorProfile` data asset, so they automatically change when the AI switches combat roles:
 
-| Property | Default | Purpose |
-|----------|---------|----------|
-| `bSwapStrafeOnHighThreat` | `false` | Swap strafe direction when threat duration exceeded |
-| `bAdjustDistanceByThreat` | `false` | Adjust movement distance based on threat level |
-| `ThreatDistanceScale` | `1.0` | Scale factor: `DistMultiplier = 1.0 + ThreatLevel * Scale` |
+<ThreatResponseProfileDetails />
+
+**Threat Distance Scale** feeds `DistMultiplier = 1.0 + ThreatLevel * Scale`, and stays greyed out until **Adjust Distance By Threat** is on.
 
 ### Full Structure
 
@@ -236,6 +237,12 @@ struct FActionSpec
 
 The sweet-spot curve used as the `Range` on the Distance, Angle, Health, and Speed Scorers, and as the `ValueEval` on the Attribute Scorer:
 
+<RangeEvalDetails />
+
+The ramp between an edge and the sweet spot is a curve, not a step: the distance from the edge is raised to **Exponent**. **Clamp To Zero** holds the score at zero outside the range instead of letting it go negative.
+
+<Collapsible title="The struct in C++" badge="C++">
+
 ```cpp
 struct FRangeEval
 {
@@ -243,21 +250,12 @@ struct FRangeEval
     float OptimalMin;    // Score = 1.0 starts here
     float OptimalMax;    // Score = 1.0 ends here
     float MaxValue;      // Score = 0 above this (invalid)
-    float Exponent;      // Falloff sharpness outside the sweet spot; 2.0 is smooth, 4.0 sharp (default 2.0)
-    bool bClampToZero;   // Hold the score at zero outside the range rather than letting it go negative (default true)
+    float Exponent;      // Falloff sharpness outside the sweet spot (default 2.0)
+    bool bClampToZero;   // Hold the score at zero outside the range (default true)
 };
-
-The ramp between an edge and the sweet spot is a curve, not a step: the distance from the edge is raised to **Exponent**.
 ```
 
-**Visualization:**
-```
-   0    100       250      400
-   |-----|========|--------|
-  0.0   1.0     1.0      0.0
-   ↑     ↑        ↑        ↑
-  Min  OptMin  OptMax    Max
-```
+</Collapsible>
 
 **Example:** A Distance Scorer valid 0-400cm, optimal 100-250cm:
 ```cpp
