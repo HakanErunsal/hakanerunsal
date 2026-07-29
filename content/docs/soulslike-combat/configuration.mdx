@@ -5,7 +5,7 @@ date: 2026-07-29
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Configuration", "Reference"]
 parent: "SoulslikeCombatDocs"
-order: 14
+order: 15
 ---
 
 
@@ -187,8 +187,9 @@ struct FActionSpec
         int32 MaxConsecutiveUses;      // Consecutive uses before another action must run; -1 is unlimited
 
     // Chaining
-    FName PreferredNextActionId;       // Bonus for this action next
-    float ChainBonusMultiplier;        // Score multiplier if chaining
+    TArray<FActionChainLink> ChainLinks; // Follow-ups this action prefers
+        FName TargetActionId;            // Action ID of the follow-up
+        float BonusMultiplier;           // Score multiplier it receives (default 1.5)
 
     // Preconditions (Hard Gates)
     FGameplayTagContainer RequiresTags;// Must have these to use

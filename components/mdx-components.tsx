@@ -28,6 +28,8 @@ import MovementEvaluatorDetails from '@/components/MovementEvaluatorDetails';
 import MovementProfileDetails from '@/components/MovementProfileDetails';
 import DistanceBandVisualizer from '@/components/DistanceBandVisualizer';
 import ActionCooldownDetails from '@/components/ActionCooldownDetails';
+import ActionChainLinkDetails from '@/components/ActionChainLinkDetails';
+import ActionCardStateLegend from '@/components/ActionCardStateLegend';
 import ExecutionMethodExplorer from '@/components/ExecutionMethodExplorer';
 import RangeEvalDetails from '@/components/RangeEvalDetails';
 import CombatControllerDetails from '@/components/CombatControllerDetails';
@@ -104,6 +106,8 @@ const components = {
   MovementProfileDetails,
   DistanceBandVisualizer,
   ActionCooldownDetails,
+  ActionChainLinkDetails,
+  ActionCardStateLegend,
   ExecutionMethodExplorer,
   RangeEvalDetails,
   CombatControllerDetails,

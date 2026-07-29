@@ -1,6 +1,24 @@
 import { cn } from "@/lib/utils";
 
 /**
+ * Action Set card colors, from SECCardColors in SEdNode_SECActionNode.cpp.
+ * These are the plugin's own graph-editor colors rather than engine palette
+ * entries, so a component showing card states matches an editor screenshot.
+ */
+export const SEC_CARD = {
+  runningBorder: "rgb(126, 208, 108)",
+  runningBody: "rgb(54, 92, 48)",
+  winnerBorder: "rgb(242, 178, 72)",
+  winnerBody: "rgb(118, 82, 40)",
+  cooldownBorder: "rgb(146, 106, 48)",
+  cooldownBody: "rgb(72, 54, 34)",
+  vetoedBorder: "rgb(112, 78, 72)",
+  vetoedBody: "rgb(52, 42, 40)",
+  disabledBorder: "rgb(104, 98, 90)",
+  disabledBody: "rgb(64, 60, 55)",
+} as const;
+
+/**
  * UE 5.8 Starship StyleColors — from
  * Engine/Source/Runtime/SlateCore/Private/Styling/StyleColors.cpp
  */

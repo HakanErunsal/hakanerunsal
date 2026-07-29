@@ -44,47 +44,38 @@ Two base numbers sit on every action:
 - **Selection Weight** biases the action up or down. Weight `2.0` doubles its score against a weight `1.0` action.
 - **Risk Penalty** divides the final score to hold risky moves back. `1.0` is no penalty, `2.0` halves the score (a high-risk heavy attack), `0.5` doubles it (a safe move).
 
-**Scorers** (distance, angle, health, speed, and custom ones) fold in as multipliers. Leave them off and that dimension does not affect the score. An action with no Distance Scorer scores the same at any range. A scorer that returns **0** zeroes the whole product for that action.
+**Scorers** fold in as multipliers, one per dimension you opt into. Leave a dimension off and it does not affect the score: an action with no Distance Scorer scores the same at any range. A scorer that returns **0** zeroes the whole product for that action. The full set of built-ins is in [Scorers & Gates](#scorers--gates).
 
-### Distance, Angle, Health & Speed Scorers
+### Range Curves
 
-Add a **Distance Scorer** to score against AI-to-target distance. Leave it off and the action is distance-agnostic. The same pattern covers angle, health, and speed: one scorer per dimension, each with a `Range` curve (`FRangeEval`) for its optimal zone. An attack can be valid from 0-500cm while its score peaks at 150-250cm.
+Every built-in scorer shapes its dimension through one `Range` property, an `FRangeEval` curve. Below **Min Value** the score is 0; it ramps up to 1.0 across **Optimal Min**, holds at 1.0 through the **Optimal Min → Optimal Max** sweet spot, then ramps back down to 0 at **Max Value**. `Exponent` shapes the falloff. So an attack can be valid from 0-500cm while its score peaks at 150-250cm.
 
-Each scorer exposes a single `Range` property. Below **Min Value** the score is 0; it ramps up to 1.0 across **Optimal Min**, holds at 1.0 through the **Optimal Min → Optimal Max** sweet spot, then ramps back down to 0 at **Max Value**. `Exponent` shapes the falloff. Distance Scorer `Range` at the melee-preset default:
+Distance Scorer `Range` at the melee-preset default:
 
 <RangeEvalDetails />
 
-The four built-ins and their `Range` defaults:
-
-| Scorer | Reads | `Range` default |
-|--------|-------|-----------------|
-| **Distance Scorer** | AI-to-target distance in cm (0 with no target) | `MakeMeleeRange()` |
-| **Angle Scorer** | Angle to target in degrees, 0 facing it, 180 away (0 with no target) | `MakeFrontalAngle()` |
-| **Health Scorer** | AI health, 0-1 fraction from the health vital | `MakeAlwaysOne()` |
-| **Speed Scorer** | AI horizontal speed in cm/s | `MakeAlwaysOne()` |
-
-**`FRangeEval` presets** to assign to a scorer's `Range`:
+**Presets** to assign to a scorer's `Range`:
 - `MakeMeleeRange()`: Close-range distance band (0-100-250-500)
 - `MakeRangedRange()`: Long-range distance band (300-500-1000-1800)
 - `MakeFrontalAngle()`: Forward-facing cone (0-0-30-90, Angle Scorer)
 - `MakeLowHealthRange()`: Peaks at low health (0-0-0.25-0.5, Health Scorer, for desperate moves)
 - `MakeAlwaysOne()`: Always returns 1.0 (no preference)
 
-A Health Scorer or Speed Scorer left at its `MakeAlwaysOne()` default has no effect. Shape the Health Scorer's `Range` to favor low or high health. Use the Speed Scorer for pace-dependent moves (a running attack that should score only while sprinting). For a pool other than health, such as stamina or stance, use a [Vital Scorer or Vital Gate](/docs/soulslike-combat/vitals#costing-and-scoring-actions) instead. For health or stamina backed by a GameplayAttribute, use an [Attribute Scorer or Attribute Gate](#scorers--gates).
+A scorer left at `MakeAlwaysOne()` has no effect, which is the default for the Health and Speed Scorers. Shape the Health Scorer's `Range` to favor low or high health, and use the Speed Scorer for pace-dependent moves such as a running attack that should score only while sprinting.
 
 ### Cooldowns & Variance
 
-An action's **Cooldown** group controls reuse. `Cooldown Duration` is the base delay. `Initial Cooldown` blocks the move at spawn so enemies cannot open with a heavy hit. `Randomization (%)` adds ±variance (`0.2` = ±20%). `Spawn Cooldown Chance` rolls a starting cooldown so a pack does not attack in lockstep. `Max Consecutive Uses` (`-1` = unlimited, `2` = must switch after two uses) stops spam. `Interrupt Refund (%)` hands part of the cooldown back when the action is cut short. Defaults:
+An action's **Cooldown** group controls reuse. `Cooldown Duration` is the base delay. `Initial Cooldown` blocks the move at spawn so enemies cannot open with a heavy hit. `Randomization (%)` adds ±variance (`0.2` = ±20%). `Spawn Cooldown Chance` rolls a starting cooldown so a pack does not attack in lockstep. `Max Consecutive Uses` (`-1` = unlimited, `2` = must switch after two uses) stops spam. Defaults:
 
 <ActionCooldownDetails />
 
 An action commits its cooldown only **after** `BeginExecute` succeeds and [PreExecute](#lifecycle-hooks) hooks do not veto. If activation fails or a hook sets `bVetoExecution`, no cooldown is stamped and the action can retry next tick. A [`CanActivateAbility`](#contextual-execution) refusal during ability activation follows the same rule: off cooldown, free to retry.
 
+**Interrupt Refund (%)** covers the case where an action starts, commits its cooldown, and is then cut short: an attack stopped in its windup would otherwise pay the same price as one that landed. `0.5` hands back half the time that was left. A clean finish and a timeout pay in full. It defaults to `0`, so nothing changes until you set it.
+
 ### Recovery Time
 
 Recovery time suspends offensive action selection for a set number of seconds after an enemy commits a move. The enemy still strafes, repositions, and reacts (parry, dodge, counter). It does not start a new attack. Use it when a relentless attacker needs gaps between swings.
-
-An action commits its cooldown the moment it starts, so an attack interrupted in its windup pays the same price as one that landed. Set **Interrupt Refund (%)** to hand back that share of the time left: `0.5` halves the remaining wait when a reaction or a transition takes the action away. A clean finish and a timeout still pay in full. It defaults to `0`, so nothing changes until you set it.
 
 Cooldown gates re-use of one move. Recovery gates **all** offensive actions after one ends. Tune the global windows on `UEnemyAIConfig` under **Recovery**. Every field defaults to `0`, so recovery stays off until you set a value.
 
@@ -106,14 +97,16 @@ To watch the gate at runtime, set `SEC.Debug.LogActionDecisions 1`. While an ene
 - **Timed out** uses the global `ActionRecoveryTime`, never the per-action override.
 - **Failed** stamps no recovery window.
 
-**Combos flow through recovery.** An action's preferred follow-up (`PreferredNextActionId`) can still be selected while the enemy recovers, for `ChainFollowupWindowSeconds` after the action ends. Set that window on the evaluation component (default `0.6`). `0` makes the follow-up wait out recovery like any other action. Only the named follow-up bypasses the gate. A non-completion end (interrupt or cancel) clears it, so a parried enemy cannot combo through its own recovery.
+**Combos flow through recovery.** An action's chain-link targets can still be selected while the enemy recovers, for `ChainFollowupWindowSeconds` after the action ends. Set that window on the evaluation component (default `0.6`). `0` makes the follow-up wait out recovery like any other action. Only the actions its chain links name bypass the gate. A non-completion end (interrupt or cancel) clears it, so a parried enemy cannot combo through its own recovery.
 
 **Stacked or conditional recovery.** For recovery that depends on state (extra recovery at low health), call `RequestRecoveryTime` from a [Lifecycle Hook](#lifecycle-hooks) `PostExecute`. The contribution folds into the window.
 </Collapsible>
 
 ### Novelty & Chains
 - **Novelty:** Recently used actions take a score penalty, so the AI mixes moves without hard randomization.
-- **Chains:** Set `PreferredNextActionId` on an action. After a Light Attack, Heavy Finisher receives a `ChainBonusMultiplier` boost (default `1.5`).
+- **Chains:** Add an entry to an action's **Chain Links**, naming the follow-up it prefers and the **Bonus Multiplier** that follow-up receives (default `1.5`). After a Light Attack completes, Heavy Finisher scores higher for a short window. One action can prefer several follow-ups, each with its own bonus.
+
+Wiring these on a canvas, and watching a chain fire, is what the [Action Set Editor](/docs/soulslike-combat/action-set-editor#building-a-combo) is for.
 
 <Protip 
   title="Organic Combos" 
@@ -419,7 +412,7 @@ An action with an empty Scoring list scores on `SelectionWeight` alone. No score
 | **Attribute Gate** | Gate | `Attribute`, `MinValue`, `MaxValue` | Allow only while an attribute sits between a min and a max. |
 
 <Callout type="info">
-  **Health or stamina backed by a GameplayAttribute?** The decision context does not read GAS attributes. Health Scorer and Stamina Gate read the decision-context snapshot, sourced from the pawn's health and stamina vitals (full health and 100 stamina without a vitals component or a row for the configured tag). Point an **Attribute Scorer** or **Attribute Gate** at your attribute, or a [Vital Scorer or Vital Gate](/docs/soulslike-combat/vitals#costing-and-scoring-actions) at a specific vital tag.
+  The decision context does not read GAS attributes. Health Scorer and Stamina Gate read the snapshot sourced from the pawn's vitals, defaulting to full health and 100 stamina when the pawn carries no vitals component or no row for the configured tag. For an attribute, reach for **Attribute Scorer** or **Attribute Gate**; for a specific pool, a [Vital Scorer or Vital Gate](/docs/soulslike-combat/vitals#costing-and-scoring-actions).
 </Callout>
 
 ### Examples
@@ -612,7 +605,7 @@ A refusal costs nothing: SEC commits no cooldown and interrupts no running actio
 ## Quick Setup
 
 1.  **Create Asset:** Right-click → **Miscellaneous** → **Data Asset** → **ActionSet**.
-2.  **Define Actions:** Each entry needs an `ActionId`, `SelectionWeight`, an Execution Method, and (for range behavior) a Distance Scorer in its Scoring list. A new action with no Distance Scorer is distance-agnostic. Toggle `bEnabled` off to disable an action without deleting it.
+2.  **Define Actions:** Each entry needs an `ActionId`, `SelectionWeight`, an Execution Method, and (for range behavior) a Distance Scorer in its Scoring list. Toggle `bEnabled` off to disable an action without deleting it.
 3.  **Assign:** Drop the ActionSet into your `EnemyAIConfig`, or set it for testing:
 
 ```cpp
@@ -624,6 +617,10 @@ See [Configuration Reference](/docs/soulslike-combat/configuration) for the full
 ---
 
 ## Debug Tools
+
+To watch an enemy score these actions while the game runs, open its Action Set and press Play: the [Action Set Editor](/docs/soulslike-combat/action-set-editor#watching-the-ai-decide) lights each action up with its live score, its cooldown, and the gate that refused it.
+
+For a record you can scroll back through, the component logs the same reasoning:
 
 ```cpp
 // On ActionEvaluationComponent:
@@ -691,5 +688,5 @@ ActionSet assets migrate once on load; behavior is unchanged, and re-saving the 
 
 <DocNav 
   prev={{ title: "Movement System", href: "/docs/soulslike-combat/movement-system" }} 
-  next={{ title: "Reaction System", href: "/docs/soulslike-combat/reaction-system" }} 
+  next={{ title: "Action Set Editor", href: "/docs/soulslike-combat/action-set-editor" }} 
 />

@@ -18,6 +18,7 @@ const badgeStyles: Record<string, string> = {
   "C++": "bg-primary/10 text-primary",
   Advanced: "bg-amber-400/10 text-amber-500",
   Alternative: "bg-emerald-400/10 text-emerald-500",
+  Multiplayer: "bg-sky-400/10 text-sky-400",
 };
 
 /**

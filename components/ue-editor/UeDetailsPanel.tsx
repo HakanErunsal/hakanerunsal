@@ -426,6 +426,22 @@ export const ACTION_COOLDOWN_DETAILS: UeDetailCategory[] = [
 ];
 
 //=========================================================================
+// Template data: FActionChainLink defaults (one entry in an action's Chain Links)
+// Verified against Plugins/SoulslikeEnemyCombat/.../Abilities/ActionSet.h
+//=========================================================================
+
+export const ACTION_CHAIN_LINK_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Chaining",
+    properties: [
+      { label: "Target Action ID", value: { kind: "text", value: "HeavyFinisher" } },
+      // ClampMin 1.0, no ClampMax -> no fill bar.
+      { label: "Bonus Multiplier", value: n(1.5, 1) },
+    ],
+  },
+];
+
+//=========================================================================
 // Template data: FRangeEval on a Distance Scorer (melee preset default)
 // Verified against Plugins/SoulslikeEnemyCombat/.../Abilities/ActionSet.h
 // Distance Scorer's Range defaults to MakeMeleeRange() = 0/100/250/500.
