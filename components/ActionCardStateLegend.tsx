@@ -23,7 +23,7 @@ const STATES: CardState[] = [
     detail: "One card at a time. Outranks every other look, so a running action still reads as running.",
   },
   {
-    badge: "CHOSEN",
+    badge: "TOP PICK",
     border: SEC_CARD.winnerBorder,
     body: SEC_CARD.winnerBody,
     meaning: "Scored highest this round",
