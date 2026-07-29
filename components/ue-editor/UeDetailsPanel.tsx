@@ -855,6 +855,137 @@ export const THREAT_RESPONSE_PROFILE_DETAILS: UeDetailCategory[] = [
   },
 ];
 
+/** UEnemyAIConfig's set-management categories, the part no other panel covers. Verified against EnemyAIConfig.h. */
+export const ENEMY_AI_CONFIG_SETS_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Action Sets",
+    properties: [
+      { label: "Manage Action Sets Automatically", value: b(true) },
+      { label: "Default Action Set", value: { kind: "asset", value: "DA_SEC_ActionSet_Attacker" } },
+      { label: "Role Action Sets", value: { kind: "text", value: "3 Array elements" } },
+    ],
+  },
+  {
+    title: "Reaction Sets",
+    properties: [
+      { label: "Manage Reaction Sets Automatically", value: b(true) },
+      { label: "Default Reaction Set", value: { kind: "asset", value: "DA_SEC_ReactionSet_Default" } },
+      { label: "Role Reaction Sets", value: { kind: "text", value: "1 Array element" } },
+    ],
+  },
+  {
+    title: "Movement Profiles",
+    properties: [
+      { label: "Manage Movement Profiles Automatically", value: b(true) },
+      { label: "Default Movement Profile", value: { kind: "asset", value: "DA_SEC_Movement_Attacker" } },
+      { label: "Role Movement Profiles", value: { kind: "text", value: "2 Array elements" } },
+    ],
+  },
+];
+
+/** The three FActionSpec setups the walkthrough builds, verified against ActionSet.h. */
+export const WALKTHROUGH_LIGHT_ATTACK_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Identity",
+    properties: [
+      { label: "Action Id", value: { kind: "text", value: "LightAttack" } },
+      { label: "Enabled", value: b(true) },
+    ],
+  },
+  {
+    title: "Execution",
+    properties: [
+      { label: "Execution Method", value: { kind: "enum", value: "Gameplay Ability" } },
+      { label: "  Ability Class", value: { kind: "asset", value: "GA_LightAttack" } },
+    ],
+  },
+  {
+    title: "Scoring",
+    properties: [
+      { label: "Selection Weight", value: n(1, 0.01) },
+      { label: "Scorers", value: { kind: "text", value: "2 Array elements" } },
+      { label: "  Distance Scorer", value: { kind: "text", value: "Range 0 / 100 / 250 / 400" } },
+      { label: "  Angle Scorer", value: { kind: "text", value: "Range 0 / 0 / 30 / 90" } },
+      { label: "Gates", value: { kind: "text", value: "0 Array elements" } },
+    ],
+  },
+  {
+    title: "Chaining",
+    properties: [
+      { label: "Preferred Follow-Up Action", value: { kind: "text", value: "HeavyAttack" } },
+      { label: "Chain Bonus Multiplier", value: n(1.5, 1) },
+    ],
+  },
+  {
+    title: "Cooldown",
+    properties: [
+      { label: "Cooldown Duration", value: n(2, 0) },
+      { label: "Initial Cooldown", value: n(1, 0) },
+    ],
+  },
+];
+
+export const WALKTHROUGH_HEAVY_ATTACK_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Identity",
+    properties: [
+      { label: "Action Id", value: { kind: "text", value: "HeavyAttack" } },
+      { label: "Enabled", value: b(true) },
+    ],
+  },
+  {
+    title: "Execution",
+    properties: [
+      { label: "Execution Method", value: { kind: "enum", value: "Gameplay Ability" } },
+      { label: "  Ability Class", value: { kind: "asset", value: "GA_HeavyAttack" } },
+    ],
+  },
+  {
+    title: "Scoring",
+    properties: [
+      { label: "Selection Weight", value: n(0.8, 0.01) },
+      { label: "Risk Penalty", value: n(1.5, 0.1) },
+      { label: "Scorers", value: { kind: "text", value: "1 Array element" } },
+      { label: "  Distance Scorer", value: { kind: "text", value: "Range 0 / 150 / 300 / 450" } },
+    ],
+  },
+  {
+    title: "Cooldown",
+    properties: [{ label: "Cooldown Duration", value: n(4, 0) }],
+  },
+];
+
+export const WALKTHROUGH_RETREAT_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Identity",
+    properties: [
+      { label: "Action Id", value: { kind: "text", value: "QuickRetreat" } },
+      { label: "Enabled", value: b(true) },
+    ],
+  },
+  {
+    title: "Execution",
+    properties: [
+      { label: "Execution Method", value: { kind: "enum", value: "Behavior Tree Sequence" } },
+      { label: "  Behavior Tree Sequence", value: { kind: "text", value: "1 Array element" } },
+      { label: "    [0]", value: { kind: "asset", value: "BT_QuickBackstep" } },
+    ],
+  },
+  {
+    title: "Scoring",
+    properties: [
+      { label: "Selection Weight", value: n(1.5, 0.01) },
+      { label: "Scorers", value: { kind: "text", value: "1 Array element" } },
+      { label: "  Distance Scorer", value: { kind: "text", value: "Range 0 / 0 / 100 / 200" } },
+      { label: "Tag Score Multipliers", value: { kind: "text", value: "State.PlayerAttacking = 2.0" } },
+    ],
+  },
+  {
+    title: "Cooldown",
+    properties: [{ label: "Cooldown Duration", value: n(3, 0) }],
+  },
+];
+
 /** USECCombatControllerComponent editable fields, verified against SECCombatControllerComponent.h */
 export const COMBAT_CONTROLLER_DETAILS: UeDetailCategory[] = [
   {

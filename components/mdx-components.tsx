@@ -31,6 +31,8 @@ import ActionCooldownDetails from '@/components/ActionCooldownDetails';
 import ExecutionMethodExplorer from '@/components/ExecutionMethodExplorer';
 import RangeEvalDetails from '@/components/RangeEvalDetails';
 import CombatControllerDetails from '@/components/CombatControllerDetails';
+import EnemyAIConfigSetsDetails from '@/components/EnemyAIConfigSetsDetails';
+import { WalkthroughLightAttackDetails, WalkthroughHeavyAttackDetails, WalkthroughRetreatDetails } from '@/components/WalkthroughActionDetails';
 import ReactionSpecDetails from '@/components/ReactionSpecDetails';
 import ReactionPreconditionDetails from '@/components/ReactionPreconditionDetails';
 import ReactionScoringDetails from '@/components/ReactionScoringDetails';
@@ -105,6 +107,10 @@ const components = {
   ExecutionMethodExplorer,
   RangeEvalDetails,
   CombatControllerDetails,
+  EnemyAIConfigSetsDetails,
+  WalkthroughLightAttackDetails,
+  WalkthroughHeavyAttackDetails,
+  WalkthroughRetreatDetails,
   ReactionSpecDetails,
   ReactionPreconditionDetails,
   ReactionScoringDetails,

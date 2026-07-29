@@ -60,7 +60,25 @@ These settings live on the `MovementBehaviorProfile` data asset, so they automat
 
 **Threat Distance Scale** feeds `DistMultiplier = 1.0 + ThreatLevel * Scale`, and stays greyed out until **Adjust Distance By Threat** is on.
 
-### Full Structure
+### The asset in the editor
+
+An `EnemyAIConfig` opens as four groups. Role registration and target selection:
+
+<CombatRoleConfigDetails />
+
+Which brain runs, and what the decision context feeds it:
+
+<StateTreeBehaviorConfigDetails />
+
+The sets it swaps per role. Each **Role ... Sets** array pairs a role tag with an asset, so an Attacker and a Flanker can run different moves off the same enemy:
+
+<EnemyAIConfigSetsDetails />
+
+Perception memory, off until you assign a config:
+
+<AwarenessEnemyAIConfigDetails />
+
+<Collapsible title="The asset in C++" badge="C++">
 
 ```cpp
 // Role Registration
@@ -99,58 +117,7 @@ bool bManageAwarenessAutomatically;   // Apply AwarenessConfig on possession (de
 USECAwarenessConfig* AwarenessConfig; // Perception memory tuning; unset leaves awareness off
 ```
 
-### Example
-
-```cpp /DA_SEC_CombatConfig_Default/
-Name: DA_SEC_CombatConfig_Default
-
-CombatRole
-  AutoRegisterForCombatRoles: true
-
-RoleRegistration
-  AllowedRoles:
-    - SEC.Role.Attacker
-    - SEC.Role.Flanker
-    - SEC.Role.Supporter
-    - SEC.Role.Waiter
-  Priority: 0
-  PreferredRole: SEC.Role.Attacker
-
-FitnessEvaluators
-  - DistanceEvaluator
-  - BP_HealthEvaluator
-  - BP_RandomEvaluator
-
-Behavior
-  StateTree: StateTree_SEC_Core   // optional; leave empty to run the native C++ combat loop
-
-ActionSets
-  ManageActionSetsAutomatically: true
-  DefaultActionSet: DA_SEC_ActionSet_Attacker
-
-RoleActionSets
-  SEC.Role.Waiter   → DA_SEC_ActionSet_Waiter
-  SEC.Role.Flanker  → DA_SEC_ActionSet_Flanker
-  SEC.Role.Supporter → DA_SEC_ActionSet_Ranged
-
-ReactionSets
-  bManageReactionSetsAutomatically: true
-  DefaultReactionSet: DA_SEC_ReactionSet_Default
-
-RoleReactionSets
-  SEC.Role.Attacker → DA_SEC_ReactionSet_Aggressive
-  SEC.Role.Waiter   → DA_SEC_ReactionSet_Defensive
-
-MovementProfiles
-  ManageMovementProfilesAutomatically: true
-  DefaultMovementProfile: DA_SEC_Movement_Aggressive
-
-RoleMovementProfiles
-  SEC.Role.Waiter   → DA_SEC_Movement_Passive
-  SEC.Role.Flanker  → DA_SEC_Movement_Flanking
-```
-
-> **Fitness Evaluators** are editor-instanced UObjects. Inherit from `URoleEvaluator` to create custom scoring logic for role assignment.
+</Collapsible>
 
 ### Decision Context Params
 

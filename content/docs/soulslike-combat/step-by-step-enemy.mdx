@@ -40,39 +40,21 @@ A new action ships with an empty **Scorers** list, so it scores the same at ever
 
 ### Light attack, close range
 
-| Property | Value | Notes |
-|----------|-------|-------|
-| **Action ID** | `LightAttack` | Used for chaining and cooldowns |
-| **Execution Method** | `Gameplay Ability` | Set its **Ability Class** to `GA_LightAttack` |
-| **Scoring → Scorers** | Add a **Distance Scorer** | Set its **Range** to `0 / 100 / 250 / 400`, in cm |
-| **Scoring → Scorers** | Add an **Angle Scorer** | Set its **Range** to `0 / 0 / 30 / 90`, in degrees |
-| **Cooldown → Cooldown Duration** | `2.0` | Two seconds between uses |
-| **Cooldown → Initial Cooldown** | `1.0` | Cannot open with it in the first second |
-| **Selection Weight** | `1.0` | Base weight |
+<WalkthroughLightAttackDetails />
+
+Distance ranges are centimetres and angle ranges degrees. **Initial Cooldown** keeps the enemy from opening the fight with this attack. The chaining rows are what feed the heavy attack below.
 
 ### Heavy attack, the combo finisher
 
-| Property | Value | Notes |
-|----------|-------|-------|
-| **Action ID** | `HeavyAttack` | |
-| **Execution Method** | `Gameplay Ability` | Ability Class `GA_HeavyAttack` |
-| **Scoring → Scorers** | Add a **Distance Scorer** | Set its **Range** to `0 / 150 / 300 / 450` |
-| **Cooldown → Cooldown Duration** | `4.0` | Longer than the light |
-| **Selection Weight** | `0.8` | Comes up less often on its own |
-| **Risk Penalty** | `1.5` | Divides the score, biasing against it |
+<WalkthroughHeavyAttackDetails />
 
-To chain light into heavy, set **Preferred Follow-Up Action** to `HeavyAttack` on the light attack, and **Chain Bonus Multiplier** to `1.5`. The heavy scores 50% higher for one pick after a light lands.
+A lower **Selection Weight** and a **Risk Penalty** above one both bias against picking this on its own, which is what leaves room for the chain: the light attack's **Preferred Follow-Up Action** and **Chain Bonus Multiplier** score the heavy 50% higher for one pick after a light lands.
 
 ### Retreat, when crowded
 
-| Property | Value | Notes |
-|----------|-------|-------|
-| **Action ID** | `QuickRetreat` | |
-| **Execution Method** | `Behavior Tree Sequence` | Set **Behavior Tree Sequence** to `[BT_QuickBackstep]` |
-| **Scoring → Scorers** | Add a **Distance Scorer** | Set its **Range** to `0 / 0 / 100 / 200` |
-| **Cooldown → Cooldown Duration** | `3.0` | |
-| **Selection Weight** | `1.5` | Higher priority in range |
-| **Tag Score Multipliers** | `State.PlayerAttacking → 2.0` | Doubles the score while the player attacks |
+<WalkthroughRetreatDetails />
+
+This one runs a Behavior Tree rather than an ability, and its distance range peaks close in, so it scores highest exactly when the player has crowded the enemy.
 
 <Callout type="info">
 **Tag Score Multipliers** map a `FGameplayTag` to a multiplier. When the tag is on the AI, the target, or the world, it scales the score. Use `State.Stunned → 2.0` on the target for a punish, or `World.Phase.BossPhase2 → 1.3` for late-fight aggression. The [Action System](/docs/soulslike-combat/action-system) covers the full scoring model.

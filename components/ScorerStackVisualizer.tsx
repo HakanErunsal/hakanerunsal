@@ -61,14 +61,14 @@ export default function ScorerStackVisualizer() {
                         Scoring list
                     </div>
 
-                    <UeDetailsSection title="Action Scorers">
+                    <UeDetailsSection className="relative" title="Action Scorers">
                         <UePropertyRow label="SelectionWeight">
                             <UeAssetPicker value="Always present · × base" />
                         </UePropertyRow>
 
                         <div className={cn(
                             "transition-all duration-700",
-                            distanceShown ? "opacity-100" : "h-0 overflow-hidden opacity-0",
+                            distanceShown ? "opacity-100" : "invisible opacity-0",
                         )}>
                             <UePropertyRow label="Distance Scorer">
                                 <div className="flex min-w-0 flex-1 items-center gap-1.5">
@@ -80,7 +80,7 @@ export default function ScorerStackVisualizer() {
 
                         <div className={cn(
                             "transition-all duration-700",
-                            gateShown ? "opacity-100" : "h-0 overflow-hidden opacity-0",
+                            gateShown ? "opacity-100" : "invisible opacity-0",
                         )}>
                             <UePropertyRow label="Stamina Gate">
                                 <div className="flex min-w-0 flex-1 items-center gap-1.5">
@@ -92,7 +92,7 @@ export default function ScorerStackVisualizer() {
 
                         <div className={cn(
                             "transition-all duration-700",
-                            customInList ? "opacity-100" : "h-0 overflow-hidden opacity-0",
+                            customInList ? "opacity-100" : "invisible opacity-0",
                         )}>
                             <UePropertyRow label="Ally-Count Scorer">
                                 <div className="flex min-w-0 flex-1 items-center gap-1.5">
@@ -102,11 +102,12 @@ export default function ScorerStackVisualizer() {
                             </UePropertyRow>
                         </div>
 
-                        {stage === 0 && (
-                            <div className="px-2 py-3 text-center text-[10px] italic text-[#666666]">
-                                No scorers or gates — action scores on weight alone.
-                            </div>
-                        )}
+                        <div className={cn(
+                            "pointer-events-none absolute inset-x-0 bottom-0 top-8 flex items-center justify-center px-2 text-center text-[10px] italic text-[#666666] transition-opacity duration-700",
+                            stage === 0 ? "opacity-100" : "opacity-0",
+                        )}>
+                            No scorers or gates, so the action scores on weight alone.
+                        </div>
                     </UeDetailsSection>
 
                     {/* Live formula bar */}
@@ -145,7 +146,7 @@ export default function ScorerStackVisualizer() {
                         />
                     </div>
 
-                    <div className="mt-3 flex flex-col gap-1">
+                    <div className="mt-3 flex min-h-[54px] flex-col gap-1">
                         {stage > 1 && (
                             <div className="flex items-center gap-1 text-[10px] text-[#666666]">
                                 <Check className="h-3 w-3 text-[#6CC644]" /> Distance Scorer added
