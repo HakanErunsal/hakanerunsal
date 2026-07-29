@@ -1,7 +1,7 @@
 ---
 title: "Multiplayer Support"
 description: "Server-authoritative AI with replicated pawn state for client UI, animation, and feedback."
-date: 2025-12-31
+date: 2026-07-29
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Multiplayer", "Replication"]
 parent: "SoulslikeCombatDocs"
@@ -65,23 +65,25 @@ These stay on the possessed pawn but skip client simulation:
 
 | Piece | Notes |
 |-------|-------|
-| **`USECMeleeTraceComponent`** | **`StartTracing`** and tick check **`HasAuthority`**. See [Melee Trace](/docs/soulslike-combat/melee-trace). |
+| **`USECMeleeTraceComponent`** | **`StartTracing`** and tick gate on **`ShouldDetectHits`**, a virtual defaulting to **`HasAuthority`**. Override it in a subclass to sweep on another machine. See [Melee Trace](/docs/soulslike-combat/melee-trace). |
 | **Melee damage** | **`ISECDamageable::ApplyDamage`** or legacy **`ApplyPointDamage`** on authority. |
 
-Clients see swings through GAS montage replication. **`OnMeleeHitResponse`** fires on authority; route hit VFX through replicated health, gameplay cues, or your own RPC layer.
+Clients see swings through GAS montage replication. **`OnMeleeHitResponse`** fires on authority.
+
+A landed hit runs its damage config's **Hit Effects** on whichever machine ran the trace, and each effect decides its own reach from there. **SEC Play Gameplay Cues** goes through the ability system and travels to every client; **SEC Apply Physics Impulse** stays on the machine that ran it. Calling **Run Hit Effects** yourself from both the server and a predicting client fires the cues twice, so gate the call when you drive damage by hand.
 
 ---
 
 ## Replicated on the Pawn
 
-**`AEnemyCharacterBase`** also creates **`USECMeleeTraceComponent`** by default (authority-only; see above). These four replicate combat state to clients:
+**`AEnemyCharacterBase`** also creates **`USECMeleeTraceComponent`** by default (authority-only; see above). These five replicate combat state to clients:
 
 | Component | Clients receive |
 |-----------|-----------------|
 | **`SECActionSetComponent`** | Current action id, executing flag, active action set, equipped weapon ref, cooldown events |
 | **`SECReactionSetComponent`** | Current reaction id, executing flag, active reaction set, cooldown events |
 | **`SECCombatRoleComponent`** | **`CombatRole`** gameplay tag |
-| **`UAbilitySystemComponent`** | GAS state and montages |
+| **`UAbilitySystemComponent`** | Gameplay cues, replicated tags and montages. Its replication mode is **Minimal**, which keeps effect bookkeeping on the server while the cues an effect fires still reach every client. |
 | **`USECVitalsComponent`** | Per-vital anchors (value, server timestamp, regen rate); every machine extrapolates the same smooth **`GetVitalValue`** from them. See [Vitals](/docs/soulslike-combat/vitals#multiplayer-anchor-replication-and-late-arriving-ability-systems). |
 
 Panels below show **replicated runtime fields** on each pawn component (what clients receive during play, not Blueprint defaults you set once in the editor):

@@ -1,7 +1,7 @@
 ---
 title: "Melee Trace"
 description: "Frame-rate independent swept weapon traces with per-window damage configs and ISECDamageable integration."
-date: 2025-12-27
+date: 2026-07-29
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Melee", "Combat"]
 parent: "SoulslikeCombatDocs"
@@ -44,9 +44,11 @@ The first tick after **`StartTracing`** records positions only; sweeps begin onc
 Hit order:
 
 1. **`TeamFilter`** and duplicate checks (**`CanHitActor`**, owner ignored).
-2. **`OnMeleeHit`** with **`FMeleeHitData`** (contact VFX/SFX hook).
-3. **`ISECDamageable`:** **`BuildDamageInfo`** → **`ApplyDamage`** → **`HandleDamageResult`** → **`OnMeleeHitResponse`**.
-4. **No interface:** **`RecordHit`**, **`ApplyPointDamage`** (**`CurrentDamage`**, **`DamageTypeClass`**), **`OnMeleeHitResponse`** with **`bDamageApplied = true`**.
+2. **`OnMeleeHit`** with **`FSECMeleeHitData`** (contact VFX/SFX hook).
+3. **`ISECDamageable`:** **`BuildDamageInfo`** → **`ApplyDamage`** → **Hit Effects** → **`HandleDamageResult`** → **`OnMeleeHitResponse`**.
+4. **No interface:** **`RecordHit`**, **`ApplyPointDamage`** (**`CurrentDamage`**, **`Damage Type Class`**), **`OnMeleeHitResponse`** carrying the amount that landed.
+
+**Damage Application** on the component picks between those two. **Damageable Interface** is the default and does what the list above describes. **Point Damage** always sends point damage and skips the interface. **None** reports the hit and applies nothing, for a project that drives damage itself from **On Melee Hit**.
 
 **`StartTracing`** and tick body return early without authority. **`StopTracing`** clears active sockets, hit records, and disables tick.
 
@@ -79,6 +81,8 @@ Create **`SECDamageConfig`**, assign on the notify or **`Default Damage Config`*
 <SECDamageConfigDetails />
 
 Per window: notify **`Damage Config`** → **`Default Damage Config`** → **`Base Damage`**. **`StartTracingSimple`** accepts a numeric override; values below zero fall back to **`Base Damage`**.
+
+**Hit Effects** on the config are what a landed hit does beyond the number. **SEC Play Gameplay Cues** fires impact and target cues, **SEC Apply Physics Impulse** shoves the struck body, and subclassing **SEC Hit Effect** in Blueprint covers anything else. Each effect can sit out a hit through **Suppress On Result Tags** or **Require Damage Applied**, so a blocked hit need not shake the screen. **Run Hit Effects** on **SEC Damage Statics** runs the same list from your own code when you apply damage yourself.
 
 ### 5. Montage window
 
@@ -122,13 +126,18 @@ void StopTracing();
 void RegisterTraceSocket_Struct(const FSECTraceSocket& TraceSocket);
 void UnregisterTraceSocket(FName ID);
 void UnregisterAllSockets();  // weapon swap: stock OnUnequipped does not call this
+
+TArray<FName> GetRegisteredSocketIDs() const;
+void AddTraceIgnoredActor(AActor* Actor);     // a mount or companion this weapon should pass through
+void RemoveTraceIgnoredActor(AActor* Actor);
+TArray<AActor*> GetTraceIgnoredActors() const;
 ```
 
-**`OnMeleeHit`:** **`FMeleeHitData`** (`HitResult`, `FromSocketID`, `DamageConfig`).
+**`OnMeleeHit`:** **`FSECMeleeHitData`** (`HitResult`, `FromSocketID`, `DamageConfig`).
 
-**`OnMeleeHitResponse`:** **`FMeleeHitData`** + **`FSECDamageResult`**.
+**`OnMeleeHitResponse`:** **`FSECMeleeHitData`** + **`FSECDamageResult`**.
 
-Subclass **`BuildDamageInfo`** or **`HandleDamageResult`** for crit scaling, pierce, or custom hit recording.
+Subclass **`BuildDamageInfo`** or **`HandleDamageResult`** for crit scaling, pierce, or custom hit recording. **`BuildDamageInfo`** receives the socket that struck, so an override can vary damage by contact point.
 
 Blueprint helpers: **`RegisterSphereSocket`**, **`RegisterCapsuleSocket`**, **`RegisterTwoPointCapsule`**.
 
@@ -138,16 +147,16 @@ Blueprint helpers: **`RegisterSphereSocket`**, **`RegisterCapsuleSocket`**, **`R
 
 **`FSECDamageInfo`:** **`Instigator`**, **`HitResult`**, **`HitDirection`**, **`DamageDefinition`** (**`ToDamageDefinition()`** when a config is active).
 
-**`FSECDamageResult`:** **`bDamageApplied`**, **`ResultTags`**.
+**`FSECDamageResult`:** **`DamageApplied`** (the amount that landed), **`bWasFatal`**, **`ResultTags`**.
 
 **`HandleDamageResult` recording:**
 
 | Result | Recording |
 |--------|-----------|
-| **`bDamageApplied = true`** | **`RecordHit`** (blocks repeat hits this window when **`HitResetInterval`** is 0). |
-| **`bDamageApplied = false`**, tags match **`SkipRecordTags`** | No record (dodge: try again next frame). |
-| **`bDamageApplied = false`**, other tags | **`RecordHit`** (parry/block consumes the swing). |
-| **`bDamageApplied = false`**, empty tags | No record (ignored stimulus). |
+| **`DamageApplied`** above zero | **`RecordHit`** (blocks repeat hits this window when **`HitResetInterval`** is 0). |
+| Zero, tags match **`SkipRecordTags`** | No record (dodge: try again next frame). |
+| Zero, other tags | **`RecordHit`** (parry/block consumes the swing). |
+| Zero, empty tags | No record (ignored stimulus). |
 
 **`HitResetInterval`:** **`0`** allows one recorded hit per target per window. Above **`0`**, the same target can register again after that many seconds; expired records purge each tick.
 
@@ -170,10 +179,12 @@ Component **`Draw Debug`**, or notify **`Enable Debug Draw`** for one window (**
 | No hits | **`SocketIDs`** ≠ socket **`ID`** | Match **`FName`** strings. |
 | No hits | Sockets missing | Equip via **`ASECWeaponBase::OnEquipped`**; wielder needs trace component. |
 | Miss first active frame | Warm-up tick | Normal: sweep needs a prior position sample. |
-| Through walls | **`TraceChannel`** | Pick a channel blocked by world geometry. |
+| Through walls | **Trace Filter** | In **Channel** mode pick a channel world geometry blocks; in **Object Types** mode add the types the swing should reach. |
 | Two hits one swing | Two sockets touch | Expected; narrow active **`SocketIDs`** or shapes. |
 | No damage on SEC pawn | No interface | Implement **`ISECDamageable`**. |
 | Client swing, no damage | No authority | **`StartTracing`** / tick skip non-authority owners. |
+
+The component reports several of these itself. Check the Output Log before hunting: it names a socket a window asked for that nothing registered, a window that opened while another was still open, a socket sweeping from a mesh that is not refreshing its bones, and an **Object Types** filter with an empty list.
 
 </Collapsible>
 

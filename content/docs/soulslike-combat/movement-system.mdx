@@ -1,7 +1,7 @@
 ---
 title: "Movement System"
 description: "Tactical AI positioning: direction sampling, distance keeping, strafing, navmesh awareness, and corner detours."
-date: 2026-06-05
+date: 2026-07-29
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Movement"]
 parent: "SoulslikeCombatDocs"
@@ -76,6 +76,25 @@ Tuning: raise `DetourEnterRatio` or `DetourMinExcess` if minor bumps trigger pat
 
 Automation tests live under **`SoulslikeEnemyCombat.Movement.Detour.*`** in the Session Frontend.
 </Collapsible>
+
+### Which way the pawn looks while it travels
+
+By default an enemy keeps looking at its target however it is moving, which reads well up close and looks wrong on a long walk or around a blind corner. Each pathfinding layer can face its direction of travel instead.
+
+| Setting | Applies while |
+|---------|---------------|
+| **Strategic Facing Mode** | Pathfinding at long range, with no detour running |
+| **Strategic Turn Rate** | The same, in degrees per second; `0` keeps the controller's own turn speed |
+| **Detour Facing Mode** | Pathfinding around close cover, taking over from the strategic mode whenever a detour is the reason |
+| **Detour Turn Rate** | The same, in degrees per second; `0` keeps the controller's own turn speed |
+
+**Use Default Facing** keeps the controller's normal focus tracking. **Face Movement Direction** turns the pawn to look where it is walking.
+
+<Callout type="warning">
+Turning the pawn away from its target changes what every angle-based system sees, because they all read the pawn's real facing: reaction angle gates, action angle scoring, and the awareness sight cone. An enemy rounding cover with **Face Movement Direction** can lose sight of the player mid-detour. That is usually the point, and it is worth knowing before you set it.
+</Callout>
+
+A custom controller reads the current intent through **`GetDesiredFacingIntent()`**; `EnemyControllerBase` consumes it for you.
 
 ### Staying on the navmesh
 

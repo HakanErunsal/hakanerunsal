@@ -351,6 +351,12 @@ export const MOVEMENT_EVALUATOR_DETAILS: UeDetailCategory[] = [
               { label: "Detour Line Of Sight Channel", value: { kind: "enum", value: "Visibility" } },
               { label: "Detour Escalate On Stall", value: b(true) },
               { label: "Detour Stall Speed", value: n(60, 0, 300) },
+      { label: "Detour Release Ratio", value: n(1.35, 1.05, 5) },
+      { label: "Detour Release Min Excess", value: n(100, 0, 2000) },
+      { label: "Detour Facing Mode", value: { kind: "enum", value: "Use Default Facing" } },
+      { label: "Detour Turn Rate", value: n(0, 0, 1440) },
+      { label: "Strategic Facing Mode", value: { kind: "enum", value: "Use Default Facing" } },
+      { label: "Strategic Turn Rate", value: n(0, 0, 1440) },
             ],
           },
         ],
@@ -462,10 +468,10 @@ export const REACTION_EXECUTION_DETAILS: UeDetailCategory[] = [
     title: "Execution",
     properties: [
       { label: "Ability Class", value: { kind: "asset", value: "None" } },
-      { label: "Activation Mode", value: { kind: "enum", value: "By Event" } },
-      { label: "Ability Tag", value: { kind: "text", value: "None" } },
-      { label: "Ability End Tag", value: { kind: "text", value: "None" } },
       { label: "Ability Timeout", value: n(0) },
+      { label: "Wait For Ability End", value: b(true) },
+      { label: "Activation Tag", value: { kind: "text", value: "None" } },
+      { label: "Cancel Current Action", value: b(true) },
     ],
   },
 ];
@@ -854,8 +860,10 @@ export const MELEE_TRACE_COMPONENT_DETAILS: UeDetailCategory[] = [
   {
     title: "Damage",
     properties: [
+      { label: "Damage Application", value: { kind: "enum", value: "Damageable Interface" } },
       { label: "Default Damage Config", value: { kind: "asset", value: "None" } },
       { label: "Base Damage", value: n(10, 0) },
+      { label: "Damage Type Class", value: { kind: "asset", value: "None" } },
       { label: "Hit Reset Interval", value: n(0, 0) },
       { label: "Team Filter", value: { kind: "enum", value: "No Filter" } },
     ],
@@ -863,6 +871,9 @@ export const MELEE_TRACE_COMPONENT_DETAILS: UeDetailCategory[] = [
   {
     title: "Trace",
     properties: [
+      { label: "Trace Filter", value: { kind: "text", value: "" } },
+      { label: "  Mode", value: { kind: "enum", value: "Channel" } },
+      { label: "  Trace Channel", value: { kind: "enum", value: "Pawn" } },
       { label: "Sub Step Distance", value: n(10, 1) },
       { label: "Max Sub Steps", value: n(20, 1, 50, 0) },
     ],
@@ -883,14 +894,15 @@ export const SEC_DAMAGE_CONFIG_DETAILS: UeDetailCategory[] = [
     properties: [
       { label: "Damage", value: n(10, 0) },
       { label: "Damage Type", value: { kind: "text", value: "None" } },
+      { label: "Damage Type Class", value: { kind: "asset", value: "None" } },
+      { label: "Damage Tags", value: { kind: "text", value: "0 tags" } },
+      { label: "Use Authored Hit Direction", value: b(false) },
     ],
   },
   {
-    title: "Forces",
+    title: "Hit Effects",
     properties: [
-      { label: "Hit Bone Force", value: n(0, 0) },
-      { label: "Hit Overall Force", value: n(0, 0) },
-      { label: "Hit Rotational Force", value: n(0, 0) },
+      { label: "Hit Effects", value: { kind: "text", value: "0 Array elements" } },
     ],
   },
 ];
@@ -922,11 +934,12 @@ export const WEAPON_TRACE_SOCKET_DETAILS: UeDetailCategory[] = [
     title: "SEC|Trace",
     properties: [
       { label: "ID", value: { kind: "text", value: "Blade" } },
+      { label: "Source Component Tag", value: { kind: "text", value: "None" } },
       { label: "Shape", value: { kind: "enum", value: "Capsule Two Point" } },
       { label: "Socket Or Bone Name", value: { kind: "text", value: "blade_start" } },
       { label: "End Socket Or Bone Name", value: { kind: "text", value: "blade_end" } },
       { label: "Radius", value: n(15, 1) },
-      { label: "Trace Channel", value: { kind: "enum", value: "Pawn" } },
+      { label: "Override Trace Filter", value: b(false) },
     ],
   },
 ];

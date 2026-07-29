@@ -1,7 +1,7 @@
 ---
 title: "Core Architecture"
 description: "The mental model: how the plugin separates strategy from execution, and how a decision flows from perception to movement."
-date: 2025-12-10
+date: 2026-07-29
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Architecture"]
 parent: "SoulslikeCombatDocs"
@@ -65,6 +65,7 @@ An enemy is a pawn and an AI controller, each carrying components. `EnemyCharact
 | `SECActionSetComponent` | Holds and replicates the [action set](/docs/soulslike-combat/action-system) |
 | `SECReactionSetComponent` | Holds and replicates the [reaction set](/docs/soulslike-combat/reaction-system) |
 | `SECCombatRoleComponent` | Replicates the assigned [combat role](/docs/soulslike-combat/combat-roles) |
+| `SECVitalsComponent` | Replicated resource pools ([health, stamina, stance](/docs/soulslike-combat/vitals)); an empty health pool is what triggers death |
 
 **On the controller:**
 
@@ -76,9 +77,11 @@ An enemy is a pawn and an AI controller, each carrying components. `EnemyCharact
 | `ReactionEvaluationComponent` | Runs event-driven [reactions](/docs/soulslike-combat/reaction-system) |
 | `MovementEvaluatorComponent` | [Tactical positioning](/docs/soulslike-combat/movement-system) |
 | `ThreatDetectionComponent` | [Player attention tracking](/docs/soulslike-combat/threat-detection), disabled by default |
-| `AwarenessComponent` | [Perception memory](/docs/soulslike-combat/awareness-system): sight, hearing, damage |
+| `SECAwarenessComponent` | [Perception memory](/docs/soulslike-combat/awareness-system): sight, hearing, damage |
 
 `SECCombatControllerComponent` is the one piece every setup needs. Add it to any `AAIController` and the combat system works; the other controller components are opt-in. Its full API lives in the [API Reference](/docs/soulslike-combat/api-reference).
+
+**Two modules.** `SECCore` carries the combat layer that stands on its own: the melee trace and its montage window, the damage layer and its hit effects, vitals, the team helpers, and the animation tag window. `SoulslikeEnemyCombat` carries the AI on top of it, and depends on `SECCore`. Include paths and Blueprint names are the same either way; the split matters when you add a module dependency in C++.
 
 ---
 
@@ -113,7 +116,7 @@ The scoring and movement components do the same work in both modes. See [StateTr
 - Melee hit detection, usable on player characters too
 - Action scoring and execution
 - Event-driven reaction evaluation and execution
-- Replicated pawn-side state (`SECActionSetComponent`, `SECReactionSetComponent`)
+- Replicated pawn-side state (`SECActionSetComponent`, `SECReactionSetComponent`, `SECCombatRoleComponent`, `SECVitalsComponent`)
 - Multi-enemy coordination through combat roles
 - Multiplayer support on listen and dedicated servers
 - A modular component set you mix per enemy type

@@ -1,7 +1,7 @@
 ---
 title: "Animation Integration"
 description: "Wire gameplay tags to animation Blueprint bools with no event graph, and hold loose tags for a montage window with a notify state."
-date: 2026-07-26
+date: 2026-07-29
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Animation", "Combat"]
 parent: "SoulslikeCombatDocs"
@@ -70,7 +70,7 @@ Binding runs when the animation instance starts, and the map applies the current
 The plugin gives you the window and the recording behavior. Your pawn decides what a hit means, so armor and poise stay yours to define.
 
 1. Add **SEC State Tag Window** to the dodge montage over the frames that should ignore hits. Set **`Tags`** to `SEC.State.Invulnerable`.
-2. In the pawn's **`ISECDamageable::ApplyDamage`**, check for that tag. While it is held, skip the health change and return **`bDamageApplied = false`** with `SEC.Defense.Dodge` in **`ResultTags`**.
+2. In the pawn's **`ISECDamageable::ApplyDamage`**, check for that tag. While it is held, skip the health change and leave **`DamageApplied`** at zero, with `SEC.Defense.Dodge` in **`ResultTags`**.
 3. On the attacker's **`USECMeleeTraceComponent`**, add `SEC.Defense.Dodge` to **`SkipRecordTags`**.
 
 Step 3 decides whether the dodge costs the attacker their swing. With the tag in **`SkipRecordTags`**, the trace does not record the hit, so the same swing can connect on a later frame once the i-frames end. Leave it out and the dodge consumes the swing the way a parry does.
@@ -137,10 +137,10 @@ void InitializeWithAbilitySystem(UAbilitySystemComponent* AbilitySystem);
 | Tag never appears | **`Tags`** left empty on the notify | Fill **`Tags`**. |
 | Tag sticks after the montage | Animation Blueprint recompiled mid-window in PIE | Restart PIE. Unreal skips notify ends while reinstancing Blueprints. |
 | i-frames ignored on the server | **Trigger On Dedicated Server** cleared | Re-enable it on the placed notify. |
-| i-frames ignored on the server | Mesh pose not ticking | Set **`VisibilityBasedAnimTickOption`** to **`AlwaysTickPoseAndRefreshBones`**. |
+| i-frames ignored on the server | Mesh pose not ticking | Set **`VisibilityBasedAnimTickOption`** to **`AlwaysTickPoseAndRefreshBones`**. The melee trace reports the same cause for its own sweeps, naming the mesh in the log; tag windows have no equivalent message. |
 | Dodge eats the swing | `SEC.Defense.Dodge` missing from **`SkipRecordTags`** | Add it on the attacker's trace component. |
 | Bool never flips | Variable not mapped, or the map row names another tag | Check the row in **Gameplay Tag Property Map**. |
-| Damage lands during i-frames | **`ApplyDamage`** does not check the tag | Return **`bDamageApplied = false`** while the tag is held. |
+| Damage lands during i-frames | **`ApplyDamage`** does not check the tag | Leave **`DamageApplied`** at zero while the tag is held. |
 
 </Collapsible>
 

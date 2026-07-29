@@ -1,7 +1,7 @@
 ---
 title: "Reaction System"
 description: "Event-driven AI reactions: parry, dodge, counter. They respond to game events in real time."
-date: 2026-07-27
+date: 2026-07-29
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Reactions"]
 parent: "SoulslikeCombatDocs"
@@ -278,7 +278,7 @@ Console variable `SEC.Debug.LogReactions 1` enables the same logging globally.
 | [Multiplayer](/docs/soulslike-combat/multiplayer) | Reaction execution state and cooldowns replicate through `SECReactionSetComponent`. |
 
 <Callout type="info">
-  **Custom character classes:** `ReactionEvaluationComponent` resolves the ASC from the possessed pawn via `IAbilitySystemInterface`, same as actions. Pawns without it cause reaction abilities to fail silently.
+  **Custom character classes:** `ReactionEvaluationComponent` resolves the ability system from the possessed pawn, through `IAbilitySystemInterface` when the pawn implements it and by component search otherwise, same as actions. A pawn whose ability system never had its actor info initialised fails reaction abilities silently; `EnemyCharacterBase` handles that for you.
 </Callout>
 
 ---
@@ -295,7 +295,7 @@ Console variable `SEC.Debug.LogReactions 1` enables the same logging globally.
 - `ExecuteReaction(ReactionId, Context)`: Fire a reaction (primary path).
 - `CanReact(ReactionId, TargetOverride)`: Gate check without executing.
 - `EvaluateBestReaction(CategoryTag, TargetOverride)`: Optional selection when multiple reactions compete.
-- `StopCurrentReaction(bSuccess)`: Manually end the running reaction.
+- `StopCurrentReaction(bSuccess, Reason)`: Manually end the running reaction. Reason defaults to Cancelled and is what `OnReactionCompletedWithReason` reports.
 - `IsReactionExecuting()` / `GetCurrentReactionId()`: Runtime state.
 - `OnReactionStarted` / `OnReactionCompleted`: Controller-local delegates (with full context).
 - `OnReactionCompletedWithReason`: same completion, plus why it ended. `Completed` for a reaction that ran to the end, `Interrupted` for one something cancelled, `TimedOut` for one whose ability never ended. Bind this when a timeout has to be told apart from a clean finish.

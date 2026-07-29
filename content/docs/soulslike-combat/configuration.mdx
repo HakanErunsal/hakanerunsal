@@ -1,7 +1,7 @@
 ---
 title: "Configuration Reference"
 description: "Complete reference for all data assets: AICombatConfig, ActionSets, Movement Profiles, and Damage Config."
-date: 2025-12-10
+date: 2026-07-29
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Configuration", "Reference"]
 parent: "SoulslikeCombatDocs"
@@ -26,8 +26,8 @@ order: 14
 Defines combat role selection, behavior logic, and action set binding for an AI.
 
 **Config Resolution Order:**
-1. `SECCombatControllerComponent` cached config (from `DefaultAIConfig` property)
-2. Pawn implementing `IEnemyAIConfigProvider`
+1. Pawn implementing `IEnemyAIConfigProvider`
+2. `SECCombatControllerComponent`'s `DefaultAIConfig`, when the pawn supplies none
 
 Set the config on the pawn for per-enemy customization, or on the `SECCombatControllerComponent`'s `DefaultAIConfig` when all units sharing a controller should use the same config.
 
@@ -63,13 +63,12 @@ These settings live on the `MovementBehaviorProfile` data asset, so they automat
 
 ```cpp
 // Role Registration
-bool AutoRegisterForCombatRoles;     // Auto-register with role subsystem
-TArray<FGameplayTag> AllowedRoles;   // Roles this AI can take
-int32 Priority;                       // Lower = higher priority for slots
-FGameplayTag PreferredRole;           // Default role when available
-
-// Fitness Evaluation
-TArray<URoleEvaluator*> FitnessEvaluators;  // Scoring objects for role assignment
+bool bAutoRegisterForCombatRoles;     // Auto-register with role subsystem
+FAIRoleRegistrationParams RoleRegistrationParams;
+    TArray<FGameplayTag> AllowedRoles;          // Roles this AI can take; empty means any
+    int32 Priority;                             // Tiebreaker on equal fitness
+    FGameplayTag PreferredRole;                 // Small bonus toward this role
+    TArray<URoleEvaluator*> FitnessEvaluators;  // Scoring objects for role assignment
 
 // Target Selection
 UTargetSelector* TargetSelector;      // Per-AI target selector (instanced)
@@ -80,19 +79,23 @@ UStateTree* StateTree;                // Optional StateTree; empty = native C++ 
 FSECDecisionContextParams DecisionContextParams; // Tunables for the decision context
 
 // Action Set Management
-bool ManageActionSetsAutomatically;   // Swap ActionSets based on role
+bool bManageActionSetsAutomatically;  // Swap ActionSets based on role
 UActionSet* DefaultActionSet;         // Fallback ActionSet
-TMap<FGameplayTag, FRoleActionSetMapping> RoleActionSets;  // Per-role ActionSets
+TArray<FRoleActionSetConfig> RoleActionSets;   // Per-role ActionSets
 
 // Reaction Set Management
 bool bManageReactionSetsAutomatically; // Swap ReactionSets based on role
 UReactionSet* DefaultReactionSet;     // Fallback ReactionSet
-TMap<FGameplayTag, FRoleReactionSetMapping> RoleReactionSets; // Per-role ReactionSets
+TArray<FRoleReactionSetConfig> RoleReactionSets; // Per-role ReactionSets
 
 // Movement Profile Management
-bool ManageMovementProfilesAutomatically; // Swap Movement Profiles based on role
+bool bManageMovementProfilesAutomatically; // Swap Movement Profiles based on role
 UMovementBehaviorProfile* DefaultMovementProfile; // Fallback Profile
-TMap<FGameplayTag, FRoleMovementProfileConfig> RoleMovementProfiles; // Per-role Profiles
+TArray<FRoleMovementProfileConfig> RoleMovementProfiles; // Per-role Profiles
+
+// Awareness
+bool bManageAwarenessAutomatically;   // Apply AwarenessConfig on possession (default true)
+USECAwarenessConfig* AwarenessConfig; // Perception memory tuning; unset leaves awareness off
 ```
 
 ### Example
@@ -210,7 +213,10 @@ struct FActionSpec
     FActionCooldown Cooldown;
         float Duration;                // Time before reuse
         float InitialCooldown;         // Cooldown applied on spawn
-        float RandomizationPercent;    // Cooldown randomness (±%)
+        float Randomization;           // Cooldown randomness, 0.2 means ±20% (default 0.2)
+        float InterruptRefund;         // Share of the remaining cooldown handed back on interrupt (default 0)
+        float SpawnCooldownChance;     // Chance to start on cooldown at spawn, desyncing a group (default 0)
+        int32 MaxConsecutiveUses;      // Consecutive uses before another action must run; -1 is unlimited
 
     // Chaining
     FName PreferredNextActionId;       // Bonus for this action next
@@ -237,7 +243,11 @@ struct FRangeEval
     float OptimalMin;    // Score = 1.0 starts here
     float OptimalMax;    // Score = 1.0 ends here
     float MaxValue;      // Score = 0 above this (invalid)
+    float Exponent;      // Falloff sharpness outside the sweet spot; 2.0 is smooth, 4.0 sharp (default 2.0)
+    bool bClampToZero;   // Hold the score at zero outside the range rather than letting it go negative (default true)
 };
+
+The ramp between an edge and the sweet spot is a curve, not a step: the distance from the edge is raised to **Exponent**.
 ```
 
 **Visualization:**
@@ -351,43 +361,35 @@ Contains damage values and type for melee attacks.
 ### Full Structure
 
 ```cpp
-float BaseDamage;              // Base damage value
-TSubclassOf<UDamageType> DamageType;  // Damage type class
-float ImpulseStrength;         // Physics impulse on hit
+float Damage;                              // Base amount, before anything the target does to it (default 10)
+FGameplayTag DamageType;                   // Kind of damage, for a target that resists or reacts by type
+TSubclassOf<UDamageType> DamageTypeClass;  // Carried on the point damage fallback; unset sends the engine default
+FGameplayTagContainer DamageTags;          // Extra tags describing hits from this attack, for example a backstab
 
-bool bCanBeBlocked;            // Can target block this?
-bool bCanBeParried;            // Can target parry this?
+bool bUseAuthoredHitDirection;             // Send a fixed blow direction instead of the attacker-to-target one
+FVector AuthoredHitDirectionLocal;         // That direction in attacker space; (0,0,1) launches upward
 
-bool bCanCritical;             // Can this crit?
-float CriticalMultiplier;      // Damage multiplier on crit
-float CriticalChance;          // Base crit chance (0.0-1.0)
+TArray<TObjectPtr<USECHitEffect>> HitEffects;  // What the hit does beyond the number
 ```
 
-### Example
+Blocking, parrying and critical hits are the target's business, not the config's. A target reports them back through **`ResultTags`** on **`FSECDamageResult`**, which is what lets one attack read as parried by one enemy and armoured by another.
 
-```cpp
-Name: DA_SwordDamage
+### Hit Effects
 
-BaseDamage: 25.0
-DamageType: UDamageType_Physical
-ImpulseStrength: 500.0
+<SECDamageConfigDetails />
 
-bCanBeBlocked: true
-bCanBeParried: true
+Each entry runs itself when the hit lands. Two ship with the plugin:
 
-bCanCritical: true
-CriticalMultiplier: 2.0
-CriticalChance: 0.1
-```
+| Effect | Does |
+|--------|------|
+| **SEC Play Gameplay Cues** | Fires **Attacker Cues** on the attacker's ability system and **Target Cues** on the struck actor's. |
+| **SEC Apply Physics Impulse** | Shoves the struck body: **Hit Bone Force** at the contact point, **Hit Overall Force** on the whole body, **Hit Rotational Force** to set it tumbling. Tick **Velocity Change** to make mass stop mattering. |
+
+Subclass **SEC Hit Effect** in Blueprint for anything else. Every effect carries **Suppress On Result Tags** and **Require Damage Applied**, so a blocked hit can skip the screen shake while the blood still plays.
 
 ### Usage
 
-Assigned to weapons via the `DamageConfig` property. Applied during melee traces.
-
-```cpp
-// In weapon Blueprint:
-DamageConfig: DA_SwordDamage
-```
+Assign per attack window on the **SEC Melee Trace Window** notify's **Damage Config**, or as the component's **Default Damage Config** for windows that name none. **Run Hit Effects** on **SEC Damage Statics** runs the same effect list when your own code applies the damage.
 
 ---
 

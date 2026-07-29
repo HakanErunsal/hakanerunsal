@@ -1,7 +1,7 @@
 ---
 title: "Debugging & Troubleshooting"
 description: "Debug flags, console variables, common failures, and FAQ."
-date: 2026-07-27
+date: 2026-07-29
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "FAQ"]
 parent: "SoulslikeCombatDocs"
@@ -35,12 +35,12 @@ Toggle these on the AI controller (reactions live on the pawn's **`ReactionEvalu
 With **`bDebugLogDecisions`** or **`SEC.Debug.LogActionDecisions 1`**, the Output Log prints lines like:
 
 ```
-[EvalComp] Evaluating 3 actions...
-[EvalComp] LightAttack: Ctx=1.00 Nov=1.00 Chain=1.00 Risk=1.00 Runtime=1.00 Custom=0.95 -> 0.95 SELECTED
-[EvalComp] HeavyAttack: Ctx=1.00 Nov=1.00 Chain=1.00 Risk=1.00 Runtime=1.00 Custom=0.60 -> 0.60 (cooldown:1.2s)
+[EvalComp] LightAttack: Ctx=1.00 Nov=1.00 Chain=1.00 Risk=1.00 Runtime=1.00 Custom=0.95 -> 0.95
+[EvalComp] HeavyAttack BLOCKED: On cooldown (1.2s remaining)
+[EvalComp] Committed to: LightAttack (score 0.95)
 ```
 
-**`Custom`** folds every scorer on the action (Distance, Angle, Health, Speed, plus any you add). Per-scorer values sit in the score breakdown under each scorer's display name.
+An action stopped by a hard gate never reaches a score line; it prints `BLOCKED` with the reason instead. **`Custom`** folds every scorer on the action (Distance, Angle, Health, Speed, plus any you add). Per-scorer values sit in the score breakdown under each scorer's display name.
 
 Component flags and their matching CVars stack: either one turns the output on.
 
@@ -80,7 +80,7 @@ All commands are cheat CVars. Pass **`0`** or **`1`** unless noted.
 - The action is off cooldown and **`FinalScore > 0`** after scorers run.
 - **`ActiveActionSet`** on **`ActionEvaluationComponent`** points at the set you expect.
 
-**Ability not granted:** Grant the ability on the ASC during init. **`BTTask_ActivateAbility`** exposes **`bGrantAbilityIfMissing`** for standalone BT setups. The action system's **`Activate Blackboard Ability`** task does not grant abilities for you.
+**Ability not granted:** The action system grants the execution method's **Ability Class** to the ability system itself, once a valid one exists. Two log lines explain a failure: `Cannot grant ability for <action> - ASC is invalid!` means the ability system was not ready when actions initialised, and `<action> doesn't have any ability or behavior tree set` means the execution method carries no class. **`BTTask_ActivateAbility`** exposes **`bGrantAbilityIfMissing`** for a standalone Behavior Tree setup that bypasses the action system.
 
 **Tag mismatch:** **`TryActivateAbilitiesByTag`** matches tags on the ability CDO's **`AbilityTags`**. If the ability has no tags there, switch the execution method to **ByEvent** or add the tag in class defaults.
 
@@ -146,9 +146,11 @@ Then point the **Payload Key** on the Activate Blackboard Ability node at `SEC_P
 
 <Collapsible badge="" title="Weapon doesn't deal damage">
 
+**Read the Output Log first.** The trace component names most of these itself: a socket a window asked for that nothing registered, a window opening while another was still open, a socket sweeping from a mesh that is not refreshing its bones, an **Object Types** filter with an empty list, and a socket ID another component already holds.
+
 **Check:**
 - Socket IDs on the anim notify match **`TraceSockets`** on the weapon exactly.
-- Trace channel hits the target mesh (use **`SEC.Debug.Melee.DrawTracing 1`**).
+- The **Trace Filter** reaches the target: in **Channel** mode the channel the target blocks, in **Object Types** mode the type it belongs to (use **`SEC.Debug.Melee.DrawTracing 1`**).
 - The pawn has **`USECMeleeTraceComponent`** (**`EnemyCharacterBase`** adds it by default).
 - **`Default Damage Config`** on the trace component or **`Damage Config`** on the melee notify state supplies a **`USECDamageConfig`**. Damage does not come from the weapon actor class alone.
 
@@ -182,7 +184,7 @@ See [Sideways speed penalty](/docs/soulslike-combat/movement-system#sideways-spe
 **Check:**
 - NavMesh ends before the visual drop (press **P**).
 - **`bEnableNavAwareSampling`** is on and **`NavScoreWeight`** is above **0**.
-- A hazard painted only as high nav cost still reads as walkable at close range. Add a **NavArea** subclass to **Hazard Areas** on the movement component when the AI should treat it as dangerous.
+- A hazard painted only as high nav cost still reads as walkable at close range. Add the **NavArea** subclass to **Hazard Area Avoidance** on the movement component with a strength around **0.75**; the value is the avoidance weight, where **0** ignores the area and **1** scores it like a wall.
 
 **Debug:** **`SEC.Debug.Movement.DrawNav 1`** marks blocked directions with blue spheres.
 

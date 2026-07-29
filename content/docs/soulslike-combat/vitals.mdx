@@ -1,7 +1,7 @@
 ---
 title: "Vitals"
 description: "Resource pools such as health, stamina, and poise that spend, regenerate, and gate or score actions by tag."
-date: 2026-07-28
+date: 2026-07-29
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Vitals", "Health"]
 parent: "SoulslikeCombatDocs"
@@ -80,9 +80,9 @@ Three delegates cover the events a UI or an ability needs:
 
 | Delegate | Fires |
 |----------|-------|
-| **`OnVitalChanged`** | Every discrete change: a spend, damage, a set or fill, or regeneration completing at max. Regeneration's smooth rise between those points fires nothing; poll `GetVitalValue` for a smooth bar. |
-| **`OnVitalDepleted`** | Once per depletion episode. **Depleted Loose Tag** is already applied when it fires. |
-| **`OnVitalFull`** | When the pool reaches its maximum, by a gain or by regeneration. |
+| **`OnVitalChanged`** (VitalTag, NewValue, OldValue, MaxValue) | Every discrete change: a spend, damage, a set or fill, or regeneration completing at max. Regeneration's smooth rise between those points fires nothing; poll `GetVitalValue` for a smooth bar. |
+| **`OnVitalDepleted`** (VitalTag) | Once per depletion episode. **Depleted Loose Tag** is applied when it fires, unless the row regenerates with no delay (**Regen Delay Seconds** at `0` with a **Regen Rate Per Second** above `0`), where regeneration starts in the same instant and the tag is never held. |
+| **`OnVitalFull`** (VitalTag) | When the pool reaches its maximum, by a gain or by regeneration. |
 
 A "guard breaks at zero poise" ability needs no delegate binding at all: point its activation at **Depleted Gameplay Event**, or check **Depleted Loose Tag** as a `RequiresTags` entry on an action or reaction. Both are fields on the row itself, so the wiring lives on the data.
 

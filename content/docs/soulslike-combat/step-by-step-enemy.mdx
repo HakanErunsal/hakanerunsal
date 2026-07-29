@@ -1,7 +1,7 @@
 ---
 title: "Step-by-Step Enemy Creation"
 description: "Build a complete, armed enemy: a multi-action moveset with combos, a weapon, and testing. Builds on Getting Started."
-date: 2025-12-10
+date: 2026-07-29
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Tutorial"]
 parent: "SoulslikeCombatDocs"
@@ -42,7 +42,7 @@ One action is enough to see the AI attack; a fight needs several that win at dif
 | **Execution Method** | `Gameplay Ability` | Set its **Ability Class** to `GA_LightAttack` |
 | **Scoring → Distance Scorer** | `0 / 100 / 250 / 400` | Min / OptimalMin / OptimalMax / Max, in cm |
 | **Scoring → Angle Scorer** | `0 / 0 / 30 / 90` | Ideal within 30 degrees of facing |
-| **Cooldown → Duration** | `2.0` | Two seconds between uses |
+| **Cooldown → Cooldown Duration** | `2.0` | Two seconds between uses |
 | **Cooldown → Initial Cooldown** | `1.0` | Cannot open with it in the first second |
 | **Selection Weight** | `1.0` | Base weight |
 
@@ -53,7 +53,7 @@ One action is enough to see the AI attack; a fight needs several that win at dif
 | **Action ID** | `HeavyAttack` | |
 | **Execution Method** | `Gameplay Ability` | Ability Class `GA_HeavyAttack` |
 | **Scoring → Distance Scorer** | `0 / 150 / 300 / 450` | Slightly farther than the light |
-| **Cooldown → Duration** | `4.0` | Longer than the light |
+| **Cooldown → Cooldown Duration** | `4.0` | Longer than the light |
 | **Selection Weight** | `0.8` | Comes up less often on its own |
 | **Risk Penalty** | `1.5` | Divides the score, biasing against it |
 
@@ -66,7 +66,7 @@ To chain light into heavy, set **Preferred Follow-Up Action** to `HeavyAttack` o
 | **Action ID** | `QuickRetreat` | |
 | **Execution Method** | `Behavior Tree Sequence` | Set **Behavior Tree Sequence** to `[BT_QuickBackstep]` |
 | **Scoring → Distance Scorer** | `0 / 0 / 100 / 200` | Best when very close |
-| **Cooldown → Duration** | `3.0` | |
+| **Cooldown → Cooldown Duration** | `3.0` | |
 | **Selection Weight** | `1.5` | Higher priority in range |
 | **Tag Score Multipliers** | `State.PlayerAttacking → 2.0` | Doubles the score while the player attacks |
 
@@ -84,7 +84,7 @@ Each action using the Gameplay Ability method needs an ability Blueprint. Inheri
 
 ## 4. Arm the enemy
 
-The attacks play, but nothing lands until the weapon runs melee traces. The full weapon build lives on the [Melee Trace](/docs/soulslike-combat/melee-trace) page: inherit `ASECWeaponBase`, define the trace sockets, add the `SECMeleeTraceWindow` notify to each montage, and assign a damage config. Set that up, then come back to test.
+The attacks play, but nothing lands until the weapon runs melee traces. The full weapon build lives on the [Melee Trace](/docs/soulslike-combat/melee-trace) page: inherit `ASECWeaponBase`, define the trace sockets, add the **SEC Melee Trace Window** notify state to each montage, and assign a damage config. Set that up, then come back to test.
 
 ---
 

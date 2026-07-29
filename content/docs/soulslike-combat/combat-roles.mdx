@@ -1,7 +1,7 @@
 ---
 title: "Combat Roles"
 description: "Coordinate multiple enemies with role slots, fitness scoring, and per-role action/movement/reaction sets."
-date: 2026-03-23
+date: 2026-07-29
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Combat Roles"]
 parent: "SoulslikeCombatDocs"
@@ -89,7 +89,7 @@ Create **Right-click → Miscellaneous → Data Asset → EnemyAIConfig**. Assig
 |-------|-------|
 | **Auto-Register for Combat Roles** | On possess, `SECCombatControllerComponent` calls `RegisterCombatant`. The config flag overrides the component default. |
 | **Allowed Roles** | Empty allows any built-in or custom role. Restrict an archer to `Waiter` and `Supporter`. |
-| **Priority** | Tiebreaker on equal adjusted fitness. Grunt `0`, elite `50`, mini-boss `100`. |
+| **Priority** | Tiebreaker on equal adjusted fitness. Grunt `0`, elite `50`, mini-boss `100`, boss `200`. |
 | **Preferred Role** | Adds `+0.05` to adjusted fitness while scoring that role tag. |
 | **Fitness Evaluators** | Instanced `URoleEvaluator` objects. Empty list uses distance-only fallback (closer = higher score, 2000 cm cap). |
 | **Target Selector** | Picks a registered combat target when several exist. Falls back to project **Default Target Selector**. |

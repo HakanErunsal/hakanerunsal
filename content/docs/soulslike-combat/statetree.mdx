@@ -1,7 +1,7 @@
 ---
 title: "StateTree Integration"
 description: "Graph-authored AI structure on top of the same combat pipeline as the native brain."
-date: 2026-07-27
+date: 2026-07-29
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "StateTree"]
 parent: "SoulslikeCombatDocs"
@@ -142,7 +142,7 @@ Combat tasks use **`USECDecisionLibrary`** and eval/movement components. Role po
 | **ASC Has Tag** | `FSTCondition_ASCHasTag` | Gate on pawn ASC tags (**HasAny** / **HasAll**) |
 | **Awareness State At Least** | `FSTCondition_AwarenessState` | Branch on **`USECAwarenessComponent`** state |
 
-**ASC Has Tag** binds **`Pawn`**, not the controller. The pawn must implement **`IAbilitySystemInterface`**.
+**ASC Has Tag** binds **`Pawn`**, not the controller. The pawn supplies its ability system through **`IAbilitySystemInterface`** or by carrying an **Ability System Component**; the condition finds either.
 
 **Awareness State At Least** compares **`GetAwarenessState(Target)`** to **`MinState`**. Empty **`Target`** uses the most-aware target. Ordering: Unknown &lt; Forgotten &lt; Suspicious &lt; Lost &lt; Detected.
 
