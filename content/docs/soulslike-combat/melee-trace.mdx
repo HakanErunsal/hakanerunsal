@@ -1,7 +1,7 @@
 ---
 title: "Melee Trace"
 description: "Frame-rate independent swept weapon traces with per-window damage configs and ISECDamageable integration."
-date: 2026-07-29
+date: 2026-07-30
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Melee", "Combat"]
 parent: "SoulslikeCombatDocs"
@@ -80,9 +80,15 @@ Create **`SECDamageConfig`**, assign on the notify or **`Default Damage Config`*
 
 <SECDamageConfigDetails />
 
+Six configs ship under `Core/Damage`, one per damage type, each carrying its type tag and a starting damage value. Assign one to get a weapon swinging, then tune the number or branch off your own.
+
+**`Damage Type`** names the kind of damage so a target can resist or react by type. The shipped vocabulary splits by what the damage is rather than how it arrived: `SEC.Damage.Physical.Slashing`, `.Piercing` and `.Bludgeoning`, then `SEC.Damage.Elemental.Fire`, `.Ice` and `.Lightning`. Because tags match down the tree, armor can check `SEC.Damage.Physical` and a ward `SEC.Damage.Elemental` without naming each type.
+
 Per window: notify **`Damage Config`** → **`Default Damage Config`** → **`Base Damage`**. **`StartTracingSimple`** accepts a numeric override; values below zero fall back to **`Base Damage`**.
 
 **Hit Effects** on the config are what a landed hit does beyond the number. **SEC Play Gameplay Cues** fires impact and target cues, **SEC Apply Physics Impulse** shoves the struck body, and subclassing **SEC Hit Effect** in Blueprint covers anything else. Each effect can sit out a hit through **Suppress On Result Tags** or **Require Damage Applied**, so a blocked hit need not shake the screen. **Run Hit Effects** on **SEC Damage Statics** runs the same list from your own code when you apply damage yourself.
+
+A cue fired this way receives the impact point, the impact normal, the struck surface, the damage that landed, a fatal flag, and whatever the target reported in its result tags. One notify can read those tags and branch a parried or blocked hit, which saves authoring a separate cue for each outcome. Cues shipped inside the plugin are found without a project listing the path, and a project's own cues under `/Game` keep working alongside them.
 
 ### 5. Montage window
 

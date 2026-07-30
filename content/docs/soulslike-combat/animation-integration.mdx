@@ -1,7 +1,7 @@
 ---
 title: "Animation Integration"
-description: "Wire gameplay tags to animation Blueprint bools with no event graph, and hold loose tags for a montage window with a notify state."
-date: 2026-07-29
+description: "Wire gameplay tags to animation Blueprint bools with no event graph, hold loose tags for a montage window with a notify state, and scale movement speed while a tag is held."
+date: 2026-07-30
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Animation", "Combat"]
 parent: "SoulslikeCombatDocs"
@@ -52,7 +52,7 @@ Open the montage, add Notify State → **SEC State Tag Window** across the frame
 Give the window a positive duration. Leave **Trigger On Dedicated Server** on the placed notify enabled so the server keeps its own copy of the window, which is what server-side damage checks read.
 
 <Callout type="info">
-`SEC.State.Invulnerable` ships as a starting tag for i-frames. The plugin never reads it; your damage code does. Author your own tags for parry and hyper-armor windows.
+A handful of state tags ship as starting points: `SEC.State.Invulnerable` for i-frames, plus `SEC.State.Dodging`, `SEC.State.Blocking`, `SEC.State.Staggered` and `SEC.State.Sprinting` for windows that change how the character moves. The plugin never adds any of them; your montages and your damage code do. Author your own for parry and hyper-armor windows.
 </Callout>
 
 ### 2. Mirror a tag into an animation Blueprint bool
@@ -78,6 +78,50 @@ Step 3 decides whether the dodge costs the attacker their swing. With the tag in
 <Callout type="warning">
 A pawn that does not implement `ISECDamageable` falls through to Unreal's `ApplyPointDamage` path, where the plugin has no result to inspect. Implement the interface on anything that needs i-frames.
 </Callout>
+
+---
+
+## Movement Speed During a Window
+
+A character holding full walk speed through a dodge slides out of its own animation. **SEC Speed Modifier** scales walk speed while a tag is held, so the slowdown begins and ends with the animation.
+
+1. Add **SEC Speed Modifier** to the character.
+2. Add a row to **Speed Scale By Tag**: the tag, and the multiplier it applies. `SEC.State.Dodging` at `0.2` leaves a fifth of the normal speed, enough to steer a roll without walking out of it.
+3. Put **SEC State Tag Window** across the dodge frames with that same tag in **`Tags`**.
+
+<SpeedModifierDetails />
+
+Tags held at the same time multiply, so a 0.5 slow alongside a 0.2 dodge leaves a tenth of the speed. A parent tag in the table matches the tags beneath it, so one row covers a branch. A multiplier above 1 speeds the character up, which is how `SEC.State.Sprinting` uses the same table.
+
+With no tag held, the character walks at the speed it started with. The component reads that speed when play begins, so set the character's own **Max Walk Speed** as usual and let the table scale it.
+
+<Collapsible title="Slows that no tag stands for" badge="Advanced">
+
+Some slows belong to a projectile or a pickup rather than to a montage. **Add Speed Modifier** applies one under an id you pick and holds it until **Remove Speed Modifier** drops that id. Calling it again with the same id replaces that id's multiplier. **Has Speed Modifier** reports what is held, and **Clear Speed Modifiers** drops every id while leaving the tag table alone.
+
+That path needs no ability system component, so it works on a character with no combat systems attached. Ids and tags land in the same pool and multiply together.
+
+**Set Base Max Walk Speed** changes the speed every multiplier works from, for a sprint or an upgrade that raises the character's own walk speed. Write it through that function rather than setting **Max Walk Speed** directly, or the next tag change overwrites the value.
+
+A negative or non-finite multiplier is refused wherever it enters, so one bad row cannot reach the movement component.
+
+</Collapsible>
+
+<Collapsible title="Driving your own movement system" badge="Advanced">
+
+**On Speed Scale Changed** fires with the combined multiplier whenever it changes. A character with no **Character Movement Component** still tracks tags and still broadcasts, so a project with its own movement code can bind that event and ignore the walk speed side.
+
+Subclass the component in Blueprint to override **Combine Speed Scales**, which decides how several multipliers stack, or **Apply Speed Scale**, which decides what the multiplier drives. Override the second to scale acceleration and rotation rate alongside walk speed.
+
+</Collapsible>
+
+<Collapsible title="Keeping speed in step across the network" badge="Multiplayer">
+
+Walk speed is not a replicated property, so each machine works its own value out from the tags it can see. Add the driving tag through a GameplayEffect or **Add Replicated Loose Gameplay Tag** so every machine agrees. A tag added with **Add Loose Gameplay Tag** exists only where it was added, which leaves the server and the clients disagreeing about how fast the character moves.
+
+A montage window adds loose tags per machine, and the montage plays on the server too, so a window-driven slow stays consistent without extra work.
+
+</Collapsible>
 
 ---
 

@@ -1182,6 +1182,18 @@ export const MELEE_TRACE_TEAM_FILTER_DETAILS: UeDetailCategory[] = [
   },
 ];
 
+/** USECSpeedModifierComponent — the authored tag table, verified against SECSpeedModifierComponent.h */
+export const SPEED_MODIFIER_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Movement",
+    properties: [
+      // TMap<FGameplayTag, float>, ClampMin 0.0. Shown with the dodge entry a designer starts from.
+      { label: "Speed Scale By Tag", value: { kind: "text", value: "1 element" } },
+      { label: "SEC.State.Dodging", value: n(0.2, 0, undefined, 2) },
+    ],
+  },
+];
+
 /** USECVitalsComponent — one authored FSECVitalDefinition row (the default Health row on AEnemyCharacterBase), verified against SECVitalsComponent.h */
 export const VITALS_COMPONENT_DETAILS: UeDetailCategory[] = [
   {
