@@ -36,10 +36,10 @@ Register **trace sockets** on the wielder (usually when the weapon equips). **`S
 | Shape | Use |
 |-------|-----|
 | **Sphere** | Fists, small contact points. |
-| **Capsule** | Single-socket volume aligned to bone rotation. |
+| **Capsule** | Widens one contact point's swept path. Lies along the sweep, not along the bone. |
 | **CapsuleTwoPoint** | Span between two mesh sockets (typical sword blade). |
 
-The first tick after **`StartTracing`** records positions only; sweeps begin once a previous sample exists.
+The first tick after **`StartTracing`** records positions only; the trace sweeps from the tick after that, once it holds a previous sample.
 
 Hit order:
 
@@ -54,7 +54,7 @@ On a machine that is not detecting hits, **`StartTracing`** and the tick return 
 
 ### What a hit landed on
 
-Before sending any damage the trace sorts each hit into one of three kinds, and each hit effect picks which kinds it plays on.
+Each kind decides what the hit costs the swing, and each hit effect picks which kinds it plays on.
 
 | Kind | What it is | Damage | The swing |
 |------|-----------|--------|-----------|
@@ -62,9 +62,9 @@ Before sending any damage the trace sorts each hit into one of three kinds, and 
 | **Inert** | A combatant taking nothing right now: a corpse, or a target inside an invulnerability window. | None. | Spent, and reachable again the moment the target starts taking hits. |
 | **Scenery** | The level: a wall, a floor, a prop out of combat. | None. | Held for the whole window, so a wall costs one clang. |
 
-Two switches decide the sorting. **Respect Can Be Damaged** (on by default) treats an actor whose Can Be Damaged flag is off as taking nothing, so switching that flag off on death is all a corpse needs to go quiet. **Require Damageable Target** treats anything without **`ISECDamageable`** as out of combat, for a project whose weapons should land nothing on props; leave it off and a breakable crate wired through Any Damage keeps taking hits.
+Two switches decide the sorting. **Respect Can Be Damaged** is on by default: an actor with that engine flag switched off takes nothing, so switching it off on death is all a corpse needs to go quiet. **Require Damageable Target** puts anything without **`ISECDamageable`** out of combat, for a project whose weapons should land nothing on props. Leave it off and a breakable crate wired through Any Damage keeps taking hits.
 
-A hit effect carries **Run On Damageable Hits**, **Run On Inert Hits** and **Run On Scenery Hits**. The first is on by default and the other two off, so a corpse and a wall stay silent until you give them an effect of their own. That is how a stone clang gets its own **Surface Set** without playing on flesh.
+A hit effect carries **Run On Damageable Hits**, **Run On Inert Hits** and **Run On Scenery Hits**. The first is on by default and the other two off, so a corpse and a wall stay silent until you give them an effect of their own. Give that effect a **Surface Set** and stone, wood and flesh each sound like themselves.
 
 ---
 
@@ -104,7 +104,7 @@ Per window: notify **`Damage Config`** → **`Default Damage Config`** → **`Ba
 
 **SEC Damage Statics** opens the same pipeline to a projectile, an explosion or a hazard: **Apply Damage** asks the target and falls back to point damage, **Apply Point Damage** skips the interface, **Classify Damage Target** sorts a hit the way the sweep does, and **Run Hit Effects** runs a config's whole effect list once you know the outcome.
 
-A cue fired this way receives the impact point, the impact normal, the struck surface, the damage that landed, a fatal flag, and whatever the target reported in its result tags. One notify can read those tags and branch a parried or blocked hit, which saves authoring a separate cue for each outcome. Cues shipped inside the plugin are found without a project listing the path, and a project's own cues under `/Game` keep working alongside them.
+A cue fired this way receives the impact point, the impact normal, the struck surface, the damage that landed, a fatal flag, and whatever the target reported in its result tags. One notify can read those tags and branch a parried or blocked hit, which saves authoring a separate cue for each outcome. The plugin registers its own cue folder, so you add no path of your own, and your cues under `/Game` keep working alongside the shipped ones.
 
 ### 5. Montage window
 
@@ -129,7 +129,7 @@ Equip, play the montage: register on equip, **`StartTracing`** at notify begin, 
 |--------|------|
 | [Reaction System](/docs/soulslike-combat/reaction-system) | **`ApplyDamage`** returns **`ResultTags`** for reaction selection. |
 | [Animation Integration](/docs/soulslike-combat/animation-integration) | Montage windows hold defense tags; **`SkipRecordTags`** decides whether a dodge costs the swing. |
-| [Multiplayer](/docs/soulslike-combat/multiplayer) | Trace and damage on authority; clients follow replicated state. |
+| [Multiplayer](/docs/soulslike-combat/multiplayer) | Trace and damage on the detecting machine, the authority by default; clients follow replicated state. |
 | [Configuration Reference](/docs/soulslike-combat/configuration) | Shared project tuning (reconcile damage fields with this page). |
 
 **`TeamFilter`** on the trace component (damage gating, not combat target selection):
@@ -155,11 +155,11 @@ void RemoveTraceIgnoredActor(AActor* Actor);
 TArray<AActor*> GetTraceIgnoredActors() const;
 ```
 
-**`OnMeleeHit`:** **`FSECMeleeHitData`** (`HitResult`, `FromSocketID`, `DamageConfig`).
+**`OnMeleeHit`:** **`FSECMeleeHitData`** (`HitResult`, `FromSocketID`, `DamageConfig`, `Classification`).
 
 **`OnMeleeHitResponse`:** **`FSECMeleeHitData`** + **`FSECDamageResult`**.
 
-Subclass **`BuildDamageInfo`** or **`HandleDamageResult`** for crit scaling, pierce, or custom hit recording. **`BuildDamageInfo`** receives the socket that struck, so an override can vary damage by contact point.
+Override **`BuildDamageInfo`**, **`HandleDamageResult`** or **`ClassifyHit`** in a Blueprint or C++ subclass, for crit scaling, pierce, or a sorting rule of your own. **`BuildDamageInfo`** receives the socket that struck, so an override can vary damage by contact point.
 
 Blueprint helpers: **`RegisterSphereSocket`**, **`RegisterCapsuleSocket`**, **`RegisterTwoPointCapsule`**.
 
@@ -171,16 +171,16 @@ Blueprint helpers: **`RegisterSphereSocket`**, **`RegisterCapsuleSocket`**, **`R
 
 **`HitDirection`** is the bearing from attacker to target. **`IsHitDirectionWithinArc`** and **`GetHitDirectionQuadrant`** measure a guard or a directional reaction against it. The weapon's own path stays on the hit result. Tick **Use Authored Hit Direction** on the config to send a fixed direction instead, so an uppercut launches upward whatever the geometry said; the physics impulse follows the same value.
 
-**`FSECDamageResult`:** **`DamageApplied`** (the amount that landed), **`bWasFatal`**, **`ResultTags`**. The point damage path reports what the target's **Take Damage** returned, and carries no fatal flag or result tags, since Unreal's damage path reports neither.
+**`FSECDamageResult`:** **`DamageApplied`** (the amount that landed), **`bWasFatal`**, **`ResultTags`**. A target reached through point damage reports what its **Take Damage** returned, with no fatal flag and no result tags, since Unreal's path carries neither back.
 
 **`HandleDamageResult` recording:**
 
 | Result | Recording |
 |--------|-----------|
-| Tags match **`SkipRecordTags`** | No record. The swing was never spent, so it lands again on a later frame, which is what a dodge wants. |
+| Tags match **`SkipRecordTags`** | No record. The trace did not spend the swing, so it lands again on a later frame, which is what a dodge wants. |
 | Anything else, including an empty result | **`RecordHit`**. A parry or a block costs the attacker that swing. |
 
-A record carries what the swing landed on, which decides when the target comes back. The level never does. A combatant that took nothing comes back the moment it starts taking hits, so a boss dropping its invulnerability partway through a swing is reachable by that same swing.
+A record carries what the swing landed on, and that decides when the target comes back. The level does not. A combatant that took nothing returns as soon as it starts taking hits, so a boss dropping its invulnerability partway through a swing is reachable by that same swing.
 
 Overriding **`HandleDamageResult`** replaces that rule outright, so call **`RecordHit`** yourself for the hits you mean to keep; both it and **`CanHitActor`** are Blueprint-callable. **`GetTargetsHitThisWindow`** counts the targets a swing has spent itself on, for damage falloff across a cleave.
 
@@ -208,9 +208,9 @@ Component **`Draw Debug`**, or notify **`Enable Debug Draw`** for one window (**
 | Through walls | **Trace Filter** | **Object Types** mode reports every listed target along the whole span and nothing stops it, so the level shields nothing. Use **Channel** mode for occlusion. |
 | Wall plays the flesh cue | Wall reads as a target | A wall with Can Be Damaged on and no interface sorts as **Damageable**. Switch the flag off on level geometry, or tick **Require Damageable Target**. |
 | Corpse keeps ringing | Effect runs on inert hits | Untick **Run On Inert Hits** on that effect, or switch Can Be Damaged off on death so the body sorts as inert in the first place. |
-| Two hits one swing | Two sockets touch | Expected; narrow active **`SocketIDs`** or shapes. |
+| Two hits one swing | **`Hit Reset Interval`** above zero, or two windows overlapping on the montage | One target takes one hit per window at zero. Check the interval, the config's **`Multi Hit Interval`**, and the Output Log for an overlap warning. |
 | No damage on SEC pawn | No interface | Implement **`ISECDamageable`**. |
-| Client swing, no damage | No authority | **`StartTracing`** / tick skip non-authority owners. |
+| Client swing, no damage | No authority | Detection runs on the authority. Override **`ShouldDetectHits`** to sweep on the owning client instead. |
 
 The component reports several of these itself. Check the Output Log before hunting: it names a socket a window asked for that nothing registered, a window that opened while another was still open, a socket sweeping from a mesh that is not refreshing its bones, and an **Object Types** filter with an empty list.
 
