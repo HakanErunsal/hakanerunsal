@@ -52,6 +52,8 @@ import AwarenessConfigEscalationDetails from '@/components/AwarenessConfigEscala
 import AwarenessConfigMemoryDetails from '@/components/AwarenessConfigMemoryDetails';
 import TargetSelectionContextDetails from '@/components/TargetSelectionContextDetails';
 import MeleeTraceTeamFilterDetails from '@/components/MeleeTraceTeamFilterDetails';
+import EquipLoadoutEntryDetails from '@/components/EquipLoadoutEntryDetails';
+import EquipmentComponentDetails from '@/components/EquipmentComponentDetails';
 import MeleeTraceComponentDetails from '@/components/MeleeTraceComponentDetails';
 import SECDamageConfigDetails from '@/components/SECDamageConfigDetails';
 import MeleeTraceNotifyDetails from '@/components/MeleeTraceNotifyDetails';
@@ -133,6 +135,8 @@ const components = {
   AwarenessConfigMemoryDetails,
   TargetSelectionContextDetails,
   MeleeTraceTeamFilterDetails,
+  EquipLoadoutEntryDetails,
+  EquipmentComponentDetails,
   MeleeTraceComponentDetails,
   SECDamageConfigDetails,
   MeleeTraceNotifyDetails,

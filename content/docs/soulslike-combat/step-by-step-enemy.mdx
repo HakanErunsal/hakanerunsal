@@ -1,7 +1,7 @@
 ---
 title: "Step-by-Step Enemy Creation"
 description: "Build a complete, armed enemy: a multi-action moveset with combos, a weapon, and testing. Builds on Getting Started."
-date: 2026-07-29
+date: 2026-07-31
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Tutorial"]
 parent: "SoulslikeCombatDocs"
@@ -70,7 +70,7 @@ Each action using the Gameplay Ability method needs an ability Blueprint. Inheri
 
 ## 4. Arm the enemy
 
-The attacks play, but nothing lands until the weapon runs melee traces. The full weapon build lives on the [Melee Trace](/docs/soulslike-combat/melee-trace) page: inherit `ASECWeaponBase`, define the trace sockets, add the **SEC Melee Trace Window** notify state to each montage, and assign a damage config. Set that up, then come back to test.
+The attacks play, but nothing lands until the weapon runs melee traces. The full weapon build lives on the [Melee Trace](/docs/soulslike-combat/melee-trace) page: inherit `ASECWeaponBase`, define the trace sockets, add the **SEC Melee Trace Window** notify state to each montage, and assign a damage config. Then add the weapon to the enemy's **`Starting Loadout`** so it arrives in hand on spawn. Set that up, then come back to test.
 
 ---
 

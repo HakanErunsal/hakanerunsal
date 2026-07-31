@@ -1102,12 +1102,21 @@ export const MELEE_TRACE_NOTIFY_DETAILS: UeDetailCategory[] = [
   },
 ];
 
-/** ASECWeaponBase trace setup — verified against SECWeaponBase.h + FSECTraceSocket */
+/** ASECWeaponBase trace setup, verified against SECWeaponBase.h + FSECTraceSocket */
 export const WEAPON_TRACE_SOCKET_DETAILS: UeDetailCategory[] = [
   {
     title: "SEC|Weapon",
     properties: [
       { label: "Attach Socket", value: { kind: "text", value: "hand_r" } },
+      { label: "Attach Offset", value: { kind: "text", value: "Identity" } },
+      { label: "Weapon Action Set", value: { kind: "asset", value: "DA_GreatswordActions" } },
+      { label: "Weapon Reaction Set", value: { kind: "asset", value: "None" } },
+    ],
+  },
+  {
+    title: "SEC|Animation",
+    properties: [
+      { label: "Anim Layer To Use", value: { kind: "asset", value: "ABP_Greatsword" } },
     ],
   },
   {
@@ -1178,8 +1187,40 @@ export const MULTIPLAYER_ACTION_STATE_DETAILS: UeDetailCategory[] = [
     ],
   },
   {
-    title: "Weapon",
-    properties: [{ label: "Equipped Weapon", value: { kind: "asset", value: "BP_EnemySword" } }],
+    title: "SEC|ActionSet",
+    properties: [{ label: "Provided Action Set", value: { kind: "asset", value: "DA_GreatswordActions" } }],
+  },
+];
+
+/** USECEquipmentComponent, verified against SECEquipmentComponent.h */
+export const EQUIPMENT_COMPONENT_DETAILS: UeDetailCategory[] = [
+  {
+    title: "SEC|Loadout",
+    properties: [
+      { label: "Starting Loadout", value: { kind: "text", value: "1 Array element" } },
+      { label: "Equip Starting Loadout On Begin Play", value: b(true) },
+      { label: "Attach Mesh Component Tag", value: { kind: "text", value: "None" } },
+    ],
+  },
+  {
+    title: "SEC|Equipment",
+    properties: [
+      { label: "Swap Disposal", value: { kind: "enum", value: "Destroy" } },
+      { label: "Teardown Disposal", value: { kind: "enum", value: "Destroy" } },
+    ],
+  },
+];
+
+/** One FSECEquipLoadoutEntry, verified against SECEquipmentComponent.h */
+export const EQUIP_LOADOUT_ENTRY_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Loadout",
+    properties: [
+      { label: "Equippable Class", value: { kind: "asset", value: "BP_EnemyGreatsword" } },
+      { label: "Socket Override", value: { kind: "text", value: "None" } },
+      { label: "Use Transform Override", value: b(false) },
+      { label: "Use As Weapon", value: b(true) },
+    ],
   },
 ];
 

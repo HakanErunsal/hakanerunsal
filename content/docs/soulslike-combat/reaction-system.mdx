@@ -1,7 +1,7 @@
 ---
 title: "Reaction System"
 description: "Event-driven AI reactions: parry, dodge, counter. They respond to game events in real time."
-date: 2026-07-29
+date: 2026-07-31
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Reactions"]
 parent: "SoulslikeCombatDocs"
@@ -97,13 +97,13 @@ The resolver walks this chain and returns the **first match**:
 | Priority | Source | Use |
 |----------|--------|-----|
 | 1 (highest) | **Runtime Override** | `SetRuntimeOverride(ReactionSet)`. Boss phase transitions. |
-| 2 | **Equipped Weapon** | Weapon on the sibling `SECActionSetComponent` implementing `ISECWeaponReactionSetProvider`. |
+| 2 | **Provided Set** | A set pushed onto the pawn, which is how an equipped weapon's reactions arrive. |
 | 3 | **Config Role** | Role-specific ReactionSet from `EnemyAIConfig → RoleReactionSets`. |
 | 4 | **Config Default** | Fallback from `EnemyAIConfig → DefaultReactionSet`. |
 | 5 | **Component Default** | `SECReactionSetComponent → DefaultReactionSet` on the pawn. |
 | 6 | **None** | No ReactionSet. The AI cannot react. |
 
-Weapon and override changes take effect on the next sync. Set the equipped weapon on **`SECActionSetComponent`** (`SetEquippedWeapon`); the reaction component reads it from there.
+Provided set and override changes take effect on the next sync. Fill in **`Weapon Reaction Set`** on a weapon Blueprint to give the enemy reactions that come with what it is holding, such as a parry it can only do while carrying a sword. See [Equipping](/docs/soulslike-combat/melee-trace#equipping).
 
 > `SECActionSetComponent` uses the same resolution chain for action sets.
 
@@ -118,12 +118,14 @@ When a reaction set swap runs while a reaction is already executing:
 
 Pass the mode to `SetRuntimeOverride`, `ClearRuntimeOverride`, or `SyncForCombatRole`. There is no persistent `SwapMode` property on the component.
 
-<Collapsible title="Weapon reaction set provider and replicated state" badge="Advanced">
-Implement `ISECWeaponReactionSetProvider` on your weapon actor and override `GetWeaponReactionSetForRole(RoleTag)`.
+<Collapsible title="Per-role reactions and replicated state" badge="Advanced">
+`Weapon Reaction Set` answers the same set for every role. To vary it, override **`Get Weapon Reaction Set For Role`** on the weapon and branch on the incoming role tag. A weapon deriving from something other than **`SEC Weapon Base`** adds the **`SEC Weapon Reaction Set Provider`** interface in Class Settings.
+
+Anything can drive the slot directly, which is what the equipment component does for a weapon:
 
 ```cpp
-Pawn->ActionSetComponent->SetEquippedWeapon(WeaponActor);
-Pawn->ActionSetComponent->SetEquippedWeapon(nullptr);  // revert to config resolution
+Pawn->ReactionSetComponent->SetProvidedReactionSet(ReactionSet);
+Pawn->ReactionSetComponent->SetProvidedReactionSet(nullptr);  // fall back to config resolution
 ```
 
 **Replicated state** on `SECReactionSetComponent` (client UI, VFX, debug): `CurrentReactionId`, `bReactionExecuting`, `ActiveReactionSet`, `OnReactionExecutionStarted` / `OnReactionExecutionCompleted`, `OnReactionSetChanged`, cooldown delegates, and `GetRemainingCooldown` / `IsReactionOnCooldown` / `GetAllActiveCooldowns`.
