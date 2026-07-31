@@ -1102,8 +1102,8 @@ export const MELEE_TRACE_NOTIFY_DETAILS: UeDetailCategory[] = [
   },
 ];
 
-/** ASECWeaponBase trace setup, verified against SECWeaponBase.h + FSECTraceSocket */
-export const WEAPON_TRACE_SOCKET_DETAILS: UeDetailCategory[] = [
+/** ASECWeaponBase's own properties, verified against SECWeaponBase.h */
+export const WEAPON_BASE_DETAILS: UeDetailCategory[] = [
   {
     title: "SEC|Weapon",
     properties: [
@@ -1121,6 +1121,16 @@ export const WEAPON_TRACE_SOCKET_DETAILS: UeDetailCategory[] = [
   },
   {
     title: "SEC|Trace",
+    properties: [
+      { label: "Trace Sockets", value: { kind: "text", value: "1 Array element" } },
+    ],
+  },
+];
+
+/** One FSECTraceSocket entry, verified against SECMeleeTraceComponent.h */
+export const WEAPON_TRACE_SOCKET_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Trace",
     properties: [
       { label: "ID", value: { kind: "text", value: "Blade" } },
       { label: "Source Component Tag", value: { kind: "text", value: "None" } },

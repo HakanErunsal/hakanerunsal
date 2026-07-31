@@ -57,6 +57,7 @@ import EquipmentComponentDetails from '@/components/EquipmentComponentDetails';
 import MeleeTraceComponentDetails from '@/components/MeleeTraceComponentDetails';
 import SECDamageConfigDetails from '@/components/SECDamageConfigDetails';
 import MeleeTraceNotifyDetails from '@/components/MeleeTraceNotifyDetails';
+import WeaponBaseDetails from '@/components/WeaponBaseDetails';
 import WeaponTraceSocketDetails from '@/components/WeaponTraceSocketDetails';
 import CombatRoleReplicatedDetails from '@/components/CombatRoleReplicatedDetails';
 import MultiplayerActionStateDetails from '@/components/MultiplayerActionStateDetails';
@@ -140,6 +141,7 @@ const components = {
   MeleeTraceComponentDetails,
   SECDamageConfigDetails,
   MeleeTraceNotifyDetails,
+  WeaponBaseDetails,
   WeaponTraceSocketDetails,
   CombatRoleReplicatedDetails,
   MultiplayerActionStateDetails,

@@ -80,11 +80,13 @@ Set **`Default Damage Config`** or **`Base Damage`** when a notify omits damage.
 
 Add sockets on the weapon mesh (example: **`blade_start`**, **`blade_end`**).
 
-### 3. Weapon Blueprint
+### 3. Sockets on the weapon
 
-Subclass **`ASECWeaponBase`**, fill **`TraceSockets`**. Equipping the weapon points each socket at the weapon mesh and registers it on the wielder's trace component, and releasing the weapon takes those sockets away again.
+A weapon carries its own socket list and registers it on the wielder when equipped, so the trace component sweeps from the blade of whatever the enemy is holding. Releasing the weapon takes those sockets away again.
 
-<WeaponTraceSocketDetails />
+[Weapons](/docs/soulslike-combat/weapons) covers building the weapon Blueprint and getting it into the enemy's hand. Come back here for the sweep itself.
+
+An unarmed pawn skips the weapon and registers its sockets directly, through **`RegisterSphereSocket`** on hand bones.
 
 Per-attack damage comes from the montage notify or component default, not the weapon actor.
 
@@ -123,57 +125,11 @@ Equip, play the montage: register on equip, **`StartTracing`** at notify begin, 
 
 ---
 
-## Equipping
-
-An enemy has to be holding the weapon before any of the above runs. Put the weapon in the pawn's loadout and the plugin spawns it, attaches it, and registers its trace sockets.
-
-**`AEnemyCharacterBase`** already carries a **SEC Equipment Component**. Add one yourself for a pawn built from scratch.
-
-<EquipmentComponentDetails />
-
-Add one entry to **`Starting Loadout`** per thing the enemy carries:
-
-<EquipLoadoutEntryDetails />
-
-**`Equippable Class`** is the weapon Blueprint. Leave **`Socket Override`** empty to use the socket the weapon names itself. **`Use As Weapon`** marks which entry the enemy fights with, so a shield or a torch goes in with it turned off.
-
-That is the setup. The weapon arrives in the enemy's hand on spawn, its trace sockets register, its animation layer links, and its **`Weapon Action Set`** and **`Weapon Reaction Set`** reach the enemy.
-
-### Swapping and dropping
-
-**Spawn And Equip** puts a new weapon in the hand and **Unequip Actor** takes one out. **`Swap Disposal`** decides what happens to the weapon being replaced, **`Teardown Disposal`** what happens to the pawn's own weapons when the pawn is destroyed. Both default to removing the weapon from the level.
-
-To leave a weapon on the floor, set the disposal to **`Drop`** and turn on physics from the weapon's **`On Unequipped`** event, which receives **`Should Drop`** with a suggested impulse and lifetime.
-
-<Collapsible title="Equipping without the component" badge="Advanced">
-Nothing requires the component. **`SEC Equip Statics`** carries the same act as Blueprint nodes, so a pawn can drive its own equipping instead.
-
-**Equip Actor To Wielder** asks the equippable to equip itself, and **Set Equipped Weapon** on the equipment component points combat resolution at it. A pawn with no equipment component pushes the sets itself through **Set Provided Action Set** and **Set Provided Reaction Set**.
-
-Call the nodes once per item, so a sword in one hand and a shield in the other are two calls. Branch on **Has Authority** first, since the nodes do what they are told wherever they run.
-</Collapsible>
-
-<Collapsible title="A weapon that is not a SEC Weapon Base" badge="Advanced">
-A weapon can be a plain **Actor**. Each interface it adds in Class Settings earns it one more thing, and adding none still gets it attached and released with the rest of the pawn's equipment.
-
-| Interface | What the weapon gains |
-|-----------|-----------------------|
-| none | Attaches at the socket the entry names, and is released on death and on teardown. |
-| **SEC Equippable** | Its own socket, offset, mesh, trace sockets and animation layer, and control of how it attaches. |
-| **SEC Weapon Action Set Provider** | Gives the enemy its moveset while equipped. |
-| **SEC Weapon Reaction Set Provider** | Gives the enemy its reactions while equipped. |
-
-An actor implementing **SEC Equippable** attaches itself, so call **Apply Standard Equip** from its **`On Equipped`** event for the ordinary behavior. A weapon that places its own pieces, a bow with a quiver for instance, skips that node and does the attaching itself.
-
-The actor needs a root component. Attaching moves an actor's root, so one without a root is refused and logs why.
-</Collapsible>
-
----
-
 ## Integration
 
 | System | Link |
 |--------|------|
+| [Weapons](/docs/soulslike-combat/weapons) | Building the weapon, its socket list, and arming the enemy so those sockets register. |
 | [Reaction System](/docs/soulslike-combat/reaction-system) | **`ApplyDamage`** returns **`ResultTags`** for reaction selection. |
 | [Animation Integration](/docs/soulslike-combat/animation-integration) | Montage windows hold defense tags; **`SkipRecordTags`** decides whether a dodge costs the swing. |
 | [Multiplayer](/docs/soulslike-combat/multiplayer) | Trace and damage on the detecting machine, the authority by default; clients follow replicated state. |
@@ -265,5 +221,5 @@ The component reports several of these itself. Check the Output Log before hunti
 
 <DocNav
   prev={{ title: "Awareness System", href: "/docs/soulslike-combat/awareness-system" }}
-  next={{ title: "Vitals", href: "/docs/soulslike-combat/vitals" }}
+  next={{ title: "Weapons", href: "/docs/soulslike-combat/weapons" }}
 />
