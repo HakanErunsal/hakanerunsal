@@ -43,7 +43,20 @@ function buildDocTree(): DocTreeNode[] {
 function TreeSection({ node, pathname }: { node: DocTreeNode; pathname: string }) {
     const isActive = pathname === `/${node.slug}`;
     const hasActiveChild = node.children.some(c => pathname === `/${c.slug}`);
-    const [isExpanded, setIsExpanded] = useState(isActive || hasActiveChild);
+    const holdsOpenPage = isActive || hasActiveChild;
+
+    // Same reason as the site sidebar: this component does not remount between docs, so the expansion has to be
+    // derived from the path rather than seeded once. The toggle overrides it until navigation moves the open page.
+    const [override, setOverride] = useState<boolean | null>(null);
+    const [lastHeldOpenPage, setLastHeldOpenPage] = useState(holdsOpenPage);
+
+    if (lastHeldOpenPage !== holdsOpenPage) {
+        setLastHeldOpenPage(holdsOpenPage);
+        setOverride(null);
+    }
+
+    const isExpanded = override ?? holdsOpenPage;
+    const setIsExpanded = (next: boolean) => setOverride(next);
 
     const hasChildren = node.children.length > 0;
 

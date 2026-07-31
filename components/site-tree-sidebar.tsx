@@ -102,7 +102,21 @@ function isSecDocsPath(pathname: string): boolean {
 function TreeSection({ node, pathname }: { node: TreeNode; pathname: string }) {
     const isActive = pathname === `/${node.slug}`;
     const hasActiveChild = node.children.some(c => pathname === `/${c.slug}`);
-    const [isExpanded, setIsExpanded] = useState(isActive || hasActiveChild);
+    const holdsOpenPage = isActive || hasActiveChild;
+
+    // A branch holding the open page expands on its own. The toggle overrides that, and the override is dropped
+    // whenever navigation moves the open page in or out of this branch, so opening a doc always reveals it.
+    // The sidebar sits in the layout and never remounts between docs, so this cannot be an initial state value.
+    const [override, setOverride] = useState<boolean | null>(null);
+    const [lastHeldOpenPage, setLastHeldOpenPage] = useState(holdsOpenPage);
+
+    if (lastHeldOpenPage !== holdsOpenPage) {
+        setLastHeldOpenPage(holdsOpenPage);
+        setOverride(null);
+    }
+
+    const isExpanded = override ?? holdsOpenPage;
+    const setIsExpanded = (next: boolean) => setOverride(next);
 
     const hasChildren = node.children.length > 0;
 
