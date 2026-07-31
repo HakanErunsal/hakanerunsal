@@ -1031,12 +1031,20 @@ export const MELEE_TRACE_COMPONENT_DETAILS: UeDetailCategory[] = [
   {
     title: "Damage",
     properties: [
-      { label: "Damage Application", value: { kind: "enum", value: "Damageable Interface" } },
       { label: "Default Damage Config", value: { kind: "asset", value: "None" } },
       { label: "Base Damage", value: n(10, 0) },
       { label: "Damage Type Class", value: { kind: "asset", value: "None" } },
       { label: "Hit Reset Interval", value: n(0, 0) },
       { label: "Team Filter", value: { kind: "enum", value: "No Filter" } },
+    ],
+  },
+  {
+    title: "SEC | Melee Trace | Damage",
+    properties: [
+      { label: "Skip Record Tags", value: { kind: "text", value: "0 tags" } },
+      { label: "Damage Application", value: { kind: "enum", value: "Damageable Interface" } },
+      { label: "Respect Can Be Damaged", value: b(true) },
+      { label: "Require Damageable Target", value: b(false) },
     ],
   },
   {
@@ -1067,6 +1075,7 @@ export const SEC_DAMAGE_CONFIG_DETAILS: UeDetailCategory[] = [
       { label: "Damage Type", value: { kind: "text", value: "None" } },
       { label: "Damage Type Class", value: { kind: "asset", value: "None" } },
       { label: "Damage Tags", value: { kind: "text", value: "0 tags" } },
+      { label: "Multi Hit Interval", value: n(-1, -1) },
       { label: "Use Authored Hit Direction", value: b(false) },
     ],
   },
