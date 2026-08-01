@@ -421,6 +421,7 @@ An action with an empty Scoring list scores on `SelectionWeight` alone. No score
 | **Vital Gate** | Gate | `VitalTag`, `MinValue` (default `0`), `bUseFraction` (default `false`) | Veto unless a named vital holds at least `MinValue`, the general form behind Stamina Gate. No effect on a pawn with no vitals component or no row for the tag. |
 | **Attribute Scorer** | Scorer | `Attribute`, `NormalizeBy`, `ValueEval` | Scale by a GameplayAttribute through an `FRangeEval` curve. Optional normalize-by attribute (e.g. Mana / MaxMana). |
 | **Attribute Gate** | Gate | `Attribute`, `MinValue`, `MaxValue` | Allow only while an attribute sits between a min and a max. |
+| **Combat Token Gate** | Gate | `TokenTag`, `Cost` (default `1`) | Veto unless the target has a free permission slot, then hold that slot until the action ends. Caps how many enemies run the action against one target at once. See [Combat Tokens](/docs/soulslike-combat/combat-tokens). |
 
 <Callout type="info">
   The decision context does not read GAS attributes. Health Scorer and Stamina Gate read the snapshot sourced from the pawn's vitals, defaulting to full health and 100 stamina when the pawn carries no vitals component or no row for the configured tag. For an attribute, reach for **Attribute Scorer** or **Attribute Gate**; for a specific pool, a [Vital Scorer or Vital Gate](/docs/soulslike-combat/vitals#costing-and-scoring-actions).
@@ -431,6 +432,8 @@ An action with an empty Scoring list scores on `SelectionWeight` alone. No score
 **Cast a spell only above a mana threshold.** Add an **Attribute Gate**, set `Attribute = Mana`, `MinValue = 30`. The spell drops out whenever mana is below 30.
 
 **Favor a heavy attack as rage builds.** Add an **Attribute Scorer**, set `Attribute = Rage`, `NormalizeBy = MaxRage`, and shape the curve to peak near full. The attack scores higher as rage fills.
+
+**Let one enemy swing at a time.** Add a **Combat Token Gate** to every melee attack, set `TokenTag = SEC.Token.Attack`, and leave the pool at 1. The rest circle until the slot frees. See [Combat Tokens](/docs/soulslike-combat/combat-tokens).
 
 The same Scorers and Gates work on reactions. On the reaction path the component builds a live spatial snapshot (distance, angle, speed, health) from the pawn and `TargetOverride` instead of the action decision context. See [Reaction System](/docs/soulslike-combat/reaction-system#scorers-on-reactions).
 

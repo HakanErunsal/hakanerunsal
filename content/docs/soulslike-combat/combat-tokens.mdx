@@ -1,0 +1,239 @@
+---
+title: "Combat Tokens"
+description: "Cap how many enemies may run one class of action against the same target at once."
+date: 2026-08-01
+published: true
+tags: ["Documentation", "Unreal Engine", "AI", "Combat Tokens"]
+parent: "SoulslikeCombatDocs"
+order: 8.5
+---
+
+<Breadcrumb items={[
+    { label: "Docs", href: "/docs" },
+    { label: "SoulslikeCombat", href: "/docs/SoulslikeCombatDocs" },
+    { label: "Combat Tokens" }
+]} />
+
+> Every target hands out a fixed number of permission slots. An action that carries a Combat Token Gate takes a slot when it starts and gives it back when it ends, so only that many enemies swing at once while the rest keep circling.
+
+## When to Use This
+
+- One enemy attacks the player at a time while the others circle, the classic souls read.
+- Two melee attackers but only one archer firing, each counted in its own pool.
+- A boss that allows more attackers than a regular enemy does.
+- A heavy attack that occupies the whole pool, so nothing comes in alongside it.
+
+Each target owns its own slots. Six enemies split across two players never spend each other's.
+
+---
+
+## How It Works
+
+Three pieces:
+
+| Piece | What it does |
+|-------|--------------|
+| **Token tag** | Names a pool. `SEC.Token.Attack` and `SEC.Token.Ranged` ship with the plugin, and any tag of your own works. |
+| **Combat Token Gate** | Sits on an action's Scoring list and declares the pool that action draws from. |
+| **Pool size** | How many slots a target hands out for that tag. Set once in Project Settings, overridden per target where you need different numbers. |
+
+The AI takes its slots the moment the action starts and hands them back when it ends, whether the action completed, was cancelled, was interrupted, or timed out. A dying enemy releases its slot as part of the death shutdown.
+
+An enemy that finds the pool full drops that action from its choices and picks something else, so it keeps strafing, closing, or backing off while it waits. Nothing queues and nothing takes turns in order: the next enemy to reach for the slot gets it.
+
+---
+
+## Setup
+
+### 1. Put the gate on the actions you want capped
+
+Open the ActionSet, pick the attack, and add a **Combat Token Gate** to its **Scoring → Gates** array. Set **Token Tag** to `SEC.Token.Attack`.
+
+<CombatTokenGateDetails />
+
+Repeat for every melee attack that should share the cap. Actions with no gate stay uncapped, which is what you want for a dodge, a reposition, or a taunt.
+
+### 2. Set the pool size
+
+**Project Settings → Plugins → Soulslike Enemy Combat → Combat Tokens.** One row per tag.
+
+<CombatTokenSettingsDetails />
+
+A tag with no row here is unlimited, so a gate on a tag you invented does nothing until you add its row. Set **Budget** to 0 to shut a pool and stop everything gated on that tag.
+
+### 3. Give one target its own numbers
+
+Add an **SEC Token Budget Component** to the actor being fought, then fill its map with the counts that actor wants. The rows apply when play begins and lift when the component leaves.
+
+<TokenBudgetComponentDetails />
+
+A boss with `SEC.Token.Attack` set to 3 takes three attackers at once while every other enemy in the level stays on the Project Settings value of 1.
+
+<Callout type="info">
+The component sets counts. The pause before a freed slot is handed out again stays project-wide and is edited in Project Settings.
+</Callout>
+
+<Collapsible title="Setting a budget from a Blueprint graph instead" badge="Alternative">
+
+Get the **SEC Combat Token Subsystem** from the world and call **Set Token Budget**, passing the target actor, the tag, and the count. Use it for a budget that changes mid-fight, a boss phase that opens the arena up to more attackers, for example.
+
+`Clear Token Budget` drops one row back to the Project Settings value. `Clear Target` forgets that actor completely, which is what you want for an actor coming out of a pool so it does not inherit the last occupant's numbers.
+
+Lowering a budget never takes a slot back from an enemy already swinging. It starves new claims until that enemy finishes.
+
+</Collapsible>
+
+---
+
+## Tuning
+
+### Pacing how fast the next attack lands
+
+**Reissue Delay** on a token row holds a freed slot out of circulation for that many seconds before anyone else can take it. At 0 the next enemy can step in the same frame the last one finishes.
+
+Raise it to somewhere around the length of an attack recovery and the fight breathes: one enemy swings, backs off, and a beat passes before the next comes in.
+
+<Collapsible title="Reissue delay against cooldowns and recovery" badge="Advanced">
+
+Three separate clocks shape the same rhythm:
+
+| Clock | Scope | Holds back |
+|-------|-------|------------|
+| **Cooldown** | One action on one enemy | That action, for that enemy |
+| **Recovery Time** | One enemy | Every offensive action on that enemy |
+| **Reissue Delay** | One pool on one target | The freed slot, for everyone |
+
+Cooldown and recovery pace a single enemy. Reissue Delay paces the group, which is the one that reads as a fight taking turns rather than a crowd taking swings.
+
+Reissue Delay runs on world time, so it honors pause and time dilation the way cooldowns do.
+
+</Collapsible>
+
+### An action that takes more than one slot
+
+**Cost** on the gate sets how many slots the action holds. A pool of 2 and a heavy attack at Cost 2 means that attack runs alone, and a light attacker at Cost 1 can pair up with another light attacker.
+
+<Collapsible title="Two gates naming the same tag" badge="Advanced">
+
+An action carrying two Combat Token Gates on one tag keeps the larger cost rather than adding the two together. Each gate checks only its own cost while the action is scored, so adding them up would let the action win selection and then be refused every time it tried to start. To hold two slots, set Cost to 2 on one gate.
+
+</Collapsible>
+
+### Acting only while everyone else is busy
+
+Tick **Invert** on the gate and it reads the pool the other way: the action is blocked while a slot is free, and allowed once the pool is full. A flanker that should only reposition while the attackers are committed is the case this covers.
+
+An inverted gate claims nothing. It reads the pool and steps aside.
+
+---
+
+## What a full pool looks like in game
+
+The enemy scores its actions, finds the gated attack unavailable, and picks the next best thing. If nothing else scores, it runs no action that tick and its movement carries on untouched. It tries again on the next decision.
+
+<Collapsible title="Why an action can pass the gate and still not start" badge="Advanced">
+
+The gate reads the pool while the action is being scored. The slot is taken when the action starts. Between those two moments another enemy can take the last slot, and the start is refused.
+
+A refused start costs nothing: no cooldown is stamped, no recovery window opens, no delegate fires, and the AI picks again on its next tick. The score breakdown in the Action Set editor can show the gate passing on the frame the claim lost the race, which is worth knowing when a debug view and the fight seem to disagree.
+
+</Collapsible>
+
+<Collapsible title="Abilities started outside the action loop" badge="Advanced">
+
+Tokens ride the action execution path. A Blueprint that activates an ability straight on the ability system component, or a Behavior Tree that runs one outside the action loop, swings without taking a slot and the pool never sees it. Route attacks through actions if you want the cap to hold.
+
+</Collapsible>
+
+---
+
+## Reactions
+
+A Combat Token Gate on a reaction passes and takes nothing. A parry or a dodge answers something the player did, so holding it back until an attack slot frees up would read as the enemy failing to defend itself.
+
+Cap the offense with tokens and shape the defense with [reaction priorities and cooldowns](/docs/soulslike-combat/reaction-system).
+
+---
+
+## Combat Tokens against Combat Roles
+
+Both limit how many enemies press the player, from different ends.
+
+| | [Combat Roles](/docs/soulslike-combat/combat-roles) | Combat Tokens |
+|---|---|---|
+| **Limits** | How many enemies hold a role | How many enemies run an action at once |
+| **Granularity** | The enemy, for as long as it holds the role | One action, for as long as it runs |
+| **Changes** | On a reassignment cycle, with hysteresis | The moment an action starts or ends |
+| **Reach** | Swaps the ActionSet, ReactionSet, and Movement Profile | Allows or blocks one action |
+
+Roles decide who is in the fight and how they behave. Tokens decide who swings right now. They stack: give three enemies the Attacker role so they close in and press, and set the attack pool to 1 so only one of them swings at a time.
+
+Tokens work on their own too. An enemy that never registers for a role still takes and returns slots.
+
+---
+
+## Blueprint API
+
+Get **SEC Combat Token Subsystem** from the world.
+
+| Node | Returns | What it does |
+|------|---------|--------------|
+| **Set Token Budget** | | Sets how many slots one target hands out for a tag. |
+| **Clear Token Budget** | | Drops the override so the tag falls back to Project Settings. |
+| **Clear Target** | | Forgets a target's overrides, held slots, and cooling slots. |
+| **Get Token Budget** | `int32` | The resolved count, a very large number when the tag is unlimited. |
+| **Get Available Tokens** | `int32` | Free slots right now, counting out held and cooling ones. |
+| **Can Claim Token** | `bool` | Whether an AI could take the slots. True while it already holds one. |
+| **Holds Token** | `bool` | Whether an AI is holding a slot of that tag against the target. |
+| **Get Token Holders** | `Array<Controller>` | Who has permission right now. Read it for a debug overlay, or to pick someone to interrupt. |
+| **Try Claim Tokens** | `bool` + receipt | Takes slots directly. Pair every granted claim with Release Tokens. |
+| **Release Tokens** | | Hands back the slots a receipt covers. |
+| **Release All Tokens For Holder** | `int32` | Hands back everything one AI holds, across every target. |
+
+Actions with a Combat Token Gate claim and release on their own. Reach for Try Claim Tokens only for something the action loop does not drive.
+
+<Collapsible title="C++ surface" badge="C++">
+
+```cpp
+USECCombatTokenSubsystem* Tokens = GetWorld()->GetSubsystem<USECCombatTokenSubsystem>();
+
+FSECTokenLeaseHandle Lease;
+const bool bClaimed = Tokens->TryClaimTokens(
+    Target,
+    Controller,
+    { FSECTokenRequirement(SECGameplayTags::SEC_Token_Attack, 1) },
+    Lease);
+
+if (bClaimed)
+{
+    // Lease.ClaimId identifies the claim; Lease.Target names the pool it came from.
+    Tokens->ReleaseTokens(Lease);
+}
+```
+
+`FSECTokenLeaseHandle` carries the target it was taken against, so a release finds the right pool after the AI has moved on to someone else. Releasing twice, or with a receipt for a target that is gone, does nothing.
+
+`USECTokenGate::CollectRequirements(const FSECCustomScoring&, TArray<FSECTokenRequirement>&)` gathers what a spec's gates need. `UActionEvaluationComponent` calls it at the start of every action.
+
+A holder destroyed without releasing frees its slot the next time the pool is read, so a pool cannot be held shut by an AI that has gone.
+
+</Collapsible>
+
+<Collapsible title="Multiplayer" badge="Multiplayer">
+
+The ledger lives on the server and nothing about it replicates. Every function that changes it does nothing on a client, and the queries there report no block, so a client-side debug widget cannot show a veto the server would not apply.
+
+Clients see the result through the ability and animation replication that already happens: the enemy that got the slot plays its attack, the ones that did not keep circling.
+
+</Collapsible>
+
+---
+
+## Related
+
+| Page | Why |
+|------|-----|
+| [Action System](/docs/soulslike-combat/action-system#scorers--gates) | Where the gate sits, and the rest of the scorers and gates |
+| [Combat Roles](/docs/soulslike-combat/combat-roles) | The other half of crowd control, deciding who is in the fight |
+| [Reaction System](/docs/soulslike-combat/reaction-system) | Defense, which tokens leave alone |
+| [Configuration](/docs/soulslike-combat/configuration) | Every Project Settings value in one place |

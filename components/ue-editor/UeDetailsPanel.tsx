@@ -1269,3 +1269,54 @@ export const VITALS_COMPONENT_DETAILS: UeDetailCategory[] = [
     ],
   },
 ];
+
+/** USECTokenGate — one Combat Token Gate on an action's Scoring list, verified against SECTokenGate.h */
+export const COMBAT_TOKEN_GATE_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Combat Token Gate",
+    properties: [
+      { label: "Token Tag", value: { kind: "text", value: "SEC.Token.Attack" } },
+      { label: "Cost", value: n(1, 1) },
+    ],
+  },
+  {
+    title: "Gate",
+    properties: [{ label: "Invert", value: b(false) }],
+  },
+];
+
+/** USoulslikeEnemyCombatSettings::TokenBudgets — the two rows shipped in the constructor, verified against SoulslikeEnemyCombatSettings.h */
+export const COMBAT_TOKEN_SETTINGS_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Combat Tokens",
+    properties: [{ label: "Token Budgets", value: { kind: "text", value: "2 Array elements" } }],
+    children: [
+      {
+        title: "SEC.Token.Attack",
+        properties: [
+          { label: "Budget", value: n(1, 0) },
+          { label: "Reissue Delay", value: n(0, 0) },
+        ],
+      },
+      {
+        title: "SEC.Token.Ranged",
+        properties: [
+          { label: "Budget", value: n(2, 0) },
+          { label: "Reissue Delay", value: n(0, 0) },
+        ],
+      },
+    ],
+  },
+];
+
+/** USECTokenBudgetComponent — the per-target override map, verified against SECTokenBudgetComponent.h */
+export const TOKEN_BUDGET_COMPONENT_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Combat Tokens",
+    properties: [
+      // TMap<FGameplayTag, int32>. Shown with the one row a boss fight starts from.
+      { label: "Token Budgets", value: { kind: "text", value: "1 element" } },
+      { label: "SEC.Token.Attack", value: n(3, 0) },
+    ],
+  },
+];

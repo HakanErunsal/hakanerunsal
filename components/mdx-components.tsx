@@ -41,6 +41,9 @@ import ReactionScoringDetails from '@/components/ReactionScoringDetails';
 import ReactionBlockingTagsDetails from '@/components/ReactionBlockingTagsDetails';
 import CombatRoleConfigDetails from '@/components/CombatRoleConfigDetails';
 import CombatRoleTimingDetails from '@/components/CombatRoleTimingDetails';
+import CombatTokenGateDetails from '@/components/CombatTokenGateDetails';
+import CombatTokenSettingsDetails from '@/components/CombatTokenSettingsDetails';
+import TokenBudgetComponentDetails from '@/components/TokenBudgetComponentDetails';
 import DistanceRoleEvaluatorDetails from '@/components/DistanceRoleEvaluatorDetails';
 import CooldownRoleEvaluatorDetails from '@/components/CooldownRoleEvaluatorDetails';
 import TargetingConfigDetails from '@/components/TargetingConfigDetails';
@@ -125,6 +128,9 @@ const components = {
   ReactionBlockingTagsDetails,
   CombatRoleConfigDetails,
   CombatRoleTimingDetails,
+  CombatTokenGateDetails,
+  CombatTokenSettingsDetails,
+  TokenBudgetComponentDetails,
   DistanceRoleEvaluatorDetails,
   CooldownRoleEvaluatorDetails,
   TargetingConfigDetails,
