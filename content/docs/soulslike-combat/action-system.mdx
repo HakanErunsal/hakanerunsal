@@ -433,7 +433,7 @@ An action with an empty Scoring list scores on `SelectionWeight` alone. No score
 
 **Favor a heavy attack as rage builds.** Add an **Attribute Scorer**, set `Attribute = Rage`, `NormalizeBy = MaxRage`, and shape the curve to peak near full. The attack scores higher as rage fills.
 
-**Let one enemy swing at a time.** Add a **Combat Token Gate** to every melee attack, set `TokenTag = SEC.Token.Attack`, and leave the pool at 1. The rest circle until the slot frees. See [Combat Tokens](/docs/soulslike-combat/combat-tokens).
+**Let one enemy swing at a time.** Add a **Combat Token Gate** to every melee attack, set `TokenTag = SEC.Token.Attack`, and drop that pool to 1 in Project Settings. The rest circle until the slot frees. See [Combat Tokens](/docs/soulslike-combat/combat-tokens).
 
 The same Scorers and Gates work on reactions. On the reaction path the component builds a live spatial snapshot (distance, angle, speed, health) from the pawn and `TargetOverride` instead of the action decision context. See [Reaction System](/docs/soulslike-combat/reaction-system#scorers-on-reactions).
 

@@ -55,11 +55,11 @@ Repeat for every melee attack that should share the cap. Actions with no gate st
 
 ### 2. Set the pool size
 
-**Project Settings → Plugins → Soulslike Enemy Combat → Combat Tokens.** One row per tag.
+**Project Settings → Plugins → Soulslike Enemy Combat → Combat Tokens.** One row per tag. Both shipped pools start at 2, so two enemies press while the rest circle.
 
 <CombatTokenSettingsDetails />
 
-A tag with no row here is unlimited, so a gate on a tag you invented does nothing until you add its row. Set **Budget** to 0 to shut a pool and stop everything gated on that tag.
+Drop **Budget** to 1 for the strictest read, one attacker at a time. A tag with no row here is unlimited, so a gate on a tag you invented does nothing until you add its row. Set Budget to 0 to shut a pool and stop everything gated on that tag.
 
 ### 3. Give one target its own numbers
 
@@ -67,7 +67,7 @@ Add an **SEC Token Budget Component** to the actor being fought, then fill its m
 
 <TokenBudgetComponentDetails />
 
-A boss with `SEC.Token.Attack` set to 3 takes three attackers at once while every other enemy in the level stays on the Project Settings value of 1.
+A boss with `SEC.Token.Attack` set to 3 takes three attackers at once while every other enemy in the level stays on the Project Settings value.
 
 <Callout type="info">
 The component sets counts. The pause before a freed slot is handed out again stays project-wide and is edited in Project Settings.

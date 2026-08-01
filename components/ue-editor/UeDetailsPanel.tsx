@@ -1294,7 +1294,7 @@ export const COMBAT_TOKEN_SETTINGS_DETAILS: UeDetailCategory[] = [
       {
         title: "SEC.Token.Attack",
         properties: [
-          { label: "Budget", value: n(1, 0) },
+          { label: "Budget", value: n(2, 0) },
           { label: "Reissue Delay", value: n(0, 0) },
         ],
       },
