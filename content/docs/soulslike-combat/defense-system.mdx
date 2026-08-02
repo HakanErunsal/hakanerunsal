@@ -67,11 +67,11 @@ In the pawn's **Class Settings**, add the **SEC Damageable** interface, then imp
 
 Two variations cover the rest:
 
-- **A pawn wired through Event Any Damage.** Call **Resolve Incoming Damage (Any Damage Event)** instead. It takes loose numbers and works the blow's direction out from where the attacker is standing, so a directional guard still has a bearing to measure against.
+- **A pawn wired through Event Any Damage.** Call **Resolve and Apply Incoming Damage (Any Damage Event)** instead. It takes loose numbers and works the blow's direction out from where the attacker is standing, so a directional defense rule still has a bearing to measure against. It takes the surviving damage off the health pool too, so nothing after it should subtract health again.
 - **A project running its own health.** Call **Resolve Incoming Damage** on the component, subtract the result's **Damage Applied** from your own health variable, and return the result. That node runs the responses and charges their costs; taking the damage off a pool is then yours to do.
 
 <Callout type="info">
-Enemies deriving from `AEnemyCharacterBase` answer Apply Damage in C++ already, through a Defense component named **Guard**. Author responses on it and the enemy is done.
+Enemies deriving from `AEnemyCharacterBase` answer Apply Damage in C++ already, through a component named **Defense**. Author responses on it and the enemy is done.
 </Callout>
 
 ### 3. Author the responses
@@ -85,7 +85,7 @@ Four kinds ship with the plugin. Add them to **Responses** in this order to star
 | **SEC Block** | Soaks the hit while a guard is up, usually against a vital. |
 | **SEC Damage Type Resistance** | Scales the hit by what kind of damage it is. Armour. |
 
-Most situational at the top. The resistance sits at the bottom, on the component or in a shared set, with **Continue After Claim** ticked so it trims whatever the guards above it let through.
+Most situational at the top. The resistance sits at the bottom, on the component or in a shared set, with **Continue After Claim** ticked so it trims whatever the responses above it let through.
 
 ---
 
@@ -235,13 +235,13 @@ The component asks **Can Afford Response Cost** while it works a hit out, so tha
 `USECDefenseStatics` carries the same act as Blueprint nodes, so a project can drive each step itself.
 
 ```cpp
-FSECDefenseResult Defense = USECDefenseStatics::EvaluateDefense(
-    Defender, Guard->GetEffectiveResponses(), DamageInfo, Guard);
+FSECDefenseResult DefenseResult = USECDefenseStatics::EvaluateDefense(
+    Defender, Defense->GetEffectiveResponses(), DamageInfo, Defense);
 
-USECDefenseStatics::ApplyDefenseResult(Defense, Guard);   // charges the costs, server only
+USECDefenseStatics::ApplyDefenseResult(DefenseResult, Defense);   // charges the costs, server only
 
 FSECDamageResult Result;
-USECDefenseStatics::FillDamageResult(Defense, Result);    // DamageApplied + ResultTags
+USECDefenseStatics::FillDamageResult(DefenseResult, Result);      // DamageApplied + ResultTags
 ```
 
 `FSECDefenseResult` carries **Outcome** (`Unguarded`, `Blocked`, `Parried`), **Outcome Tags**, **Final Damage**, and the **Costs** the answering responses ran up. `EvaluateDefense` changes nothing at all, which is what makes it safe on any machine.
