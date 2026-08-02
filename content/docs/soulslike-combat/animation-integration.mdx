@@ -1,7 +1,7 @@
 ---
 title: "Animation Integration"
-description: "Wire gameplay tags to animation Blueprint bools with no event graph, hold loose tags for a montage window with a notify state, and scale movement speed while a tag is held."
-date: 2026-07-30
+description: "Wire gameplay tags to animation Blueprint bools with no event graph, hold loose tags for a montage window, send a one-off event from a frame, and scale movement speed while a tag is held."
+date: 2026-08-02
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Animation", "Combat"]
 parent: "SoulslikeCombatDocs"
@@ -14,7 +14,7 @@ order: 15
     { label: "Animation Integration" }
 ]} />
 
-> Author timed combat state on the animation itself. **SEC State Tag Window** holds gameplay tags for the length of a montage segment, and **`USECAnimInstanceBase`** turns a tag into an animation Blueprint bool.
+> Author timed combat state on the animation itself. **SEC State Tag Window** holds gameplay tags for the length of a montage segment, **SEC Gameplay Event** fires a one-off signal at a single frame, and **`USECAnimInstanceBase`** turns a tag into an animation Blueprint bool.
 
 ## When to Use This
 
@@ -22,6 +22,7 @@ order: 15
 - Any state whose timing belongs to the animation, so retiming the montage moves the window with it.
 - Gating an action or reaction on a tag that exists during part of an animation.
 - Invulnerability frames, a parry window, a hyper-armor stretch.
+- A single moment inside an animation that should kick something off: a pose snapshot, a prop spawn, a camera shake.
 
 Both work on AI and player pawns. The pawn needs an **`AbilitySystemComponent`**, which **`AEnemyCharacterBase`** creates for you.
 
@@ -62,6 +63,36 @@ Reparent the pawn's animation Blueprint to **`SECAnimInstanceBase`**, add a bool
 The bool now tracks the tag. Read it in the state machine or a blend to play a guard pose while `SEC.State.Blocking` sits on the ability system component, with no event graph nodes.
 
 Binding runs when the animation instance starts, and the map applies the current tag state at that moment, so a tag added before the mesh initialized still shows up.
+
+### 3. Send a one-off signal from a montage
+
+Some moments need no window and no state of their own: taking a pose snapshot, spawning a prop, starting a camera shake. Add Notify → **SEC Gameplay Event** at the frame it should happen and fill **`Event Tag`**.
+
+| Field | Meaning |
+|-------|---------|
+| **`Event Tag`** | Event sent to the pawn when the montage reaches this notify. Whatever waits on this exact tag hears it once. Unset sends nothing. |
+
+Wait on the same tag from an ability, or from a Blueprint through **Wait Gameplay Event**. Nothing is added to the pawn and nothing is taken off it afterwards, so a listener bound after the frame has passed hears nothing.
+
+The pawn needs an Ability System Component to receive the event. One without it names itself once in the Output Log and nothing is sent.
+
+<Protip>
+The montage track shows the tag's last segment, so `SEC.Anim.PoseSnapshot` reads as **PoseSnapshot**. Several of these stay readable side by side on one timeline.
+</Protip>
+
+<Collapsible title="What the event carries" badge="Advanced">
+
+The pawn is named as both the event's instigator and its target, and the animation it came from arrives as **Optional Object**. A handler bound to one tag that several montages send reads that to tell which montage fired it.
+
+</Collapsible>
+
+<Collapsible title="Which machines raise it" badge="Multiplayer">
+
+The event is raised on each machine playing the montage and is not replicated, so the handler runs wherever the animation runs. A cosmetic response plays on the clients that can see it, with nothing crossing the wire.
+
+For a notify that should stay off a dedicated server, clear **Trigger On Dedicated Server** on the placed notify.
+
+</Collapsible>
 
 ---
 
@@ -170,6 +201,8 @@ void InitializeWithAbilitySystem(UAbilitySystemComponent* AbilitySystem);
 **`USECAnimInstanceBase`:** abstract animation instance holding **`GameplayTagPropertyMap`**. **`NativeInitializeAnimation`** binds against the owner's ability system component. Call **`InitializeWithAbilitySystem`** by hand for a pawn that resolves its ability system later than its mesh, such as one reading a **`PlayerState`** on a client. Passing an ability system that is already bound changes nothing.
 
 **`USECStateTagWindowSubsystem`:** records which ability system each window's tags went onto, so the end removes them from that one. It covers a montage restart and a mid-window change to the owner's resolved ability system. Nothing outside the notify calls it.
+
+**`USECGameplayEventNotify`:** the one-shot event. Reads **`EventTag`**, resolves the ability system through **`UAbilitySystemGlobals::GetAbilitySystemComponentFromActor`**, and sends the event with the pawn as instigator and target and the animation as **`OptionalObject`**.
 
 </Collapsible>
 
