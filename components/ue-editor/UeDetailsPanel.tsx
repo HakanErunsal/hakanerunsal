@@ -1463,6 +1463,24 @@ export const ATTACK_TELEGRAPH_NOTIFY_DETAILS: UeDetailCategory[] = [
 ];
 
 /**
+ * USECApproachWindowNotifyState as authored on an in-place attack, at its defaults, where
+ * every negative override hands the choice to the character's own answer.
+ * Verified against SECApproachWindowNotifyState.h.
+ */
+export const APPROACH_WINDOW_NOTIFY_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Approach",
+    properties: [
+      { label: "Mode", value: { kind: "enum", value: "Move and Face" } },
+      { label: "Stop Distance Override", value: n(-1, -1) },
+      { label: "Max Approach Distance Override", value: n(-1, -1) },
+      { label: "Facing Interp Speed Override", value: n(-1, -1) },
+      { label: "Time Mapping Curve Override", value: { kind: "asset" } },
+    ],
+  },
+];
+
+/**
  * UEnemyAIConfig::StimulusFilters with all three shipped filters authored, each array element
  * titled by its own display name. Verified against EnemyAIConfig.h and SECStimulusFilter.h.
  */

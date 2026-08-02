@@ -88,6 +88,7 @@ import {
 } from '@/components/DefenseRuleDetails';
 import StimulusPipeline from '@/components/StimulusPipeline';
 import AttackTelegraphNotifyDetails from '@/components/AttackTelegraphNotifyDetails';
+import ApproachWindowDetails from '@/components/ApproachWindowDetails';
 import StimulusFilterDetails from '@/components/StimulusFilterDetails';
 import ReportAreaStimulusGraph from '@/components/ReportAreaStimulusGraph';
 import StimulusDebugLegend from '@/components/StimulusDebugLegend';
@@ -188,6 +189,7 @@ const components = {
   DefenseResistanceDetails,
   StimulusPipeline,
   AttackTelegraphNotifyDetails,
+  ApproachWindowDetails,
   StimulusFilterDetails,
   ReportAreaStimulusGraph,
   StimulusDebugLegend,
