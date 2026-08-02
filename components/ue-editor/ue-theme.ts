@@ -19,6 +19,33 @@ export const SEC_CARD = {
 } as const;
 
 /**
+ * Marker colors SEC.Debug.Stimulus.Draw paints in the world, from the FColor
+ * values in SECStimulusDebug.cpp. Engine FColor constants resolved against
+ * Engine/Source/Runtime/Core/Private/Math/Color.cpp, so a legend on the page
+ * reads the same as a screenshot of the running game.
+ */
+export const SEC_STIMULUS_DEBUG = {
+  /** FColor::Orange, the announcement itself: reach, arc, facing. */
+  broadcast: "#F39C12",
+  /** FColor::Silver */
+  teamFiltered: "#BDC3C7",
+  /** FColor(70, 130, 255) */
+  outsideArc: "#4682FF",
+  /** FColor::Magenta */
+  noticeRollFailed: "#FF00FF",
+  /** FColor::Red */
+  perceptionFiltered: "#FF0000",
+  /** FColor::Yellow */
+  noReaction: "#FFFF00",
+  /** FColor::Green */
+  reacted: "#00FF00",
+  /** FColor::Cyan */
+  listenerOnly: "#00FFFF",
+  /** FColor::White */
+  noReceiver: "#FFFFFF",
+} as const;
+
+/**
  * UE 5.8 Starship StyleColors — from
  * Engine/Source/Runtime/SlateCore/Private/Styling/StyleColors.cpp
  */

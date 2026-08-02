@@ -1,7 +1,7 @@
 ---
 title: "Weapons"
-description: "Give an enemy a weapon from a loadout, with its own moveset, reactions and trace sockets."
-date: 2026-07-31
+description: "Give an enemy a weapon from a loadout, with its own moveset, reactions, defenses and trace sockets."
+date: 2026-08-02
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Weapons", "Combat"]
 parent: "SoulslikeCombatDocs"
@@ -14,7 +14,7 @@ order: 13
     { label: "Weapons" }
 ]} />
 
-> Fill in a loadout entry and the enemy spawns holding its weapon, sockets registered, animation layer linked, and the weapon's own moveset and reactions in force.
+> Fill in a loadout entry and the enemy spawns holding its weapon, sockets registered, animation layer linked, and the weapon's own moveset, reactions and defenses in force.
 
 ## When to Use This
 
@@ -36,6 +36,8 @@ Create a Blueprint from **`ASECWeaponBase`** and add your weapon mesh.
 **`Attach Socket`** is the socket on the wielder's mesh the weapon hangs from. **`Attach Offset`** nudges it from there, and it stays at identity when the mesh is authored with its pivot where the hand grips it.
 
 **`Weapon Action Set`** and **`Weapon Reaction Set`** are what the weapon gives its wielder. Fill in the action set and the enemy fights from that moveset while holding this weapon. Fill in the reaction set for a defence the weapon makes possible, a parry the enemy can only perform while carrying something to parry with. Leave either empty and the enemy keeps what its [AI Config](/docs/soulslike-combat/action-system#choosing-the-action-set) gives it.
+
+**`Weapon Defense Set`** is how the wielder answers an incoming hit while holding this: the parry, the block or the resistance the weapon itself brings. The two sets above resolve to one winner; this one adds to what the pawn already answers with, since a weapon's parry and the pawn's own armour are both in force at once. A pawn with no defenses of its own gains these by picking the weapon up and loses them by putting it down. Everything held answers, so a shield in the off hand guards alongside the sword. Leave it empty for a weapon that changes nothing about being hit. See [Defense System](/docs/soulslike-combat/defense-system) for what a response can do and the order they run in.
 
 **`Anim Layer To Use`** links an animation layer onto the wielder while the weapon is equipped, for locomotion and idles that belong to the weapon rather than the character.
 
@@ -85,6 +87,8 @@ Death releases the enemy's equipment through the combat controller. **`bDropWeap
 **`Weapon Action Set`** and **`Weapon Reaction Set`** answer the same set for every combat role. To vary them, override **`Get Weapon Action Set For Role`** or **`Get Weapon Reaction Set For Role`** on the weapon and branch on the incoming role tag. Return nothing for a role to leave that role on its AI Config set.
 
 The equipment component asks again whenever the pawn's combat role changes, so a per-role answer stays current.
+
+**`Weapon Defense Set`** has no per-role form. **Get Weapon Defense Set** answers the same for every role, and the responses compose with the pawn's own instead of replacing them.
 </Collapsible>
 
 <Collapsible title="A weapon that is not a SEC Weapon Base" badge="Advanced">
@@ -96,6 +100,7 @@ A weapon can be a plain **Actor**. Each interface it adds in Class Settings earn
 | **SEC Equippable** | Its own socket, offset, mesh, trace sockets and animation layer, and control of how it attaches. |
 | **SEC Weapon Action Set Provider** | Gives the enemy its moveset while equipped. |
 | **SEC Weapon Reaction Set Provider** | Gives the enemy its reactions while equipped. |
+| **SEC Weapon Defense Set Provider** | Gives the enemy its parry, block or resistance while equipped, on top of the pawn's own. |
 
 An actor implementing **SEC Equippable** attaches itself, so call **Apply Standard Equip** from its **`On Equipped`** event for the ordinary behavior. A weapon that places its own pieces, a bow with a quiver for instance, skips that node and does the attaching itself.
 
@@ -121,6 +126,8 @@ Pawn->ReactionSetComponent->SetProvidedReactionSet(WeaponReactionSet);
 ```
 
 Those slots sit above the AI Config and below the runtime override. Pushing null hands resolution back to the AI Config, which is what an unarmed pawn resolves to. Neither set component reads a weapon, so anything can drive the slots.
+
+The defense set travels the other way: nothing pushes it. As a hit is worked out, the Defense component asks the pawn for its defense sets through `ISECDefenseSetProvider::GetDefenseSets`, and `AEnemyCharacterBase` answers with the set from every held actor implementing `ISECWeaponDefenseSetProvider`, in equip order. Those responses run ahead of the pawn's own.
 
 `USECEquipmentComponent::GetEquippedWeapon` answers which held actor is the weapon, and `SetEquippedWeapon` chooses among what the component already holds.
 </Collapsible>

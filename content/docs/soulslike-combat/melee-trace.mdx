@@ -1,7 +1,7 @@
 ---
 title: "Melee Trace"
 description: "Frame-rate independent swept weapon traces with per-window damage configs and ISECDamageable integration."
-date: 2026-07-31
+date: 2026-08-02
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Melee", "Combat"]
 parent: "SoulslikeCombatDocs"
@@ -43,12 +43,14 @@ The first tick after **`StartTracing`** records positions only; the trace sweeps
 
 Hit order:
 
-1. **`TeamFilter`** and duplicate checks (**`CanHitActor`**, owner ignored). One frame lands one hit per target, however many sub-steps the sweep took.
-2. The trace sorts the hit into a target, a downed combatant, or the level.
-3. **`OnMeleeHit`** with **`FSECMeleeHitData`**, carrying that sorting (contact VFX/SFX hook).
-4. On a target: **`BuildDamageInfo`** → damage → **Hit Effects** → **`HandleDamageResult`** → **`OnMeleeHitResponse`**. A downed combatant or the level takes no damage and reports an empty result.
+1. **`TeamFilter`** and the owner check drop the contacts this swing has no business with.
+2. **Classify Contact** reads what the contact is: a body to damage, a sensor to report, or something to drop.
+3. Duplicate checks (**`CanHitActor`**). One frame lands one hit per target, however many sub-steps the sweep took.
+4. The trace sorts the hit into a target, a downed combatant, or the level.
+5. **`OnMeleeHit`** with **`FSECMeleeHitData`**, carrying that sorting (contact VFX/SFX hook).
+6. On a target: **`BuildDamageInfo`** → damage → **Hit Effects** → **`HandleDamageResult`** → **`OnMeleeHitResponse`**. A downed combatant or the level takes no damage and reports an empty result.
 
-**Damage Application** picks how step 4 sends damage. **Damageable Interface** is the default: it asks the target through **`ISECDamageable`** and falls back to Unreal's point damage for a target without it. **Point Damage** skips the interface. **None** reports the hit and applies nothing, for a project that drives damage itself from **On Melee Hit**.
+**Damage Application** picks how step 6 sends damage. **Damageable Interface** is the default: it asks the target through **`ISECDamageable`** and falls back to Unreal's point damage for a target without it. **Point Damage** skips the interface. **None** reports the hit and applies nothing, for a project that drives damage itself from **On Melee Hit**.
 
 On a machine that is not detecting hits, **`StartTracing`** and the tick return early. The authority detects hits unless a subclass overrides **`ShouldDetectHits`**. **`StopTracing`** clears active sockets, hit records, and disables tick.
 
@@ -65,6 +67,16 @@ Each kind decides what the hit costs the swing, and each hit effect picks which 
 Two switches decide the sorting. **Respect Can Be Damaged** is on by default: an actor with that engine flag switched off takes nothing, so switching it off on death is all a corpse needs to go quiet. **Require Damageable Target** puts anything without **`ISECDamageable`** out of combat, for a project whose weapons should land nothing on props. Leave it off and a breakable crate wired through Any Damage keeps taking hits.
 
 A hit effect carries **Run On Damageable Hits**, **Run On Inert Hits** and **Run On Scenery Hits**. The first is on by default and the other two off, so a corpse and a wall stay silent until you give them an effect of their own. Give that effect a **Surface Set** and stone, wood and flesh each sound like themselves.
+
+### Colliders the swing reports instead of hitting
+
+A collider can sit in front of a character without taking the swings that cross it: a parry box, a volume that wakes something up, a hitbox your own code counts. Tag that collider's component, then list the tag under **Sense Component Tags** on the trace component. A swing crossing it fires **On Melee Sensed** carrying the struck component, spends nothing, and reaches the body behind it in the same frame, so the volume costs the character none of its hits. Each sensor reports once per trace window however many frames the swing spends inside it.
+
+<Callout type="warning">
+Set a sensor collider's response to the trace channel to **Overlap**. On **Block** the sweep stops at the sensor and never reaches the body behind it. The Output Log warns and names the component when that happens.
+</Callout>
+
+Leave **Sense Component Tags** empty and every contact counts as a body.
 
 ---
 
@@ -162,7 +174,9 @@ TArray<AActor*> GetTraceIgnoredActors() const;
 
 **`OnMeleeHitResponse`:** **`FSECMeleeHitData`** + **`FSECDamageResult`**.
 
-Override **`BuildDamageInfo`**, **`HandleDamageResult`** or **`ClassifyHit`** in a Blueprint or C++ subclass, for crit scaling, pierce, or a sorting rule of your own. **`BuildDamageInfo`** receives the socket that struck, so an override can vary damage by contact point.
+**`OnMeleeSensed`:** **`FSECMeleeHitData`** for a sensor the swing crossed, its **`HitResult`** naming which collider it was. **`TeamFilter`** runs ahead of the sorting, so a sensor on an actor the filter dropped reports nothing.
+
+Override **`BuildDamageInfo`**, **`HandleDamageResult`**, **`ClassifyHit`** or **`ClassifyContact`** in a Blueprint or C++ subclass, for crit scaling, pierce, or a sorting rule of your own. **`BuildDamageInfo`** receives the socket that struck, so an override can vary damage by contact point. **`ClassifyContact`** answers **Damage** to send the contact through the pipeline, **Sense** to report it through **`OnMeleeSensed`** and leave the swing live, or **Ignore** to drop it; the default matches the struck component's tags against **Sense Component Tags**, and an override can read the actor instead.
 
 Blueprint helpers: **`RegisterSphereSocket`**, **`RegisterCapsuleSocket`**, **`RegisterTwoPointCapsule`**.
 
@@ -210,12 +224,13 @@ Component **`Draw Debug`**, or notify **`Enable Debug Draw`** for one window (**
 | Miss first active frame | Warm-up tick | Normal: sweep needs a prior position sample. |
 | Through walls | **Trace Filter** | **Object Types** mode reports every listed target along the whole span and nothing stops it, so the level shields nothing. Use **Channel** mode for occlusion. |
 | Wall plays the flesh cue | Wall reads as a target | A wall with Can Be Damaged on and no interface sorts as **Damageable**. Switch the flag off on level geometry, or tick **Require Damageable Target**. |
+| Volume in front of a character eats its hits | Sensor collider set to **Block** | Set that collider's response to the trace channel to **Overlap**, and list its component tag under **Sense Component Tags**. The log names the component. |
 | Corpse keeps ringing | Effect runs on inert hits | Untick **Run On Inert Hits** on that effect, or switch Can Be Damaged off on death so the body sorts as inert in the first place. |
 | Two hits one swing | **`Hit Reset Interval`** above zero, or two windows overlapping on the montage | One target takes one hit per window at zero. Check the interval, the config's **`Multi Hit Interval`**, and the Output Log for an overlap warning. |
 | No damage on SEC pawn | No interface | Implement **`ISECDamageable`**. |
 | Client swing, no damage | No authority | Detection runs on the authority. Override **`ShouldDetectHits`** to sweep on the owning client instead. |
 
-The component reports several of these itself. Check the Output Log before hunting: it names a socket a window asked for that nothing registered, a window that opened while another was still open, a socket sweeping from a mesh that is not refreshing its bones, and an **Object Types** filter with an empty list.
+The component reports several of these itself. Check the Output Log before hunting: it names a socket a window asked for that nothing registered, a window that opened while another was still open, a socket sweeping from a mesh that is not refreshing its bones, an **Object Types** filter with an empty list, and a sensor collider blocking the trace channel.
 
 </Collapsible>
 

@@ -1042,6 +1042,7 @@ export const MELEE_TRACE_COMPONENT_DETAILS: UeDetailCategory[] = [
     title: "SEC | Melee Trace | Damage",
     properties: [
       { label: "Skip Record Tags", value: { kind: "text", value: "0 tags" } },
+      { label: "Sense Component Tags", value: { kind: "text", value: "0 Array elements" } },
       { label: "Damage Application", value: { kind: "enum", value: "Damageable Interface" } },
       { label: "Respect Can Be Damaged", value: b(true) },
       { label: "Require Damageable Target", value: b(false) },
@@ -1111,6 +1112,7 @@ export const WEAPON_BASE_DETAILS: UeDetailCategory[] = [
       { label: "Attach Offset", value: { kind: "text", value: "Identity" } },
       { label: "Weapon Action Set", value: { kind: "asset", value: "DA_GreatswordActions" } },
       { label: "Weapon Reaction Set", value: { kind: "asset", value: "None" } },
+      { label: "Weapon Defense Set", value: { kind: "asset", value: "DA_GreatswordGuard" } },
     ],
   },
   {
@@ -1317,6 +1319,198 @@ export const TOKEN_BUDGET_COMPONENT_DETAILS: UeDetailCategory[] = [
       // TMap<FGameplayTag, int32>. Shown with the one row a boss fight starts from.
       { label: "Token Budgets", value: { kind: "text", value: "1 element" } },
       { label: "SEC.Token.Attack", value: n(3, 0) },
+    ],
+  },
+];
+
+/** USECDefenseComponent, verified against SECDefenseComponent.h */
+export const DEFENSE_COMPONENT_DETAILS: UeDetailCategory[] = [
+  {
+    title: "SEC|Defense",
+    properties: [
+      { label: "Defense Set", value: { kind: "asset", value: "DA_KnightArmour" } },
+      { label: "Responses", value: { kind: "text", value: "3 Array elements" } },
+    ],
+  },
+];
+
+/**
+ * The four shipped USECDefenseRule subclasses as instanced entries on the Responses array,
+ * each carrying the values its worked example on the Defense System page authors. Categories
+ * run derived first, then the base class Cost and Defense Rule groups, the order the details
+ * panel lists them. Verified against SECDefenseRules.h and SECDefenseRule.h.
+ */
+export const DEFENSE_INVULNERABLE_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Invulnerable",
+    properties: [
+      { label: "Required Tags", value: tagContainer(["SEC.State.Invulnerable"]) },
+      { label: "Blocked Tags", value: tagContainer([]) },
+      { label: "Outcome Tag", value: { kind: "text", value: "SEC.Defense.Dodge" } },
+    ],
+  },
+  {
+    title: "Cost",
+    properties: [
+      { label: "Cost Vital Tag", value: { kind: "text", value: "None" } },
+      { label: "Flat Cost", value: n(0, 0) },
+      { label: "Cost Per Damage", value: n(0, 0) },
+    ],
+  },
+  {
+    title: "Defense Rule",
+    properties: [{ label: "Continue After Claim", value: b(false) }],
+  },
+];
+
+export const DEFENSE_PARRY_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Parry",
+    properties: [
+      { label: "Required Tags", value: tagContainer(["Player.State.Parrying"]) },
+      { label: "Blocked Tags", value: tagContainer([]) },
+      { label: "Arc Half Angle Degrees", value: n(60, 0, 180) },
+      { label: "Damage Multiplier", value: n(0, 0, 1, 2) },
+      { label: "Outcome Tag", value: { kind: "text", value: "SEC.Defense.Parry" } },
+    ],
+  },
+  {
+    title: "Cost",
+    properties: [
+      { label: "Cost Vital Tag", value: { kind: "text", value: "None" } },
+      { label: "Flat Cost", value: n(0, 0) },
+      { label: "Cost Per Damage", value: n(0, 0) },
+    ],
+  },
+  {
+    title: "Defense Rule",
+    properties: [{ label: "Continue After Claim", value: b(false) }],
+  },
+];
+
+export const DEFENSE_BLOCK_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Block",
+    properties: [
+      { label: "Required Tags", value: tagContainer(["Player.State.Guarding"]) },
+      { label: "Blocked Tags", value: tagContainer(["Player.State.Staggered"]) },
+      { label: "Arc Half Angle Degrees", value: n(60, 0, 180) },
+      { label: "Damage Multiplier", value: n(0.2, 0, 1, 2) },
+      { label: "Outcome Tag", value: { kind: "text", value: "SEC.Defense.Block" } },
+    ],
+  },
+  {
+    title: "Cost",
+    properties: [
+      { label: "Cost Vital Tag", value: { kind: "text", value: "SEC.Vital.Stamina" } },
+      { label: "Flat Cost", value: n(5, 0) },
+      // Constructor default on USECDefenseRule_Block.
+      { label: "Cost Per Damage", value: n(1, 0) },
+    ],
+  },
+  {
+    title: "Defense Rule",
+    properties: [{ label: "Continue After Claim", value: b(false) }],
+  },
+];
+
+export const DEFENSE_RESISTANCE_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Damage Type Resistance",
+    properties: [
+      { label: "Damage Type Tag", value: { kind: "text", value: "SEC.Damage.Physical.Slashing" } },
+      { label: "Damage Multiplier", value: n(0.6, 0, 1, 2) },
+      { label: "Outcome Tag", value: { kind: "text", value: "None" } },
+    ],
+  },
+  {
+    title: "Cost",
+    properties: [
+      { label: "Cost Vital Tag", value: { kind: "text", value: "None" } },
+      { label: "Flat Cost", value: n(0, 0) },
+      { label: "Cost Per Damage", value: n(0, 0) },
+    ],
+  },
+  {
+    title: "Defense Rule",
+    // Constructor default on USECDefenseRule_DamageTypeResistance.
+    properties: [{ label: "Continue After Claim", value: b(true) }],
+  },
+];
+
+/**
+ * USECAttackTelegraphNotify. Broadcast carries ShowOnlyInnerProperties, so its fields list
+ * inline in the Telegraph category ahead of the notify's own.
+ * Verified against SECAttackTelegraphNotify.h and SECCombatStimulus.h.
+ */
+export const ATTACK_TELEGRAPH_NOTIFY_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Telegraph",
+    properties: [
+      { label: "Radius", value: n(600, 0) },
+      { label: "Arc Half Angle Degrees", value: n(120, 0, 180) },
+      { label: "Arc Yaw Offset Degrees", value: n(0, -180, 180) },
+      { label: "Team Filter", value: { kind: "enum", value: "Enemies Only" } },
+      { label: "Notice Chance", value: n(0.8, 0, 1, 2) },
+      { label: "Draw Debug", value: b(false) },
+      { label: "Origin Socket", value: { kind: "text", value: "blade_start" } },
+      { label: "Time To Impact Override", value: n(0, 0) },
+      { label: "Telegraph Tag", value: { kind: "text", value: "SEC.Stimulus.AttackTelegraphed" } },
+      { label: "Context Tags", value: tagContainer(["SEC.Attack.Heavy"]) },
+      { label: "Magnitude", value: n(0, 0) },
+    ],
+  },
+];
+
+/**
+ * UEnemyAIConfig::StimulusFilters with all three shipped filters authored, each array element
+ * titled by its own display name. Verified against EnemyAIConfig.h and SECStimulusFilter.h.
+ */
+export const STIMULUS_FILTER_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Awareness",
+    properties: [{ label: "Stimulus Filters", value: { kind: "text", value: "3 Array elements" } }],
+    children: [
+      {
+        title: "Facing Cone",
+        properties: [
+          { label: "Half Angle Degrees", value: n(100, 0, 180) },
+          { label: "Bypass On Context Tags", value: tagContainer(["SEC.Attack.Unblockable"]) },
+        ],
+      },
+      {
+        title: "Awareness",
+        properties: [
+          { label: "Minimum State", value: { kind: "enum", value: "Detected" } },
+          { label: "Bypass On Context Tags", value: tagContainer([]) },
+        ],
+      },
+      {
+        title: "Line of Sight",
+        properties: [
+          { label: "Trace Channel", value: { kind: "enum", value: "Visibility" } },
+          { label: "Eye Height", value: n(0, 0) },
+          { label: "Bypass On Context Tags", value: tagContainer([]) },
+        ],
+      },
+    ],
+  },
+];
+
+/** One FSECReactionTriggerRule on a Reaction Set, verified against ReactionSet.h */
+export const REACTION_TRIGGER_RULE_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Trigger",
+    properties: [
+      { label: "Enabled", value: b(true) },
+      { label: "Rule ID", value: { kind: "text", value: "ParryFrontal" } },
+      { label: "On Stimulus", value: { kind: "text", value: "SEC.Stimulus.AttackTelegraphed" } },
+      { label: "Require Context Tags", value: tagContainer([]) },
+      { label: "Block Context Tags", value: tagContainer(["SEC.Attack.Unblockable"]) },
+      { label: "Condition", value: { kind: "asset", value: "None" } },
+      { label: "Reaction Category", value: { kind: "text", value: "SEC.Reaction.Defensive" } },
+      { label: "Chance", value: n(0.6, 0, 1, 2) },
+      { label: "Min Interval", value: n(1.5, 0, undefined, 1) },
     ],
   },
 ];

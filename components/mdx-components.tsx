@@ -36,6 +36,7 @@ import CombatControllerDetails from '@/components/CombatControllerDetails';
 import EnemyAIConfigSetsDetails from '@/components/EnemyAIConfigSetsDetails';
 import { WalkthroughLightAttackDetails, WalkthroughHeavyAttackDetails, WalkthroughRetreatDetails } from '@/components/WalkthroughActionDetails';
 import ReactionSpecDetails from '@/components/ReactionSpecDetails';
+import ReactionTriggerRuleDetails from '@/components/ReactionTriggerRuleDetails';
 import ReactionPreconditionDetails from '@/components/ReactionPreconditionDetails';
 import ReactionScoringDetails from '@/components/ReactionScoringDetails';
 import ReactionBlockingTagsDetails from '@/components/ReactionBlockingTagsDetails';
@@ -76,6 +77,20 @@ import RegisterCombatTargetBlueprint from '@/components/RegisterCombatTargetBlue
 import ActionScoreFormula from '@/components/ActionScoreFormula';
 import VitalsComponentDetails from '@/components/VitalsComponentDetails';
 import SpeedModifierDetails from '@/components/SpeedModifierDetails';
+import DefenseComponentDetails from '@/components/DefenseComponentDetails';
+import DefenseResponseOrder from '@/components/DefenseResponseOrder';
+import DefenseResolveGraph from '@/components/DefenseResolveGraph';
+import {
+  DefenseInvulnerableDetails,
+  DefenseParryDetails,
+  DefenseBlockDetails,
+  DefenseResistanceDetails,
+} from '@/components/DefenseRuleDetails';
+import StimulusPipeline from '@/components/StimulusPipeline';
+import AttackTelegraphNotifyDetails from '@/components/AttackTelegraphNotifyDetails';
+import StimulusFilterDetails from '@/components/StimulusFilterDetails';
+import ReportAreaStimulusGraph from '@/components/ReportAreaStimulusGraph';
+import StimulusDebugLegend from '@/components/StimulusDebugLegend';
 import Reviews from '@/components/Reviews';
 
 const useMDXComponent = (code: string) => {
@@ -123,6 +138,7 @@ const components = {
   WalkthroughHeavyAttackDetails,
   WalkthroughRetreatDetails,
   ReactionSpecDetails,
+  ReactionTriggerRuleDetails,
   ReactionPreconditionDetails,
   ReactionScoringDetails,
   ReactionBlockingTagsDetails,
@@ -163,6 +179,18 @@ const components = {
   ActionScoreFormula,
   VitalsComponentDetails,
   SpeedModifierDetails,
+  DefenseComponentDetails,
+  DefenseResponseOrder,
+  DefenseResolveGraph,
+  DefenseInvulnerableDetails,
+  DefenseParryDetails,
+  DefenseBlockDetails,
+  DefenseResistanceDetails,
+  StimulusPipeline,
+  AttackTelegraphNotifyDetails,
+  StimulusFilterDetails,
+  ReportAreaStimulusGraph,
+  StimulusDebugLegend,
   Reviews,
   // Prevent hydration errors from block elements nested inside <p>
   p: ({ children, ...props }: React.HTMLAttributes<HTMLParagraphElement>) => (
