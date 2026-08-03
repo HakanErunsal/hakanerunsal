@@ -23,7 +23,7 @@ order: 15
 - Gating an action or reaction on a tag that exists during part of an animation.
 - Invulnerability frames, a parry window, a hyper-armor stretch.
 - A single moment inside an animation that should kick something off: a pose snapshot, a prop spawn, a camera shake.
-- An attack animated on the spot that whiffs when its target steps aside, and no root motion to warp.
+- An attack that whiffs when its target steps aside, whether it is animated on the spot or travels on its own root motion.
 
 Both work on AI and player pawns. The pawn needs an **`AbilitySystemComponent`**, which **`AEnemyCharacterBase`** creates for you.
 
@@ -97,7 +97,9 @@ For a notify that should stay off a dedicated server, clear **Trigger On Dedicat
 
 ### 4. Steer an attack toward its target
 
-An attack whose animation already carries root motion wants **Motion Warping**, which bends the motion the animator authored and gets prediction, replication and facing from the engine. Reach for the approach window when the animation has no root motion to steer: an attack animated on the spot, which whiffs the moment its target steps aside.
+Reach for the approach window when the animation has no root motion to steer: an attack animated on the spot, which whiffs the moment its target steps aside.
+
+An attack whose animation already carries root motion is left to travel on its own, and the window makes up only the distance it falls short by, so one of those lands its hit too. **Motion Warping** suits that case better where it fits, because it bends the motion the animator authored instead of adding to it, and it gets prediction from the ability playing the montage.
 
 Add Notify State → **SEC Approach Window** across the wind-up frames. The character turns toward what it is fighting and glides into range over that stretch, then stops a set distance short and swings.
 
@@ -191,7 +193,9 @@ A player character gliding without an ability names itself once in the Output Lo
 A montage played from a Blueprint plays only on the machine that played it. On a client, that means the server never runs the window at all, so nothing turns or glides there and server-side hit checks read a character facing the wrong way.
 </Callout>
 
-The target is never replicated. Only the resolved motion crosses the wire.
+A target stored on the server is sent to the machine playing that character, so setting one server-side is enough for a player's own machine to steer at it without a multicast. A copy of someone else's character is sent nothing, since it never steers itself. The server's answer is the one that lasts, so a target stored on a client is replaced the next time the server sends its own.
+
+An animation carrying its own root motion is the one case that does not predict: root motion takes precedence over the glide, so the window closes the remaining distance directly instead. On an AI that costs nothing, because the server moves the enemy and every client receives the result. On a character a player controls it reads as a tug, and the Output Log names the character once.
 
 </Collapsible>
 
