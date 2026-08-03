@@ -123,6 +123,17 @@ Each distance and speed on a stored target can be left negative, which hands the
 The montage track names the window by its mode, so **Approach Target**, **Face Target** and **Move To Target** read apart at a glance on the timeline.
 </Callout>
 
+### Seeing what steers an attack
+
+One console variable draws everything moving a character, so an approach window and a motion warp on the same attack can be read against each other:
+
+```
+SEC.Debug.Steering.Draw 1    // Orange is an approach window, green is a motion warp
+SEC.Debug.Approach 1         // What each approach window decides, in the Output Log
+```
+
+Both systems draw the same arrangement, which is what makes the colour the answer to which one is moving the character. A line runs from the character to where the motion is taking it and a sphere marks that spot, a ring around the target shows how far short of it the motion stops, and a thin line joins the two. White is the way the character points now, magenta the way the motion wants it to point: the two arrows half a turn apart means the wrong facing is being asked for rather than the wrong goal being given. On a listen server the two machines draw at different heights, so both are readable at once.
+
 ### Steering without a montage
 
 The same steering runs from Blueprint with no montage or notify involved, for a chase, a scripted reposition, or a boss beat you drive yourself. Get the character's **SEC Approach** component and call:
