@@ -81,7 +81,7 @@ An enemy is a pawn and an AI controller, each carrying components. `EnemyCharact
 
 `SECCombatControllerComponent` is the one piece every setup needs. Add it to any `AAIController` and the combat system works; the other controller components are opt-in. Its full API lives in the [API Reference](/docs/soulslike-combat/api-reference).
 
-**Two modules.** `SECCore` carries the combat layer that stands on its own: the melee trace and its montage window, the damage layer and its hit effects, vitals, the team helpers, and the animation tag window. `SoulslikeEnemyCombat` carries the AI on top of it, and depends on `SECCore`. Include paths and Blueprint names are the same either way; the split matters when you add a module dependency in C++.
+**Three runtime modules.** `SECCore` carries the combat layer that stands on its own: the melee trace and its montage window, the damage layer and its hit effects, vitals, the team helpers, and the animation tag window. `SECMotion` carries what moves a character, the approach window and the skew warp modifier, and is the module that needs the Motion Warping plugin. `SoulslikeEnemyCombat` carries the AI on top of both. Include paths and Blueprint names are the same either way; the split matters when you add a module dependency in C++.
 
 ---
 
