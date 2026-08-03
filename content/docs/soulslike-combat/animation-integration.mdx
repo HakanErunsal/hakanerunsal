@@ -156,7 +156,7 @@ The turn runs whenever the window does. The glide is the part with conditions on
 
 - The target sits past **Max Approach Distance Override**, so a swing thrown across the arena does not turn into a charge.
 - The character is already inside the stop distance, measured between the two capsules rather than the two origins, so a wide enemy stops with room for its own body.
-- **Speed Limit** on the component bounds how fast the window may move the character, and the target is further than that bound reaches in the window's span. The character approaches as far as it can and the attack lands short.
+- A speed bound is in force and the target is further than it reaches in the window's span. The character approaches as far as it can and the attack lands short. The window's own **Override Speed Limit** decides that when it is set, and the component's **Speed Limit** otherwise, so one attack can close faster or slower than the rest of the character's.
 - The target is destroyed mid-window. The glide stops rather than travelling to where it used to be.
 - The montage stops, blends out or is replaced. The window ends with it and hands the facing back.
 
