@@ -1471,6 +1471,7 @@ export const APPROACH_WINDOW_NOTIFY_DETAILS: UeDetailCategory[] = [
   {
     title: "Approach",
     properties: [
+      { label: "Move By Offset", value: { kind: "bool", value: false } },
       { label: "Approach Target Name", value: { kind: "text", value: "Target" } },
       { label: "Mode", value: { kind: "enum", value: "Move and Face" } },
       { label: "Stop Distance Override", value: n(-1, -1) },

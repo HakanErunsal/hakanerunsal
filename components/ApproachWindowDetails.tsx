@@ -8,7 +8,7 @@ export default function ApproachWindowDetails() {
       sourceClass="SECApproachWindowNotifyState"
       attachTo="AM_Greatsword_Overhead"
       sourceKind="notify"
-      note="Dragged across the wind-up frames. Approach Target Name picks which stored target it steers toward. Every override left at -1 takes the value on that target, and a built-in default when that leaves it open too."
+      note="Dragged across the wind-up frames. Approach Target Name picks which stored target it steers toward, or Move By Offset steps a set distance instead. Every override left at -1 takes the value on that target, then the matching Default on the Approach component."
       categories={APPROACH_WINDOW_NOTIFY_DETAILS}
     />
   );
