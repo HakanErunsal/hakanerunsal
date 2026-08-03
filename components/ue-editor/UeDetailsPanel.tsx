@@ -1464,13 +1464,14 @@ export const ATTACK_TELEGRAPH_NOTIFY_DETAILS: UeDetailCategory[] = [
 
 /**
  * USECApproachWindowNotifyState as authored on an in-place attack, at its defaults, where
- * every negative override hands the choice to the character's own answer.
+ * every negative override hands the choice to the stored target.
  * Verified against SECApproachWindowNotifyState.h.
  */
 export const APPROACH_WINDOW_NOTIFY_DETAILS: UeDetailCategory[] = [
   {
     title: "Approach",
     properties: [
+      { label: "Approach Target Name", value: { kind: "text", value: "Target" } },
       { label: "Mode", value: { kind: "enum", value: "Move and Face" } },
       { label: "Stop Distance Override", value: n(-1, -1) },
       { label: "Max Approach Distance Override", value: n(-1, -1) },

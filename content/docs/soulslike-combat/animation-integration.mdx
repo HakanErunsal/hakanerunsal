@@ -1,7 +1,7 @@
 ---
 title: "Animation Integration"
 description: "Wire gameplay tags to animation Blueprint bools with no event graph, hold loose tags for a montage window, send a one-off event from a frame, steer an in-place attack toward its target, and scale movement speed while a tag is held."
-date: 2026-08-02
+date: 2026-08-03
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Animation", "Combat"]
 parent: "SoulslikeCombatDocs"
@@ -111,13 +111,27 @@ Add Notify State → **SEC Approach Window** across the wind-up frames. The char
 | **Face Only** | Turns to face without moving. For an attack that should aim at the target and stay put. |
 | **Move Only** | Glides without turning, leaving the facing to whatever else drives it. For a lunge that keeps the direction the animation gives it. |
 
-The character says what it is aiming at by implementing **SEC Approach Target Provider** and answering **Get Approach Target**. **`AEnemyCharacterBase`** answers with its controller's focus actor, so an enemy deriving from it needs nothing. For a player pawn or a custom pawn, add the interface in Class Settings and return whatever your game already calls the current target. A character that answers nothing, or answers nowhere, plays the attack where it stands.
+What the window steers toward comes out of a named slot on the character's **SEC Approach** component, the handover Motion Warping already uses for its warp targets. Something stores the target, and the animation decides when the steering happens.
 
-Each distance and speed on that answer can be left negative, which hands the choice back to the window on the montage. The order runs window override first, then the character's answer, then a built-in default: 150 cm stop distance, 750 cm approach limit, turn speed 12.
+An SEC ability stores it on activation under the name in its **Motion Warping Target Name**, so an enemy attack closes the distance with nothing to wire up: **`AEnemyCharacterBase`** carries the component, and the window's **Approach Target Name** defaults to the same `Target` those abilities write.
+
+From a Blueprint graph, call **Set Approach Target To Actor** with the name the window carries. **Set Approach Target To Location** stores a spot instead, **Set Approach Target** takes the whole struct when you want per-target distances on it, and **Remove Approach Target** clears one. A window whose name holds nothing plays the attack where the character stands.
+
+Each distance and speed on a stored target can be left negative, which hands the choice back to the window on the montage. The order runs window override first, then the stored target, then a built-in default: 150 cm stop distance, 750 cm approach limit, turn speed 12.
+
 
 <Callout type="info">
 The montage track names the window by its mode, so **Approach Target**, **Face Target** and **Move To Target** read apart at a glance on the timeline.
 </Callout>
+
+### Steering without a montage
+
+The same steering runs from Blueprint with no montage or notify involved, for a chase, a scripted reposition, or a boss beat you drive yourself. Get the character's **SEC Approach** component and call:
+
+- **Approach Actor**: turn a character toward an actor for a number of seconds, gliding it into range when the mode asks for it.
+- **Approach Location**: turn it toward a spot and glide it there over a number of seconds. The spot is exact, so no stop distance comes off it.
+
+These two start at once rather than waiting on an animation, so they need no stored target of their own. Both take the same three modes and the same tuning, with the distances, speeds and curves behind Advanced. Seconds at or below zero runs until **Stop Approach** stops it, so a chase can last as long as you want it to. Whatever else turns the character stands down for the duration, exactly as it does for a montage window.
 
 <Collapsible title="When the glide stays home" badge="Advanced">
 
@@ -128,7 +142,7 @@ The turn runs whenever the window does. The glide is the part with conditions on
 - The target is destroyed mid-window. The glide stops rather than travelling to where it used to be.
 - The montage stops, blends out or is replaced. The window ends with it and hands the facing back.
 
-**Time Mapping Curve Override** eases the travel: X is the window's time from 0 to 1, Y the fraction of the distance covered by then. Author an ease-out for a lunge that arrives soft. Unset takes the character's own answer, and glides at a constant rate when it gives none.
+**Time Mapping Curve Override** eases the travel: X is the window's time from 0 to 1, Y the fraction of the distance covered by then. Author an ease-out for a lunge that arrives soft. Unset takes the curve on the stored target, and glides at a constant rate when that has none either.
 
 </Collapsible>
 
@@ -144,11 +158,26 @@ A second window opening on a character that is already being steered takes over,
 
 <Collapsible title="Which machines steer" badge="Multiplayer">
 
-The window runs on the server and on a player's own machine, and does nothing on a copy of someone else's character, which receives the motion already resolved. An AI's target lives on its controller, which no client has, so a client that tried to steer would resolve nothing and fight the replicated transform.
+The turn runs on the server and on a player's own machine, and does nothing on a copy of someone else's character, which receives the motion already resolved. An AI's target lives on its controller, which no client has, so a client that tried to steer would resolve nothing and fight the replicated transform.
 
-On a character with an Ability System Component, the glide goes through the ability the montage is already playing, which predicts on the owning client and simulates on everyone else. Rotation replicates from the server on its own, so the turn needs nothing.
+**The travel has one rule: play the montage on every machine.** Each machine running the window works out its own glide toward the same target, and character movement settles the difference between them the way it settles any other disagreement. An AI attack gets this for free, since its montage plays on the server anyway. A montage played on one machine alone is the failure case: that machine glides, the server does not, and the server hauls the character back every frame.
 
-A character with no ability system falls back to a server-side glide that reaches other machines through ordinary movement replication, coarser but never absent. That fallback refuses on a player character driven from another machine, where an unpredicted glide would rubber-band, and names the ability system in the Output Log as the fix. The turn still runs.
+How closely the two agree decides how it feels. Against a stationary target both machines pick the same landing spot and the motion is seamless. The faster the target moves, the further apart the two spots land, and the difference shows up as a tug rather than a smooth glide.
+
+**Prediction is what removes that**, and prediction means an ability. Four things have to line up:
+
+1. The pawn carries an **Ability System Component**.
+2. The ability's **Net Execution Policy** is **Local Predicted**.
+3. The montage plays through the **Play Montage and Wait** ability task, not a Play Montage node inside the ability. The window borrows the ability the ability system recorded against the montage, and only that task registers one. A plain Play Montage leaves it unregistered.
+4. Section changes go through the ability system's **Montage Jump To Section**, so the server jumps to the same section.
+
+With those, the glide runs as a root motion task: predicted on the owning client, applied on the server, and reconciled between them. Everyone else sees it simulate.
+
+A player character gliding without an ability names itself once in the Output Log, so the tug has an explanation rather than looking like a bug. The turn runs in every case, since rotation on a player's own machine is left alone.
+
+<Callout type="warning">
+A montage played from a Blueprint plays only on the machine that played it. On a client, that means the server never runs the window at all, so nothing turns or glides there and server-side hit checks read a character facing the wrong way.
+</Callout>
 
 The target is never replicated. Only the resolved motion crosses the wire.
 
@@ -157,16 +186,20 @@ The target is never replicated. Only the resolved motion crosses the wire.
 <Collapsible title="Classes and functions" badge="C++">
 
 ```cpp
-// Answer what this character is swinging at, and how close it stops.
-UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "SEC|Approach")
-FSECApproachTarget GetApproachTarget() const;
+// Store what this character is swinging at, under the name a montage window asks for.
+UFUNCTION(BlueprintCallable, Category = "SEC|Approach")
+void SetApproachTargetToActor(FName ApproachTargetName, AActor* Actor);
+
+// What is stored under a name, or null.
+const FSECApproachTarget* FindApproachTarget(FName ApproachTargetName) const;
 ```
 
-**`USECApproachWindowNotifyState`:** the authored marker. Reads the mode and the overrides, asks the character for its target, and hands one resolved request to the subsystem.
+**`USECApproachComponent`:** the running window, the turn, and the glide, alongside the named targets they read. **`USECApproachComponent::Get`** finds it on an actor. **`AcquireFacingControl`** and **`ReleaseFacingControl`** take the facing for anything else that needs it. Bind **`OnFacingControlChanged`** from code that writes the character's rotation settings, so it stands down for the window and re-resolves once the facing comes back.
 
-**`ISECApproachTargetProvider`:** the answering interface. The character is asked first and its components after, so a component that already tracks the target can answer instead.
+**`USECApproachWindowNotifyState`:** the authored marker. Reads the mode and the overrides, looks up its **`ApproachTargetName`** on the component, and hands one resolved request back to it.
 
-**`USECApproachSubsystem`:** per-character records, the turn, and the glide. **`BeginApproach`** and **`EndApproach`** drive a window with no montage notify behind it; **`AcquireFacingControl`** and **`ReleaseFacingControl`** take the facing for anything else that needs it. Bind **`OnFacingControlChanged`** from code that writes the character's rotation settings, so it stands down for the window and re-resolves once the facing comes back.
+**`UGameplayAbilityBase::SetupApproachTarget`:** stores the action context's target on activation and clears it on end, keyed on **`MotionWarpingTargetName`**. Storing a target starts nothing; the montage window is what moves the character.
+
 
 </Collapsible>
 
@@ -293,9 +326,12 @@ void InitializeWithAbilitySystem(UAbilitySystemComponent* AbilitySystem);
 | i-frames ignored on the server | Mesh pose not ticking | Set **`VisibilityBasedAnimTickOption`** to **`AlwaysTickPoseAndRefreshBones`**. The melee trace reports the same cause for its own sweeps, naming the mesh in the log; tag windows have no equivalent message. |
 | Dodge eats the swing | `SEC.Defense.Dodge` missing from **`SkipRecordTags`** | Add it on the attacker's trace component. |
 | Bool never flips | Variable not mapped, or the map row names another tag | Check the row in **Gameplay Tag Property Map**. |
-| Attack neither turns nor closes | Character answers no approach target | Implement **SEC Approach Target Provider** and return the current target from **Get Approach Target**. |
+| Attack neither turns nor closes | Nothing stored under the window's **Approach Target Name**, or the character carries no **SEC Approach** component | Add the component, and store the target under the name the window carries with **Set Approach Target To Actor**. `SEC.Debug.Approach 1` names which one is missing. |
+| Attack steers at the wrong thing, or at nothing on one enemy | The window's **Approach Target Name** and the name the ability or graph writes disagree | Match the two. An SEC ability writes its **Motion Warping Target Name**. |
 | Attack turns but stays put | Target past **Max Approach Distance Override**, or already inside the stop distance | Raise the limit, or lower **Stop Distance Override**. |
-| Attack turns and closes on the server, not on a player's screen | Player character has no Ability System Component | Add one so the glide predicts; the Output Log names the character. |
+| The server sees the attack facing the wrong way, so hits miss | Montage played from a Blueprint, so it never plays on the server and the window never runs there | Play the attack through an ability, or play the montage on the server as well. |
+| Player character is pulled back where it started, repeatedly | Montage played on one machine only, so the server never glides and corrects the one that did | Play the montage on every machine, through an ability or a multicast. |
+| Player character tugs during the glide instead of moving smoothly | No ability behind the montage, so the two machines pick slightly different landing spots | Play the attack through an ability with **Play Montage and Wait** to predict it. The Output Log names the character. |
 | Damage lands during i-frames | **`ApplyDamage`** does not check the tag | Leave **`DamageApplied`** at zero while the tag is held. |
 
 </Collapsible>
