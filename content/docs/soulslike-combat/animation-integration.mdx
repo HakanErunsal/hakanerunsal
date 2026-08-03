@@ -119,7 +119,6 @@ From a Blueprint graph, call **Set Approach Target To Actor** with the name the 
 
 Each distance and speed on a stored target can be left negative, which hands the choice back to the window on the montage. The order runs window override first, then the stored target, then a built-in default: 150 cm stop distance, 750 cm approach limit, turn speed 12.
 
-
 <Callout type="info">
 The montage track names the window by its mode, so **Approach Target**, **Face Target** and **Move To Target** read apart at a glance on the timeline.
 </Callout>
@@ -199,7 +198,6 @@ const FSECApproachTarget* FindApproachTarget(FName ApproachTargetName) const;
 **`USECApproachWindowNotifyState`:** the authored marker. Reads the mode and the overrides, looks up its **`ApproachTargetName`** on the component, and hands one resolved request back to it.
 
 **`UGameplayAbilityBase::SetupApproachTarget`:** stores the action context's target on activation and clears it on end, keyed on **`MotionWarpingTargetName`**. Storing a target starts nothing; the montage window is what moves the character.
-
 
 </Collapsible>
 
