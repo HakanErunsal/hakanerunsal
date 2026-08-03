@@ -1530,7 +1530,7 @@ export const REACTION_TRIGGER_RULE_DETAILS: UeDetailCategory[] = [
       { label: "On Stimulus", value: { kind: "text", value: "SEC.Stimulus.AttackTelegraphed" } },
       { label: "Require Context Tags", value: tagContainer([]) },
       { label: "Block Context Tags", value: tagContainer(["SEC.Attack.Unblockable"]) },
-      { label: "Condition", value: { kind: "asset", value: "None" } },
+      { label: "Conditions", value: { kind: "text", value: "1 Array element" } },
       { label: "Reaction Category", value: { kind: "text", value: "SEC.Reaction.Defensive" } },
       { label: "Chance", value: n(0.6, 0, 1, 2) },
       { label: "Min Interval", value: n(1.5, 0, undefined, 1) },

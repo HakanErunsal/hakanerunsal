@@ -1,7 +1,7 @@
 ---
 title: "Attack Telegraphs"
 description: "An attack announces itself at the wind-up, so a nearby enemy can parry, dodge, or stand its ground before the blow lands."
-date: 2026-08-02
+date: 2026-08-03
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Reactions", "Perception"]
 parent: "SoulslikeCombatDocs"
@@ -95,7 +95,7 @@ On the enemy's **Reaction Set**, fill in **Trigger Rules**. Each rule reads as: 
 | **On Stimulus** | Which event this rule answers, matched against the name the warning carries. A rule on a parent tag catches every tag beneath it, so one authored on `SEC.Stimulus.AttackTelegraphed` also answers a project's own `SEC.Stimulus.AttackTelegraphed.Heavy`. |
 | **Require Context Tags** | The event must carry all of these for this rule to fit, which is how a rule answers only heavy attacks. Empty requires nothing. |
 | **Block Context Tags** | The rule is skipped when the event carries any of these, which is how a parry rule refuses an unblockable attack and lets the dodge rule below it answer instead. Empty refuses nothing. |
-| **Condition** | An extra condition on top of the tags, for something the tags cannot express such as the pawn's own health. Leave it empty and the tags decide on their own, which covers most rules. |
+| **Conditions** | Gates that all have to pass before this rule answers. Put an **Incoming Angle Gate** here and the rule cannot answer a blow arriving from behind, which leaves the rule below it to take that one. Empty lets the tags decide on their own, which covers most rules. |
 | **Reaction Category** | Which group of reactions answers, matching the **Reaction Category** on the reactions themselves. |
 | **Chance** | How often this rule fires when everything else fits, from 0 to 1. 0.3 fires roughly a third of the time and lets the rules below it answer the rest, which is how an enemy parries sometimes rather than each time. |
 | **Min Interval** | Shortest gap in seconds between two firings of this rule, so an enemy cannot parry every swing of a fast combo. Counted from the moment the rule started a reaction, not from each time it was considered. 0 sets no limit. |
@@ -104,7 +104,7 @@ The enemy checks the rules from the top down and takes the first one that fits a
 
 A rule names a **category**, not a reaction. The usual reaction scoring picks the winner inside that category, which means one rule covers parry, dodge, and backstep together. Trigger rules live on the Reaction Set rather than the component, so an enemy that swaps to an Elite set picks up that set's triggers with it. A set with no rules authored answers nothing on its own, which leaves an enemy on reactions fired by hand from Blueprint.
 
-### 4. Make the parry win only from the front
+### 4. Make a reaction answer only what it can stop
 
 On the parry reaction spec, under **Scoring**, add the **Incoming Angle Gate** and set its **Half Angle Degrees**.
 
@@ -113,7 +113,34 @@ On the parry reaction spec, under **Scoring**, add the **Incoming Angle Gate** a
 | **Half Angle Degrees** | Half the width of the arc the blow must arrive inside, in degrees to either side of straight ahead. 60 accepts anything up to 60 degrees off the front; 180 accepts every direction, which turns the gate off. Starts at 60. |
 | **Pass Without Direction** | Let something through when there is no direction to measure. On by default, so a reaction fired by hand still works. Untick it to refuse anything the gate cannot judge. |
 
-A blow from the side fails the parry's gate and the dodge wins instead, with no second rule. That is the division of labour: the rule says something is coming, the gate says whether this reaction is the right answer to it.
+A blow from the side fails the parry's gate and the dodge wins instead, with no second rule.
+
+The same gate goes in a rule's **Conditions** instead when the whole category is the wrong answer. The two placements read differently:
+
+| Placed in | Decides | A refusal means |
+|-----------|---------|-----------------|
+| A rule's **Conditions** | Whether this kind of answer is considered at all | The next rule down takes the stimulus |
+| A reaction's **Scoring** | Whether this reaction is the right one inside a category that already matched | Another reaction in the same category takes it |
+
+Reach for the rule when nothing in the category can help. A hit landing from behind reports itself like any other, and a guard raised against it stops nothing, because the Defense component measures its own arc when the damage lands and refuses the block. Gate the rule instead and write a second rule under it:
+
+| Order | Rule | Conditions | Answers with |
+|-------|------|------------|--------------|
+| 1 | GuardFrontal | Incoming Angle Gate, half angle 60 | Your defensive category |
+| 2 | FlinchAnything | none | Your stagger category |
+
+A frontal blow takes rule 1 and gets the guard. A blow from behind fails rule 1's condition, falls to rule 2, and gets a flinch. Match the gate's **Half Angle Degrees** to the arc on the matching Defense response so the decision and the damage agree.
+
+Four gates read the stimulus rather than the pawn, so each one belongs in a rule's **Conditions** or a reaction's **Scoring**:
+
+| Gate | Judges |
+|------|--------|
+| **Incoming Angle** | Which side the blow arrives from. |
+| **Time To Impact** | Whether there is time left to answer. **Min Seconds** set to the parry's own start-up stops it answering a swing already too close, and stops a parry rule answering a hit that already landed, which reports no time left. |
+| **Stimulus Magnitude** | How big it is, in whatever the producer measured: incoming damage for a hit, a 0 to 1 charge for a wind-up. A ceiling on one rule and a floor on the next splits a flinch from a stagger. |
+| **Source Distance** | How far off the attacker stands, measured to the source actor or to the stimulus origin when nothing named a source. |
+
+An action never carries a stimulus, so one of these added to an action has nothing to judge and passes.
 
 ---
 
@@ -190,7 +217,9 @@ Leave **Stimulus Tag** empty for `SEC.Stimulus.DamageTaken`. A trigger rule on t
 
 <Collapsible title="The order of checks inside a trigger rule" badge="Advanced">
 
-For each rule, top down: the stimulus tag has to match, then **Require Context Tags**, then **Block Context Tags**, then **Min Interval**, then **Condition**, then **Chance**, and finally the category has to yield a reaction that passes its own gates. The enemy drops a rule that gets all the way through and finds nothing available, and the next rule down takes its turn.
+For each rule, top down: the stimulus tag has to match, then **Require Context Tags**, then **Block Context Tags**, then **Min Interval**, then every gate in **Conditions**, then **Chance**, and finally the category has to yield a reaction that passes its own gates. The enemy drops a rule that gets all the way through and finds nothing available, and the next rule down takes its turn.
+
+One scoring context is built for the whole **Conditions** list, so several gates on one rule measure the same moment. An empty row in the list is skipped rather than treated as a refusal.
 
 **Chance** rolls last among the rule's own checks, so a rule that cannot fire does not burn the roll. The component stamps **Min Interval** when the rule started a reaction, and skips the stamp when the reaction refused to start.
 
@@ -209,7 +238,7 @@ Two Blueprint-overridable events on the Reaction Evaluation component let a proj
 
 **Fallback Stimulus Filters** on the component covers a pawn running without an AI Config. A config that lists any filters replaces that list outright rather than adding to it.
 
-Writing a filter or a condition of your own is a Blueprint subclass either way: **SEC Stimulus Filter** answers **Can Sense**, and **SEC Reaction Trigger** answers **Should Fire** with the scoring context of the pawn, the target, and whatever set it off. Keep both stateless, since every AI using the asset shares one instance.
+Writing a filter or a condition of your own is a Blueprint subclass either way: **SEC Stimulus Filter** answers **Can Sense**, and **SEC Gate** answers **Passes Gate** with the scoring context of the pawn, the target, and whatever set it off. A rule's **Conditions** take the same gate class an action or a reaction takes, so one gate you write serves all three. Keep both stateless, since every AI using the asset shares one instance.
 
 </Collapsible>
 

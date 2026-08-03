@@ -1,7 +1,7 @@
 ---
 title: "Reaction System"
 description: "Event-driven AI reactions: parry, dodge, counter. They respond to game events in real time."
-date: 2026-08-02
+date: 2026-08-03
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Reactions"]
 parent: "SoulslikeCombatDocs"
@@ -149,7 +149,7 @@ Something reports what happened to the enemy's `ReactionEvaluationComponent` thr
 
 A rule names a **Reaction Category** rather than a reaction, and the [priority and scoring](#choosing-a-reaction-optional) on each reaction picks which one in that category runs. One rule covers a parry and a dodge that way: give both the same category, then put an **Incoming Angle Gate** and the higher **Priority** on the parry. The parry answers a blow arriving from the front, and the gate refuses it from the side, which leaves the dodge to take those.
 
-**On Stimulus** matches down the tag tree, so a rule on `SEC.Stimulus.AttackTelegraphed` also answers `SEC.Stimulus.AttackTelegraphed.Heavy`. **Require Context Tags** and **Block Context Tags** narrow it further: a parry rule that blocks on `SEC.Attack.Unblockable` steps aside and lets the dodge rule below it answer. **Chance** and **Min Interval** stop an enemy parrying every swing of a fast combo, and **Condition** holds a test of your own for what the tags cannot express, such as the pawn's own health.
+**On Stimulus** matches down the tag tree, so a rule on `SEC.Stimulus.AttackTelegraphed` also answers `SEC.Stimulus.AttackTelegraphed.Heavy`. **Require Context Tags** and **Block Context Tags** narrow it further: a parry rule that blocks on `SEC.Attack.Unblockable` steps aside and lets the dodge rule below it answer. **Chance** and **Min Interval** stop an enemy parrying every swing of a fast combo, and **Conditions** holds gates that all have to pass for the rule to answer, for what the tags cannot express. A rule refused by one of its conditions hands the stimulus to the rule below it, which is how a blow arriving from behind reaches a stagger rule instead of a guard that cannot cover it.
 
 A rule ends in the same **Execute Reaction** call as the direct route below, so the execute-time blocks and the [execution order](#execution-order) hold either way. A set with no rules answers nothing by itself, which leaves the direct call as the only way in.
 
@@ -294,7 +294,15 @@ Distance Scorer **Range** at the melee-preset default:
 
 Stamina Gate reads the pawn's stamina [vital](/docs/soulslike-combat/vitals) live, falling back to the same `100` default as actions when the pawn carries no vitals component or no row for the tag. Vital Scorer and Vital Gate read any named vital the same way. Attribute Scorers and Gates read live GameplayAttributes. Same classes as actions: see [Scorers & Gates](/docs/soulslike-combat/action-system#scorers--gates). Custom scorers stay **stateless**; `SeededRandom` is fixed on the reaction path (`Seed` stays `0`).
 
+Four gates read the stimulus that set the reaction off rather than the pawn, so each one also works in a trigger rule's **Conditions**. An action carries no stimulus, so one added to an action has nothing to judge and passes.
+
 **Incoming Angle Gate** blocks the reaction unless the blow arrives inside an arc in front of the pawn, which keeps a parry from answering a swing coming from behind. **Half Angle Degrees** is half the arc's width, `60` by default, so anything up to 60 degrees off the front passes and `180` turns the gate off. **Pass Without Direction** is on by default, letting a reaction fired by hand through when there is no direction to measure; untick it to refuse anything the gate cannot judge. The direction comes from whatever set the reaction off.
+
+**Time To Impact Gate** blocks the reaction unless there is time left to answer before the blow lands. **Min Seconds** set to the reaction's own start-up stops a parry answering a swing already too close to beat. A hit that already landed reports no time left, so any **Min Seconds** above `0` refuses one, which is what keeps a parry rule off a damage report. **Max Seconds** holds a rule back until the swing is close, and `0` sets no upper bound.
+
+**Stimulus Magnitude Gate** blocks the reaction unless the blow is worth answering, measured in whatever the producer used: incoming damage for a hit that landed, a 0 to 1 charge level for a wind-up. **Min Magnitude** and **Max Magnitude** bound it, and `0` on either sets no bound. A ceiling on one rule and a floor on the next splits a flinch from a stagger.
+
+**Source Distance Gate** blocks the reaction unless whatever caused the stimulus is within reach, so a counter does not swing at an archer across the room. **Min Distance** and **Max Distance** bound it in centimetres, and `0` on either sets no bound. It measures to the source actor, or to the stimulus origin when nothing named a source. **Pass Without Source** is on by default, letting through what it cannot measure.
 
 ---
 
