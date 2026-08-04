@@ -6,7 +6,7 @@ import {
   UeBlueprintNode,
 } from "@/components/ue-editor";
 
-/** The whole Apply Damage answer on a pawn that keeps its health in a Vitals component, matching USECDefenseStatics::ResolveAndApplyIncomingDamage. */
+/** The whole Handle Incoming Damage answer on a pawn that keeps its health in a Vitals component, matching USECDefenseStatics::ResolveAndApplyIncomingDamage. */
 export default function DefenseResolveGraph() {
   return (
     <div className="my-6 max-w-[560px]">
@@ -14,7 +14,7 @@ export default function DefenseResolveGraph() {
         <UeBlueprintComment title="BP_PlayerCharacter · SEC Damageable interface">
           <div className="flex flex-col items-start gap-5">
             <UeBlueprintNode
-              title="Event Apply Damage"
+              title="Event Handle Incoming Damage"
               kind="event"
               variant="graph"
               impure
@@ -23,7 +23,7 @@ export default function DefenseResolveGraph() {
               ]}
             />
             <UeBlueprintFunctionNode
-              title="Resolve and Apply Incoming Damage"
+              title="Resolve Defense and Apply Damage"
               subtitle="Target is SEC Defense Statics"
               pins={[
                 { name: "Guard", type: "object", direction: "input", defaultValue: "SEC Defense" },

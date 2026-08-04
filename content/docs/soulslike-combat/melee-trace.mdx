@@ -1,7 +1,7 @@
 ---
 title: "Melee Trace"
 description: "Frame-rate independent swept weapon traces with per-window damage configs and ISECDamageable integration."
-date: 2026-08-02
+date: 2026-08-04
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Melee", "Combat"]
 parent: "SoulslikeCombatDocs"
@@ -116,7 +116,7 @@ Per window: notify **`Damage Config`** → **`Default Damage Config`** → **`Ba
 
 **Hit Effects** on the config are what a landed hit does beyond the number. **SEC Play Gameplay Cues** fires impact and target cues, **SEC Apply Physics Impulse** shoves the struck body along the blow, and subclassing **SEC Hit Effect** in Blueprint covers anything else. Each effect can sit out a hit through **Suppress On Result Tags**, **Require Damage Applied**, or the kind of hit it landed on, so a blocked hit need not shake the screen.
 
-**SEC Damage Statics** opens the same pipeline to a projectile, an explosion or a hazard: **Apply Damage** asks the target and falls back to point damage, **Apply Point Damage** skips the interface, **Classify Damage Target** sorts a hit the way the sweep does, and **Run Hit Effects** runs a config's whole effect list once you know the outcome.
+**SEC Damage Statics** opens the same pipeline to a projectile, an explosion or a hazard: **Deal Damage** asks the target and falls back to point damage, **Deal Point Damage** skips the interface, **Classify Damage Target** sorts a hit the way the sweep does, and **Run Hit Effects** runs a config's whole effect list once you know the outcome.
 
 A cue fired this way receives the impact point, the impact normal, the struck surface, the damage that landed, a fatal flag, and whatever the target reported in its result tags. One notify can read those tags and branch a parried or blocked hit, which saves authoring a separate cue for each outcome. The plugin registers its own cue folder, so you add no path of your own, and your cues under `/Game` keep working alongside the shipped ones.
 
@@ -142,7 +142,7 @@ Equip, play the montage: register on equip, **`StartTracing`** at notify begin, 
 | System | Link |
 |--------|------|
 | [Weapons](/docs/soulslike-combat/weapons) | Building the weapon, its socket list, and arming the enemy so those sockets register. |
-| [Reaction System](/docs/soulslike-combat/reaction-system) | **`ApplyDamage`** returns **`ResultTags`** for reaction selection. |
+| [Reaction System](/docs/soulslike-combat/reaction-system) | **Handle Incoming Damage** returns **`ResultTags`** for reaction selection. |
 | [Animation Integration](/docs/soulslike-combat/animation-integration) | Montage windows hold defense tags; **`SkipRecordTags`** decides whether a dodge costs the swing. |
 | [Multiplayer](/docs/soulslike-combat/multiplayer) | Trace and damage on the detecting machine, the authority by default; clients follow replicated state. |
 | [Configuration Reference](/docs/soulslike-combat/configuration) | Shared project tuning (reconcile damage fields with this page). |
@@ -184,7 +184,7 @@ Blueprint helpers: **`RegisterSphereSocket`**, **`RegisterCapsuleSocket`**, **`R
 
 <Collapsible title="ISECDamageable pipeline" badge="Advanced">
 
-**`FSECDamageInfo`:** **`Instigator`**, **`DamageCauser`** (the weapon when the socket sits on one, the wielder otherwise), **`HitResult`**, **`HitDirection`**, **`DamageDefinition`** (**`ToDamageDefinition()`** when a config is active), **`DamageTags`**, and **`DamageConfig`**, the config the window opened with. Subclass **`SECDamageConfig`**, add poise damage or a stagger tier to it, then cast **`DamageConfig`** inside **`ApplyDamage`** to read them.
+**`FSECDamageInfo`:** **`Instigator`**, **`DamageCauser`** (the weapon when the socket sits on one, the wielder otherwise), **`HitResult`**, **`HitDirection`**, **`DamageDefinition`** (**`ToDamageDefinition()`** when a config is active), **`DamageTags`**, and **`DamageConfig`**, the config the window opened with. Subclass **`SECDamageConfig`**, add a stagger tier or anything else the attack should carry, then cast **`DamageConfig`** inside **`HandleIncomingDamage`** to read it. A pool an attack drains, such as poise, belongs in the config's **`VitalDamage`** rows instead.
 
 **`HitDirection`** is the bearing from attacker to target. **`IsHitDirectionWithinArc`** and **`GetHitDirectionQuadrant`** measure a guard or a directional reaction against it. The weapon's own path stays on the hit result. Tick **Use Authored Hit Direction** on the config to send a fixed direction instead, so an uppercut launches upward whatever the geometry said; the physics impulse follows the same value.
 

@@ -1,7 +1,7 @@
 ---
 title: "Multiplayer Support"
 description: "Server-authoritative AI with replicated pawn state for client UI, animation, and feedback."
-date: 2026-07-29
+date: 2026-08-04
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Multiplayer", "Replication"]
 parent: "SoulslikeCombatDocs"
@@ -66,7 +66,7 @@ These stay on the possessed pawn but skip client simulation:
 | Piece | Notes |
 |-------|-------|
 | **`USECMeleeTraceComponent`** | **`StartTracing`** and tick gate on **`ShouldDetectHits`**, a virtual defaulting to **`HasAuthority`**. Override it in a subclass to sweep on another machine. See [Melee Trace](/docs/soulslike-combat/melee-trace). |
-| **Melee damage** | **`ISECDamageable::ApplyDamage`** or legacy **`ApplyPointDamage`** on authority. |
+| **Melee damage** | **`ISECDamageable::HandleIncomingDamage`** or legacy **`ApplyPointDamage`** on authority. |
 
 Clients see swings through GAS montage replication. **`OnMeleeHitResponse`** fires on authority.
 

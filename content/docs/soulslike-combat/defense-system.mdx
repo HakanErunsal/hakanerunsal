@@ -1,7 +1,7 @@
 ---
 title: "Defense System"
 description: "Decide what an incoming hit is worth: parries, blocks, invulnerability frames, and armour, in the order you author them."
-date: 2026-08-02
+date: 2026-08-04
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Defense", "Combat"]
 parent: "SoulslikeCombatDocs"
@@ -57,21 +57,21 @@ Add **SEC Defense** to the pawn. `AEnemyCharacterBase` ships with one already.
 | **Defense Set** | A shareable list of responses, for armour or a stance several characters use. Authored in a **SEC Defense Rule Set** asset. Runs last, under everything in Responses, so a broad resistance here shaves whatever the answers above it let through. Empty means everything is authored on this pawn. |
 | **Responses** | Responses authored on this pawn alone, running after whatever the pawn is carrying brings and before the Defense Set. Order matters: the component walks the combined list top down, and the first response that handles the hit usually ends it. |
 
-### 2. Wire Apply Damage
+### 2. Wire Handle Incoming Damage
 
-In the pawn's **Class Settings**, add the **SEC Damageable** interface, then implement **Apply Damage** with one node.
+In the pawn's **Class Settings**, add the **SEC Damageable** interface, then implement **Handle Incoming Damage** with one node.
 
 <DefenseResolveGraph />
 
-**Resolve and Apply Incoming Damage** is the whole answer in one call: run the responses, charge what they cost, take what survived off the pawn's health pool, and report back with **Was Fatal** set when that emptied it. A pawn with no vitals component resolves the hit normally, takes nothing off anything, and names itself once in the Output Log.
+**Resolve Defense and Apply Damage** is the whole answer in one call: run the responses, charge what they cost, take what survived off the pawn's health pool, and report back with **Was Fatal** set when that emptied it. A pawn with no vitals component resolves the hit normally, takes nothing off anything, and names itself once in the Output Log.
 
 Two variations cover the rest:
 
-- **A pawn wired through Event Any Damage.** Call **Resolve and Apply Incoming Damage (Any Damage Event)** instead. It takes loose numbers and works the blow's direction out from where the attacker is standing, so a directional defense rule still has a bearing to measure against. It takes the surviving damage off the health pool too, so nothing after it should subtract health again.
+- **A pawn wired through Event Any Damage.** Call **Resolve Defense and Apply Damage (Any Damage Event)** instead. It takes loose numbers and works the blow's direction out from where the attacker is standing, so a directional defense rule still has a bearing to measure against. It takes the surviving damage off the health pool too, so nothing after it should subtract health again.
 - **A project running its own health.** Call **Resolve Incoming Damage** on the component, subtract the result's **Damage Applied** from your own health variable, and return the result. That node runs the responses and charges their costs; taking the damage off a pool is then yours to do.
 
 <Callout type="info">
-Enemies deriving from `AEnemyCharacterBase` answer Apply Damage in C++ already, through a component named **Defense**. Author responses on it and the enemy is done.
+Enemies deriving from `AEnemyCharacterBase` answer Handle Incoming Damage in C++ already, through a component named **Defense**. Author responses on it and the enemy is done.
 </Callout>
 
 ### 3. Author the responses
@@ -252,7 +252,7 @@ USECDefenseStatics::FillDamageResult(DefenseResult, Result);      // DamageAppli
 
 <Collapsible title="Multiplayer" badge="Multiplayer">
 
-Charging a cost and draining health both need the authority, so run **Resolve and Apply Incoming Damage** on the server. A call anywhere else charges nothing and returns 0.
+Charging a cost and draining health both need the authority, so run **Resolve Defense and Apply Damage** on the server. A call anywhere else charges nothing and returns 0.
 
 **Preview Incoming Damage** reaches the same answer on any machine, so a guard meter or a damage-preview widget on the owning client can call it freely.
 

@@ -1,7 +1,7 @@
 ---
 title: "Getting Started with SoulslikeCombat"
 description: "Install the plugin and build a working enemy from scratch: pawn, controller, ability, ActionSet, and config."
-date: 2026-07-29
+date: 2026-08-04
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Tutorial"]
 parent: "SoulslikeCombatDocs"
@@ -111,7 +111,7 @@ Reparenting fails when your character must inherit from a different C++ class. S
 4. **Return the config** from `GetAIConfig_Implementation()`. Expose an `EditAnywhere TObjectPtr<UEnemyAIConfig>` property and return it, so the controller reads a per-pawn config on possession. Return `nullptr` to fall back to the controller's config.
 5. **Keep dedicated-server sockets correct** in `BeginPlay`: when `GetNetMode() == NM_DedicatedServer`, set the mesh's `VisibilityBasedAnimTickOption` to `AlwaysTickPoseAndRefreshBones`. A dedicated server never renders, so without this the mesh holds its bind pose and socket-based melee traces fire from the wrong location.
 
-The base also disables actor tick (`PrimaryActorTick.bCanEverTick = false`); the combat components run their own updates, so the pawn needs no tick. `ISECDamageable::ApplyDamage` receives structured hits from the melee trace pipeline; override it to apply damage the way your game needs. Skip the interface and the actor still takes damage through Unreal's `ApplyPointDamage` fallback.
+The base also disables actor tick (`PrimaryActorTick.bCanEverTick = false`); the combat components run their own updates, so the pawn needs no tick. `ISECDamageable::HandleIncomingDamage` receives structured hits from the melee trace pipeline; override it to apply damage the way your game needs. Skip the interface and the actor still takes damage through Unreal's `ApplyPointDamage` fallback.
 </Collapsible>
 
 ### Step 2: Create the AI controller
