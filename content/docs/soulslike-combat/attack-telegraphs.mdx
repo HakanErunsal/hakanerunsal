@@ -71,10 +71,11 @@ Each shape asks for only the values it uses, so a swing that warns all round nev
 
 <Collapsible title="Writing a shape of your own" badge="Advanced">
 
-Subclass **SEC Stimulus Shape** in Blueprint for ground the built-in shapes cannot describe, such as a corridor or a ring. Answer two events:
+Subclass **SEC Stimulus Shape** in Blueprint for ground the built-in shapes cannot describe, such as a corridor or a ring. Answer three events:
 
 - **Get Max Reach** returns how far the shape can possibly reach, in centimetres. Nothing beyond it is looked at, so return the distance to the farthest corner rather than an average. A shape returning 0 warns nobody.
 - **Covers Receiver** decides whether one pawn stands on the covered ground. Everything handed to it already sits inside Get Max Reach, so a shape filling its whole reach can leave this alone.
+- **Draw Shape** outlines the ground for the debug view. Feed its **World Context Object** input into the same pin on every Draw Debug node used inside, not a Self node; the shape can belong to no world, so wiring Self draws nothing. Leave the event alone and the base draws a sphere at full reach, which is the outer bound rather than what Covers Receiver accepts, so a shape narrower than its reach is worth drawing properly.
 
 One shape instance answers for every pawn a warning reaches, and a notify is shared by every montage carrying it, so keep a subclass free of stored state.
 
