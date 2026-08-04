@@ -1,7 +1,7 @@
 ---
 title: "Movement System"
 description: "Tactical AI positioning: direction sampling, distance keeping, strafing, navmesh awareness, and corner detours."
-date: 2026-07-29
+date: 2026-08-04
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Movement"]
 parent: "SoulslikeCombatDocs"
@@ -35,9 +35,29 @@ A direction's score comes from how well it serves the target distance, whether i
 
 ### Distance and the comfort zone
 
-The AI holds a band around its `DesiredDistance` instead of a single exact range. `DesiredDistance = 400` with `DistanceTolerance = 0.2` gives a comfort band of 320 to 480 cm. Inside the band the AI strafes; too close, it retreats; too far, it approaches.
+The AI holds a band around its `Desired Distance` instead of a single exact range, and the band is wider on the crowded side than the far side. `Crowd Tolerance` (0.45) sets how far inside the ideal range the AI puts up with a target pressing in, and `Distance Tolerance` (0.2) sets how far past it still counts as close enough. At a desired 400 cm that band runs 220 to 480 cm. Inside it the AI circles, closer than 220 it gives ground, past 480 it closes in.
 
-<DistanceBandVisualizer desiredDistance={400} tolerance={0.2} />
+<DistanceBandVisualizer desiredDistance={400} tolerance={0.2} crowdTolerance={0.45} />
+
+Widen `Crowd Tolerance` for an enemy that stands its ground when you walk into it, and narrow it for one that insists on its space. Set the two equal for a band the same width on both sides.
+
+### Giving ground
+
+An enemy pushed inside its near edge backs away at a fraction of its walk speed, set by `Retreat Speed Scale` (0.45). A player closing at a run gains ground the whole way, so the gap shuts instead of holding while the enemy walks backward.
+
+How hard crowding pushes the enemy toward giving ground instead of circling comes from `Close Range Retreat Bias` (0.5). Raise it toward 1 for a harder push out, drop it to 0 to leave the enemy circling at any range.
+
+It also stops backing away from a target it cannot outrun. With `Yield Retreat To Closing Target` on, an enemy whose target closes faster than it can retreat holds its footing and circles instead. The check weighs the target's own speed against this enemy's retreat speed, so it needs no per-enemy tuning. A target with no movement of its own leaves it inert.
+
+<Collapsible title="Retreat tuning knobs" badge="Advanced">
+- **Retreat Speed Scale** (0.45) is a share of the pawn's normal walk speed, and 1 removes the cap. Backing away and running sideways do not stack their speed costs; the larger of the two applies, so a diagonal retreat is slowed once.
+- **Retreat Yield Strength** (1) is how completely a closing target cancels the retreat. 1 hands the frame to circling, 0.5 halves the effect, 0 keeps the enemy backing away regardless.
+- **Closing Speed Smoothness** (4) is how fast the enemy notices its target's speed changing. At 4 it settles in about a quarter of a second, enough to catch a committed run while one frame of a landing or a dodge barely moves it.
+- **Close Range Retreat Bias** (0.5) is how hard being crowded past the near edge favors giving ground over circling. It leaves tolerated crowding inside that edge alone.
+- Giving way ramps in. It starts once the target closes at half the enemy's retreat speed and completes once the two match.
+
+A `Min Analog Walk Speed` set on the pawn's Character Movement component floors the speed cap, so leave that at 0 for `Retreat Speed Scale` to hold.
+</Collapsible>
 
 ### Strafing
 
@@ -161,7 +181,7 @@ Create a `MovementBehaviorProfile` (Right-click → Miscellaneous → Data Asset
 
 <MovementProfileDetails />
 
-`Desired Distance` is the ideal range in cm, `Distance Tolerance` is the comfort band as a fraction of it, the Rest Behavior fields govern strafe fatigue, and the Threat Response fields feed off [Threat Detection](/docs/soulslike-combat/threat-detection). `Positioning Rules` are covered below. Everything else lives on the component and is the same for every role (next section).
+`Desired Distance` is the ideal range in cm, `Distance Tolerance` and `Crowd Tolerance` are the far and near halves of the comfort band as fractions of it, the Rest Behavior fields govern strafe fatigue, and the Threat Response fields feed off [Threat Detection](/docs/soulslike-combat/threat-detection). `Positioning Rules` are covered below. Everything else lives on the component and is the same for every role (next section).
 
 **Adjust at runtime.** These are Blueprint-callable nodes on the component: **Apply Behavior Profile** swaps the whole profile, **Set Desired Distance** changes range, **Set Strafe Side** and **Swap Strafe Side** force a direction, and **Set Distance Multiplier** scales range (threat detection drives this one).
 

@@ -249,6 +249,7 @@ export const MOVEMENT_EVALUATOR_DETAILS: UeDetailCategory[] = [
       { label: "Apply Movement Input", value: b(true) },
       { label: "Num Samples", value: n(16, 4, 32, 0) },
       { label: "Distance Tolerance", value: n(0.2, 0.05, 0.5) },
+      { label: "Crowd Tolerance", value: n(0.45, 0.05, 0.9) },
       { label: "Direction Smoothness", value: n(8, 0, 50) },
       { label: "Direction Change Penalty", value: n(1, 0, 5) },
       { label: "Speed Dead Zone", value: n(0.1, 0, 0.5) },
@@ -266,7 +267,16 @@ export const MOVEMENT_EVALUATOR_DETAILS: UeDetailCategory[] = [
           { label: "Strafe Free Angle", value: n(15, 0, 89, 0) },
           { label: "Strafe Full Penalty Angle", value: n(40, 1, 90, 0) },
           { label: "Strafe Preference Weight", value: n(1, 0, 2) },
+        ],
+      },
+      {
+        title: "Retreat",
+        properties: [
           { label: "Close Range Retreat Bias", value: n(0.5, 0, 1) },
+          { label: "Retreat Speed Scale", value: n(0.45, 0.1, 1) },
+          { label: "Yield Retreat To Closing Target", value: b(true) },
+          { label: "Retreat Yield Strength", value: n(1, 0, 1) },
+          // Closing Speed Smoothness is AdvancedDisplay, omitted here as the Nav Sampling group omits its own.
         ],
       },
       {
@@ -376,6 +386,7 @@ export const MOVEMENT_PROFILE_DETAILS: UeDetailCategory[] = [
     properties: [
       { label: "Desired Distance", value: n(400) },
       { label: "Distance Tolerance", value: n(0.2, 0.05, 0.5) },
+      { label: "Crowd Tolerance", value: n(0.45, 0.05, 0.9) },
     ],
   },
   {
