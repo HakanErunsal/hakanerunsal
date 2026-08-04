@@ -35,7 +35,7 @@ Five stages sit between a wind-up and an enemy answering it.
 Stages 1 to 3 decide who hears about the attack. Stages 4 and 5 hand what got through to the [Reaction System](/docs/soulslike-combat/reaction-system), which picks and runs the answer.
 
 <Callout type="warning">
-The telegraph is an **instant notify**. It fires once, and the pawns standing in the cone at that instant are the ones warned. An enemy that steps into the arc a moment later hears nothing about that swing.
+The telegraph is an **instant notify**. It fires once, and the pawns standing on the covered ground at that instant are the ones warned. An enemy that steps into it a moment later hears nothing about that swing.
 </Callout>
 
 Everything on this page runs on the server. Announcements, perception, and reaction decisions all happen on the authority, which single player and a listen server give you for free.
@@ -223,7 +223,7 @@ Read the colours as a funnel. Grey, blue, and magenta mean the announcement itse
 
 <Collapsible title="Answering a hit that already landed" badge="Advanced">
 
-**Report Damage Taken Stimulus** covers the other half of the story: a flinch or a counter after a blow connects. Call it from the pawn's Apply Damage once the damage is resolved, and it reads the direction the blow came from off the damage info.
+**Report Damage Taken Stimulus** covers the other half of the story: a flinch or a counter after a blow connects. Call it from the pawn's Handle Incoming Damage once the damage is resolved, and it reads the direction the blow came from off the damage info.
 
 Leave **Stimulus Tag** empty for `SEC.Stimulus.DamageTaken`. A trigger rule on that tag answers it the way another rule answers a telegraph, so a flinch reaction and a parry reaction sit side by side in one Reaction Set.
 
