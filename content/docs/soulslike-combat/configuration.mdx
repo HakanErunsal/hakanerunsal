@@ -1,7 +1,7 @@
 ---
 title: "Configuration Reference"
 description: "Complete reference for all data assets: AICombatConfig, ActionSets, Movement Profiles, and Damage Config."
-date: 2026-07-29
+date: 2026-08-04
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Configuration", "Reference"]
 parent: "SoulslikeCombatDocs"
@@ -266,7 +266,8 @@ The role-swappable data asset. It holds only the fields a combat role changes. T
 ```cpp
 // Distance
 float DesiredDistance;            // Ideal distance to hold (cm), default 400
-float DistanceTolerance;          // Comfort band as a fraction of desired (0.05-0.5), default 0.2
+float DistanceTolerance;          // Far half of the comfort band as a fraction of desired (0.05-0.5), default 0.2
+float CrowdTolerance;             // Near half, how far a target may press in before the AI gives ground (0.05-0.9), default 0.45
 
 // Strafe Rest (fatigue)
 bool  bEnableStrafeRest;          // Rest after continuous strafing, default true
@@ -289,6 +290,7 @@ Name: DA_AggressiveMelee
 
 DesiredDistance: 300
 DistanceTolerance: 0.15
+CrowdTolerance: 0.6
 
 bEnableStrafeRest: true
 StrafeRestTimeLimit: 15.0
