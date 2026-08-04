@@ -1451,16 +1451,15 @@ export const DEFENSE_RESISTANCE_DETAILS: UeDetailCategory[] = [
 
 /**
  * USECAttackTelegraphNotify. Broadcast carries ShowOnlyInnerProperties, so its fields list
- * inline in the Telegraph category ahead of the notify's own.
- * Verified against SECAttackTelegraphNotify.h and SECCombatStimulus.h.
+ * inline in the Telegraph category ahead of the notify's own, and the chosen shape's own
+ * fields expand under it.
+ * Verified against SECAttackTelegraphNotify.h, SECCombatStimulus.h and SECStimulusShape.h.
  */
 export const ATTACK_TELEGRAPH_NOTIFY_DETAILS: UeDetailCategory[] = [
   {
     title: "Telegraph",
     properties: [
-      { label: "Radius", value: n(600, 0) },
-      { label: "Arc Half Angle Degrees", value: n(120, 0, 180) },
-      { label: "Arc Yaw Offset Degrees", value: n(0, -180, 180) },
+      { label: "Shape", value: { kind: "enum", value: "Cone" } },
       { label: "Team Filter", value: { kind: "enum", value: "Enemies Only" } },
       { label: "Notice Chance", value: n(0.8, 0, 1, 2) },
       { label: "Draw Debug", value: b(false) },
@@ -1469,6 +1468,17 @@ export const ATTACK_TELEGRAPH_NOTIFY_DETAILS: UeDetailCategory[] = [
       { label: "Telegraph Tag", value: { kind: "text", value: "SEC.Stimulus.AttackTelegraphed" } },
       { label: "Context Tags", value: tagContainer(["SEC.Attack.Heavy"]) },
       { label: "Magnitude", value: n(0, 0) },
+    ],
+    children: [
+      {
+        title: "Shape",
+        defaultOpen: true,
+        properties: [
+          { label: "Radius", value: n(600, 0) },
+          { label: "Half Angle Degrees", value: n(60, 0, 180) },
+          { label: "Yaw Offset Degrees", value: n(0, -180, 180) },
+        ],
+      },
     ],
   },
 ];

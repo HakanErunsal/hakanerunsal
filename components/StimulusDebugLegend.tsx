@@ -30,8 +30,8 @@ const MARKERS: Marker[] = [
   {
     color: SEC_STIMULUS_DEBUG.outsideArc,
     name: "Blue",
-    label: "Outside arc",
-    meaning: "In range but outside the wedge. Widen Arc Half Angle Degrees or turn it with the yaw offset.",
+    label: "Outside shape",
+    meaning: "In range but off the ground the shape covers. Widen the shape, or turn a cone with its yaw offset.",
   },
   {
     color: SEC_STIMULUS_DEBUG.noticeRollFailed,

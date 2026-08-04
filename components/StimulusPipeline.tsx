@@ -24,7 +24,7 @@ const STAGES: Stage[] = [
   {
     index: "2",
     title: "Who is in danger",
-    decidedBy: "Radius, Arc Half Angle Degrees, Team Filter, Notice Chance",
+    decidedBy: "Shape, Team Filter, Notice Chance",
     passes: "The pawns standing inside the wedge, minus the ones the notice roll missed.",
     dropsOut: "Anyone out of reach, behind the arc, on the attacker's own side, or unlucky on the roll.",
   },

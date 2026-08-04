@@ -1,7 +1,7 @@
 ---
 title: "Attack Telegraphs"
 description: "An attack announces itself at the wind-up, so a nearby enemy can parry, dodge, or stand its ground before the blow lands."
-date: 2026-08-03
+date: 2026-08-04
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Reactions", "Perception"]
 parent: "SoulslikeCombatDocs"
@@ -52,17 +52,33 @@ Open the attacker's montage and add the **SEC Attack Telegraph** notify where th
 
 | Field | Sets |
 |-------|------|
-| **Radius** | How far the warning reaches, in centimetres from where it starts. A pawn outside it learns nothing is coming. Starts at 500. |
-| **Arc Half Angle Degrees** | Half the width of the arc the warning covers, in degrees to either side of the facing. 180 warns all round, 45 warns a narrow cone straight ahead. Starts at 180. |
-| **Arc Yaw Offset Degrees** | Turn the arc away from straight ahead, in degrees. Use 90 for a swing coming in from the right so the warning points where the blade goes. Starts at 0. |
-| **Team Filter** | Who gets warned. Enemies Only is what an attack wants, so allies standing in the arc are not startled by their own side. Team ids come from the **SEC Team Interface**, and an actor without one counts as neutral. |
-| **Notice Chance** | How likely each pawn in range is to notice, from 0 to 1. Rolled once per pawn, so at 0.6 roughly three enemies in five spot the wind-up and the rest are caught out. Starts at 1, which warns the whole arc. |
-| **Draw Debug** | Draw the reach and the arc in the world for a moment, to check the shape against the animation. |
+| **Shape** | The ground the warning covers. Pick **Sphere** to warn everything within reach, or **Cone** to warn a wedge pointing the way the attack is aimed. A new notify starts on Sphere, and a broadcast left with no shape warns nobody and says so in the Output Log. |
+| **Team Filter** | Who gets warned. Enemies Only is what an attack wants, so allies standing in the covered ground are not startled by their own side. Team ids come from the **SEC Team Interface**, and an actor without one counts as neutral. |
+| **Notice Chance** | How likely each pawn in range is to notice, from 0 to 1. Rolled once per pawn, so at 0.6 roughly three enemies in five spot the wind-up and the rest are caught out. Starts at 1, which warns everyone the shape covers. |
+| **Draw Debug** | Draw the covered ground in the world for a moment, to check the shape against the animation. |
 | **Origin Socket** | Socket the warning radiates from. Empty measures from the actor itself; name a blade socket on a long weapon so reach is measured from the tip rather than the body. |
 | **Time To Impact Override** | Seconds until the blow lands, for an attack whose montage has no trace window to measure against, such as a grab or a projectile launch. Leave it at 0 and the notify works the gap out itself by finding the next melee trace window, which keeps it right when anyone retimes the animation. |
 | **Telegraph Tag** | What to call this warning, which is what a trigger rule on a Reaction Set matches. Starts at `SEC.Stimulus.AttackTelegraphed`. Author a child tag for an attack that needs its own answer; a rule on the parent still catches it. |
 | **Context Tags** | Extra tags describing this attack, such as `SEC.Attack.Heavy` or `SEC.Attack.Unblockable`, so a trigger rule can require or refuse them. |
 | **Magnitude** | How big this attack is, in whatever units the project uses. Reaches the reaction's ability as the execution context's **Magnitude**. |
+
+Each shape asks for only the values it uses, so a swing that warns all round never shows an angle to fill in.
+
+| Shape | Fields |
+|-------|--------|
+| **Sphere** | **Radius**, in centimetres from where the warning starts. A pawn outside it never learns anything is coming. Starts at 500. Use it for a shockwave, a roar, or an attack wide enough that facing does not matter. |
+| **Cone** | **Radius** as above, plus **Half Angle Degrees**, the width of the wedge to either side of where it is aimed (45 covers a narrow cone straight ahead, 90 covers everything in front), and **Yaw Offset Degrees**, which turns the wedge away from straight ahead. Set the offset to 90 for a swing coming in from the right so the warning covers where the blade goes. |
+
+<Collapsible title="Writing a shape of your own" badge="Advanced">
+
+Subclass **SEC Stimulus Shape** in Blueprint for ground the built-in shapes cannot describe, such as a corridor or a ring. Answer two events:
+
+- **Get Max Reach** returns how far the shape can possibly reach, in centimetres. Nothing beyond it is looked at, so return the distance to the farthest corner rather than an average. A shape returning 0 warns nobody.
+- **Covers Receiver** decides whether one pawn stands on the covered ground. Everything handed to it already sits inside Get Max Reach, so a shape filling its whole reach can leave this alone.
+
+One shape instance answers for every pawn a warning reaches, and a notify is shared by every montage carrying it, so keep a subclass free of stored state.
+
+</Collapsible>
 
 The measured **Time To Impact** reads the next **SEC Melee Trace Window** on the same montage and divides by the play rate in force, so a slowed montage reports the longer gap. A montage offering neither a trace window nor an override warns once in the Output Log and reports 0. See [Melee Trace](/docs/soulslike-combat/melee-trace) for the window itself.
 
