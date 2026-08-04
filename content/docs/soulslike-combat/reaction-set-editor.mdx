@@ -1,0 +1,127 @@
+---
+title: "Reaction Set Editor"
+description: "Wire trigger rules to the reactions they answer with on a canvas, and watch a live enemy answer."
+date: 2026-08-04
+published: true
+tags: ["Documentation", "Unreal Engine", "AI", "Reactions", "Debugging"]
+parent: "SoulslikeCombatDocs"
+order: 7.25
+---
+
+<Breadcrumb items={[
+    { label: "Docs", href: "/docs" },
+    { label: "SoulslikeCombat", href: "/docs/SoulslikeCombatDocs" },
+    { label: "Reaction Set Editor" }
+]} />
+
+> Double-click a Reaction Set to lay its trigger rules and reactions out as cards, then draw an arrow from a rule to each reaction it can answer with.
+
+## When to Use This
+
+Open a Reaction Set here when you want to see which events reach which reactions at a glance, or to find out why an enemy is not parrying something you expected it to.
+
+The canvas holds two kinds of card. A **Trigger** card is one rule: the event it answers and the conditions on it. A **Reaction** card is one reaction: the ability it runs and how it scores. An arrow from a trigger to a reaction says that rule can answer with that reaction.
+
+Both the **Reactions** and **Trigger Rules** arrays stay reachable under **Advanced** in the panel on the right when no card is selected, for reordering or editing several at once.
+
+## Reading a Card
+
+Each card carries a tinted chip naming what it is, its ID as the title, and a few lines of the settings that decide its behaviour.
+
+A trigger card shows the event it answers, its **Rule Priority**, the category it is limited to when it has one, and its **Chance** and **Min Interval** when either is set. A reaction card shows the ability it runs, its **Priority** and **Selection Weight**, its category, and its cooldown.
+
+A card with a problem draws a warning triangle and a red border. Hover it for what is wrong.
+
+## Adding and Removing
+
+Right-click the canvas and pick **Add Trigger** or **Add Reaction**. Either adds the entry to the asset and places a card for it.
+
+Deleting a card removes the entry it stands for. Deleting a reaction also clears every arrow that pointed at it, so no rule is left naming a reaction the set does not hold.
+
+A new trigger is asked before the rules already there, on the assumption that a rule you have only now written is the one you are trying out. Change its **Rule Priority** to move it.
+
+## Wiring a Rule to a Reaction
+
+Drag from the pin on the right of a trigger card to the pin on the left of a reaction card. That arrow is the same thing as an entry in that rule's **Reaction Links** array, seen from the other side.
+
+One rule can answer with several reactions. Draw an arrow to each, and the usual [priority and scoring](/docs/soulslike-combat/reaction-system#choosing-a-reaction-optional) on those reactions picks which of them runs.
+
+Each arrow carries a **Weight Multiplier** on the link, saying how much this rule favours that answer over the others it names. Leave it at 1 and the reaction's own **Selection Weight** decides. A thicker, brighter arrow is a rule leaning harder on that answer.
+
+Trigger cards have no incoming pin and reaction cards have no outgoing one, so an arrow between two rules or between two reactions cannot be drawn.
+
+## The Two Ways a Rule Names Answers
+
+**Reaction Links** names reactions one at a time, which is what the arrows write.
+
+**Reaction Category** names a group instead, and every reaction carrying that category answers. No arrow appears for a category, because the rule names no reaction to draw one to.
+
+Fill in both and the rule answers only with a reaction that appears in its links **and** carries that category. That narrows what a rule can do and never widens it.
+
+<Callout type="warning">
+  A rule with a category set and an arrow to a reaction outside that category answers nothing at all. The trigger card flags it and names both the reaction and the category, and the fix is to clear the category or give that reaction the category.
+</Callout>
+
+## What the Cards Warn About
+
+The canvas reports what a details panel cannot show you:
+
+| Warning | What it means |
+|---------|---------------|
+| Nothing reaches this reaction | No arrow points at it and it carries no category, so only a Blueprint calling **Execute Reaction** by name can start it |
+| This rule answers nothing | The rule has no **On Stimulus** tag, so no event matches it |
+| Names neither a reaction nor a category | The rule can never produce an answer, and the rule below it takes the event instead |
+| Wired outside its category | The arrow and the category disagree, so the rule answers nothing |
+| Chance is 0 | The rule never fires |
+
+An unreachable reaction is the one worth reading twice. A reaction with no arrow and no category is dead unless something calls it by name, and nothing about the arrays tells you that.
+
+## Which Rule Is Asked First
+
+**Rule Priority** on each trigger decides the order, highest first. Rules sharing a priority keep the order they sit in.
+
+The array reorders itself to match, so reading the **Trigger Rules** array top to bottom is reading the order events are offered to.
+
+<Collapsible title="A set authored before rules carried a priority" badge="Advanced">
+Opening such a set fills **Rule Priority** in from the order the rules already sat in, so the set keeps answering exactly as it did. The top rule takes the highest value, in steps of ten, leaving room to slot a rule between two without renumbering.
+
+A set already carrying a priority anywhere is left alone. That means a set holding one authored priority and the rest at zero keeps the untouched rules in their relative order, but places them below the one you typed a value on.
+</Collapsible>
+
+## Watching the AI Answer
+
+Press Play and the picker above the canvas lists every AI running this Reaction Set. Pick one and the bar reports which reaction it is running, or that nothing is answering right now.
+
+The reaction the AI chose is the card you authored it on, so a rule that fired the wrong answer is one click from the setting that produced it.
+
+<Callout type="warning">
+  Tuning weights, chances, intervals and gates while the game runs is safe. Adding, deleting or renaming a rule or a reaction mid-play is not, because a running AI holds a reference into the arrays. The editor warns you once per session when you do it, and the fix is to restart Play In Editor.
+</Callout>
+
+<Collapsible title="Multiplayer and dedicated servers" badge="Multiplayer">
+Reactions are chosen wherever the AI's decisions are made, so the picker lists the authoritative copy of each enemy. Under **Play As Client** that is the server's enemies rather than the client's.
+
+A dedicated server launched as its own process cannot be inspected from the editor, because it has no world in the editor's process. Run the server in-process to watch its enemies.
+</Collapsible>
+
+<Collapsible title="Reading the rule walk in the log instead" badge="Advanced">
+For a record you can scroll back through, `SEC.Debug.LogReactions 1` prints which rule answered an event, which rules declined it and why, and which reaction won. A rule skipped by its interval says how much of the gap is left.
+
+That log is the fastest way to tell a rule that never matched from a rule that matched and then found nothing to answer with.
+</Collapsible>
+
+---
+
+## Integration Points
+
+| System | How It Connects |
+|--------|-----------------|
+| [Reaction System](/docs/soulslike-combat/reaction-system) | The rules, scoring and gates every card shows |
+| [Attack Telegraphs](/docs/soulslike-combat/attack-telegraphs) | Where the events a trigger answers come from |
+| [Action Set Editor](/docs/soulslike-combat/action-set-editor) | The same canvas, for the poll-driven side of an enemy |
+| [Combat Roles](/docs/soulslike-combat/combat-roles) | A role change swaps the Reaction Set, and the picker detaches when the AI moves to a different one |
+
+<DocNav
+  prev={{ title: "Reaction System", href: "/docs/soulslike-combat/reaction-system" }}
+  next={{ title: "Combat Roles", href: "/docs/soulslike-combat/combat-roles" }}
+/>

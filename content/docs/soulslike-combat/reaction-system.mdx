@@ -1,7 +1,7 @@
 ---
 title: "Reaction System"
 description: "Event-driven AI reactions: parry, dodge, counter. They respond to game events in real time."
-date: 2026-08-03
+date: 2026-08-04
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Reactions"]
 parent: "SoulslikeCombatDocs"
@@ -143,11 +143,15 @@ A reaction starts one of two ways. Hand the enemy a stimulus and let the trigger
 
 Something reports what happened to the enemy's `ReactionEvaluationComponent` through **Receive Stimulus**: an attack winding up, a hit that landed, a spell going off. [Attack Telegraphs](/docs/soulslike-combat/attack-telegraphs) covers where one comes from and how far it carries.
 
-**Trigger Rules** on the Reaction Set turn that into an answer. The component walks them from the top down, and the first rule that fits and yields a reaction wins, so specific rules sit above general ones:
+**Trigger Rules** on the Reaction Set turn that into an answer. The component asks them in **Rule Priority** order, highest first, and the first rule that fits and yields a reaction wins, so a specific rule takes a higher priority than a general one:
 
 <ReactionTriggerRuleDetails />
 
-A rule names a **Reaction Category** rather than a reaction, and the [priority and scoring](#choosing-a-reaction-optional) on each reaction picks which one in that category runs. One rule covers a parry and a dodge that way: give both the same category, then put an **Incoming Angle Gate** and the higher **Priority** on the parry. The parry answers a blow arriving from the front, and the gate refuses it from the side, which leaves the dodge to take those.
+A rule says which reactions answer it in one of two ways. **Reaction Links** names them one at a time, each with a **Weight Multiplier** saying how much this rule favours that answer over the others it names. **Reaction Category** names a group instead and lets the [priority and scoring](#choosing-a-reaction-optional) on each reaction pick inside it.
+
+One rule covers a parry and a dodge either way: name both, or give both the same category, then put an **Incoming Angle Gate** and the higher **Priority** on the parry. The parry answers a blow arriving from the front, and the gate refuses it from the side, which leaves the dodge to take those.
+
+A rule filling in both answers only with a reaction that appears in its links **and** carries that category. That narrows what a rule can do and never widens it, so a link pointing outside the category answers nothing. The [Reaction Set canvas](/docs/soulslike-combat/reaction-set-editor) flags that case on the card.
 
 **On Stimulus** matches down the tag tree, so a rule on `SEC.Stimulus.AttackTelegraphed` also answers `SEC.Stimulus.AttackTelegraphed.Heavy`. **Require Context Tags** and **Block Context Tags** narrow it further: a parry rule that blocks on `SEC.Attack.Unblockable` steps aside and lets the dodge rule below it answer. **Chance** and **Min Interval** stop an enemy parrying every swing of a fast combo, and **Conditions** holds gates that all have to pass for the rule to answer, for what the tags cannot express. A rule refused by one of its conditions hands the stimulus to the rule below it, which is how a blow arriving from behind reaches a stagger rule instead of a guard that cannot cover it.
 
@@ -165,9 +169,11 @@ Rules live on the Reaction Set, so an enemy that swaps to an Elite set gets that
 Two `BlueprintNativeEvent` hooks each take over one step, in a Blueprint or C++ subclass of `ReactionEvaluationComponent`:
 
 - **`CanSenseStimulus`** replaces the perception step. The default runs every filter in force and requires all of them to pass, skipping any the event bypasses by tag.
-- **`SelectReactionCategory`** replaces the rule walk. The default returns the category of the first rule that fits. Return an empty tag for no answer.
+- **`SelectReactionCategory`** replaces the rule walk. The default returns the category of the first rule that fits, which is empty for a rule naming its reactions one at a time. Either way the walk has already chosen a reaction, so an empty tag from the default does not mean nothing answered. Return an empty tag from an override for no answer.
 
 **`EvaluateBestReactionForStimulus(CategoryTag, Stimulus, TargetOverride)`** is the selection the rules run: the same choice `EvaluateBestReaction` makes, with the stimulus carried down so gates and scorers can read which way the blow is arriving.
+
+**`EvaluateBestReactionAmongLinks(Links, CategoryTag, Stimulus, TargetOverride)`** is that same selection narrowed to a named few, with each link's **Weight Multiplier** applied. Pass a category as well to require both.
 </Collapsible>
 
 ### Firing a reaction yourself
@@ -378,5 +384,5 @@ Console variable `SEC.Debug.LogReactions 1` enables the same logging globally.
 
 <DocNav 
   prev={{ title: "Action Set Editor", href: "/docs/soulslike-combat/action-set-editor" }} 
-  next={{ title: "Combat Roles", href: "/docs/soulslike-combat/combat-roles" }} 
+  next={{ title: "Reaction Set Editor", href: "/docs/soulslike-combat/reaction-set-editor" }} 
 />
