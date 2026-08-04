@@ -16,6 +16,11 @@ order: 7.25
 
 > Double-click a Reaction Set to lay its trigger rules and reactions out as cards, then draw an arrow from a rule to each reaction it can answer with.
 
+<ZoomableImage
+  src="../images/sec_reactionset_graph.png"
+  alt="The Reaction Set canvas: three blue TRIGGER cards named GuardFrontal, GuardSides and GuardBack on the left, two purple REACTION cards named Block and Dodge on the right, with arrows running from GuardFrontal to both reactions and from GuardSides to Dodge"
+/>
+
 ## When to Use This
 
 Open a Reaction Set here when you want to see which events reach which reactions at a glance, or to find out why an enemy is not parrying something you expected it to.
@@ -30,6 +35,10 @@ Each card carries a tinted chip naming what it is, its ID as the title, and a fe
 
 A trigger card shows the event it answers, its **Rule Priority**, the category it is limited to when it has one, and its **Chance** and **Min Interval** when either is set. A reaction card shows the ability it runs, its **Priority** and **Selection Weight**, its category, and its cooldown.
 
+Selecting a card puts that entry alone in the panel on the right, so the whole rule is editable without hunting through an array:
+
+<ReactionTriggerRuleDetails />
+
 A card with a problem draws a warning triangle and a red border. Hover it for what is wrong.
 
 ## Adding and Removing
@@ -38,7 +47,7 @@ Right-click the canvas and pick **Add Trigger** or **Add Reaction**. Either adds
 
 Deleting a card removes the entry it stands for. Deleting a reaction also clears every arrow that pointed at it, so no rule is left naming a reaction the set does not hold.
 
-A new trigger is asked before the rules already there, on the assumption that a rule you have only now written is the one you are trying out. Change its **Rule Priority** to move it.
+A new trigger is asked before the rules already there, on the assumption that a freshly authored rule is the one being tried out. Change its **Rule Priority** to move it.
 
 ## Wiring a Rule to a Reaction
 
@@ -46,7 +55,11 @@ Drag from the pin on the right of a trigger card to the pin on the left of a rea
 
 One rule can answer with several reactions. Draw an arrow to each, and the usual [priority and scoring](/docs/soulslike-combat/reaction-system#choosing-a-reaction-optional) on those reactions picks which of them runs.
 
-Each arrow carries a **Weight Multiplier** on the link, saying how much this rule favours that answer over the others it names. Leave it at 1 and the reaction's own **Selection Weight** decides. A thicker, brighter arrow is a rule leaning harder on that answer.
+Each arrow is one entry in that array, holding the reaction it points at and how much the rule favours it:
+
+<ReactionTriggerLinkDetails />
+
+Leave **Weight Multiplier** at 1 and the reaction's own **Selection Weight** decides. A thicker, brighter arrow is a rule leaning harder on that answer.
 
 Trigger cards have no incoming pin and reaction cards have no outgoing one, so an arrow between two rules or between two reactions cannot be drawn.
 

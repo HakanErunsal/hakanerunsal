@@ -1542,11 +1542,38 @@ export const REACTION_TRIGGER_RULE_DETAILS: UeDetailCategory[] = [
       { label: "Require Context Tags", value: tagContainer([]) },
       { label: "Block Context Tags", value: tagContainer(["SEC.Attack.Unblockable"]) },
       { label: "Conditions", value: { kind: "text", value: "1 Array element" } },
-      { label: "Reaction Links", value: { kind: "text", value: "2 Array elements" } },
-      { label: "Reaction Category", value: { kind: "text", value: "SEC.Reaction.Defensive" } },
-      { label: "Rule Priority", value: { kind: "text", value: "20" } },
-      { label: "Chance", value: n(0.6, 0, 1, 2) },
-      { label: "Min Interval", value: n(1.5, 0, undefined, 1) },
+    ],
+    children: [
+      {
+        title: "Index [ 0 ]",
+        properties: [
+          { label: "Incoming Angle Gate", value: { kind: "text", value: "Incoming Angle Gate" } },
+          { label: "Half Angle Degrees", value: n(60, 0, 180, 1) },
+          { label: "Pass Without Direction", value: b(true) },
+          { label: "Invert", value: b(false) },
+        ],
+      },
+      {
+        title: "Answers",
+        properties: [
+          { label: "Reaction Links", value: { kind: "text", value: "2 Array elements" } },
+          { label: "Reaction Category", value: { kind: "text", value: "SEC.Reaction.Defensive" } },
+          { label: "Rule Priority", value: { kind: "text", value: "20" } },
+          { label: "Chance", value: n(0.6, 0, 1, 2) },
+          { label: "Min Interval", value: n(1.5, 0, undefined, 1) },
+        ],
+      },
+    ],
+  },
+];
+
+/** One FSECReactionTriggerLink entry inside a rule's Reaction Links array. Defaults verified against ReactionSet.h. */
+export const REACTION_TRIGGER_LINK_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Trigger",
+    properties: [
+      { label: "Reaction ID", value: { kind: "text", value: "Parry" } },
+      { label: "Weight Multiplier", value: n(2, 0.01, undefined, 2) },
     ],
   },
 ];

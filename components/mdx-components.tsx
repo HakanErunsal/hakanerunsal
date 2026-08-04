@@ -37,6 +37,7 @@ import EnemyAIConfigSetsDetails from '@/components/EnemyAIConfigSetsDetails';
 import { WalkthroughLightAttackDetails, WalkthroughHeavyAttackDetails, WalkthroughRetreatDetails } from '@/components/WalkthroughActionDetails';
 import ReactionSpecDetails from '@/components/ReactionSpecDetails';
 import ReactionTriggerRuleDetails from '@/components/ReactionTriggerRuleDetails';
+import ReactionTriggerLinkDetails from '@/components/ReactionTriggerLinkDetails';
 import ReactionPreconditionDetails from '@/components/ReactionPreconditionDetails';
 import ReactionScoringDetails from '@/components/ReactionScoringDetails';
 import ReactionBlockingTagsDetails from '@/components/ReactionBlockingTagsDetails';
@@ -140,6 +141,7 @@ const components = {
   WalkthroughRetreatDetails,
   ReactionSpecDetails,
   ReactionTriggerRuleDetails,
+  ReactionTriggerLinkDetails,
   ReactionPreconditionDetails,
   ReactionScoringDetails,
   ReactionBlockingTagsDetails,

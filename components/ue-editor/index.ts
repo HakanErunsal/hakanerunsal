@@ -92,6 +92,7 @@ export {
   APPROACH_WINDOW_NOTIFY_DETAILS,
   STIMULUS_FILTER_DETAILS,
   REACTION_TRIGGER_RULE_DETAILS,
+  REACTION_TRIGGER_LINK_DETAILS,
   type UeDetailCategory,
   type UeDetailProperty,
   type UeDetailValue,
