@@ -1587,3 +1587,82 @@ export const REACTION_TRIGGER_LINK_DETAILS: UeDetailCategory[] = [
     ],
   },
 ];
+
+/** ASECTerritoryPost placed-actor properties. Verified against SECTerritoryPost.h. */
+export const TERRITORY_POST_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Post",
+    properties: [
+      { label: "Shape", value: { kind: "enum", value: "Point" } },
+      { label: "Pass Through", value: b(false) },
+    ],
+  },
+  {
+    title: "Wander",
+    properties: [
+      { label: "Wander Radius", value: n(400, 0, undefined, 0) },
+      { label: "Wander Box Extent", value: { kind: "text", value: "X 400.0  Y 400.0  Z 100.0" } },
+    ],
+  },
+  {
+    title: "Arrival",
+    properties: [
+      { label: "Wait Time", value: n(3, 0) },
+      { label: "Wait Time Variance", value: n(1, 0) },
+      { label: "Face Actor Rotation On Arrival", value: b(false) },
+      { label: "Arrival Radius Override", value: n(0, 0, undefined, 0) },
+    ],
+  },
+];
+
+/** USECTerritoryComponent properties. Verified against SECTerritoryComponent.h. */
+export const TERRITORY_COMPONENT_DETAILS: UeDetailCategory[] = [
+  {
+    title: "Territory",
+    properties: [
+      { label: "Posts", value: { kind: "text", value: "0 Array elements" } },
+      { label: "Post Order", value: { kind: "enum", value: "Sequential Loop" } },
+      { label: "Arrival Radius", value: n(100, 10, undefined, 0) },
+    ],
+    children: [
+      {
+        title: "Leash",
+        properties: [
+          { label: "Leash Radius", value: n(2000, 0, undefined, 0) },
+          { label: "Leash Anchor", value: { kind: "enum", value: "Home Post" } },
+        ],
+      },
+      {
+        title: "Performance",
+        properties: [{ label: "Wander Sample Attempts", value: n(4, 1, 20, 0) }],
+      },
+      {
+        title: "Debug",
+        properties: [{ label: "Debug Overlay Territory", value: b(false) }],
+      },
+    ],
+  },
+];
+
+/** USECBrainComponent territory category. Verified against SECBrainComponent.h. */
+export const BRAIN_TERRITORY_DETAILS: UeDetailCategory[] = [
+  {
+    title: "SEC|Brain",
+    children: [
+      {
+        title: "Territory",
+        properties: [
+          { label: "Only Fight Inside Leash", value: b(true) },
+          { label: "Leash Break Grace Time", value: n(2, 0) },
+          { label: "Disengage Behavior", value: { kind: "enum", value: "Return To Post" } },
+          { label: "Disengage Focus Policy", value: { kind: "enum", value: "Keep Target" } },
+          { label: "Block Actions While Disengaging", value: b(true) },
+          { label: "Patrol Start Delay", value: n(1, 0) },
+          { label: "Patrol Start Variance", value: n(1, 0) },
+          { label: "Walk Retry Interval", value: n(1, 0.1) },
+          { label: "Walk Retry Limit", value: n(3, 0, 20, 0) },
+        ],
+      },
+    ],
+  },
+];

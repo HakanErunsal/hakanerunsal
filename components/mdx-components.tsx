@@ -55,6 +55,9 @@ import AwarenessEnemyAIConfigDetails from '@/components/AwarenessEnemyAIConfigDe
 import AwarenessConfigSensesDetails from '@/components/AwarenessConfigSensesDetails';
 import AwarenessConfigEscalationDetails from '@/components/AwarenessConfigEscalationDetails';
 import AwarenessConfigMemoryDetails from '@/components/AwarenessConfigMemoryDetails';
+import TerritoryPostDetails from '@/components/TerritoryPostDetails';
+import TerritoryComponentDetails from '@/components/TerritoryComponentDetails';
+import BrainTerritoryDetails from '@/components/BrainTerritoryDetails';
 import TargetSelectionContextDetails from '@/components/TargetSelectionContextDetails';
 import MeleeTraceTeamFilterDetails from '@/components/MeleeTraceTeamFilterDetails';
 import EquipLoadoutEntryDetails from '@/components/EquipLoadoutEntryDetails';
@@ -159,6 +162,9 @@ const components = {
   AwarenessConfigSensesDetails,
   AwarenessConfigEscalationDetails,
   AwarenessConfigMemoryDetails,
+  TerritoryPostDetails,
+  TerritoryComponentDetails,
+  BrainTerritoryDetails,
   TargetSelectionContextDetails,
   MeleeTraceTeamFilterDetails,
   EquipLoadoutEntryDetails,
