@@ -42,7 +42,7 @@ Cadence is how often the work happens. The multiplier is what makes one pass mor
 | **Nav sampling** | Inside the movement pass, cache refresh every **`NavCheckInterval`** (**0.1 s**), staggered across **`NavStaggerStride`** (**4**) frames | Projects sampled directions onto the navmesh | **`NumSamples`**, navmesh density |
 | **Detour query** | On the detour recheck interval while hybrid movement runs | One path query compared against straight-line distance | Path length |
 | **Action scoring** | **`EvaluationCooldown`** (**0.1 s**) on the native brain, or each **Poll Action** | Hard gates, then a score for every action still standing | Actions on the set, times scorers per action |
-| **Reaction scoring** | Once per incoming stimulus that passes its filters | Gates and scores the reactions a trigger rule allows | Rules matched, times reactions per rule |
+| **Reaction scoring** | Once per trigger rule that matches an incoming stimulus and clears its own interval, conditions and chance roll | Gates and scores the reactions that rule allows | Rules matched per stimulus, times reactions per rule |
 | **Awareness** | Timer at **`EvaluationInterval`** (**0.1 s**) | Advances a meter per remembered actor and ages the rest | Actors perceived at once |
 | **Brain tick** | Every tick, gated inside by **`EvaluationCooldown`** | Picks a phase, then drives movement and action scoring | Contains both, see the warning below |
 | **Role subsystem** | **`RoleReassignmentInterval`** (**8 s**) | Fitness score per combatant per candidate role | Combatants, times roles |
@@ -52,7 +52,7 @@ Cadence is how often the work happens. The multiplier is what makes one pass mor
 | **Territory** | Only when something asks | Route arithmetic, or one navmesh query for a wander spot | Posts on the route |
 | **Combat tokens** | On claim and release | Slot bookkeeping on the target | Fixed small cost |
 
-Territory, tokens and reactions do no work until something calls them, so an enemy standing at its post between legs costs the movement pass and the brain tick and nothing else.
+Territory, tokens and reactions do no work until something calls them, and the brain skips its own movement pass while it is walking a leg, waiting out a post's dwell, or looking around a spot it just reached, so an idle enemy at a post costs only the brain tick.
 
 ---
 
