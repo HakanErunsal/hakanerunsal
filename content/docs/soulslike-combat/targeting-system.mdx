@@ -190,18 +190,13 @@ The subsystem strips the AI's own pawn and friendly actors (`USECTeamHelpers::Ar
 
 <Collapsible title="Team filtering" badge="Advanced">
 
-Actors with **`ISECTeamInterface`** expose a team ID on the actor or its controller (`0-254`, or `255` = neutral via `SECTeamID::NoTeam`). `USECTeamHelpers::AreFriendly` removes same-team targets from:
+Add a **SEC Team** component to an actor and set **Team ID** (`0` for the player, `1` for enemies, `255` for no team). `AEnemyCharacterBase` carries one already. The component also holds **Free For All** and the exclusion rules: **Ignore Player**, **Ignore Neutrals**, **Excluded Team Ids**, and **Allowed Hostile Team Ids**.
 
-- Selector candidate lists
-- `RegisterCombatTarget` auto-assign
-- Registration fallback (first non-friendly target)
-- `SetPrimaryTargetAndAssignAll` and `BalanceCombatantsAcrossTargets`
+One filter decides whether an AI will fight an actor at all, and every targeting decision reads its answer: the selector's candidate list, a detected actor joining the shared pool, and the awareness pass that wakes an enemy up. The default answer refuses the AI itself, a declared ally, and anything its own exclusion rules turn aside. An actor carrying no team is fair game, which is the ordinary case for a player pawn that never declares one.
 
-**Exception:** `TransferCombatantsToTarget` moves combatants between pools as-is; it does not team-filter.
+**Exception:** `TransferCombatantsToTarget` moves combatants between pools as-is; it does not filter.
 
-Actors without the interface count as neutral and stay valid targets for everyone.
-
-**Blueprint:** Class Settings → Interfaces → **SEC Team Interface** → implement **Get SEC Team ID**.
+To change the answer, subclass **SEC Target Filter** in Blueprint and override **Can Fight**, for a charmed enemy that turns on its own side. Add a parent call to keep the default and narrow it from there; without one, the override replaces the self, ally and exclusion checks together. Set it on the AI Config's **Target Filter** for one enemy, or as **Default Target Filter** in project settings for all of them.
 
 Constants in `SECTeamID`: `Player = 0`, `Enemy = 1`, `NoTeam = 255`.
 
