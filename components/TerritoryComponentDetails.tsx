@@ -7,8 +7,8 @@ export default function TerritoryComponentDetails() {
       displayName="SEC Territory"
       sourceClass="SECTerritoryComponent"
       sourceKind="component"
-      attachTo="BP_EnemyController"
-      note="Leave Posts empty to take the posts the possessed pawn carries instead."
+      attachTo="AEnemyCharacterBase"
+      note="Posts live on this component alone; an empty list means the enemy owns no ground."
       categories={TERRITORY_COMPONENT_DETAILS}
     />
   );
