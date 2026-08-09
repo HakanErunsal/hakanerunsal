@@ -150,7 +150,7 @@ No open slot in the greedy pass → `SEC.Role.None`. Before the first assignment
 `EnemyControllerBase` ships with `SECCombatControllerComponent`. On role change:
 
 1. `HandleCombatRoleAssigned` writes the tag to **`SECCombatRoleComponent`** on the pawn (replicated).
-2. **`SyncStateForCombatRole`** pushes the matching action set, reaction set, and movement profile.
+2. **`SyncStateForCombatRole`** pushes the matching action set and reaction set, asks the equipped weapon what it gives for the new role, and applies the movement profile.
 
 Add **`SECCombatControllerComponent`** to custom `AAIController` classes, or call **`USECCombatRoleSyncLibrary`** yourself. Without that, `NotifyRoleChange` still fires on the global delegate but does not swap assets.
 
@@ -160,7 +160,7 @@ Add **`SECCombatControllerComponent`** to custom `AAIController` classes, or cal
 
 | Function | Syncs |
 |----------|-------|
-| `SyncAllForCombatRole(Controller, Pawn, RoleTag, AIConfig)` | Action + reaction + movement |
+| `SyncAllForCombatRole(Controller, Pawn, RoleTag, AIConfig)` | Action + reaction + weapon sets + movement |
 | `SyncActionSetForRole(Pawn, RoleTag)` | `SECActionSetComponent` only |
 | `SyncReactionSetForRole(Pawn, RoleTag)` | `SECReactionSetComponent` only |
 | `SyncMovementProfileForRole(Controller, RoleTag, AIConfig)` | `MovementEvaluatorComponent` only |

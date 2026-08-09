@@ -125,7 +125,7 @@ Combat tasks use **`USECDecisionLibrary`** and eval/movement components. Role po
 | **Sync Reaction Set** | Poll pawn **`SECReactionSetComponent`** into **`ReactionEvaluationComponent`** |
 | **Sync Movement Profile** | Poll **`EnemyAIConfig`** movement profile into **`MovementEvaluatorComponent`** |
 
-**`SECCombatControllerComponent`** calls **`SyncStateForCombatRole`** when combat roles change (action set, reaction set, movement profile). You only need the Sync tasks for custom controllers or when the graph must own sync timing.
+**`SECCombatControllerComponent`** calls **`SyncStateForCombatRole`** when combat roles change (action set, reaction set, the equipped weapon's sets, movement profile). You only need the Sync tasks for custom controllers or when the graph must own sync timing.
 
 ### Manual override
 

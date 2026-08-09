@@ -45,7 +45,7 @@ To read the config or role from outside the component, call the static helpers i
 
 | Function | Purpose |
 |----------|---------|
-| `SyncStateForCombatRole(RoleTag)` | Runs when the role changes. Override to swap animation sets, trigger effects, or switch StateTree assets. Call Super to keep the default action set and movement profile sync. |
+| `SyncStateForCombatRole(RoleTag)` | Runs when the role changes. Override to swap animation sets, trigger effects, or switch StateTree assets. Call Super to keep the action set, reaction set, weapon set and movement profile sync. |
 | `HandleCombatTargetLost(LostTarget)` | Runs when the target is destroyed or unregistered. Override for fallback behavior (patrol, switch aggro). The default broadcasts `OnCombatTargetLost`. |
 
 **Blueprint-callable**
@@ -107,9 +107,8 @@ The convenience controller. It creates every combat component as a default subob
 
 | Member | Purpose |
 |--------|---------|
-| `TeamId` | Editable per instance. 0 = player, 1 = enemy (default), 255 = neutral |
-| `ISECTeamInterface` | `GetSECTeamId` / `SetSECTeamId` |
-| `IGenericTeamAgentInterface` | Integrates with AI Perception and EQS |
+| `USECTeamComponent` | Holds the team on the possessed pawn: `TeamId` (0 = player, 1 = enemy, 255 = neutral), Free-For-All, and the exclusion rules |
+| `IGenericTeamAgentInterface` | Answers AI Perception and EQS by reading that component |
 
 **Blueprint events** (forwarded from the combat component)
 
