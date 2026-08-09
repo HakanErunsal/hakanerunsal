@@ -1,8 +1,8 @@
 ---
 title: "Performance"
 image: "../../images/docs_performance.png"
-description: "Cost model, profiling with stat SEC, and tuning knobs for large enemy counts."
-date: 2026-07-27
+description: "What each system costs, how often it runs, and how to read stat SEC on your own hardware."
+date: 2026-08-09
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Performance"]
 parent: "SoulslikeCombatDocs"
@@ -15,34 +15,44 @@ order: 21
     { label: "Performance" }
 ]} />
 
-> **`MovementEvaluatorComponent`** direction sampling dominates SEC CPU time. Role assignment, action polling, awareness, and avoidance run on timers or only while a feature is active.
+> **`MovementEvaluatorComponent`** direction sampling dominates SEC CPU time. Role assignment, action polling, awareness and reactions run on timers, on events, or only while a feature is active.
 
 ---
 
 ## Cost Model
 
-The slider below shows **linear scaling** from illustrative per-enemy costs (~**0.0035 ms** movement, ~**0.0004 ms** threat). It is a planning aid, not a profile of your map. Run **`stat SEC`** in PIE to read real numbers on your hardware.
+Every SEC system runs on a known cadence over a known loop. What that costs in milliseconds depends on your CPU, so the shape is documented here and the numbers come from your own machine through **`stat SEC`**.
+
+The slider models linear scaling from a per-enemy figure you supply. Read one enemy's cost from **`stat SEC`** in PIE, put it in, and the model tells you where a crowd lands.
 
 <PerformanceVisualizer />
 
-At 60 fps you have **16.6 ms** per frame. Even at **150** active SEC enemies, this model lands near **4%** of frame budget for the plugin slice alone (animation, rendering, and game logic sit on top).
+At 60 fps you have **16.6 ms** per frame. Movement direction sampling dominates the plugin's share; everything else runs on a timer, on an event, or only while a feature is active.
 
 ---
 
 ## What Runs When
 
-| System | Cadence | Cost driver |
-|--------|---------|-------------|
-| **Movement evaluator** | Every tick while **`EvaluateAndMove`** / **AI Movement** runs | **`NumSamples`** direction loop (default **16**) |
-| **Avoidance** | Overlap refresh at **10 Hz** (`0.1 s`) | **`bEnableAvoidance`**, radius |
-| **Nav sampling** | Cache refresh at **`NavCheckInterval`** (default **0.1 s**), staggered by **`NavStaggerStride`** | **`bEnableNavAwareSampling`**, probe count |
-| **Detour queries** | On detour recheck interval while hybrid movement is active | Nav path length vs straight line |
-| **Action evaluation** | **`EvaluationCooldown`** (default **0.1 s** on native brain / **Poll Action**) | Scorer count per action |
-| **Action execution tick** | Only while an action runs | Hook work when a hook sets **`bWantsTick`**, and sequence advance on a Behavior Tree Sequence action |
-| **Role subsystem** | **`RoleReassignmentInterval`** (project default **8 s**) | Combatant × role candidate count |
-| **Threat detection** | Every tick by default; throttle with **`SetTickInterval`** | Dot product on focus actor |
-| **Awareness** | **`EvaluationInterval`** on config (default **0.1 s**) | Perceived actor count |
-| **Melee trace** | Tick only between **`StartTracing`** and **`StopTracing`** | Active socket count |
+Cadence is how often the work happens. The multiplier is what makes one pass more expensive.
+
+| System | Cadence | Work each pass | Multiplier |
+|--------|---------|----------------|------------|
+| **Movement evaluator** | Every tick while **`EvaluateAndMove`** or **AI Movement** runs | Scores one direction per sample and picks a winner | **`NumSamples`** (default **16**) |
+| **Avoidance** | Inside the movement pass, overlap refresh at **10 Hz** | Sphere overlap, then a penalty per neighbour found | Pawns packed inside the avoidance radius |
+| **Nav sampling** | Inside the movement pass, cache refresh every **`NavCheckInterval`** (**0.1 s**), staggered across **`NavStaggerStride`** (**4**) frames | Projects sampled directions onto the navmesh | **`NumSamples`**, navmesh density |
+| **Detour query** | On the detour recheck interval while hybrid movement runs | One path query compared against straight-line distance | Path length |
+| **Action scoring** | **`EvaluationCooldown`** (**0.1 s**) on the native brain, or each **Poll Action** | Hard gates, then a score for every action still standing | Actions on the set, times scorers per action |
+| **Reaction scoring** | Once per incoming stimulus that passes its filters | Gates and scores the reactions a trigger rule allows | Rules matched, times reactions per rule |
+| **Awareness** | Timer at **`EvaluationInterval`** (**0.1 s**) | Advances a meter per remembered actor and ages the rest | Actors perceived at once |
+| **Brain tick** | Every tick, gated inside by **`EvaluationCooldown`** | Picks a phase, then drives movement and action scoring | Contains both, see the warning below |
+| **Role subsystem** | **`RoleReassignmentInterval`** (**8 s**) | Fitness score per combatant per candidate role | Combatants, times roles |
+| **Threat detection** | Every tick by default | One dot product against the focus actor | Fixed small cost |
+| **Melee trace** | Every tick between **`StartTracing`** and **`StopTracing`** | Swept trace per socket per frame | Active trace sockets |
+| **Approach window** | Every tick while an approach window is open | Steers the pawn toward its approach target | One pawn at a time |
+| **Territory** | Only when something asks | Route arithmetic, or one navmesh query for a wander spot | Posts on the route |
+| **Combat tokens** | On claim and release | Slot bookkeeping on the target | Fixed small cost |
+
+Territory, tokens and reactions do no work until something calls them, so an enemy standing at its post between legs costs the movement pass and the brain tick and nothing else.
 
 ---
 
@@ -86,15 +96,25 @@ Registered cycle stats (from **`STATGROUP_SEC`**):
 
 | Stat | Scope |
 |------|--------|
-| **`MovementEvaluator - Total`** | Full per-AI movement pass |
+| **`MovementEvaluator - Total`** | Full per-AI movement pass, containing the four below it |
 | **`MovementEvaluator - Direction Scoring`** | Sample loop over **`NumSamples`** |
 | **`MovementEvaluator - Avoidance`** | Throttled overlap scoring |
 | **`MovementEvaluator - Nav Sampling`** | Nav validity cache refresh |
 | **`MovementEvaluator - Detour Query`** | Path-length detour check |
+| **`ActionEvaluation - Scoring`** | Gates and scores every candidate action |
+| **`ReactionEvaluation - Scoring`** | Gates and scores reactions for one stimulus |
+| **`Awareness - Evaluate`** | One pass over remembered actors |
+| **`Brain - Tick`** | Native brain tick, containing action scoring and the movement pass |
 | **`RoleSubsystem - Role Distribution`** | Global role assignment pass |
 | **`ThreatDetection - Tick`** | Per-tick threat level |
 
-**Unreal Insights:** filter CPU trace events **`SEC_MovementEvaluator`**, **`SEC_DirectionScoring`**, **`SEC_Avoidance`**, **`SEC_NavSampling`**, **`SEC_DetourQuery`**, **`SEC_RoleDistribution`**, **`SEC_ThreatDetection`**.
+<Callout type="warning">
+  Two of these are totals rather than separate costs. **`MovementEvaluator - Total`** contains the four movement stats under it, and **`Brain - Tick`** contains **`ActionEvaluation - Scoring`** and the whole movement pass whenever the native brain drives the enemy. Adding the column up counts that work two or three times. Under a StateTree the same functions run with no enclosing brain tick, so **`Brain - Tick`** reads zero and the rest stand on their own.
+</Callout>
+
+**Melee tracing and the approach window** carry no cycle stat. Measure them in Unreal Insights on **`USECMeleeTraceComponent`** and **`USECApproachComponent`** tick.
+
+**Unreal Insights:** filter CPU trace events **`SEC_MovementEvaluator`**, **`SEC_DirectionScoring`**, **`SEC_Avoidance`**, **`SEC_NavSampling`**, **`SEC_DetourQuery`**, **`SEC_ActionScoring`**, **`SEC_ReactionScoring`**, **`SEC_Awareness`**, **`SEC_BrainTick`**, **`SEC_RoleDistribution`**, **`SEC_ThreatDetection`**.
 
 For log-based diagnosis, see [Debugging & Troubleshooting](/docs/soulslike-combat/troubleshooting).
 
@@ -114,16 +134,16 @@ For log-based diagnosis, see [Debugging & Troubleshooting](/docs/soulslike-comba
 
 ## Scaling Guide
 
-Rough totals from the cost model above (movement + threat + small avoidance/role share). Measure your encounter in PIE before shipping horde modes.
+What dominates changes with the crowd, and that decides where tuning pays off.
 
-| Scenario | Active SEC enemies | Estimated plugin CPU |
-|----------|-------------------|----------------------|
-| Soulslike duel | 1–5 | &lt; 0.02 ms |
-| Action RPG pack | 10–20 | ~0.05–0.1 ms |
-| Horde | 50–100 | ~0.2–0.4 ms |
-| Stress test | 150+ | ~0.6 ms+ |
+| Scenario | Active SEC enemies | What dominates |
+|----------|-------------------|----------------|
+| Soulslike duel | 1 to 5 | Nothing worth tuning. One enemy's movement pass is noise against a frame. |
+| Action RPG pack | 10 to 20 | Direction sampling, with avoidance climbing as they close on you. |
+| Horde | 50 to 100 | Direction sampling across the pack. Cutting **`NumSamples`** to 8 is the largest single lever. |
+| Stress test | 150+ | Direction sampling and nav probes. Raise **`NavStaggerStride`**, and slow action polling for enemies out of the fight. |
 
-Cost scales roughly linearly with enemies that run movement + threat every frame. Idle or off-mesh actors cost less.
+Cost scales roughly linearly with enemies running movement every frame. An enemy standing at a post, waiting out a dwell, or dead costs a fraction of one in a fight.
 
 ---
 
