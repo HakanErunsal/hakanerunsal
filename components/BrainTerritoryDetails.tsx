@@ -8,7 +8,7 @@ export default function BrainTerritoryDetails() {
       sourceClass="SECBrainComponent"
       sourceKind="component"
       attachTo="BP_EnemyController"
-      note="Territory category on the brain. These decide what it does with the ground the Territory component describes."
+      note="Territory category on the brain. What it does while walking home, as opposed to the ground itself, which the Territory component on the pawn describes."
       categories={BRAIN_TERRITORY_DETAILS}
     />
   );

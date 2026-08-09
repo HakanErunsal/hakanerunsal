@@ -1,7 +1,7 @@
 ---
 title: "Territory & Patrols"
 description: "Give an enemy posts to guard, a route to walk, and a leash that brings it home when a chase goes too far."
-date: 2026-08-05
+date: 2026-08-09
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Territory", "Patrol"]
 parent: "SoulslikeCombatDocs"
@@ -24,7 +24,7 @@ order: 11.5
 - A boss that fights only inside its arena and refuses to be pulled out.
 - Any enemy that should stop chasing you across the level.
 
-Add nothing and nothing changes. An AI controller without a **SEC Territory** component behaves exactly as it does today.
+Add nothing and nothing changes. An enemy without a **SEC Territory** component stands where you place it and chases as far as it likes.
 
 ---
 
@@ -36,9 +36,13 @@ Two things: posts in the level, and an enemy told which ones are its own.
 
 Drag a **SEC Territory Post** into the level for each spot. One post is a guard station. Several are a patrol route, walked in the order you list them.
 
+Any actor can be a post. Add a **SEC Territory Post** component to a statue, a brazier or a doorframe already in your level and it becomes one, tuned in that actor's Details panel. An actor with no component works too and reads as a spot to stand on, with no wait and no wander area.
+
 <TerritoryPostDetails />
 
-**Shape** decides what ground the post owns. **Point** is a spot to stand on. **Radius** and **Box** give the enemy a patch to drift around inside, picking a fresh reachable spot on every visit, which reads as loitering rather than standing to attention. The wander area draws as a wireframe in the level so you can see what you are giving it.
+**Shape** decides what ground the post owns. **Point** is a spot to stand on. **Radius** and **Box** give the enemy a patch to drift around inside, picking a fresh reachable spot on every visit, which reads as loitering rather than standing to attention.
+
+The component carries its own transform, so move it to put the standing spot somewhere other than the actor's pivot. That matters on a large mesh whose pivot sits in the middle of it.
 
 <Callout type="warning">
   A wander area needs navmesh under it. A post whose area offers nothing reachable falls back to standing on the post itself and logs once.
@@ -46,11 +50,11 @@ Drag a **SEC Territory Post** into the level for each spot. One post is a guard 
 
 ### 2. Give the posts to an enemy
 
-Add a **SEC Territory** component to the AI controller, or use `AEnemyControllerBase`, which already carries one.
+Add a **SEC Territory** component to the enemy pawn, or use `AEnemyCharacterBase`, which already carries one.
 
 <TerritoryComponentDetails />
 
-Fill in **Posts** on the component, or leave it empty and fill in **Territory Posts** on the pawn instead. The pawn is usually the better place: a level designer places pawns and never places controllers, so the posts sit next to the enemy that walks them.
+Fill in **Posts** on the component. It sits on the pawn you placed, so the route is edited next to the enemy that walks it, and a level designer never has to open a controller.
 
 ### 3. Pick who drives it
 
@@ -78,9 +82,7 @@ The leash is never smaller than the widest wander area plus the arrival radius, 
 
 ### What the enemy does about it
 
-That is the brain's call, not the component's.
-
-<BrainTerritoryDetails />
+These sit on the territory component beside the leash they describe, so a placed enemy is tuned where it stands.
 
 **Only Fight Inside Leash** makes an enemy ignore a target beyond its ring and engage the moment one steps inside. It will not go and look at one either. Turn it off for an enemy that charges anything it notices and is dragged home by the leash instead.
 
@@ -92,6 +94,10 @@ That is the brain's call, not the component's.
 |-------|--------|
 | **Return To Post** | Walks back to the post the route was last on and picks the round up from there. The choice for a guard who owns a place. |
 | **Hold Position** | Takes the spot it is standing on as its ground and stays. Its posts stay set but stop being its ground, so it neither walks back nor patrols until something points the route at a post again. |
+
+Two stay on the brain, because they describe what it does on the walk home rather than what the ground is.
+
+<BrainTerritoryDetails />
 
 ---
 
@@ -109,9 +115,36 @@ That is the brain's call, not the component's.
 
 **Wait Time** and **Wait Time Variance** on each post set how long the enemy stands there. **Pass Through** skips the wait entirely, which shapes a route around a corner without adding a pause.
 
-**Patrol Start Delay** and **Patrol Start Variance** on the brain hold the enemy where it is before a round begins. A row of guards placed together with the defaults will not set off on the same frame.
+**Patrol Start Delay** and **Patrol Start Variance** on the territory component hold the enemy where it is before a round begins. A row of guards placed together with the defaults will not set off on the same frame.
 
-**Face Actor Rotation On Arrival** turns the enemy to face the way the post points once it arrives. The post's rotation arrow in the level is the direction.
+**Face Anchor Rotation On Arrival** turns the enemy to face the way the post points once it arrives. Rotate the post component to set that direction, which can differ from the actor's own rotation when the post sits at an offset.
+
+**How To Pick** decides which spot inside a wander area the enemy walks to:
+
+| Value | Result |
+|-------|--------|
+| **Random** | A different spot each time, anywhere inside the area. The ordinary choice for an enemy loitering with nothing to guard. |
+| **Nearest** | The near edge of the area, so an enemy arriving from the east settles on the east side instead of walking on to the middle. Use it for a patch several enemies approach from different directions. |
+| **Farthest** | The deepest part away from the enemy, so it backs off rather than settles where it stands. Use it for a spot an enemy falls back to. |
+| **Spread** | A different spot each time, favouring ones well away from where the enemy stands, so a wide area gets walked instead of paced in one corner. |
+
+</Collapsible>
+
+<Collapsible title="Seeing what the enemy can reach" badge="Advanced">
+
+Select an actor carrying a post component and the viewport draws its arrival perimeter, its wander area, and the area sampled against navigation as a grid of dots.
+
+| Dot | Meaning |
+|-----|---------|
+| **Green** | On the navmesh and reachable from the post. The enemy can wander here. |
+| **Amber** | On the navmesh, but no route reaches it from the post. A wall between the post and this spot does it. |
+| **Grey** | Off the navmesh. Nothing stands here. |
+
+Amber is the one worth looking for. A courtyard split by a low wall looks like one wander area and behaves like two, and the dots say which half the enemy can use.
+
+**Navmesh Coverage Spacing** sets how far apart the dots sit. Tighter finds smaller gaps and costs more. A large area widens the spacing on its own rather than drawing a partial grid, so sparse dots on a big radius mean the budget was reached, not that the ground ran out. Turn the whole thing off with **Show Navmesh Coverage**.
+
+A post that no enemy lists draws in a muted colour, which is how a post nobody points at gives itself away.
 
 </Collapsible>
 
@@ -119,7 +152,7 @@ That is the brain's call, not the component's.
 
 **Arrival Radius** on the component says how close counts as reached. A single post can override it with **Arrival Radius Override**, for one in a crowded spot the enemy cannot stand exactly on.
 
-A route can report success short of its goal when the path is partial, so arrival is measured rather than believed. When a walk lands short, the brain waits **Walk Retry Interval** and tries again, up to **Walk Retry Limit** times, then stands where it is and logs once.
+A walk counts as arriving when navigation reports it reached the spot, or when the enemy is standing inside the arrival radius anyway. A route that only reached part of the way satisfies neither, so it reads as a walk that found no route. When that happens the enemy waits **Walk Retry Interval** and tries again, up to **Walk Retry Limit** times, then stands where it is and logs once. Both sit on the territory component.
 
 **Wander Sample Attempts** is how many times a wander area may fail to offer a reachable spot before the enemy treats that post as somewhere to stand for the rest of the visit. It gets a fresh set of attempts on the next visit.
 
@@ -147,11 +180,11 @@ The component holds the route order, the wander sampling and the arrival maths, 
 3. **Delay** for your opening pause.
 4. **Pick Destination For Current Post** → **Make SEC Return Options** → **Begin Return To**.
 5. **Bind Event to On Return Complete** → a custom event.
-6. On that event, **Has Arrived At Destination** → **Branch**. True: **Get Wait Time Here** → **Delay** → **Advance Route** → back to step 4. False: **Delay**, then back to step 4 without advancing.
+6. On that event, **Did Last Return Reach Destination** on the Movement Evaluator → **Branch**. True: **Get Wait Time Here** → **Delay** → **Advance Route** → back to step 4. False: **Delay**, then back to step 4 without advancing.
 
 That is the whole loop, with no Event Tick and no variables of your own.
 
-**Pick Destination For Current Post** hands out a fresh spot inside a wander area on every call, so ask it once per leg and keep the answer. **Has Arrived At Destination** measures against that spot; use **Has Arrived At Location** for a spot of your own, such as one to investigate.
+**Pick Destination For Current Post** hands out a fresh spot inside a wander area on every call, so ask it once per leg and keep the answer. To judge a leg, read the walk's own report; **Has Arrived At Destination** and **Has Arrived At Location** answer a different question, which is where the enemy is standing right now.
 
 Useful readings alongside those: **Get Next Post**, **Get Home Post**, **Get Nearest Post**, **Get Live Posts**, **Is Current Post Pass Through**, **Owns Ground**, **Is Outside Leash**, **Is Target Outside Leash**, **Get Distance From Leash Anchor**, **Get Effective Leash Radius**, and **Set Ground Here** to make the spot underfoot the new anchor without cancelling anything.
 
@@ -163,7 +196,7 @@ The brain reports what it is doing through **Get Brain Phase**, which reads **Id
 
 Alongside it: **Is Walking**, **Get Seconds Outside Leash**, and **Is Refusing Target**. The last one separates two cases that look identical from outside: an enemy standing on its ground with nothing to fight, and one standing there ignoring a target beyond its leash.
 
-Turn on the overlay with `SEC.Debug.AI.Territory 1`, plus **Debug Overlay Territory** on the component for a single enemy. It draws the leash ring, every post with its wander area, a line to the spot being walked to, and a line of text saying whether the enemy is walking, standing, or refusing a target.
+Turn on the overlay with `SEC.Debug.Territory 1`, plus **Debug Overlay Territory** on the component for a single enemy. It draws the leash ring, every post with its wander area, a line to the spot being walked to, and a line of text saying whether the enemy is walking, standing, or refusing a target.
 
 </Collapsible>
 
@@ -189,9 +222,11 @@ bool     IsTargetOutsideLeash(AActor* Target) const;  // measures a target
 bool     OwnsGround() const;
 ```
 
-Implement **`ISECTerritoryAnchor`** on an actor of your own to use it as a post: `PickPointInArea`, `GetWaitTime`, `IsPassThrough`, `GetArrivalRadiusOverride`, `ShouldFaceAnchorRotationOnArrival` and `GetWanderExtentRadius`. `ASECTerritoryPost` is one implementation, not the only allowed one.
+`USECTerritoryPostComponent` holds what a post is tuned by, and `USECTerritoryPostComponent::FindPostComponent(Actor)` resolves it from any actor. Override `PickPointInArea` in a Blueprint subclass of the component for a post that works its destination out at runtime; the base picks among reachable spots inside the area under `How To Pick`.
 
-Implement **`ISECTerritoryPostProvider`** on a pawn to hand its posts to whichever controller possesses it. `AEnemyCharacterBase` already does.
+`USECTerritoryComponent::GetPostLocationFor(Post)` and `GetWanderExtentFor(Post)` answer for any actor, whether it carries a post component or not.
+
+`USECTerritoryComponent::FindTerritoryComponent(Controller)` resolves the component from a controller, checking its possessed pawn first.
 
 Everything runs on the server.
 
