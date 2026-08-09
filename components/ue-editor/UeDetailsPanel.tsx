@@ -1601,10 +1601,7 @@ export const TERRITORY_POST_DETAILS: UeDetailCategory[] = [
     children: [
       {
         title: "Wander",
-        properties: [
-          { label: "Wander Radius", value: n(400, 0, undefined, 0) },
-          { label: "Wander Box Extent", value: { kind: "text", value: "X 400.0  Y 400.0  Z 100.0" } },
-        ],
+        properties: [{ label: "Wander Radius", value: n(400, 0, undefined, 0) }],
       },
       {
         title: "Arrival",
@@ -1618,13 +1615,6 @@ export const TERRITORY_POST_DETAILS: UeDetailCategory[] = [
       {
         title: "Performance",
         properties: [{ label: "Point Sample Attempts", value: n(12, 1, 32, 0) }],
-      },
-      {
-        title: "Debug",
-        properties: [
-          { label: "Show Navmesh Coverage", value: b(true) },
-          { label: "Navmesh Coverage Spacing", value: n(100, 25, undefined, 0) },
-        ],
       },
     ],
   },

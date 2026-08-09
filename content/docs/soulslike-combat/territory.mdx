@@ -40,7 +40,7 @@ Any actor can be a post. Add a **SEC Territory Post** component to a statue, a b
 
 <TerritoryPostDetails />
 
-**Shape** decides what ground the post owns. **Point** is a spot to stand on. **Radius** and **Box** give the enemy a patch to drift around inside, picking a fresh reachable spot on every visit, which reads as loitering rather than standing to attention.
+**Shape** decides what ground the post owns. **Point** is a spot to stand on, and the enemy walks as close to it as the navmesh allows. **Radius** gives it a patch to drift around inside, picking a reachable spot within **Wander Radius** on every visit, which reads as loitering rather than standing to attention.
 
 The component carries its own transform, so move it to put the standing spot somewhere other than the actor's pivot. That matters on a large mesh whose pivot sits in the middle of it.
 
@@ -119,32 +119,14 @@ Two stay on the brain, because they describe what it does on the walk home rathe
 
 **Face Anchor Rotation On Arrival** turns the enemy to face the way the post points once it arrives. Rotate the post component to set that direction, which can differ from the actor's own rotation when the post sits at an offset.
 
-**How To Pick** decides which spot inside a wander area the enemy walks to:
+**How To Pick** decides which spot inside the wander radius the enemy walks to, and shows only for the Radius shape:
 
 | Value | Result |
 |-------|--------|
-| **Random** | A different spot each time, anywhere inside the area. The ordinary choice for an enemy loitering with nothing to guard. |
-| **Nearest** | The near edge of the area, so an enemy arriving from the east settles on the east side instead of walking on to the middle. Use it for a patch several enemies approach from different directions. |
-| **Farthest** | The deepest part away from the enemy, so it backs off rather than settles where it stands. Use it for a spot an enemy falls back to. |
-| **Spread** | A different spot each time, favouring ones well away from where the enemy stands, so a wide area gets walked instead of paced in one corner. |
-
-</Collapsible>
-
-<Collapsible title="Seeing what the enemy can reach" badge="Advanced">
-
-Select an actor carrying a post component and the viewport draws its arrival perimeter, its wander area, and the area sampled against navigation as a grid of dots.
-
-| Dot | Meaning |
-|-----|---------|
-| **Green** | On the navmesh and reachable from the post. The enemy can wander here. |
-| **Amber** | On the navmesh, but no route reaches it from the post. A wall between the post and this spot does it. |
-| **Grey** | Off the navmesh. Nothing stands here. |
-
-Amber is the one worth looking for. A courtyard split by a low wall looks like one wander area and behaves like two, and the dots say which half the enemy can use.
-
-**Navmesh Coverage Spacing** sets how far apart the dots sit. Tighter finds smaller gaps and costs more. A large area widens the spacing on its own rather than drawing a partial grid, so sparse dots on a big radius mean the budget was reached, not that the ground ran out. Turn the whole thing off with **Show Navmesh Coverage**.
-
-A post that no enemy lists draws in a muted colour, which is how a post nobody points at gives itself away.
+| **Random** | A different spot each time, anywhere inside the radius. The ordinary choice for an enemy loitering with nothing to guard. |
+| **Nearest** | The near edge of the radius, so an enemy arriving from the east settles on the east side instead of walking on to the middle. Use it for a patch several enemies approach from different directions. |
+| **Farthest** | The deepest part of the radius away from the enemy, so it backs off rather than settles where it stands. Use it for a spot an enemy falls back to. |
+| **Spread** | A different spot each time, favouring ones well away from where the enemy stands, so a wide patch gets walked instead of paced in one corner. |
 
 </Collapsible>
 
