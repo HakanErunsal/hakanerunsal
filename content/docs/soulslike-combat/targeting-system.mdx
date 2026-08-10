@@ -1,7 +1,7 @@
 ---
 title: "Targeting System"
 description: "Register combat targets, pick one per AI with TargetSelector, handle orphans and team filtering."
-date: 2026-03-23
+date: 2026-08-10
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Targeting", "Multi-Player"]
 parent: "SoulslikeCombatDocs"
@@ -23,7 +23,7 @@ order: 9
 - Spawning AI before the player exists (lazy assignment on `RegisterCombatTarget`).
 - Bosses pinned to one player (`bIgnoreTargetRedistribution`).
 
-Single-player: one `RegisterCombatTarget` call with `bAutoAssignUnassigned = true` pins unassigned combatants to that pawn. If an AI registers while targets already exist and no selector is configured, `RegisterCombatant` falls back to the first non-friendly entry in `CombatTargets`.
+Single-player: one `RegisterCombatTarget` call is enough, and every combatant standing idle picks that pawn up. If an AI registers while targets already exist and no selector is configured, `RegisterCombatant` takes the first entry in `CombatTargets` its team rules allow it to fight.
 
 <TargetingVisualizer />
 
@@ -41,7 +41,7 @@ Search context menu: `Register Combat Target`, category **AI | Combat Role | Tar
 
 | Flag | Effect |
 |------|--------|
-| **`bAutoAssignUnassigned`** | Assigns unassigned combatants directly to this target (skips team-friendly pairs), then `ForceReassignment()` (role evaluation). Default: `false`. |
+| **`bAutoAssignUnassigned`** | Runs role evaluation straight away (`ForceReassignment()`) instead of leaving it to the reassignment timer. Idle combatants pick a target either way. Default: `false`. |
 | **`bReevaluateExisting`** | Calls `ReevaluateAllTargets()` so assigned combatants re-run `TargetSelector` (honors `bIgnoreTargetRedistribution`). Default: `false`. |
 
 `SetCombatTarget(Player)` is deprecated: it calls `RegisterCombatTarget(Player, true)` only.
@@ -108,7 +108,7 @@ Register combatants before you register targets. They stay unassigned until you 
 
 Set `FAIRoleRegistrationParams::InitialTarget` at registration time to pin one AI to a specific pool without waiting for a selector.
 
-With `bAutoAssignUnassigned = true`, waiting combatants get this target directly (no selector) and run role evaluation. With `false`, unassigned combatants call `SelectTargetForCombatant` once a target appears (requires a configured selector).
+An idle combatant calls `SelectTargetForCombatant` whenever a target registers, so it picks through its own Target Filter and Target Selector and needs a selector configured. An enemy whose team rules turn that target aside stays idle instead of being handed it. `bAutoAssignUnassigned = true` adds an immediate role evaluation pass on top.
 
 ---
 
@@ -184,7 +184,7 @@ Subclass **`UTargetSelector`** in C++ or Blueprint. Override **`SelectTarget`**.
 
 <TargetSelectionContextDetails />
 
-The subsystem strips the AI's own pawn and friendly actors (`USECTeamHelpers::AreFriendly`) from the candidate list. Return **`nullptr`** when `Context.bIsTargetLossReselection` is true to defer auto-reassign on the orphan path (`SelectTargetForCombatant` only).
+The subsystem strips the AI's own pawn and everything its Target Filter refuses (`USECTargetFilter::CanFight`, which covers allies, excluded teams, and a named Fight Only target) from the candidate list. Return **`nullptr`** when `Context.bIsTargetLossReselection` is true to defer auto-reassign on the orphan path (`SelectTargetForCombatant` only).
 
 </Collapsible>
 

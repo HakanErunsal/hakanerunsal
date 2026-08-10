@@ -1,7 +1,7 @@
 ---
 title: "Combat Roles"
 description: "Coordinate multiple enemies with role slots, fitness scoring, and per-role action/movement/reaction sets."
-date: 2026-07-29
+date: 2026-08-10
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Combat Roles"]
 parent: "SoulslikeCombatDocs"
@@ -123,7 +123,7 @@ Roles->RegisterCombatTarget(PlayerPawn, /*bAutoAssignUnassigned=*/true);
 ```
 
 - **`RegisterCombatTarget`**: adds the actor to the target pool.
-  - **`bAutoAssignUnassigned`**: assigns unassigned combatants to this target (skips team-friendly pairs), then calls `ForceReassignment` and `EvaluateRoleDistribution`.
+  - **`bAutoAssignUnassigned`**: calls `ForceReassignment` and `EvaluateRoleDistribution` straight away. A combatant standing idle picks a target through its own Target Filter and Target Selector whether this is set or not, so an enemy whose team rules turn the target aside stays idle.
   - **`bReevaluateExisting`**: calls `ReevaluateAllTargets()` so assigned combatants re-run `TargetSelector` (honors `bIgnoreTargetRedistribution`).
 - **`SetCombatTarget`**: deprecated; calls `RegisterCombatTarget(NewTarget, true)` with no `bReevaluateExisting`.
 - **`AddCombatTarget`**: registers the target only. Use `RegisterCombatTarget` unless you own assignment yourself.
@@ -136,7 +136,7 @@ Each target pool enforces role limits independently (two players can each field 
 
 1. On possess, `SECCombatControllerComponent` resolves `EnemyAIConfig` from the pawn's `IEnemyAIConfigProvider`, else `DefaultAIConfig`.
 2. With auto-register enabled, it calls `UAICombatRoleSubsystem::RegisterCombatant` (`AAIController` required).
-3. The combatant receives a target from `InitialTarget` (runtime-only), `TargetSelector`, or the first target registered via `RegisterCombatTarget`.
+3. The combatant receives a target from `InitialTarget` (runtime-only), `TargetSelector`, or, with no selector configured, the first registered target its team rules allow it to fight.
 4. With a target set, `AssignRoleToNewCombatant` slots the newcomer without reshuffling the whole pool.
 5. Each `RoleReassignmentInterval` tick, `EvaluateRoleDistribution` groups by target, scores (AI, role) pairs, sorts by adjusted fitness then **Priority**, and greedily fills slots.
 6. `NotifyRoleChange` calls `SECCombatControllerComponent::HandleCombatRoleAssigned` when present, replicates to `SECCombatRoleComponent`, and runs **`SyncStateForCombatRole`**.
