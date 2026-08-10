@@ -1,7 +1,7 @@
 ---
 title: "API Reference"
 description: "Controller-side C++ and Blueprint API: SECCombatControllerComponent, EnemyControllerBase, SECBrainComponent, and BotStateTreeAIComponent."
-date: 2026-07-31
+date: 2026-08-10
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Reference"]
 parent: "SoulslikeCombatDocs"
@@ -119,7 +119,7 @@ The convenience controller. It creates every combat component as a default subob
 | `K2_OnReactionSetApplied(RoleTag, ReactionSet)` | When a reaction set is applied via role sync |
 | `K2_OnDeath()` | After `HandleDeath()` completes; safe to ragdoll or play a death montage |
 
-`HandleDeath()` on the controller is a convenience wrapper around the component's `HandleDeath()`. Component accessors: `GetCombatControllerComponent`, `GetHelperBTComponent`, `GetReactionEvaluationComponent`, `GetAwarenessComponent`. Delegates: `OnFocusSet`, `OnActionStateChanged`.
+`HandleDeath()` on the controller is a convenience wrapper around the component's `HandleDeath()`. Component accessors: `GetCombatControllerComponent`, `GetHelperBTComponent`, `GetReactionEvaluationComponent`, `GetAwarenessComponent`. Delegates: `OnFocusSet`, `OnFocusCleared` (fires only when there was a focus to clear), `OnActionStateChanged`.
 
 ---
 
