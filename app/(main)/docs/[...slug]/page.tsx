@@ -30,15 +30,22 @@ export async function generateMetadata({
         return {};
     }
 
+    // Docs are canonical on the docs host even though one build answers both
+    // domains, so a search engine ranks a single address instead of two.
+    const canonical = `${siteConfig.docsUrl}/${doc.slug}`;
+
     return {
         title: doc.title,
         description: doc.description,
         authors: { name: siteConfig.author },
+        alternates: {
+            canonical,
+        },
         openGraph: {
             title: doc.title,
             description: doc.description,
             type: "article",
-            url: doc.slug,
+            url: canonical,
         },
         twitter: {
             card: "summary",

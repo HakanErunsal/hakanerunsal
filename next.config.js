@@ -1,12 +1,18 @@
 /** @type {import('next').NextConfig} */
 module.exports = {
+  // Static HTML export to out/. Previously injected by the GitHub Pages
+  // configure-pages action; stated here so any host produces the same build.
+  output: 'export',
+
   // Image optimization
   images: {
+    // No image server in a static export; sources are served as authored.
+    unoptimized: true,
     formats: ['image/avif', 'image/webp'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
-  
+
   // Compression
   compress: true,
   

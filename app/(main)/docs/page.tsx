@@ -1,7 +1,16 @@
 // Importing necessary modules and components
+import { Metadata } from "next";
 import { sortDocs } from "@/lib/utils";
 import { docs } from "#site/content";
 import MediaCard from "@/components/media-card";
+import { siteConfig } from "@/config/site";
+
+export const metadata: Metadata = {
+    title: "Documentation",
+    alternates: {
+        canonical: `${siteConfig.docsUrl}/docs`,
+    },
+};
 
 // Docs functional component
 export default function DocsPage() {
