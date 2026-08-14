@@ -30,6 +30,48 @@ const RIGBAK_DOC_ROOTS = [
   "revenuecat-bridge",
 ];
 
+/**
+ * Names a product is reached by that are not the page's own slug: the plugin's
+ * own name, the folder its child pages sit under, and spelling variants. A
+ * link published anywhere lands on the overview instead of a 404, and the
+ * match is case-insensitive so a mistyped capital still resolves.
+ *
+ * Keys are lowercase and cover one path segment only, so a child page such as
+ * /docs/soulslike-combat/vitals routes normally.
+ */
+const DOC_ALIASES = {
+  "soulslikeenemycombat": "/docs/SoulslikeCombatDocs",
+  "soulslike-enemy-combat": "/docs/SoulslikeCombatDocs",
+  "soulslikecombat": "/docs/SoulslikeCombatDocs",
+  "soulslike-combat": "/docs/SoulslikeCombatDocs",
+  "soulslikecombatdocs": "/docs/SoulslikeCombatDocs",
+  "sec": "/docs/SoulslikeCombatDocs",
+  "revenuecat": "/docs/RevenueCatBridgeDocs",
+  "revenuecatbridge": "/docs/RevenueCatBridgeDocs",
+  "revenuecat-bridge": "/docs/RevenueCatBridgeDocs",
+  "revenuecatbridgedocs": "/docs/RevenueCatBridgeDocs",
+  "metahumantomanny": "/docs/MetahumanToMannyDocs",
+  "metahuman-to-manny": "/docs/MetahumanToMannyDocs",
+  "metahumantomannydocs": "/docs/MetahumanToMannyDocs",
+};
+
+/**
+ * Canonical path for an alias, or null when the request is already correct or
+ * is not an alias at all. Returning null for an exact match is what keeps a
+ * real page from redirecting onto itself.
+ */
+function aliasTarget(pathname) {
+  if (!pathname.startsWith("/docs/")) {
+    return null;
+  }
+  const rest = pathname.slice("/docs/".length).replace(/\/$/, "");
+  if (rest === "" || rest.includes("/")) {
+    return null;
+  }
+  const target = DOC_ALIASES[rest.toLowerCase()];
+  return target && target !== pathname ? target : null;
+}
+
 /** Build output and content assets, which both hosts load. */
 function isAssetPath(pathname) {
   return pathname.startsWith("/_next/") || /\.[a-z0-9]+$/i.test(pathname);
@@ -63,6 +105,15 @@ export async function onRequest({ request, next }) {
 
   if (isAssetPath(url.pathname)) {
     return next();
+  }
+
+  // Resolve an alias before host routing, so the redirect lands on the host
+  // that owns the product rather than bouncing twice.
+  const alias = aliasTarget(url.pathname);
+  if (alias) {
+    url.pathname = alias;
+    url.hostname = isRigbakDocPath(alias) ? DOCS_HOST : SITE_HOST;
+    return Response.redirect(url.toString(), 301);
   }
 
   if (hostname === DOCS_HOST) {
