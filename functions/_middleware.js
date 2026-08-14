@@ -98,10 +98,13 @@ export async function onRequest({ request, next }) {
     return next();
   }
 
-  if (hostname.startsWith("www.")) {
-    url.hostname = hostname.slice(4);
-    return Response.redirect(url.toString(), 301);
-  }
+  // A www host serves the same site as its apex rather than redirecting to it.
+  // rigbak.com spent years on a platform that required www and answered the
+  // apex with a permanent redirect, which browsers cache indefinitely. Sending
+  // www back to the apex would bounce every one of those browsers between the
+  // two forever. Each page names its apex address as canonical, so serving
+  // both costs nothing in search.
+  const host = hostname.startsWith("www.") ? hostname.slice(4) : hostname;
 
   if (isAssetPath(url.pathname)) {
     return next();
@@ -116,7 +119,7 @@ export async function onRequest({ request, next }) {
     return Response.redirect(url.toString(), 301);
   }
 
-  if (hostname === DOCS_HOST) {
+  if (host === DOCS_HOST) {
     if (
       url.pathname === "/" ||
       isDocsIndex(url.pathname) ||
@@ -128,7 +131,7 @@ export async function onRequest({ request, next }) {
     return Response.redirect(url.toString(), 301);
   }
 
-  if (hostname === SITE_HOST && isRigbakDocPath(url.pathname)) {
+  if (host === SITE_HOST && isRigbakDocPath(url.pathname)) {
     url.hostname = DOCS_HOST;
     return Response.redirect(url.toString(), 301);
   }
