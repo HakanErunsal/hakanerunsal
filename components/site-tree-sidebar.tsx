@@ -7,6 +7,8 @@ import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { docs, articles, projects } from "#site/content";
 import { SecDocSearch } from "@/components/sec-doc-search";
+import { isRigbak } from "@/lib/site-mode";
+import { brandConfig } from "@/config/site";
 
 // ──────────────────────────────────────
 //  Types
@@ -215,7 +217,7 @@ function ListItem({ node, pathname }: { node: TreeNode; pathname: string }) {
 //  Sidebar section label
 // ──────────────────────────────────────
 const sectionLabels: Record<Section, string> = {
-    home: "Welcome",
+    home: isRigbak ? "Plugins & Games" : "Welcome",
     articles: "Articles",
     projects: "Projects",
     docs: "Documentation",
@@ -233,12 +235,20 @@ export function SiteTreeSidebar() {
     const articleList = useMemo(() => buildArticleList(), []);
     const projectList = useMemo(() => buildProjectList(), []);
 
-    const navLinks: { href: string; label: string; section: Section }[] = [
-        { href: "/articles", label: "Articles", section: "articles" },
-        { href: "/projects", label: "Projects", section: "projects" },
-        { href: "/docs", label: "Docs", section: "docs" },
-        { href: "/about", label: "About", section: "about" },
-    ];
+    // The rigbak build carries only what rigbak.com serves. Linking the
+    // portfolio sections here would send every click through a cross-host
+    // redirect.
+    const navLinks: { href: string; label: string; section: Section }[] = isRigbak
+        ? [
+            { href: "/", label: "Catalogue", section: "home" },
+            { href: "/docs", label: "Docs", section: "docs" },
+        ]
+        : [
+            { href: "/articles", label: "Articles", section: "articles" },
+            { href: "/projects", label: "Projects", section: "projects" },
+            { href: "/docs", label: "Docs", section: "docs" },
+            { href: "/about", label: "About", section: "about" },
+        ];
 
     return (
         <aside className="hidden lg:flex flex-col fixed left-0 top-0 w-72 h-screen bg-ue-sidebar border-r border-border/50 z-30">
@@ -258,7 +268,7 @@ export function SiteTreeSidebar() {
                         <span className="text-sm font-heading font-semibold text-foreground">
                             {sectionLabels[section]}
                         </span>
-                        <span className="text-xs text-muted-foreground">Hakan Erunsal</span>
+                        <span className="text-xs text-muted-foreground">{brandConfig.name}</span>
                     </div>
                 </Link>
             </div>
@@ -314,46 +324,50 @@ export function SiteTreeSidebar() {
                 {(section === "home" || section === "about") && (
                     <div className="space-y-6">
                         {/* Quick links to each section */}
-                        <div>
-                            <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 px-2">
-                                Projects
-                            </h3>
-                            <ul className="space-y-0.5">
-                                {projectList.slice(0, 5).map(node => (
-                                    <ListItem key={node.slug} node={node} pathname={pathname} />
-                                ))}
-                                {projectList.length > 5 && (
-                                    <li>
-                                        <Link
-                                            href="/projects"
-                                            className="block py-1.5 px-3 text-xs text-muted-foreground hover:text-primary transition-colors"
-                                        >
-                                            View all {projectList.length} projects →
-                                        </Link>
-                                    </li>
-                                )}
-                            </ul>
-                        </div>
-                        <div>
-                            <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 px-2">
-                                Articles
-                            </h3>
-                            <ul className="space-y-0.5">
-                                {articleList.slice(0, 5).map(node => (
-                                    <ListItem key={node.slug} node={node} pathname={pathname} />
-                                ))}
-                                {articleList.length > 5 && (
-                                    <li>
-                                        <Link
-                                            href="/articles"
-                                            className="block py-1.5 px-3 text-xs text-muted-foreground hover:text-primary transition-colors"
-                                        >
-                                            View all {articleList.length} articles →
-                                        </Link>
-                                    </li>
-                                )}
-                            </ul>
-                        </div>
+                        {!isRigbak && (
+                            <>
+                                <div>
+                                    <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 px-2">
+                                        Projects
+                                    </h3>
+                                    <ul className="space-y-0.5">
+                                        {projectList.slice(0, 5).map(node => (
+                                            <ListItem key={node.slug} node={node} pathname={pathname} />
+                                        ))}
+                                        {projectList.length > 5 && (
+                                            <li>
+                                                <Link
+                                                    href="/projects"
+                                                    className="block py-1.5 px-3 text-xs text-muted-foreground hover:text-primary transition-colors"
+                                                >
+                                                    View all {projectList.length} projects →
+                                                </Link>
+                                            </li>
+                                        )}
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 px-2">
+                                        Articles
+                                    </h3>
+                                    <ul className="space-y-0.5">
+                                        {articleList.slice(0, 5).map(node => (
+                                            <ListItem key={node.slug} node={node} pathname={pathname} />
+                                        ))}
+                                        {articleList.length > 5 && (
+                                            <li>
+                                                <Link
+                                                    href="/articles"
+                                                    className="block py-1.5 px-3 text-xs text-muted-foreground hover:text-primary transition-colors"
+                                                >
+                                                    View all {articleList.length} articles →
+                                                </Link>
+                                            </li>
+                                        )}
+                                    </ul>
+                                </div>
+                            </>
+                        )}
                         <div>
                             <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 px-2">
                                 Documentation

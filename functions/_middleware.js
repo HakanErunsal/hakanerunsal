@@ -1,10 +1,13 @@
 /**
- * Host router for the two domains this deployment answers.
+ * Host router for the two domains this repo serves.
  *
- * rigbak.com serves /docs and sends everything else to hakanerunsal.com.
- * hakanerunsal.com serves everything else and sends /docs to rigbak.com.
- * Preview builds on *.pages.dev serve both halves, so a deployment can be
- * checked in full before DNS points at it.
+ * rigbak.com serves the catalogue at / plus /docs, and sends everything else
+ * to hakanerunsal.com. hakanerunsal.com serves everything else and sends
+ * /docs to rigbak.com. Both deployments run this same file, so a request that
+ * lands on the wrong one is still routed rather than served twice.
+ *
+ * Preview builds on *.pages.dev serve whatever they contain, so a deployment
+ * can be checked in full before DNS points at it.
  */
 
 const SITE_HOST = "hakanerunsal.com";
@@ -37,13 +40,9 @@ export async function onRequest({ request, next }) {
   }
 
   if (hostname === DOCS_HOST) {
-    if (isDocsPath(url.pathname)) {
+    // The apex is the catalogue, and /docs is what it links into.
+    if (url.pathname === "/" || isDocsPath(url.pathname)) {
       return next();
-    }
-    // The apex carries no page of its own, so it opens the docs index.
-    if (url.pathname === "/") {
-      url.pathname = "/docs";
-      return Response.redirect(url.toString(), 302);
     }
     url.hostname = SITE_HOST;
     return Response.redirect(url.toString(), 301);

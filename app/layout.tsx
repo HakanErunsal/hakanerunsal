@@ -4,7 +4,7 @@ import { Inter, Inter_Tight } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { Providers } from "@/components/providers";
-import { siteConfig } from "@/config/site";
+import { brandConfig, siteConfig } from "@/config/site";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -23,34 +23,34 @@ const interTight = Inter_Tight({
 
 export const metadata: Metadata = {
   title: {
-    default: siteConfig.name,
-    template: `%s | ${siteConfig.name}`,
+    default: brandConfig.name,
+    template: `%s | ${brandConfig.name}`,
   },
-  description: siteConfig.description,
+  description: brandConfig.description,
   keywords: ["Game Developer", "Unreal Engine", "Mobile Games", "C++", "Software Engineer", "Game Development", "Portfolio"],
   authors: [{ name: siteConfig.author }],
   creator: siteConfig.author,
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? siteConfig.url),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? brandConfig.url),
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: siteConfig.url,
-    title: siteConfig.name,
-    description: siteConfig.description,
-    siteName: siteConfig.name,
+    url: brandConfig.url,
+    title: brandConfig.name,
+    description: brandConfig.description,
+    siteName: brandConfig.name,
     images: [
       {
         url: "/og-card.png",
         width: 1200,
         height: 630,
-        alt: siteConfig.name,
+        alt: brandConfig.name,
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: siteConfig.name,
-    description: siteConfig.description,
+    title: brandConfig.name,
+    description: brandConfig.description,
     images: ["/og-card.png"],
     creator: "@Hakan_Erunsal",
   },
