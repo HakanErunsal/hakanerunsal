@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import "@/styles/mdx.css";
 import { Metadata } from "next";
 import { siteConfig } from "@/config/site";
+import { docHost } from "@/lib/docs-ownership";
 import { Tag } from "@/components/tag";
 import { DocsPageTOC } from "@/components/docs-page-toc";
 import { Breadcrumb } from "@/components/breadcrumb";
@@ -30,9 +31,9 @@ export async function generateMetadata({
         return {};
     }
 
-    // Docs are canonical on the docs host even though one build answers both
-    // domains, so a search engine ranks a single address instead of two.
-    const canonical = `${siteConfig.docsUrl}/${doc.slug}`;
+    // Both builds render every doc, so each page names the host that owns it
+    // and a search engine ranks one address instead of two.
+    const canonical = `${docHost(doc.slugAsParams)}/${doc.slug}`;
 
     return {
         title: doc.title,

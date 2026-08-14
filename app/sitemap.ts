@@ -1,6 +1,7 @@
 import { MetadataRoute } from 'next'
 import { brandConfig, siteConfig } from '@/config/site'
 import { isRigbak } from '@/lib/site-mode'
+import { ownedDocs } from '@/lib/docs-ownership'
 import { projects } from '#site/content'
 import { articles } from '#site/content'
 import { docs } from '#site/content'
@@ -8,16 +9,16 @@ import { docs } from '#site/content'
 // Each build lists only what its own host serves. Listing the other host's
 // pages here would advertise URLs this deployment answers with a redirect.
 export default function sitemap(): MetadataRoute.Sitemap {
-  if (isRigbak) {
-    const docUrls = docs
-      .filter((doc) => doc.published)
-      .map((doc) => ({
-        url: `${siteConfig.docsUrl}/${doc.slug}`,
-        lastModified: new Date(doc.date),
-        changeFrequency: 'monthly' as const,
-        priority: 0.8,
-      }))
+  const docUrls = ownedDocs(docs)
+    .filter((doc) => doc.published)
+    .map((doc) => ({
+      url: `${brandConfig.url}/${doc.slug}`,
+      lastModified: new Date(doc.date),
+      changeFrequency: 'monthly' as const,
+      priority: 0.8,
+    }))
 
+  if (isRigbak) {
     return [
       {
         url: brandConfig.url,
@@ -26,7 +27,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
         priority: 1,
       },
       {
-        url: `${siteConfig.docsUrl}/docs`,
+        url: `${brandConfig.url}/docs`,
         lastModified: new Date(),
         changeFrequency: 'weekly',
         priority: 0.9,
@@ -78,7 +79,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'monthly',
       priority: 0.7,
     },
+    {
+      url: `${siteConfig.url}/docs`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.6,
+    },
     ...projectUrls,
     ...articleUrls,
+    ...docUrls,
   ]
 }

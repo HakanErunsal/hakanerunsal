@@ -3,19 +3,22 @@ import { Metadata } from "next";
 import { sortDocs } from "@/lib/utils";
 import { docs } from "#site/content";
 import MediaCard from "@/components/media-card";
-import { siteConfig } from "@/config/site";
+import { brandConfig } from "@/config/site";
+import { ownedDocs } from "@/lib/docs-ownership";
 
 export const metadata: Metadata = {
     title: "Documentation",
     alternates: {
-        canonical: `${siteConfig.docsUrl}/docs`,
+        canonical: `${brandConfig.url}/docs`,
     },
 };
 
 // Docs functional component
 export default function DocsPage() {
     // Sorting and selecting published docs (excluding sub-pages with parent field)
-    const publishedDocs = sortDocs(docs.filter(d => d.published && !d.parent)).slice(0, 20);
+    const publishedDocs = sortDocs(
+        ownedDocs(docs).filter(d => d.published && !d.parent)
+    ).slice(0, 20);
 
     return (
         <div className="max-w-5xl mx-auto px-6">

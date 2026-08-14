@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { docs, articles, projects } from "#site/content";
 import { SecDocSearch } from "@/components/sec-doc-search";
 import { isRigbak } from "@/lib/site-mode";
+import { ownedDocs } from "@/lib/docs-ownership";
 import { brandConfig } from "@/config/site";
 
 // ──────────────────────────────────────
@@ -28,7 +29,7 @@ interface TreeNode {
 //  Build trees for each section
 // ──────────────────────────────────────
 function buildDocTree(): TreeNode[] {
-    const publishedDocs = docs.filter(d => d.published);
+    const publishedDocs = ownedDocs(docs).filter(d => d.published);
     const rootDocs = publishedDocs.filter(d => !d.parent);
 
     return rootDocs.map(rootDoc => {

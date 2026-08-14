@@ -28,9 +28,6 @@ export const rigbakPlugins: RigbakPlugin[] = [
     {
         docSlug: "RevenueCatBridgeDocs",
     },
-    {
-        docSlug: "MetahumanToMannyDocs",
-    },
 ];
 
 export interface RigbakGame {
@@ -42,11 +39,31 @@ export interface RigbakGame {
     linkLabel: string;
 }
 
+/**
+ * Newest first. The older titles have no site or store link in content, so
+ * their cards open the project page on the portfolio, which is where the
+ * screenshots and write-up live.
+ */
 export const rigbakGames: RigbakGame[] = [
     {
         projectSlug: "projects/TheLastLine",
         url: "https://thelastline.rigbak.com",
         linkLabel: "Visit the site",
+    },
+    {
+        projectSlug: "projects/CoverShooter",
+        url: "https://hakanerunsal.com/projects/CoverShooter",
+        linkLabel: "About this game",
+    },
+    {
+        projectSlug: "projects/JusticeGun2",
+        url: "https://hakanerunsal.com/projects/JusticeGun2",
+        linkLabel: "About this game",
+    },
+    {
+        projectSlug: "projects/JusticeGun",
+        url: "https://hakanerunsal.com/projects/JusticeGun",
+        linkLabel: "About this game",
     },
 ];
 
