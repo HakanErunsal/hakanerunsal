@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "include": ["/*"],
+  "exclude": [
+    "/_next/*",
+    "/static/*",
+    "/logos/*",
+    "/cv/*",
+    "/robots.txt",
+    "/sitemap.xml",
+    "/app-ads.txt",
+    "/og-card.png",
+    "/icon.png",
+    "/apple-icon.png"
+  ]
+}
