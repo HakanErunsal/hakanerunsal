@@ -108,6 +108,10 @@ export {
 } from "./UeFormulaGraph";
 export { UeComponentRow } from "./UeComponentRow";
 export { UeComponentDetailsPanel, type UeComponentDetailsPanelProps, type UeDetailsSourceKind } from "./UeComponentDetailsPanel";
+export { UeSceneFrame } from "./UeSceneFrame";
+export { useSceneClock } from "./useSceneClock";
+export { default as UeCreateAssetScene } from "./UeCreateAssetScene";
+export { default as UeSetPropertiesScene } from "./UeSetPropertiesScene";
 export * from "./ue-theme";
 export * from "./ue-blueprint-theme";
 export * from "./icons/UeIcons";

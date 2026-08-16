@@ -175,7 +175,7 @@ Enable **`bDebugLogMovement`** or **`SEC.Debug.Movement.LogMovement 1`** for lay
 
 **Fix:** raise **`StrafeFreeAngle`** on **`MovementEvaluatorComponent`** (default **15** degrees), the band around straight ahead that costs no speed. **`StrafeSpeedPenalty`** (**0.75**) softens the cost everywhere including real circling, and **0** turns it off. Also check the run window in your locomotion graph, since a 30 degree approach keeps 65% of its speed by design.
 
-See [Sideways speed penalty](/docs/soulslike-combat/movement-system#sideways-speed-penalty).
+See [Strafe animations at full speed](/docs/soulslike-combat/movement-system#strafe-animations-at-full-speed).
 
 </Collapsible>
 
@@ -188,7 +188,7 @@ See [Sideways speed penalty](/docs/soulslike-combat/movement-system#sideways-spe
 
 **Debug:** **`SEC.Debug.Movement.DrawNav 1`** marks blocked directions with blue spheres.
 
-Tune **`NavProbeDistance`** (default **120**): lower in tight spaces, higher for fast movers. See [Movement System](/docs/soulslike-combat/movement-system#staying-on-the-navmesh).
+Tune **`NavProbeDistance`** (default **120**): lower in tight spaces, higher for fast movers. See [Movement System](/docs/soulslike-combat/movement-system#staying-off-ledges-and-avoiding-hazards).
 
 </Collapsible>
 
@@ -204,7 +204,7 @@ The target sits behind cover. Straight-line distance stays short while the nav p
 
 **Debug:** **`SEC.Debug.Movement.LogMovement 1`** logs detour recheck lines (`ENGAGE`, `HOLD`, `release`).
 
-See [Detour tuning knobs](/docs/soulslike-combat/movement-system#rounding-corners-detour-escalation).
+See [Detour tuning knobs](/docs/soulslike-combat/movement-system#two-layers-and-rounding-corners).
 
 </Collapsible>
 
@@ -220,7 +220,7 @@ The player sits close in a straight line but the walkable route still wraps arou
 
 **Debug:** **`SEC.Debug.Movement.LogMovement 1`** prints `Detour eval: active, HOLD` while the route still detours, and `Detour eval: skip (no reachable route)` when the far side is not connected.
 
-See [Detour tuning knobs](/docs/soulslike-combat/movement-system#rounding-corners-detour-escalation).
+See [Detour tuning knobs](/docs/soulslike-combat/movement-system#two-layers-and-rounding-corners).
 
 </Collapsible>
 

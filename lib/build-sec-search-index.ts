@@ -48,6 +48,35 @@ interface ParsedCollapsible {
   body: string;
 }
 
+interface ParsedQuickStart {
+  title: string;
+  id: string;
+  /** Raw markdown between the opening and closing QuickStart tags. */
+  body: string;
+}
+
+const QUICK_START_DEFAULT_TITLE = "Set it up";
+const QUICK_START_DEFAULT_ID = "set-it-up";
+
+/** Reads an attribute off a JSX opening tag's attribute string. */
+function readAttr(attrs: string, name: string): string {
+  const match = attrs.match(new RegExp(`${name}="([^"]*)"`));
+  return match ? match[1].trim() : "";
+}
+
+/**
+ * Unwraps the quick-start recipe so its steps survive to the plain-text passes.
+ * The recipe is the page's primary instruction, and the generic JSX strip below
+ * would otherwise drop it along with the diagrams.
+ */
+function unwrapQuickStart(text: string): string {
+  return text
+    .replace(/<QuickStep\b([^>]*)>/g, (_full, attrs: string) => ` ${readAttr(attrs, "title")} `)
+    .replace(/<\/QuickStep>/g, " ")
+    .replace(/<QuickStart\b([^>]*)>/g, (_full, attrs: string) => ` ${readAttr(attrs, "title")} `)
+    .replace(/<\/QuickStart>/g, " ");
+}
+
 const SEC_ROOT_SLUG = "SoulslikeCombatDocs";
 const SEC_CHILD_PREFIX = "soulslike-combat/";
 
@@ -68,7 +97,7 @@ function stripFrontmatter(raw: string): string {
 
 /** Pull plain text from MDX for indexing. */
 export function stripMdxToPlainText(raw: string): string {
-  let text = stripFrontmatter(raw);
+  let text = unwrapQuickStart(stripFrontmatter(raw));
 
   // Drop fenced code blocks (keep inline identifiers out of big blobs).
   text = text.replace(/```[\s\S]*?```/g, " ");
@@ -124,8 +153,22 @@ export function extractHeadings(raw: string): ParsedHeading[] {
 
 /** Reads title="..." off a Collapsible opening tag's attribute string. */
 function readCollapsibleTitle(attrs: string): string {
-  const match = attrs.match(/title="([^"]*)"/);
-  return match ? match[1].trim() : "";
+  return readAttr(attrs, "title");
+}
+
+/** Finds the `<QuickStart>` recipe on a page, so search can land straight on it. */
+export function extractQuickStart(raw: string): ParsedQuickStart | null {
+  const text = stripFrontmatter(raw);
+  const match = text.match(/<QuickStart\b([^>]*)>([\s\S]*?)<\/QuickStart>/);
+  if (!match) {
+    return null;
+  }
+
+  return {
+    title: readAttr(match[1], "title") || QUICK_START_DEFAULT_TITLE,
+    id: readAttr(match[1], "id") || QUICK_START_DEFAULT_ID,
+    body: match[2],
+  };
 }
 
 /** Finds every `<Collapsible title="...">...</Collapsible>` block in the page. */
@@ -191,6 +234,19 @@ function buildDocEntries(
     keywords: keywords.join(" "),
     content: snippet(`${description} ${plainText}`),
   });
+
+  const quickStart = extractQuickStart(rawMdx);
+  if (quickStart) {
+    entries.push({
+      id: `${doc.slugAsParams}#${quickStart.id}`,
+      title: doc.title,
+      href: `${hrefBase}#${quickStart.id}`,
+      description,
+      section: quickStart.title,
+      keywords: keywords.join(" "),
+      content: snippet(stripMdxToPlainText(quickStart.body)),
+    });
+  }
 
   for (const heading of extractHeadings(rawMdx)) {
     const sectionText = stripMdxToPlainText(heading.body);

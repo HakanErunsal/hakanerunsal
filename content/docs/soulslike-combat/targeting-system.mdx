@@ -140,7 +140,7 @@ CombatComp->OnCombatTargetLost.AddDynamic(this, &AMyAIController::HandleTargetLo
 |--------|------|
 | [Combat Roles](/docs/soulslike-combat/combat-roles) | Per-target role pools; see RegisterCombatTarget there. |
 | [Awareness System](/docs/soulslike-combat/awareness-system) | `UAwarenessFilteredTargetSelector` + `AwarenessConfig` on the same `EnemyAIConfig`. |
-| [Action System](/docs/soulslike-combat/action-system) | Per-action target via [Contextual Execution](/docs/soulslike-combat/action-system#contextual-execution). |
+| [Action System](/docs/soulslike-combat/action-system) | Per-action target via [Contextual Execution](/docs/soulslike-combat/action-system#handing-an-action-data-at-the-moment-it-runs). |
 | [Movement System](/docs/soulslike-combat/movement-system) | `MovementEvaluatorComponent` reads `GetFocusActor()`; the subsystem sets focus when it assigns a target. |
 | [Multiplayer](/docs/soulslike-combat/multiplayer) | Register each player pawn as a combat target on the server. |
 

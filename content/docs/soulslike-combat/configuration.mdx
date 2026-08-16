@@ -134,7 +134,7 @@ USECAwarenessConfig* AwarenessConfig; // Perception memory tuning; unset leaves 
 
 ### Recovery
 
-`Recovery` group on `UEnemyAIConfig`. After an enemy commits an action, these suspend its offensive action selection while movement and reactions keep running. Every field defaults to `0`, so recovery is off and existing configs are unchanged until you set one. See [Recovery Time](/docs/soulslike-combat/action-system#recovery-time) for the full behavior.
+`Recovery` group on `UEnemyAIConfig`. After an enemy commits an action, these suspend its offensive action selection while movement and reactions keep running. Every field defaults to `0`, so recovery is off and existing configs are unchanged until you set one. See [Recovery Time](/docs/soulslike-combat/action-system#recovery-a-gap-between-any-two-moves) for the full behavior.
 
 ```cpp
 // Recovery
@@ -235,7 +235,7 @@ Range.MaxValue = 400;
 
 ### Built-in Scorers & Gates
 
-Distance, angle, health, speed, and stamina are opt-in. Add an entry to an action's **Scoring** list (`CustomScoring`), pick one of the built-in classes, and tune its single property. Omit the entry and that dimension does not influence the score. Scorers fold a multiplier into the score (1.0 = no effect); Gates veto the action when they fail. For deeper coverage and the `GetDisplayName()` labeling hook, see [Scorers & Gates](/docs/soulslike-combat/action-system#scorers--gates).
+Distance, angle, health, speed, and stamina are opt-in. Add an entry to an action's **Scoring** list (`CustomScoring`), pick one of the built-in classes, and tune its single property. Omit the entry and that dimension does not influence the score. Scorers fold a multiplier into the score (1.0 = no effect); Gates veto the action when they fail. For deeper coverage and the `GetDisplayName()` labeling hook, see [Scorers & Gates](/docs/soulslike-combat/action-system#decide-when-the-enemy-picks-a-move).
 
 | Class (editor name) | Property | Default | Reads | Notes |
 |---------------------|----------|---------|-------|-------|
@@ -259,7 +259,7 @@ Distance, angle, health, speed, and stamina are opt-in. Add an entry to an actio
 
 **Used by:** [Movement System](/docs/soulslike-combat/movement-system)
 
-The role-swappable data asset. It holds only the fields a combat role changes. The rest of the movement tuning (avoidance, hybrid switching, detour, navmesh sampling, strafe feel) lives on the `MovementEvaluatorComponent` itself, the same for every role. See the [Movement System](/docs/soulslike-combat/movement-system#tuning-the-component) for that surface.
+The role-swappable data asset. It holds only the fields a combat role changes. The rest of the movement tuning (avoidance, hybrid switching, detour, navmesh sampling, strafe feel) lives on the `MovementEvaluatorComponent` itself, the same for every role. See the [Movement System](/docs/soulslike-combat/movement-system#tune-the-component) for that surface.
 
 ### Full Structure
 

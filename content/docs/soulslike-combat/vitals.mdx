@@ -112,7 +112,7 @@ Vital Scorer and Vital Gate turn any authored pool into an action's cost or pref
 | **Vital Scorer** | Scorer | `VitalTag`, `bUseFraction` (default `true`), `Range` (`FRangeEval`, default `MakeAlwaysOne()`) | Favor or disfavor an action as a named pool rises or falls. |
 | **Vital Gate** | Gate | `VitalTag`, `MinValue` (default `0`), `bUseFraction` (default `false`) | Veto an action unless a named pool holds at least `MinValue`. |
 
-Add either to an action's **Scoring** list next to the other [Scorers & Gates](/docs/soulslike-combat/action-system#scorers--gates). Point a **Vital Gate** at `SEC.Vital.Stamina` with `MinValue = 30` for a stamina-costed dodge, or at a custom `SEC.Vital.Focus` tag for a magic system of your own. Both read the tag's `0` to `1` fraction or its raw value depending on `bUseFraction`, and both have no effect on a pawn that carries no vitals component or no row for the tag, so adding either to a shared ActionSet does not disable an enemy type that lacks the pool.
+Add either to an action's **Scoring** list next to the other [Scorers & Gates](/docs/soulslike-combat/action-system#decide-when-the-enemy-picks-a-move). Point a **Vital Gate** at `SEC.Vital.Stamina` with `MinValue = 30` for a stamina-costed dodge, or at a custom `SEC.Vital.Focus` tag for a magic system of your own. Both read the tag's `0` to `1` fraction or its raw value depending on `bUseFraction`, and both have no effect on a pawn that carries no vitals component or no row for the tag, so adding either to a shared ActionSet does not disable an enemy type that lacks the pool.
 
 The same two classes work on reactions: see [Reaction System](/docs/soulslike-combat/reaction-system#scorers-on-reactions).
 
@@ -122,7 +122,7 @@ The same two classes work on reactions: see [Reaction System](/docs/soulslike-co
 
 | System | Link |
 |--------|------|
-| [Action System](/docs/soulslike-combat/action-system#scorers--gates) | Health Scorer, Stamina Gate, Vital Scorer, and Vital Gate all read a vital. |
+| [Action System](/docs/soulslike-combat/action-system#decide-when-the-enemy-picks-a-move) | Health Scorer, Stamina Gate, Vital Scorer, and Vital Gate all read a vital. |
 | [Reaction System](/docs/soulslike-combat/reaction-system#scorers-on-reactions) | The same scorers and gates evaluate live against the pawn's vitals. |
 | [StateTree Integration](/docs/soulslike-combat/statetree#combat-and-decision) | The decision context's health fraction and stamina value come from vitals. |
 | [Configuration Reference](/docs/soulslike-combat/configuration#combat-config) | `bAutoHandleDeathOnHealthDepleted` and the decision context params that read vitals. |

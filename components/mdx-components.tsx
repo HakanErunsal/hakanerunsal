@@ -97,6 +97,10 @@ import StimulusFilterDetails from '@/components/StimulusFilterDetails';
 import ReportAreaStimulusGraph from '@/components/ReportAreaStimulusGraph';
 import StimulusDebugLegend from '@/components/StimulusDebugLegend';
 import Reviews from '@/components/Reviews';
+import UeClip from '@/components/UeClip';
+import { QuickStart, QuickStep } from '@/components/QuickStart';
+import UeCreateAssetScene from '@/components/ue-editor/UeCreateAssetScene';
+import UeSetPropertiesScene from '@/components/ue-editor/UeSetPropertiesScene';
 
 const useMDXComponent = (code: string) => {
   const fn = new Function(code);
@@ -110,6 +114,11 @@ const components = {
   Protip,
   ZoomableImage,
   VideoLoop,
+  UeClip,
+  QuickStart,
+  QuickStep,
+  UeCreateAssetScene,
+  UeSetPropertiesScene,
   GameStatusBadge,
   Breadcrumb,
   DocNav,

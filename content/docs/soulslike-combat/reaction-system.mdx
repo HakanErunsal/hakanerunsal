@@ -217,7 +217,7 @@ Inside `ExecuteReaction` (same gates as above, re-checked against `Context.GetTa
 6. On success: commit cooldown, watch for the ability to end, fire `OnReactionStarted`.
 7. When the ability ends, or the timeout is reached: remove **Add Tags**, fire `OnReactionCompleted`.
 
-A failed activation tears down immediately: tags removed, no cooldown committed. Cooldown commits only **after** activation succeeds; a [`CanActivateAbility`](/docs/soulslike-combat/action-system#contextual-execution) refusal leaves the reaction off cooldown.
+A failed activation tears down immediately: tags removed, no cooldown committed. Cooldown commits only **after** activation succeeds; a [`CanActivateAbility`](/docs/soulslike-combat/action-system#handing-an-action-data-at-the-moment-it-runs) refusal leaves the reaction off cooldown.
 
 ### Reaction-to-reaction blocking
 
@@ -247,7 +247,7 @@ Both actions and reactions share `FSECExecutionContext`. Fill what you know befo
 Context.TargetData = USECTargetDataLibrary::MakeTargetDataFromDirection(HitDirection);
 ```
 
-See [Gate Before Activation](/docs/soulslike-combat/action-system#contextual-execution) for payload gating in `CanActivateAbility`.
+See [Gate Before Activation](/docs/soulslike-combat/action-system#handing-an-action-data-at-the-moment-it-runs) for payload gating in `CanActivateAbility`.
 </Collapsible>
 
 ---
@@ -298,7 +298,7 @@ Distance Scorer **Range** at the melee-preset default:
 
 <RangeEvalDetails />
 
-Stamina Gate reads the pawn's stamina [vital](/docs/soulslike-combat/vitals) live, falling back to the same `100` default as actions when the pawn carries no vitals component or no row for the tag. Vital Scorer and Vital Gate read any named vital the same way. Attribute Scorers and Gates read live GameplayAttributes. Same classes as actions: see [Scorers & Gates](/docs/soulslike-combat/action-system#scorers--gates). Custom scorers stay **stateless**; `SeededRandom` is fixed on the reaction path (`Seed` stays `0`).
+Stamina Gate reads the pawn's stamina [vital](/docs/soulslike-combat/vitals) live, falling back to the same `100` default as actions when the pawn carries no vitals component or no row for the tag. Vital Scorer and Vital Gate read any named vital the same way. Attribute Scorers and Gates read live GameplayAttributes. Same classes as actions: see [Scorers & Gates](/docs/soulslike-combat/action-system#decide-when-the-enemy-picks-a-move). Custom scorers stay **stateless**; `SeededRandom` is fixed on the reaction path (`Seed` stays `0`).
 
 Four gates read the stimulus that set the reaction off rather than the pawn, so each one also works in a trigger rule's **Conditions**. An action carries no stimulus, so one added to an action has nothing to judge and passes.
 
