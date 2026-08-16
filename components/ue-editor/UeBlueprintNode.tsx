@@ -69,7 +69,7 @@ function defaultIcon(kind?: UeBlueprintNodeKind, pure?: boolean) {
   }
   if (kind === "event") return <UeEventIcon className="h-3.5 w-3.5" />;
   if (kind === "pure" || kind === "operator" || pure) {
-    return <UeFunctionIcon className="h-3.5 w-3.5 text-[#E8FFE0]" />;
+    return <UeFunctionIcon className="h-3.5 w-3.5 text-[color:var(--uekit-bp-pure-glyph)]" />;
   }
   return <UeFunctionIcon className="h-3.5 w-3.5" />;
 }
@@ -106,7 +106,7 @@ function SubsystemGetNode({
       <div className="ue-bp-subsystem-node__gloss" aria-hidden />
       <div className="relative z-[1] flex flex-col items-center gap-0.5 text-center">
         {lines.map((line) => (
-          <span key={line} className="text-[15px] font-bold leading-tight text-[#b4b4ba]">
+          <span key={line} className="text-[15px] font-bold leading-tight text-[color:var(--uekit-bp-pin-label)]">
             {line}
           </span>
         ))}
@@ -152,7 +152,7 @@ function VariableGetNode({
           SET
         </span>
       )}
-      <span className="relative z-[1] text-[13px] font-normal text-[#E8E8E8]">{title}</span>
+      <span className="relative z-[1] text-[13px] font-normal text-[color:var(--uekit-bp-text)]">{title}</span>
       <span
         className="ue-bp-data-pin ue-bp-data-pin--connected ue-bp-var-node__pin absolute right-0 top-1/2 translate-x-1/2 -translate-y-1/2"
         style={{ "--pin-color": headerColor } as React.CSSProperties}
@@ -272,7 +272,7 @@ function GraphNode({
             <div className="min-w-0 flex-1">
               <div className="truncate text-[14px] font-semibold leading-tight text-white">{title}</div>
               {subtitle && (
-                <div className="mt-0.5 truncate text-[12px] italic leading-snug text-[#9a9aa4]">
+                <div className="mt-0.5 truncate text-[12px] italic leading-snug text-[color:var(--uekit-bp-subtitle)]">
                   {subtitle}
                 </div>
               )}
@@ -299,7 +299,7 @@ function GraphNode({
           </div>
 
           {inputs.length === 0 && outputs.length === 0 && maxRows === 1 && children && (
-            <div className="px-1 py-1 text-[13px] text-[#A0A0A8]">{children}</div>
+            <div className="px-1 py-1 text-[13px] text-[color:var(--uekit-bp-subtitle)]">{children}</div>
           )}
         </div>
       </div>
@@ -397,13 +397,13 @@ export function UeBlueprintNode({
         className={cn(
           "relative z-10 flex h-16 w-16 flex-col items-center justify-center overflow-hidden rounded-sm border transition-all duration-500",
           active
-            ? "scale-110 border-[#0070E0] shadow-[0_0_0_1px_#0070E0,0_0_16px_rgba(0,112,224,0.3)]"
-            : "border-[#383838] opacity-60",
+            ? "scale-110 border-[color:var(--uekit-primary)] shadow-[0_0_0_1px_var(--uekit-primary),0_0_16px_var(--uekit-primary-glow)]"
+            : "border-[color:var(--uekit-secondary)] opacity-60",
           className,
         )}
       >
         <div className="absolute inset-x-0 top-0 h-1.5" style={{ backgroundColor: color }} />
-        <div className={cn("flex flex-1 items-center justify-center bg-[#1A1A1A]", active ? "text-[#C0C0C0]" : "text-[#666]")}>
+        <div className={cn("flex flex-1 items-center justify-center bg-[color:var(--uekit-recessed)]", active ? "text-[color:var(--uekit-foreground)]" : "text-[color:var(--uekit-hover2)]")}>
           {icon}
         </div>
       </div>

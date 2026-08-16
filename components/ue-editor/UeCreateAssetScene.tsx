@@ -1,6 +1,11 @@
 "use client";
 
-import { UE } from "./ue-theme";
+import {
+  UE,
+  SEC_ASSET_ACCENTS,
+  SEC_ASSET_ACCENT_DEFAULT,
+  SEC_ASSET_THUMBNAIL,
+} from "./ue-theme";
 import { getAssetAccent, getAssetTypeLabel } from "./UeAssetIcon";
 import type { UeAssetType } from "./ue-theme";
 import { UeSceneFrame } from "./UeSceneFrame";
@@ -49,11 +54,12 @@ interface UeCreateAssetSceneProps {
   width?: number;
 }
 
-const CURSOR_REST = { x: 300, y: 300 };
-const CURSOR_CLICK = { x: 36, y: 44 };
+/** Where the new asset lands, and so where the right-click that creates it happens. */
+const TILE = { x: 8, y: 40, size: 84, labelHeight: 32 };
+const TILE_CENTER = { x: TILE.x + TILE.size / 2, y: TILE.y + TILE.size / 2 };
 
 /** Menu geometry, matched to the rendered rows so the cursor lands on the highlighted entry. */
-const ROW_HEIGHT = 20;
+const ROW_HEIGHT = 18;
 const MENU_PAD = 4;
 /** Fixed so the cascade opens flush against the parent's edge whatever the font measures. */
 const ROOT_MENU_WIDTH = 118;
@@ -66,12 +72,59 @@ function rowCenter(top: number, index: number) {
   return rowTop(top, index) + ROW_HEIGHT / 2;
 }
 
-/** The pie-wedge thumbnail the editor draws beside a data asset entry. */
-function AssetGlyph() {
+/**
+ * Steps, in order: rest on the empty spot, right-click, the menu opens, travel
+ * to the heading, dwell on it so the cascade opens, travel to the entry, dwell
+ * on that, click, the asset appears while the cursor returns to it, then a beat
+ * before the loop.
+ *
+ * Travel and dwell are separate steps because the cursor animates over the
+ * length of one step. A combined step would land the pointer exactly as the next
+ * thing fired, leaving no hover to see.
+ */
+const STEP = {
+  Rest: 0,
+  RightClick: 1,
+  MenuOpen: 2,
+  ToHeading: 3,
+  OnHeading: 4,
+  SubmenuOpen: 5,
+  ToEntry: 6,
+  OnEntry: 7,
+  ClickEntry: 8,
+  Created: 9,
+  Settled: 10,
+} as const;
+
+/** Steps that move the pointer run for CURSOR_TRAVEL_MS, matching its transition. */
+const CURSOR_TRAVEL_MS = 500;
+
+const DURATIONS = [
+  700,
+  400,
+  450,
+  CURSOR_TRAVEL_MS,
+  500,
+  400,
+  CURSOR_TRAVEL_MS,
+  300,
+  320,
+  700,
+  1000,
+];
+
+/**
+ * The thumbnail the editor draws for a SEC asset: a dark tile, a wheel with one
+ * slice, and an underline naming the type. Used at menu size beside an entry and
+ * again at tile size on the asset the scene creates, so the two agree.
+ */
+function AssetGlyph({ accent, size }: { accent: string; size: number }) {
   return (
-    <svg width="11" height="11" viewBox="0 0 16 16" className="shrink-0" aria-hidden>
-      <circle cx="8" cy="8" r="7" fill={UE.dataAsset} />
-      <path d="M8 8 L8 1 A7 7 0 0 1 14.5 5.5 Z" fill={UE.background} opacity="0.55" />
+    <svg width={size} height={size} viewBox="0 0 16 16" className="shrink-0" aria-hidden>
+      <rect width="16" height="16" rx="1" fill={SEC_ASSET_THUMBNAIL.tile} />
+      <circle cx="8" cy="7" r="4.6" fill={SEC_ASSET_THUMBNAIL.wheel} />
+      <path d="M8 7 L8 2.4 A4.6 4.6 0 0 1 11.95 4.7 Z" fill={SEC_ASSET_THUMBNAIL.slice} />
+      <rect x="0" y="13" width="16" height="3" fill={accent} />
     </svg>
   );
 }
@@ -79,7 +132,7 @@ function AssetGlyph() {
 function Cursor({ x, y }: { x: number; y: number }) {
   return (
     <svg
-      className="pointer-events-none absolute z-30 transition-all duration-500 ease-out"
+      className="pointer-events-none absolute z-30 transition-all duration-500 ease-in-out"
       style={{ left: x, top: y }}
       width="13"
       height="17"
@@ -93,6 +146,16 @@ function Cursor({ x, y }: { x: number; y: number }) {
         strokeWidth="1"
       />
     </svg>
+  );
+}
+
+/** Ring marking a press. Sits above the menus so a click on an entry still reads. */
+function ClickRing({ x, y }: { x: number; y: number }) {
+  return (
+    <span
+      className="pointer-events-none absolute z-[25] h-6 w-6 rounded-full"
+      style={{ left: x - 12, top: y - 12, border: `1px solid ${UE.primary}` }}
+    />
   );
 }
 
@@ -139,7 +202,12 @@ function Menu({
             }}
           >
             <span className="flex items-center gap-1.5">
-              {glyphs && <AssetGlyph />}
+              {glyphs && (
+                <AssetGlyph
+                  accent={SEC_ASSET_ACCENTS[item] ?? SEC_ASSET_ACCENT_DEFAULT}
+                  size={13}
+                />
+              )}
               {item}
             </span>
             {cascades && <span style={{ color: on ? "#FFFFFF" : UE.hover2 }}>›</span>}
@@ -164,56 +232,71 @@ export default function UeCreateAssetScene({
   caption,
   width = 400,
 }: UeCreateAssetSceneProps) {
-  const { step, ref } = useSceneClock([1100, 450, 1400, 1700, 800, 1900]);
-
-  const menuOpen = step >= 2 && step <= 3;
-  const submenuOpen = step === 3;
-  const tileShown = step >= 4;
-  const renaming = step === 4;
+  // Reduced motion rests on the open cascade, which is the frame that shows both
+  // menus and names the entry to pick.
+  const { step, ref } = useSceneClock(DURATIONS, STEP.OnEntry);
 
   const headingIndex = Math.max(ROOT_MENU.indexOf(heading), 0);
   const createIndex = Math.max(submenuItems.indexOf(create), 0);
 
-  // The submenu opens level with the heading it cascades from.
-  const submenuTop = rowTop(CURSOR_CLICK.y, headingIndex) - MENU_PAD;
-  const submenuLeft = CURSOR_CLICK.x + ROOT_MENU_WIDTH;
+  const menuOpen = step >= STEP.MenuOpen && step <= STEP.ClickEntry;
+  const submenuOpen = step >= STEP.SubmenuOpen && step <= STEP.ClickEntry;
+  const tileShown = step >= STEP.Created;
+  const renaming = step === STEP.Created;
+
+  // The cascade opens level with the heading it comes from.
+  const submenuTop = rowTop(TILE_CENTER.y, headingIndex) - MENU_PAD;
+  const submenuLeft = TILE_CENTER.x + ROOT_MENU_WIDTH;
+
+  const headingPoint = {
+    x: TILE_CENTER.x + 30,
+    y: rowCenter(TILE_CENTER.y, headingIndex),
+  };
+  const entryPoint = {
+    x: submenuLeft + 26,
+    y: rowCenter(submenuTop, createIndex),
+  };
 
   const cursor =
-    step === 0
-      ? CURSOR_REST
-      : step === 2
-        ? { x: CURSOR_CLICK.x + 30, y: rowCenter(CURSOR_CLICK.y, headingIndex) }
-        : step === 3
-          ? { x: submenuLeft + 26, y: rowCenter(submenuTop, createIndex) }
-          : CURSOR_CLICK;
+    step >= STEP.ToHeading && step <= STEP.SubmenuOpen
+      ? headingPoint
+      : step >= STEP.ToEntry && step <= STEP.ClickEntry
+        ? entryPoint
+        : TILE_CENTER;
 
-  const accent = getAssetAccent(assetType);
+  // A row highlights only once the pointer has finished travelling to it, so the
+  // highlight follows the cursor rather than leading it.
+  const headingActive = step >= STEP.OnHeading ? heading : "";
+  const entryActive = step >= STEP.OnEntry ? create : "";
+
+  // The tile is underlined in the same color the menu drew beside the entry.
+  const accent = SEC_ASSET_ACCENTS[create] ?? getAssetAccent(assetType);
   const label = typeLabel ?? getAssetTypeLabel(assetType);
 
   return (
-    <UeSceneFrame title="Content Browser" caption={caption} width={width} height={352} frameRef={ref}>
+    <UeSceneFrame title="Content Browser" caption={caption} width={width} height={380} frameRef={ref}>
       <div className="absolute inset-0 overflow-hidden p-2" style={{ background: UE.recessed }}>
         <div
-          className="mb-2 flex items-center gap-1 rounded-[2px] px-1.5 py-1 text-[9px]"
+          className="flex items-center gap-1 rounded-[2px] px-1.5 py-1 text-[9px]"
           style={{ background: UE.panel, color: UE.hover2 }}
         >
           <span style={{ color: UE.accentFolder }}>▸</span> Content
         </div>
 
         {tileShown && (
-          <div className="flex w-[84px] flex-col overflow-hidden rounded-[2px]">
+          <div
+            className="absolute flex flex-col overflow-hidden rounded-[2px]"
+            style={{ left: TILE.x, top: TILE.y, width: TILE.size }}
+          >
             <div
-              className="relative flex aspect-square items-center justify-center"
-              style={{ background: UE.input }}
+              className="relative flex items-center justify-center"
+              style={{ height: TILE.size, background: UE.input }}
             >
-              <svg width="32" height="32" viewBox="0 0 16 16" aria-hidden>
-                <rect x="1" y="1" width="14" height="13" rx="1" fill={UE.panel} stroke={UE.secondary} />
-              </svg>
-              <div className="absolute inset-x-0 bottom-0 h-[2px]" style={{ background: accent }} />
+              <AssetGlyph accent={accent} size={44} />
             </div>
             <div
-              className="flex min-h-[32px] flex-col justify-center px-1 py-1"
-              style={{ background: renaming ? UE.selectInactive : UE.panel }}
+              className="flex flex-col justify-center px-1 py-1"
+              style={{ height: TILE.labelHeight, background: renaming ? UE.selectInactive : UE.panel }}
             >
               <span
                 className="truncate text-[9px] leading-tight"
@@ -229,30 +312,22 @@ export default function UeCreateAssetScene({
           </div>
         )}
 
-        {step === 1 && (
-          <span
-            className="absolute z-10 h-6 w-6 rounded-full"
-            style={{
-              left: CURSOR_CLICK.x - 12,
-              top: CURSOR_CLICK.y - 12,
-              border: `1px solid ${UE.primary}`,
-            }}
-          />
-        )}
+        {step === STEP.RightClick && <ClickRing x={TILE_CENTER.x} y={TILE_CENTER.y} />}
+        {step === STEP.ClickEntry && <ClickRing x={entryPoint.x} y={entryPoint.y} />}
 
         {menuOpen && (
           <Menu
             items={ROOT_MENU}
-            active={heading}
-            x={CURSOR_CLICK.x}
-            y={CURSOR_CLICK.y}
+            active={headingActive}
+            x={TILE_CENTER.x}
+            y={TILE_CENTER.y}
             width={ROOT_MENU_WIDTH}
             cascades
           />
         )}
 
         {submenuOpen && (
-          <Menu items={submenuItems} active={create} x={submenuLeft} y={submenuTop} glyphs />
+          <Menu items={submenuItems} active={entryActive} x={submenuLeft} y={submenuTop} glyphs />
         )}
 
         <Cursor x={cursor.x} y={cursor.y} />

@@ -56,9 +56,9 @@ function UeSourceRow({
   return (
     <div className="ue-component-row ue-component-row-selected flex w-full items-center gap-1.5 px-1.5 py-0.5">
       <UeAssetIcon type={sourceKindToAssetType(sourceKind)} showLabel={false} className="shrink-0" />
-      <span className="min-w-0 truncate text-[13px] leading-none text-[#cccccc]">
+      <span className="min-w-0 truncate text-[13px] leading-none text-[color:var(--uekit-foreground-header)]">
         {displayName}
-        <span className="text-[#cccccc]"> ({sourceClass})</span>
+        <span className="text-[color:var(--uekit-foreground-header)]"> ({sourceClass})</span>
       </span>
     </div>
   );
@@ -84,7 +84,7 @@ export function UeComponentDetailsPanel({
         bodyClassName="p-0"
         caption={note}
       >
-        <div className="border-b border-[#0F0F0F] bg-[#1A1A1A]">
+        <div className="border-b border-[color:var(--uekit-window-border)] bg-[color:var(--uekit-recessed)]">
           <UeSourceRow displayName={displayName} sourceClass={sourceClass} sourceKind={sourceKind} />
         </div>
         <div className="p-2">

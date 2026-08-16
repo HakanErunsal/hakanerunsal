@@ -1,40 +1,70 @@
 /* ── UE 5.8 Starship editor UI (StyleColors.cpp + ContentBrowser) ── */
 
+:root {
+  --uekit-background: #151515;
+  --uekit-window-border: #0F0F0F;
+  --uekit-input: #0F0F0F;
+  --uekit-recessed: #1A1A1A;
+  --uekit-panel: #242424;
+  --uekit-header: #2F2F2F;
+  --uekit-secondary: #383838;
+  --uekit-dropdown-outline: #4C4C4C;
+  --uekit-hover: #575757;
+  --uekit-hover2: #808080;
+  --uekit-foreground: #C0C0C0;
+  --uekit-foreground-header: #C8C8C8;
+  --uekit-foreground-hover: #FFFFFF;
+  --uekit-primary: #0070E0;
+  --uekit-select-inactive: #40576F;
+  --uekit-bp-header-default: #404045;
+  --uekit-bp-pin-fallback: #0066E8;
+  --uekit-bp-selection-glow: rgba(255, 170, 0, 0.6);
+  --uekit-folder-top: #A08860;
+  --uekit-folder-bottom: #6B5A3E;
+  --uekit-folder-tab-top: #B09870;
+  --uekit-folder-tab-bottom: #8B7155;
+  --uekit-bp-text: #E8E8E8;
+  --uekit-bp-subtitle: #A0A0A8;
+  --uekit-bp-pin-label: #C8C8C8;
+  --uekit-bp-pure-glyph: #E8FFE0;
+  --uekit-primary-glow: rgba(0, 112, 224, 0.3);
+}
+
 /* Panel tab */
 .ue-panel-tab {
-  background: #242424;
+  background: var(--uekit-panel);
   border-top: 2px solid transparent;
 }
 
 .ue-panel-tab:hover {
-  background: #2F2F2F;
+  background: var(--uekit-header);
 }
 
 /* Content Browser tile — StarshipStyle ContentBrowser.AssetTileItem */
 .ue-cb-tile {
-  border: 2px solid #383838;
+  border: 2px solid var(--uekit-secondary);
   border-radius: 4px;
-  background: #383838;
+  background: var(--uekit-secondary);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
 }
 
 .ue-cb-tile:hover {
-  border-color: #575757;
+  border-color: var(--uekit-hover);
 }
 
 .ue-cb-tile-active,
 .ue-cb-tile[data-active="true"] {
-  border-color: #0070E0;
-  box-shadow: 0 0 0 1px #0070E0, 0 2px 6px rgba(0, 0, 0, 0.5);
+  border-color: var(--uekit-primary);
+  box-shadow: 0 0 0 1px var(--uekit-primary), 0 2px 6px rgba(0, 0, 0, 0.5);
 }
 
 .ue-cb-tile-thumb {
-  background: #1A1A1A;
+  background: var(--uekit-recessed);
   border-radius: 4px 4px 0 0;
 }
 
 .ue-cb-tile-label {
-  background: #242424;
+  background: var(--uekit-panel);
   border-radius: 0 0 4px 4px;
 }
 
@@ -42,79 +72,55 @@
 .ue-component-row {
   min-height: 26px;
   border-bottom: 1px solid transparent;
-  color: #C0C0C0;
+  color: var(--uekit-foreground);
   font-size: 13px;
 }
 
 .ue-component-row:hover {
-  background: #242424;
+  background: var(--uekit-panel);
 }
 
 .ue-component-row-selected,
 .ue-component-row[data-selected="true"] {
-  background: #40576F;
-  color: #C0C0C0;
+  background: var(--uekit-select-inactive);
+  color: var(--uekit-foreground);
 }
 
-/* Details panel */
-.ue-details-section {
-  border-bottom: 1px solid #0F0F0F;
-}
-
-.ue-details-section-header {
-  background: #2F2F2F;
-  border-top: 1px solid #383838;
-  border-bottom: 1px solid #0F0F0F;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-}
-
-.ue-details-section-header:hover {
-  background: #383838;
-}
-
-.ue-details-section-body {
-  background: #151515;
-}
-
-.ue-property-row:hover {
-  background: #242424;
-}
-
-.ue-property-row:hover > div:first-child {
-  background: #1A1A1A;
-}
-
-.ue-asset-picker {
+/* A picker standing on its own rather than in a property row: same fill and
+   border, but free to fill its column and drawn as a pill. Two classes so the
+   overrides win over .ue-dp-asset whatever the rule order. */
+.ue-dp-asset.ue-asset-picker {
   min-height: 26px;
+  height: auto;
+  max-width: none;
+  border-radius: 9999px;
 }
 
 /* Details panel template (UeDetailsPanel) — component UPROPERTY rows */
 .ue-dp {
-  background: #262626;
+  background: var(--uekit-background);
 }
 
 .ue-dp-section {
-  border-bottom: 1px solid #1b1b1b;
+  border-bottom: 1px solid var(--uekit-window-border);
 }
 
 .ue-dp-header {
   min-height: 30px;
   padding-top: 4px;
   padding-bottom: 4px;
-  background: linear-gradient(to bottom, #3c3c3c, #333333);
-  border-top: 1px solid #454545;
-  border-bottom: 1px solid #1c1c1c;
+  background: var(--uekit-header);
+  border-top: 1px solid var(--uekit-secondary);
+  border-bottom: 1px solid var(--uekit-window-border);
 }
 
 .ue-dp-header:hover {
-  background: linear-gradient(to bottom, #444444, #3a3a3a);
+  background: var(--uekit-secondary);
 }
 
 /* Section arrow: right when shut, down when open. The child combinator keeps a
    nested section reading its own state rather than an ancestor's. */
-.ue-dp-section > summary .ue-dp-arrow,
-.ue-details-section > summary .ue-details-arrow {
+.ue-dp-section > summary .ue-dp-arrow {
   transform: rotate(-90deg);
 }
 
@@ -122,23 +128,22 @@
   transform: rotate(90deg);
 }
 
-.ue-dp-section[open] > summary .ue-dp-arrow,
-.ue-details-section[open] > summary .ue-details-arrow {
+.ue-dp-section[open] > summary .ue-dp-arrow {
   transform: rotate(0deg);
 }
 
 /* Zebra rows */
 .ue-dp-row {
-  background: #2a2a2a;
-  border-bottom: 1px solid #202020;
+  background: var(--uekit-background);
+  border-bottom: 1px solid var(--uekit-window-border);
 }
 
 .ue-dp-row:nth-child(even) {
-  background: #242424;
+  background: var(--uekit-panel);
 }
 
 .ue-dp-row:hover {
-  background: #303030;
+  background: var(--uekit-header);
 }
 
 .ue-dp-row--disabled {
@@ -160,8 +165,8 @@
   max-width: 190px;
   height: 22px;
   overflow: hidden;
-  background: #181818;
-  border: 1px solid #0c0c0c;
+  background: var(--uekit-input);
+  border: 1px solid var(--uekit-dropdown-outline);
   border-radius: 2px;
   box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.4);
 }
@@ -176,8 +181,8 @@
   width: 100%;
   max-width: 190px;
   height: 22px;
-  background: #181818;
-  border: 1px solid #0c0c0c;
+  background: var(--uekit-input);
+  border: 1px solid var(--uekit-dropdown-outline);
   border-radius: 2px;
   box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.4);
 }
@@ -188,13 +193,13 @@
 }
 
 .ue-dp-combo--interactive:hover {
-  border-color: #3a3a3a;
-  background: #1f1f1f;
+  border-color: var(--uekit-hover);
+  background: var(--uekit-recessed);
 }
 
 .ue-dp-picker {
-  background: #242424;
-  border: 1px solid #4c4c4c;
+  background: var(--uekit-panel);
+  border: 1px solid var(--uekit-dropdown-outline);
   border-radius: 2px;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
 }
@@ -204,16 +209,16 @@
 }
 
 .ue-dp-picker-item:hover {
-  background: #0070e0;
-  color: #ffffff;
+  background: var(--uekit-primary);
+  color: var(--uekit-foreground-hover);
 }
 
 .ue-dp-picker-item[data-selected="true"] {
-  background: #40576f;
+  background: var(--uekit-select-inactive);
 }
 
 .ue-dp-picker-item[data-selected="true"]:hover {
-  background: #0070e0;
+  background: var(--uekit-primary);
 }
 
 /* Gameplay tag container — full value-column width, listed tags may wrap */
@@ -234,25 +239,21 @@
 /* Checkbox */
 .ue-dp-check {
   border-radius: 2px;
-  background: #0d0d0d;
-  border: 1px solid #4a4a4a;
+  background: var(--uekit-input);
+  border: 1px solid var(--uekit-dropdown-outline);
   box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.5);
-}
-
-.ue-dp-check[data-checked="true"] {
-  border-color: #565656;
 }
 
 /* StateTree node */
 .ue-statetree-node {
-  border: 1px solid #383838;
-  background: #242424;
+  border: 1px solid var(--uekit-secondary);
+  background: var(--uekit-panel);
   border-radius: 2px;
 }
 
 .ue-statetree-node-header {
-  border-bottom: 1px solid #0F0F0F;
-  background: #2F2F2F;
+  border-bottom: 1px solid var(--uekit-window-border);
+  background: var(--uekit-header);
 }
 
 /* Search bar */
@@ -262,8 +263,8 @@
   gap: 6px;
   flex: 1;
   max-width: 480px;
-  border: 1px solid #0F0F0F;
-  background: #0F0F0F;
+  border: 1px solid var(--uekit-window-border);
+  background: var(--uekit-window-border);
   border-radius: 2px;
   padding: 2px 8px;
 }
@@ -274,11 +275,11 @@
   border: none;
   outline: none;
   font-size: 13px;
-  color: #C0C0C0;
+  color: var(--uekit-foreground);
 }
 
 .ue-search input::placeholder {
-  color: #575757;
+  color: var(--uekit-hover);
 }
 
 /* Sliders & toggles */
@@ -288,7 +289,7 @@
   cursor: pointer;
   appearance: none;
   border-radius: 1px;
-  background: #383838;
+  background: var(--uekit-secondary);
 }
 
 .ue-slider::-webkit-slider-thumb {
@@ -297,8 +298,8 @@
   cursor: pointer;
   appearance: none;
   border-radius: 2px;
-  background: linear-gradient(180deg, #575757 0%, #383838 100%);
-  border: 1px solid #4C4C4C;
+  background: linear-gradient(180deg, var(--uekit-hover) 0%, var(--uekit-secondary) 100%);
+  border: 1px solid var(--uekit-dropdown-outline);
 }
 
 .ue-slider::-moz-range-thumb {
@@ -306,8 +307,8 @@
   width: 12px;
   cursor: pointer;
   border-radius: 2px;
-  border: 1px solid #4C4C4C;
-  background: linear-gradient(180deg, #575757 0%, #383838 100%);
+  border: 1px solid var(--uekit-dropdown-outline);
+  background: linear-gradient(180deg, var(--uekit-hover) 0%, var(--uekit-secondary) 100%);
 }
 
 .ue-toggle {
@@ -318,13 +319,13 @@
   align-items: center;
   border-radius: 2px;
   transition: background 0.15s;
-  background: #383838;
-  border: 1px solid #4C4C4C;
+  background: var(--uekit-secondary);
+  border: 1px solid var(--uekit-dropdown-outline);
 }
 
 .ue-toggle[data-state="on"] {
-  background: #0070E0;
-  border-color: #0070E0;
+  background: var(--uekit-primary);
+  border-color: var(--uekit-primary);
 }
 
 .ue-toggle-thumb {
@@ -332,7 +333,7 @@
   height: 12px;
   width: 12px;
   border-radius: 1px;
-  background: #C0C0C0;
+  background: var(--uekit-foreground);
   transition: transform 0.15s;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
@@ -351,23 +352,23 @@
   gap: 4px;
   padding: 2px 6px;
   font-size: 13px;
-  color: #C0C0C0;
-  border-bottom: 1px solid #0F0F0F;
+  color: var(--uekit-foreground);
+  border-bottom: 1px solid var(--uekit-window-border);
 }
 
 .ue-outliner-row:hover {
-  background: #242424;
+  background: var(--uekit-panel);
 }
 
 .ue-outliner-row[data-selected="true"] {
-  color: #0070E0;
-  background: #40576F;
+  color: var(--uekit-primary);
+  background: var(--uekit-select-inactive);
 }
 
 .ue-folder-icon {
   width: 64px;
   height: 52px;
-  background: linear-gradient(180deg, #a08860 0%, #6b5a3e 100%);
+  background: linear-gradient(180deg, var(--uekit-folder-top) 0%, var(--uekit-folder-bottom) 100%);
   border-radius: 2px 6px 2px 2px;
   position: relative;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
@@ -380,7 +381,7 @@
   left: 0;
   width: 24px;
   height: 8px;
-  background: linear-gradient(180deg, #b09870 0%, #8b7155 100%);
+  background: linear-gradient(180deg, var(--uekit-folder-tab-top) 0%, var(--uekit-folder-tab-bottom) 100%);
   border-radius: 2px 2px 0 0;
 }
 
@@ -406,7 +407,7 @@
 }
 
 .ue-bp-node--active {
-  box-shadow: 0 0 0 1px rgba(255, 170, 0, 0.6), 0 4px 16px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 0 0 1px var(--uekit-bp-selection-glow), 0 4px 16px rgba(0, 0, 0, 0.6);
 }
 
 .ue-bp-node--disabled {
@@ -437,7 +438,7 @@
   border-radius: 7px 7px 0 0;
   background:
     linear-gradient(180deg, rgba(0, 0, 0, 0) 45%, rgba(0, 0, 0, 0.4) 100%),
-    var(--bp-header, #3195ff);
+    var(--bp-header, var(--uekit-bp-header-default));
   opacity: 0.72;
   filter: saturate(0.8) brightness(0.9);
 }
@@ -491,7 +492,7 @@
   height: 0;
   border-top: 5px solid transparent;
   border-bottom: 5px solid transparent;
-  border-left: 9px solid #f0f0f0;
+  border-left: 9px solid var(--uekit-foreground-hover);
   filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.7));
 }
 
@@ -510,17 +511,17 @@
   height: 11px;
   border-radius: 50%;
   background: transparent;
-  border: 2px solid var(--pin-color, #0066e8);
+  border: 2px solid var(--pin-color, var(--uekit-bp-pin-fallback));
   box-shadow: 0 0 1px rgba(0, 0, 0, 0.6);
 }
 
 .ue-bp-data-pin--connected {
-  background: var(--pin-color, #0066e8);
-  border-color: var(--pin-color, #0066e8);
+  background: var(--pin-color, var(--uekit-bp-pin-fallback));
+  border-color: var(--pin-color, var(--uekit-bp-pin-fallback));
 }
 
 .ue-bp-pin-label {
-  color: #c8c8c8;
+  color: var(--uekit-foreground-header);
   font-size: 13px;
   line-height: 1.2;
 }
@@ -531,7 +532,7 @@
   border-radius: 2px;
   padding: 0 4px;
   font-size: 12px;
-  color: #c0c0c0;
+  color: var(--uekit-foreground);
 }
 
 /* Variable getter pill — Graph.VarNode (very dark, faint type tint) */
@@ -548,7 +549,7 @@
   inset: 0;
   border-radius: 999px;
   background: linear-gradient(180deg, rgba(0, 0, 0, 0) 50%, rgba(0, 0, 0, 0.35) 100%),
-    var(--bp-header, #0066e8);
+    var(--bp-header, var(--uekit-bp-pin-fallback));
   opacity: 0.18;
 }
 
@@ -606,7 +607,7 @@
   position: absolute;
   inset: 0;
   border-radius: 6px;
-  background: var(--bp-header, #66d959);
+  background: var(--bp-header, var(--uekit-bp-header-default));
   opacity: 0.85;
 }
 
@@ -621,7 +622,7 @@
   width: 17px;
   height: 11px;
   border-radius: 999px;
-  background: var(--pill-color, #0066e8);
+  background: var(--pill-color, var(--uekit-bp-pin-fallback));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.28),
     inset 0 -1px 1px rgba(0, 0, 0, 0.3);
@@ -644,15 +645,15 @@
 }
 
 .ue-mybp-row--selected {
-  background: #40576f;
+  background: var(--uekit-select-inactive);
 }
 
 .ue-mybp-row--selected:hover {
-  background: #40576f;
+  background: var(--uekit-select-inactive);
 }
 
 .ue-mybp-row--category > span:nth-child(2) {
-  color: #c0c0c0;
+  color: var(--uekit-foreground);
 }
 
 .ue-mybp-chevron {
@@ -661,3 +662,4 @@
   padding: 0;
   cursor: pointer;
 }
+

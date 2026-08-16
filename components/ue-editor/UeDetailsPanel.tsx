@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { UE, UE_KIT } from "./ue-theme";
 
 /**
  * UE 5.8 Details panel template.
@@ -39,19 +40,26 @@ export interface UeDetailCategory {
 }
 
 /** Static downward triangle (combo boxes, asset pickers). */
-function Triangle() {
+export function Triangle() {
   return (
-    <svg className="h-2.5 w-2.5 shrink-0 text-[#9a9a9a]" viewBox="0 0 10 10" fill="currentColor" aria-hidden>
+    <svg
+      className="h-2.5 w-2.5 shrink-0"
+      style={{ color: UE.hover2 }}
+      viewBox="0 0 10 10"
+      fill="currentColor"
+      aria-hidden
+    >
       <path d="M1 3 L9 3 L5 8 Z" />
     </svg>
   );
 }
 
 /** Section triangle that rotates with the native <details> open state via CSS. */
-function SectionTriangle() {
+export function SectionTriangle() {
   return (
     <svg
-      className="ue-dp-arrow h-2.5 w-2.5 shrink-0 text-[#9a9a9a] transition-transform"
+      className="ue-dp-arrow h-2.5 w-2.5 shrink-0 transition-transform"
+      style={{ color: UE.hover2 }}
       viewBox="0 0 10 10"
       fill="currentColor"
       aria-hidden
@@ -66,10 +74,18 @@ function UeCheckbox({ checked, disabled }: { checked: boolean; disabled?: boolea
     <span
       className={cn("ue-dp-check inline-flex h-[17px] w-[15px] items-center justify-center", disabled && "opacity-50")}
       data-checked={checked}
+      style={checked ? { background: UE.primary, borderColor: UE.primary } : undefined}
       aria-hidden
     >
       {checked && (
-        <svg viewBox="0 0 12 12" className="h-[13px] w-[11px] text-[#e2e2e2]" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg
+          viewBox="0 0 12 12"
+          className="h-[13px] w-[11px]"
+          style={{ color: UE.foregroundHover }}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
           <path d="M2.5 6.2 L4.8 8.6 L9.5 3.4" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       )}
@@ -100,7 +116,7 @@ function UeNumericField({
   return (
     <div className={cn("ue-dp-num relative flex items-center", disabled && "opacity-50")}>
       {hasRange && <div className="ue-dp-num-fill absolute inset-y-0 left-0" style={{ width: `${fill * 100}%` }} aria-hidden />}
-      <span className="relative pl-1.5 text-[13px] text-[#c9c9c9]">{formatNumber(value, decimals)}</span>
+      <span className="relative pl-1.5 text-[13px]" style={{ color: UE.foregroundHeader }}>{formatNumber(value, decimals)}</span>
     </div>
   );
 }
@@ -108,7 +124,7 @@ function UeNumericField({
 function UeComboField({ value, disabled }: { value: string; disabled?: boolean }) {
   return (
     <div className={cn("ue-dp-combo relative flex items-center justify-between gap-1 pl-1.5 pr-1", disabled && "opacity-50")}>
-      <span className="truncate text-[13px] leading-[21px] text-[#c9c9c9]">{value}</span>
+      <span className="truncate text-[13px] leading-[21px]" style={{ color: UE.foregroundHeader }}>{value}</span>
       <Triangle />
     </div>
   );
@@ -119,18 +135,18 @@ function UeTagContainerField({ tags }: { tags: string[] }) {
   const countLabel = count === 1 ? "1 Gameplay Tag" : `${count} Gameplay Tags`;
 
   if (count === 0) {
-    return <span className="text-[13px] text-[#888888]">0 Gameplay Tags</span>;
+    return <span className="text-[13px]" style={{ color: UE.hover2 }}>0 Gameplay Tags</span>;
   }
 
   return (
     <div className="ue-dp-tag-container flex min-w-0 flex-col gap-1 py-0.5">
       <div className="ue-dp-combo flex items-center justify-between gap-1 pl-1.5 pr-1">
-        <span className="text-[13px] leading-[21px] text-[#c9c9c9]">{countLabel}</span>
+        <span className="text-[13px] leading-[21px]" style={{ color: UE.foregroundHeader }}>{countLabel}</span>
         <Triangle />
       </div>
       {tags.map((tag) => (
-        <div key={tag} className="ml-4 border-l border-[#3a3a3f] pl-2">
-          <span className="ue-dp-tag-name font-mono text-[12px] leading-snug text-[#7ec8e3]">{tag}</span>
+        <div key={tag} className="ml-4 border-l pl-2" style={{ borderColor: UE.secondary }}>
+          <span className="ue-dp-tag-name font-mono text-[12px] leading-snug" style={{ color: UE_KIT.gameplayTagText }}>{tag}</span>
         </div>
       ))}
     </div>
@@ -148,14 +164,14 @@ function UeValueWidget({ value }: { value: UeDetailValue }) {
     case "asset":
       return (
         <div className="ue-dp-asset flex items-center justify-between gap-1 rounded-full px-2">
-          <span className="truncate text-[13px] leading-[21px] text-[#c9c9c9]">{value.value ?? "None"}</span>
+          <span className="truncate text-[13px] leading-[21px]" style={{ color: UE.foregroundHeader }}>{value.value ?? "None"}</span>
           <Triangle />
         </div>
       );
     case "tagContainer":
       return <UeTagContainerField tags={value.tags} />;
     case "text":
-      return <span className="text-[13px] text-[#c9c9c9]">{value.value}</span>;
+      return <span className="text-[13px]" style={{ color: UE.foregroundHeader }}>{value.value}</span>;
     case "node":
       return <>{value.node}</>;
   }
@@ -174,10 +190,10 @@ function PropertyRow({ property, indent }: { property: UeDetailProperty; indent:
     >
       <div
         className={cn(
-          "flex shrink-0 items-center text-[13px] text-[#a9a9a9]",
+          "flex shrink-0 items-center text-[13px]",
           isTagContainer && "pt-0.5",
         )}
-        style={{ width: "56%", paddingLeft: indent }}
+        style={{ width: "56%", paddingLeft: indent, color: UE.foreground }}
       >
         <span className="truncate">{property.label}</span>
       </div>
@@ -199,8 +215,8 @@ function Category({ category, level }: { category: UeDetailCategory; level: numb
   return (
     <details open={category.defaultOpen ?? true} className="ue-dp-section group">
       <summary
-        className="ue-dp-header flex cursor-pointer list-none items-center gap-1.5 text-[13px] text-[#c8c8c8] select-none [&::-webkit-details-marker]:hidden"
-        style={{ paddingLeft: headerPad }}
+        className="ue-dp-header flex cursor-pointer list-none items-center gap-1.5 text-[13px] select-none [&::-webkit-details-marker]:hidden"
+        style={{ paddingLeft: headerPad, color: UE.foregroundHeader }}
       >
         <SectionTriangle />
         <span className="truncate">{category.title}</span>
@@ -219,7 +235,10 @@ function Category({ category, level }: { category: UeDetailCategory; level: numb
 
 export function UeDetailsPanel({ categories, className }: { categories: UeDetailCategory[]; className?: string }) {
   return (
-    <div className={cn("ue-dp not-prose overflow-hidden rounded-[2px] border border-[#0d0d0d]", className)}>
+    <div
+      className={cn("ue-dp not-prose overflow-hidden rounded-[2px] border", className)}
+      style={{ borderColor: UE.windowBorder }}
+    >
       {categories.map((c) => (
         <Category key={c.title} category={c} level={0} />
       ))}

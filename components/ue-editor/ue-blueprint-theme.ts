@@ -181,6 +181,8 @@ export const UE_BP_NODE = {
   text: "#E8E8E8",
   subtitle: "#A0A0A8",
   pinLabel: "#C8C8C8",
+  /** Pale green tint on a pure function node's icon. */
+  pureGlyph: "#E8FFE0",
   gridMajor: "#2A2A2E",
   gridMinor: "#222226",
   graphBg: "#1B1B1F",

@@ -109,8 +109,8 @@ export function UeClassPickerCombo({
         onClick={() => setOpen((wasOpen) => !wasOpen)}
         className="ue-dp-combo ue-dp-combo--interactive flex w-full max-w-[190px] items-center justify-between gap-1 pl-1.5 pr-1"
       >
-        <span className="truncate text-[13px] leading-[21px] text-[#c9c9c9]">{value}</span>
-        <svg className="h-2.5 w-2.5 shrink-0 text-[#9a9a9a]" viewBox="0 0 10 10" fill="currentColor" aria-hidden>
+        <span className="truncate text-[13px] leading-[21px] text-[color:var(--uekit-foreground-header)]">{value}</span>
+        <svg className="h-2.5 w-2.5 shrink-0 text-[color:var(--uekit-hover2)]" viewBox="0 0 10 10" fill="currentColor" aria-hidden>
           <path d="M1 3 L9 3 L5 8 Z" />
         </svg>
       </button>
@@ -142,7 +142,7 @@ export function UeClassPickerCombo({
                 }}
                 className={cn(
                   "ue-dp-picker-item flex w-full items-center px-2 py-[3px] text-left text-[13px] leading-[18px]",
-                  option === value ? "text-[#ffffff]" : "text-[#c9c9c9]",
+                  option === value ? "text-[color:var(--uekit-foreground-hover)]" : "text-[color:var(--uekit-foreground-header)]",
                 )}
                 data-selected={option === value}
               >

@@ -17,10 +17,10 @@ interface UeContentBrowserTileProps {
 }
 
 /**
- * Content Browser asset tile — matches StarshipStyle ContentBrowser.AssetTileItem:
- * - Recessed (#1A1A1A) thumbnail area, 4px corner radius
+ * Content Browser asset tile, matching StarshipStyle ContentBrowser.AssetTileItem:
+ * - Recessed thumbnail area, 4px corner radius
  * - 2px asset-type color strip (AssetThumbnail.cpp)
- * - Panel (#242424) label block, 9pt name + 7pt class name
+ * - Panel label block, 9pt name and 7pt class name
  */
 export function UeContentBrowserTile({
   name,
@@ -57,8 +57,8 @@ export function UeContentBrowserTile({
         <div className="absolute inset-x-0 bottom-0 h-[2px]" style={{ backgroundColor: accent }} />
       </div>
       <div className="ue-cb-tile-label flex min-h-[54px] flex-col justify-center px-1.5 py-1">
-        <span className="line-clamp-2 text-[10px] leading-tight text-[#C0C0C0]">{name}</span>
-        <span className="mt-0.5 truncate text-[8px] leading-tight text-[#808080]">{label}</span>
+        <span className="line-clamp-2 text-[10px] leading-tight text-[color:var(--uekit-foreground)]">{name}</span>
+        <span className="mt-0.5 truncate text-[8px] leading-tight text-[color:var(--uekit-hover2)]">{label}</span>
       </div>
     </Tag>
   );

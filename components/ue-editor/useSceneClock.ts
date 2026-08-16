@@ -3,14 +3,19 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 /**
- * Steps a looping scene while it sits on screen, and holds the final step for a
- * reader who has asked for reduced motion. Scenes off screen do not tick, so a
- * page carrying several of them costs one timer.
+ * Steps a looping scene while it sits on screen. Scenes off screen do not tick,
+ * so a page carrying several of them costs one timer.
+ *
+ * A reader who has asked for reduced motion gets one still frame instead of the
+ * loop, held at restStep.
  *
  * @param durations Milliseconds to hold each step, in order.
+ * @param restStep Frame to hold under reduced motion. Defaults to the last step.
+ *   Pass the step that shows the most of what the scene is explaining, which is
+ *   rarely the finished state.
  * @returns The current step index and the ref to put on the scene's outer element.
  */
-export function useSceneClock(durations: number[]) {
+export function useSceneClock(durations: number[], restStep?: number) {
   const lastStep = durations.length - 1;
   const [step, setStep] = useState(0);
   const [onScreen, setOnScreen] = useState(false);
@@ -43,7 +48,7 @@ export function useSceneClock(durations: number[]) {
 
   useEffect(() => {
     if (reducedMotion) {
-      setStep(lastStep);
+      setStep(restStep ?? lastStep);
       return;
     }
     if (!onScreen) return;
@@ -53,7 +58,7 @@ export function useSceneClock(durations: number[]) {
       holdFor.current[step] ?? 900,
     );
     return () => clearTimeout(timer);
-  }, [step, onScreen, reducedMotion, lastStep]);
+  }, [step, onScreen, reducedMotion, lastStep, restStep]);
 
   return { step, ref, reducedMotion };
 }

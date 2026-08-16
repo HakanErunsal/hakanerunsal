@@ -1,5 +1,12 @@
 import { cn } from "@/lib/utils";
-import { ChevronDown } from "lucide-react";
+import { UE, SEC_ASSET_THUMBNAIL } from "./ue-theme";
+import { SectionTriangle, Triangle } from "./UeDetailsPanel";
+
+/**
+ * Free-form Details panel pieces, for a panel authored as children rather than
+ * from a schema. UeDetailsPanel renders the same surfaces from a
+ * UeDetailCategory[]; both emit the ue-dp-* classes so the two present alike.
+ */
 
 interface UeDetailsSectionProps {
   title: string;
@@ -8,7 +15,7 @@ interface UeDetailsSectionProps {
   children: React.ReactNode;
 }
 
-/** Collapsible Details panel section — chevron header + property rows. */
+/** Collapsible Details panel section: header band plus property rows. */
 export function UeDetailsSection({
   title,
   defaultOpen = true,
@@ -16,12 +23,15 @@ export function UeDetailsSection({
   children,
 }: UeDetailsSectionProps) {
   return (
-    <details open={defaultOpen} className={cn("ue-details-section group", className)}>
-      <summary className="ue-details-section-header flex cursor-pointer list-none items-center gap-1.5 px-2 py-1.5 text-[13px] font-normal text-[#cccccc] select-none [&::-webkit-details-marker]:hidden">
-        <ChevronDown className="ue-details-arrow h-3 w-3 shrink-0 text-[#888888] transition-transform" />
+    <details open={defaultOpen} className={cn("ue-dp-section group", className)}>
+      <summary
+        className="ue-dp-header flex cursor-pointer list-none items-center gap-1.5 text-[13px] font-normal select-none [&::-webkit-details-marker]:hidden"
+        style={{ paddingLeft: 8, color: UE.foregroundHeader }}
+      >
+        <SectionTriangle />
         {title}
       </summary>
-      <div className="ue-details-section-body">{children}</div>
+      <div>{children}</div>
     </details>
   );
 }
@@ -32,19 +42,22 @@ interface UePropertyRowProps {
   className?: string;
 }
 
-/** Details panel property row — label column + value column. */
+/** Details panel property row: label column at 56%, value column beside it. */
 export function UePropertyRow({ label, children, className }: UePropertyRowProps) {
   return (
-    <div className={cn("ue-property-row flex min-h-[32px] items-stretch border-b border-[#111111]", className)}>
-      <div className="flex w-[38%] min-w-[100px] shrink-0 items-center border-r border-[#111111] bg-[#151515] px-2 py-1 text-[13px] text-[#888888]">
-        {label}
+    <div className={cn("ue-dp-row flex min-h-[30px] items-center", className)}>
+      <div
+        className="flex shrink-0 items-center text-[13px]"
+        style={{ width: "56%", paddingLeft: 22, color: UE.foreground }}
+      >
+        <span className="truncate">{label}</span>
       </div>
-      <div className="flex flex-1 items-center bg-[#1a1a1a] px-2 py-1">{children}</div>
+      <div className="ue-dp-value flex min-w-0 flex-1 items-center pr-4">{children}</div>
     </div>
   );
 }
 
-/** Pill-shaped asset reference dropdown like the Details panel. */
+/** Asset reference dropdown drawn as a pill, filling the width it is given. */
 export function UeAssetPicker({
   value,
   placeholder = "None",
@@ -56,9 +69,11 @@ export function UeAssetPicker({
 }) {
   return (
     <div className={cn("flex min-w-0 flex-1 items-center gap-1", className)}>
-      <div className="ue-asset-picker flex min-w-0 flex-1 items-center justify-between gap-1 rounded-full border border-[#333333] bg-[#0a0a0a] px-2.5 py-0.5">
-        <span className="truncate text-[13px] text-[#cccccc]">{value ?? placeholder}</span>
-        <ChevronDown className="h-3 w-3 shrink-0 text-[#666666]" />
+      <div className="ue-dp-asset ue-asset-picker flex min-w-0 flex-1 items-center justify-between gap-1 px-2.5">
+        <span className="truncate text-[13px]" style={{ color: UE.foregroundHeader }}>
+          {value ?? placeholder}
+        </span>
+        <Triangle />
       </div>
     </div>
   );
@@ -77,14 +92,15 @@ export function UeAssetThumbnail({
   return (
     <div
       className={cn(
-        "relative flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-[2px] border border-[#333333] bg-[#0a0a0a]",
+        "relative flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-[2px] border",
         className,
       )}
+      style={{ borderColor: UE.secondary, background: SEC_ASSET_THUMBNAIL.tile }}
     >
       {children ?? (
         <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none">
-          <circle cx="8" cy="8" r="6" fill="#333" />
-          <path d="M8 2 A6 6 0 0 1 13 10 L8 8 Z" fill="#555" />
+          <circle cx="8" cy="8" r="6" fill={SEC_ASSET_THUMBNAIL.wheel} />
+          <path d="M8 2 A6 6 0 0 1 13 10 L8 8 Z" fill={SEC_ASSET_THUMBNAIL.slice} />
         </svg>
       )}
       <div className="absolute inset-x-0 bottom-0 h-[2px]" style={{ backgroundColor: accent }} />

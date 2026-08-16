@@ -10,7 +10,8 @@
     "start": "next start",
     "export": "next export",
     "lint": "next lint",
-    "check:links": "node scripts/check-doc-links.mjs"
+    "check:links": "node scripts/check-doc-links.mjs",
+    "check:colors": "node scripts/check-ue-colors.mjs"
   },
   "dependencies": {
     "@builder.io/react": "^3.2.6",
