@@ -8,7 +8,8 @@ import { useSceneClock } from "./useSceneClock";
 type RowKind = "number" | "text" | "bool" | "asset" | "class";
 
 const ROW_HEIGHT = 26;
-const ASSET_ROW_HEIGHT = 38;
+/** Tall enough for the picker, the gap and the browse buttons stacked under it. */
+const ASSET_ROW_HEIGHT = 48;
 
 interface SceneRow {
   /** Editor DisplayName of the property. */
@@ -133,7 +134,7 @@ export default function UeSetPropertiesScene({
       title={title}
       caption={caption}
       width={width}
-      height={30 + bodyHeight}
+      height={36 + bodyHeight}
       frameRef={ref}
     >
       <div className="absolute inset-0" style={{ background: UE.background }}>
