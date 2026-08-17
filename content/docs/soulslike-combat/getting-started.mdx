@@ -111,7 +111,7 @@ Drag the enemy into a level that has a **NavMesh Bounds Volume**, press Play, an
 </QuickStart>
 
 <Callout type="warning">
-**Enemy Character Base sets no AI Controller Class of its own.** Leave that field at the project default and the pawn is possessed by a controller carrying none of the combat components, so every field on the AI Config does nothing and the log says nothing about it. Set it in **Class Defaults** on the pawn Blueprint.
+**Set AI Controller Class to Enemy Controller Base in the pawn's Class Defaults.** Enemy Character Base ships without one. A pawn still carrying the project default gets a controller that holds none of the combat components, so nothing on the AI Config reaches the enemy and the log stays quiet about it.
 </Callout>
 
 ---
