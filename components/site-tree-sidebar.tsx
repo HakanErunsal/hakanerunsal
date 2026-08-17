@@ -10,6 +10,7 @@ import { SecDocSearch } from "@/components/sec-doc-search";
 import { isRigbak } from "@/lib/site-mode";
 import { listedDocs, docHref, isOffsiteDoc } from "@/lib/docs-ownership";
 import { brandConfig } from "@/config/site";
+import { rigbakLinks } from "@/config/rigbak";
 
 // ──────────────────────────────────────
 //  Types
@@ -393,17 +394,34 @@ export function SiteTreeSidebar() {
             </nav>
 
             {/* Bottom link - context-aware */}
-            <div className="px-4 py-3 border-t border-border/50">
+            <div className="px-4 py-3 border-t border-border/50 space-y-2">
                 {section === "docs" ? (
-                    <Link
-                        href="/docs"
-                        className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="m15 18-6-6 6-6" />
-                        </svg>
-                        All Documentation
-                    </Link>
+                    <>
+                        <Link
+                            href="/docs"
+                            className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="m15 18-6-6 6-6" />
+                            </svg>
+                            All Documentation
+                        </Link>
+                        {isRigbak && (
+                            <a
+                                href={rigbakLinks.discord}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M15 3h6v6" />
+                                    <path d="M10 14 21 3" />
+                                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                                </svg>
+                                Ask for help on Discord
+                            </a>
+                        )}
+                    </>
                 ) : section === "articles" ? (
                     <Link
                         href="/articles"

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { docs, projects } from "#site/content";
-import { rigbakGames, rigbakLinks, rigbakPlugins } from "@/config/rigbak";
+import { rigbakGames, rigbakPlugins } from "@/config/rigbak";
 
 interface CardProps {
     title: string;
@@ -159,15 +159,6 @@ export function RigbakHome() {
                 <p className="mt-4 text-base md:text-lg text-muted-foreground max-w-xl">
                     Unreal Engine plugins and games, built solo.
                 </p>
-                <a
-                    href={rigbakLinks.discord}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-6 inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded border border-border/60 text-muted-foreground hover:text-foreground hover:border-border transition-colors"
-                >
-                    Join the Discord
-                    <ExternalIcon />
-                </a>
             </div>
 
             <hr className="border-border/50 mb-10" />
