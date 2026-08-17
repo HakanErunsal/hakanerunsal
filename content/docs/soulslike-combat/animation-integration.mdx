@@ -191,6 +191,10 @@ Add **Notify State**, **SEC Approach Window** over the wind-up frames. On an ene
 
 An attack whose animation already carries root motion travels on its own, and the window makes up only the distance it falls short by, so a window on one of those lands its hit too. On a character a player controls, reach for **Motion Warping** instead: it bends the motion the animator authored rather than adding to it, and it predicts through the ability playing the montage.
 
+<Callout type="info">
+Motion Warping is the alternative to the approach window rather than a companion to it, so a character wants one or the other on a given attack. Taking that route means adding a **Motion Warping** component to the character yourself: the enemy character does not ship with one, and an ability looks the component up when it activates and gives up quietly when it finds none, so a montage with a warp notify plays on the spot and nothing says why. See [Motion warping](/docs/soulslike-combat/action-system#motion-warping-steering-an-attack-toward-the-target).
+</Callout>
+
 ### Pointing a window at a target
 
 What a window steers toward comes out of a named slot on the character's **SEC Approach** component, the same handover Motion Warping uses for its warp targets. Something stores the target; the animation decides when the steering happens.

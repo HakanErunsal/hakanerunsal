@@ -197,7 +197,7 @@ Six causes, in the order worth checking.
 
 - **No focus actor.** Nothing registered a combat target, so there is nothing to move relative to. This is the common one and it logs nothing.
 - **The Movement Evaluator sits on the pawn.** It belongs on the AI controller. On a pawn it warns once at BeginPlay and then does nothing.
-- **No navmesh.** Past 800 cm the enemy asks for a path, the request fails every tick, and it never closes the gap. Add a **NavMesh Bounds Volume**, build navigation, and press **P** in the viewport to check it covers the floor.
+- **No navmesh.** Past 800 cm the enemy asks for a path, the request fails every tick, and it never closes the gap. Add a **NavMesh Bounds Volume**, build navigation, and press **P** in the viewport to check it covers the floor. On a large or open world map, see [the navmesh is empty on a large map](#the-navmesh-is-empty-on-a-large-map) below.
 - **A leftover `SEC.State.IsMovementBlocked` tag** on the enemy's ability system component freezes it outright. It ships in a new action's **Add Tags** and is meant to clear when the action ends.
 - **Apply Movement Input is off** on the Movement Evaluator, which is evaluate-only mode.
 - **The AI Movement task is not running.** In a StateTree graph it has to stay in a running state through combat. See [StateTree Integration](/docs/soulslike-combat/statetree).
@@ -205,6 +205,14 @@ Six causes, in the order worth checking.
 <Callout type="warning">
 The first Play In Editor after opening a project can start before navigation finishes building, and a game world never fills a tile the editor world had not reached. An enemy that pathfinds on the second Play and not the first has hit this. **Build > Build Paths** and save the map.
 </Callout>
+
+### The navmesh is empty on a large map
+
+An open world, or any level using **Dynamic** navmesh generation, builds navigation around invokers rather than everywhere at once. With no invoker in the level nothing asks for a tile, so the navmesh stays empty and every enemy past 800 cm fails its path request. Pressing **P** shows bare ground.
+
+Add a **Navigation Invoker** component to the actors navigation should follow, the player pawn first. Each one asks for tiles within its generation radius and lets them go past its removal radius.
+
+Add it to the enemies as well when they wander far from the player, since an enemy outside every invoker's radius stands on unbuilt ground. Set **Runtime Generation** to **Dynamic** in **Project Settings > Navigation Mesh** for invokers to have anything to drive.
 
 ### It grinds against a wall
 
