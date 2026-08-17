@@ -27,7 +27,7 @@ export default function ReportAreaStimulusGraph() {
               pins={[
                 { name: "Source", type: "object", direction: "input", defaultValue: "Self" },
                 { name: "Stimulus", type: "struct", direction: "input", connected: true },
-                { name: "Shape", type: "struct", direction: "input", connected: true },
+                { name: "Broadcast", type: "struct", direction: "input", connected: true },
                 { name: "Facing", type: "vector", direction: "input", connected: true },
                 { name: "Return Value", type: "int", direction: "output" },
               ]}

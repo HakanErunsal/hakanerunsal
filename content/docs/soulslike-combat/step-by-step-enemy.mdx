@@ -242,7 +242,7 @@ In the order worth checking:
 
 <Collapsible title="It picks a move, and nothing happens" badge="Advanced">
 - **The ability has no activation graph.** An ability implementing neither **Activate Ability** nor **Activate Ability From Event** starts and never ends, and the enemy locks up behind it. **Ability Timeout** on the execution method cuts a hung ability off and names it in the log.
-- **The Montage Payload has no montage.** Saving the Action Set reports this into the **Soulslike Enemy Combat** message log.
+- **The Montage Payload has no montage.** Saving the Action Set reports this into the **Asset Check** message log.
 - **The Action ID is empty.** An action added through the Details panel array instead of the canvas has no ID, wins the poll, and is discarded with no log line. Opening the asset on the canvas repairs it.
 - **Enabled is unticked**, which also stops the ability being granted.
 - **Manage Action Sets Automatically is unticked** on the AI Config, which applies no set at all.

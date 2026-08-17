@@ -331,7 +331,7 @@ SEC.Debug.LogActionExecution 1   // Starts, ends and cooldowns
 
 `SEC.Debug.ScoringRows` sets how many rows the score list keeps, 5 by default and 0 for all of them. Each switch has a matching checkbox on the **Action Evaluation** component, for isolating one enemy.
 
-Saving the asset also runs validation, which reports into the **Soulslike Enemy Combat** message log listing and names any action that has nothing to run.
+Saving the asset also runs validation, which reports into the **Asset Check** message log listing and names any action that has nothing to run.
 
 <Collapsible title="It scores and wins, but nothing happens" badge="Advanced">
 - **The ability has no activation graph.** An ability implementing neither **Activate Ability** nor **Activate Ability From Event** starts and never ends. It is the classic first attempt.

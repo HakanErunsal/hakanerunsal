@@ -69,7 +69,7 @@ The **Watching** picker above the canvas lists every enemy running this Reaction
 </QuickStart>
 
 <Callout type="warning">
-An attack that does not announce itself reaches no rule, so the canvas has nothing to report however the cards are wired. Add the **SEC Attack Telegraph** notify to the attacker's montage where the wind-up starts. The **Watching** picker fills from AI whose active Reaction Set is this asset, which they reach through their **Enemy AI Config**, so a picker stuck on **None** while the game runs is one of those two. See [Attack Telegraphs](/docs/soulslike-combat/attack-telegraphs) and [Reaction System](/docs/soulslike-combat/reaction-system).
+An attack that does not announce itself reaches no rule, so the canvas has nothing to report however the cards are wired. Add the **SEC Attack Telegraph** notify to the attacker's montage where the wind-up starts; without it the picker still names an enemy while the line beside it never leaves **Nothing answering right now**. The **Watching** picker fills from AI whose active Reaction Set is this asset, which they reach through a runtime override, an equipped weapon, their **Enemy AI Config**, or **Default Reaction Set** on their **SEC Reaction Set Component**, so a picker stuck on **None** while the game runs means none of those routes landed on this asset. See [Attack Telegraphs](/docs/soulslike-combat/attack-telegraphs) and [Reaction System](/docs/soulslike-combat/reaction-system).
 </Callout>
 
 <ZoomableImage
@@ -126,7 +126,7 @@ A new trigger takes the highest **Rule Priority** in the set plus ten, which put
 
 Deleting a reaction strips every arrow that pointed at it, so no rule is left naming a reaction the set does not hold.
 
-Copy, cut, paste and duplicate work as they do in any Unreal graph. A pasted card gets a fresh ID and its own copies of the original's scorers, gates and execution method, so editing the copy leaves the original alone. Right-click also offers **Add Comment**, which groups cards under a label and changes nothing about how the AI runs.
+Copy, cut, paste and duplicate work as they do in any Unreal graph. A copied reaction card gets a fresh ID and its own execution method, scorers and gates, so editing the copy leaves the card it came from alone. A copied trigger card gets a fresh ID, but its **Conditions** stay the same gate objects the original holds, so retuning a condition on the copy retunes it on the original too. Pick the gate's class again on the copy to give it a condition of its own. Right-click also offers **Add Comment**, which groups cards under a label and changes nothing about how the AI runs.
 
 <Callout type="warning">
 Copying a card from one Reaction Set and pasting into another carries only the name. An entry's settings live in the asset that holds it and cannot travel on the clipboard, so the pasted card arrives empty and says so in the message log. To reuse a tuned reaction across sets, copy its settings across in the details panel.
@@ -155,7 +155,7 @@ Trigger cards have no incoming pin and reaction cards have no outgoing one, so a
 Fill in both and the rule answers only with a reaction that appears in its links **and** carries that category. That narrows what a rule can do and never widens it.
 
 <Callout type="warning">
-A rule with a category set and an arrow to a reaction outside that category answers nothing at all. The trigger card flags it and names both the reaction and the category. Clear the category, or give that reaction the category.
+An arrow from a rule with a category to a reaction outside that category reaches nothing, and the other arrows on that rule still answer. The rule falls silent only when every arrow it draws sits outside its category. The trigger card flags each such arrow and names both the reaction and the category. Clear the category, or give that reaction the category.
 </Callout>
 
 ---
@@ -169,7 +169,7 @@ The canvas reports what a details panel cannot show you:
 | Nothing reaches this reaction | No arrow points at it and it carries no **Reaction Category**, so only a Blueprint calling **Execute Reaction** by name can start it |
 | This rule answers nothing | The rule has no **On Stimulus** tag, so no event matches it |
 | Names neither a reaction nor a reaction category | The rule can never produce an answer, and the rule below it takes the event instead |
-| Wired outside its category | The arrow and the category disagree, so the rule answers nothing |
+| Wired outside its category | The arrow and the category disagree, so that arrow reaches nothing |
 | Chance is 0 | The rule never fires |
 | No execution method | The reaction has nothing to run |
 | The execution method is missing data | A field it needs to run is still empty |

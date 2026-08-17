@@ -56,7 +56,7 @@ export function DefenseResistanceDetails() {
     <UeComponentDetailsPanel
       displayName="SEC Damage Type Resistance"
       sourceClass="SECDefenseRule_DamageTypeResistance"
-      attachTo="DA_KnightArmour > Responses [0]"
+      attachTo="DA_Defense_KnightArmour > Responses [0]"
       sourceKind="instanced"
       note="Shaves 40 percent off slashing damage and carries on down the list, so it trims whatever the guards above it let through."
       categories={DEFENSE_RESISTANCE_DETAILS}

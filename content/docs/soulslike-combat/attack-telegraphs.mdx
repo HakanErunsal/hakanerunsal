@@ -1,7 +1,7 @@
 ---
 title: "Attack Telegraphs"
 description: "Make an attack announce itself at the wind-up: one notify on the montage, and the enemies standing in front of it get a chance to parry, dodge or stand their ground."
-date: 2026-08-16
+date: 2026-08-17
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Reactions", "Perception"]
 parent: "SoulslikeCombatDocs"
@@ -28,17 +28,17 @@ A fresh notify opens on a **Sphere** reaching 500 cm with **Team Filter** on **E
 
 <QuickStep title="Aim it at where the blade goes">
 
-Switch **Shape** to **Cone** for a directional swing, set **Radius** to the attack's reach, and set **Half Angle Degrees** to the wedge it threatens.
+Switch **Shape** to **Cone** for a directional swing, then expand the shape and set **Radius** to the attack's reach and **Half Angle Degrees** to the wedge it threatens.
 
 <UeSetPropertiesScene
   title="AM_Greatsword_Overhead"
   section="Telegraph"
   rows={[
     { name: "Shape", value: "Cone", from: "Sphere", kind: "text" },
-    { name: "Radius", value: "600", from: "500" },
-    { name: "Half Angle Degrees", value: "60", from: "60" }
+    { name: "Radius", value: "600", from: "500", indent: true },
+    { name: "Half Angle Degrees", value: "45", from: "60", indent: true }
   ]}
-  caption="Radius is the reach in centimetres. Half Angle Degrees is measured to either side of where the attack is aimed."
+  caption="Radius and Half Angle Degrees sit inside the shape and expand under it. Radius is the reach in centimetres, and Half Angle Degrees is measured to either side of where the attack is aimed."
 />
 
 </QuickStep>
@@ -62,7 +62,7 @@ An enemy whose Reaction Set carries no trigger rule for the warning's name hears
 </Callout>
 
 <Callout type="info">
-The notify works out how long is left by finding the next **SEC Melee Trace Window** further along the montage and dividing by the play rate in force, so retiming the animation keeps it right. A montage with neither a trace window nor a **Time To Impact Override** warns once in the Output Log and reports 0 seconds left. See [Melee Trace](/docs/soulslike-combat/melee-trace).
+The notify works out how long is left by finding the next **SEC Melee Trace Window** further along the montage and dividing by the play rate in force, so retiming the animation keeps it right. With no trace window after the notify and no **Time To Impact Override**, the warning still goes out, reports 0 seconds left, and names itself once in the Output Log. See [Melee Trace](/docs/soulslike-combat/melee-trace).
 </Callout>
 
 Five stages sit between the wind-up and the answer. The debug draw colours a pawn by the stage it dropped out at, so the diagram below doubles as the map for reading it.
@@ -161,7 +161,7 @@ Reach for the rule when nothing in the category can help. A blow landing from be
 A frontal blow takes the first rule and gets the guard. A blow from behind fails its condition, falls through, and gets a flinch. Match the gate's **Half Angle Degrees** to the arc on the matching [Defense](/docs/soulslike-combat/defense-system) response so the decision and the damage agree.
 
 <Callout type="info">
-Nothing hands an action a warning, so one of these four gates added to an action has nothing to judge and passes. They belong on the reaction side.
+Nothing hands an action a warning, so one of these four gates added to an action has nothing to judge and passes. Saving the Action Set raises a data validation error naming the gate and telling you to move it. They belong on the reaction side.
 </Callout>
 
 ---
@@ -184,7 +184,7 @@ Build the **Broadcast** pin with **Make Sphere Broadcast** or **Make Cone Broadc
 | **Context Tags** | Extra tags a rule can require or refuse. |
 | **Payload** | Any object to hand along, such as the weapon or the projectile. Cast it in Blueprint. |
 
-A fireball warns what is in front of it on spawn: pass the projectile as **Source**, its velocity as **Facing**, and a narrow cone as the shape. **Facing** falls back to the source actor's forward vector when left at zero.
+A fireball warns what is in front of it on spawn: pass the projectile as **Source**, its velocity as **Facing**, and a narrow cone as the shape. **Facing** is an advanced pin, so expand the arrow at the bottom of the node to reach it. Left at zero it falls back to the source actor's forward vector.
 
 The node returns how many pawns were told, which is worth printing while tuning a radius. **Direction** is filled in per pawn as the warning goes out, so an Incoming Angle Gate reads it without any setup.
 
@@ -202,7 +202,7 @@ The player wants the warning without any of the AI machinery behind it.
 The player gets no perception filters by design, because the player's eyes are the camera. The delegate fires for each announcement that reaches the pawn with nothing filtered out first, so branch on the warning yourself when a prompt should stay hidden.
 
 <Callout type="info">
-Key the widget by **Source** and refresh it rather than spawning a new one. A moving attacker re-announces, and each announcement carries a fresher Time To Impact. Treat repeats as updates.
+Key the widget by **Source** and refresh it rather than spawning a new one. One attacker announces again on the next notify in a combo, and each announcement carries its own Time To Impact. Treat repeats as updates.
 </Callout>
 
 ---
@@ -213,7 +213,7 @@ Key the widget by **Source** and refresh it rather than spawning a new one. A mo
 SEC.Debug.Stimulus.Draw 1
 ```
 
-Draws the covered ground and the facing at the origin, then one sphere at every pawn the announcement reached, coloured by what happened, with a line back to the origin and a label naming the outcome. Markers last two seconds, and the same lines go to the Output Log.
+Draws the ground the announcement covers at its origin, then one sphere at every pawn it reached, coloured by what happened and labelled with the outcome. A pawn that answered gets a thicker sphere and an arrow from the origin; every other pawn gets a plain line. A Cone draws its arc and an arrow along the aim, while a Sphere draws its reach and no facing. Markers last two seconds, and the same lines go to the Output Log.
 
 <StimulusDebugLegend />
 
@@ -223,7 +223,6 @@ Read the colours as a funnel. Grey, blue and magenta mean the announcement itsel
 
 <Collapsible title="Nothing is going out at all" badge="Advanced">
 - **The shape has no reach.** A broadcast with no shape, or one reaching 0 cm, warns nobody and logs a line naming the attack.
-- **The notify sits past the trace window.** It fires at the point you put it, so a notify placed after the blow warns nobody in time.
 - **The animation is playing in a preview window.** The notify returns early outside a game world, so scrubbing the montage in the editor announces nothing.
 - **The pawn is not the authority.** A montage playing on a client announces nothing, which is what stops one swing warning the same enemy twice.
 - **The receiver is attached to the attacker.** A pawn carried by or parented to the source is skipped, along with the source itself.
@@ -234,7 +233,7 @@ Follow the label on the yellow marker.
 
 - **No trigger rule matched.** The rule's **On Stimulus** has to match the warning's name, or sit above it as a parent tag.
 - **Nothing in the category was available.** Every reaction in the named category was on cooldown, blocked by a tag, or refused by its own gates.
-- **A Time To Impact Gate refused it.** A warning that reports 0 seconds left fails any **Min Seconds** above 0. That is the gate doing its job on a hit that already landed, and a mistake on a wind-up whose montage carries no trace window.
+- **A Time To Impact Gate refused it.** A warning that reports 0 seconds left fails any **Min Seconds** above 0. That is the gate doing its job on a hit that already landed, and a mistake on a notify sitting past the montage's last trace window, which reports 0 seconds left and reaches every gate that way.
 - **Min Interval has not elapsed.** The gap is counted from the moment the rule last started a reaction.
 </Collapsible>
 
@@ -253,7 +252,7 @@ Subclass **SEC Stimulus Shape** in Blueprint for ground the built-in shapes cann
 - **Covers Receiver** decides whether one pawn stands on the covered ground. Everything handed to it already sits inside Get Max Reach, so a shape filling its whole reach can leave this alone.
 - **Draw Shape** outlines the ground for the debug view. Feed its **World Context Object** input into the same pin on every Draw Debug node used inside, not a Self node; the shape can belong to no world, and wiring Self then draws nothing. Left alone, the base draws a sphere at full reach, which is the outer bound rather than what Covers Receiver accepts.
 
-One shape instance answers for each pawn a warning reaches, and a notify is shared by every montage carrying it, so keep a subclass free of stored state.
+One shape instance answers for every pawn a warning reaches, and a notify is shared by every montage carrying it, so keep a subclass free of stored state.
 </Collapsible>
 
 <Collapsible title="Stamping the warning from the attack itself" badge="Advanced">
@@ -303,5 +302,3 @@ Clients see the outcome through the reaction ability and its animation, which re
 | [Awareness System](/docs/soulslike-combat/awareness-system) | The perception memory the Awareness filter reads, and the stealth opener it makes possible. |
 | [Melee Trace](/docs/soulslike-combat/melee-trace) | The trace window the notify measures its time to impact against. |
 | [Animation Integration](/docs/soulslike-combat/animation-integration) | The rest of the montage surface, including the windows that hold a defensive state tag. |
-</content>
-</invoke>

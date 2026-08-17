@@ -1,7 +1,7 @@
 ---
 title: "Action Set Editor"
 description: "Lay a moveset out as cards, wire the combos between them, and watch a live enemy score every card while the fight runs."
-date: 2026-08-16
+date: 2026-08-17
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Actions", "Debugging"]
 parent: "SoulslikeCombatDocs"
@@ -69,7 +69,7 @@ The **Watching** picker above the canvas lists every AI running this Action Set 
 </QuickStart>
 
 <Callout type="warning">
-The **Watching** picker fills from AI whose active Action Set is this asset, so an enemy reaches it through its **Enemy AI Config**, and it scores nothing until a combat target is registered. A picker stuck on **None** while the game runs is one of those two. See [Action System](/docs/soulslike-combat/action-system) and [Getting Started](/docs/soulslike-combat/getting-started).
+The **Watching** picker fills from AI whose active Action Set is this asset. An enemy reaches this set through its **Enemy AI Config**, an equipped weapon, a runtime override, or the **Default Action Set** on its Action Set component. A picker stuck on **None** while the game runs means nothing resolved to this asset. See [Action System](/docs/soulslike-combat/action-system) and [Getting Started](/docs/soulslike-combat/getting-started).
 </Callout>
 
 ---
@@ -89,12 +89,11 @@ One card stands for one action, and everything on it comes from that action's se
 | **Scorers**, **Gates** | How many of each the action carries. |
 | **Recovery**, **Hook** | Its own recovery time when it overrides the config's, and whether a lifecycle hook is attached. |
 
-Rows appear only when they have something to say, so a plain attack card stays short. Hover the card for the same figures as sentences, plus one line per chain link and the bonus that follow-up receives.
+Rows appear only when they have something to say, so a plain attack card stays short. Hover the card for its execution method, selection weight and cooldown as sentences, its risk penalty and repeat limit when either is set, and one line per chain link with the bonus that follow-up receives.
 
 A card greys out when **Enabled** is unticked. A warning triangle appears when something about the action would stop it working, and hovering the triangle names which:
 
 - No execution method, or one missing a field it needs to run.
-- An empty **Action ID**, or one another action already uses.
 - A chain link naming an action this set does not define.
 - **Manual Only** set on a card that something wires into, since a chain into it changes nothing.
 
@@ -173,11 +172,6 @@ This happens when an Action ID is renamed from the raw Actions array instead of 
 
 Press Play and the canvas starts following a live enemy. The picker above the canvas lists every AI running this Action Set and latches onto the first one it finds, so a single enemy needs no setup at all.
 
-<ZoomableImage
-  src="../images/sec_actionset_graph_debug.png"
-  alt="The Action Set canvas during Play In Editor: DoubleAttack outlined in green with a RUNNING badge, SingleAttack, Dash and TripleAttack in amber with COOLDOWN badges, score bars and ready-in countdowns, and a wire running from SingleAttack to Dash"
-/>
-
 The cards you author on are the cards that light up. There is no second window to read and no separate view to switch to, so a score you disagree with is one click from the setting that produced it.
 
 <ActionCardStateLegend />
@@ -223,7 +217,7 @@ SEC.Debug.LogActionExecution 1   // Starts, ends and cooldowns
 
 `SEC.Debug.ScoringRows` sets how many rows the score list keeps, 5 by default and 0 for all of them. `SEC.Debug.All 1` turns every overlay on at once, and `SEC.Debug.WatchPawn <name>` narrows them to one enemy.
 
-Saving the asset runs validation into the **Soulslike Enemy Combat** message log, which names any action that has nothing to run.
+Saving the asset runs validation into the **Asset Check** message log, which names any action that has nothing to run.
 
 <Collapsible title="Reading the same numbers from Blueprint" badge="Advanced">
 **Get All Score Breakdowns** on the **Action Evaluation** component returns the per-action figures the canvas draws, as an array you can feed into a debug widget of your own. It scores every action on the spot, so call it for a debug view rather than per tick.

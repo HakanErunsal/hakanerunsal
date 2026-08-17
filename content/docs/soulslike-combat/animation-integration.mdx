@@ -1,7 +1,7 @@
 ---
 title: "Animation Integration"
 description: "Author combat timing on the animation itself: hold a gameplay tag for a montage window, mirror it into an animation Blueprint bool, and steer an attack toward its target."
-date: 2026-08-16
+date: 2026-08-17
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Animation", "Combat"]
 parent: "SoulslikeCombatDocs"
@@ -187,7 +187,7 @@ Add **Notify State**, **SEC Approach Window** over the wind-up frames. On an ene
 | **Face Only** | Turns to face without moving, for an attack that aims and stays put. |
 | **Move Only** | Glides without turning, for a lunge that keeps the direction the animation gives it. |
 
-**Move By Offset** replaces the target entirely. Tick it and the window steps the character a set distance along a direction of its own: `(-1, 0, 0)` with **Offset Distance** 50 is a step straight back, whatever way the character faces. Nothing has to be stored for it, and the target fields grey out. It suits a hit reaction or a block that should knock the character back over the animation's own frames.
+**Move By Offset** replaces the target entirely. Tick it and the window steps the character a set distance along a direction of its own: **Offset Direction** `(-1, 0, 0)` with **Offset Distance** 50 is a step straight back, whatever way the character faces. Nothing has to be stored for it, and the target fields grey out. It suits a hit reaction or a block that should knock the character back over the animation's own frames.
 
 An attack whose animation already carries root motion travels on its own, and the window makes up only the distance it falls short by, so a window on one of those lands its hit too. On a character a player controls, reach for **Motion Warping** instead: it bends the motion the animator authored rather than adding to it, and it predicts through the ability playing the montage.
 
@@ -199,7 +199,7 @@ An SEC ability stores it on activation under the name in its **Motion Warping Ta
 
 From a Blueprint graph, **Set Approach Target To Actor** stores an actor under a name, **Set Approach Target To Location** stores a spot, **Set Approach Target** takes the whole struct when you want per-target distances on it, and **Remove Approach Target** clears one. A window whose name holds nothing plays the attack where the character stands.
 
-The distance and facing overrides on the window can be left at -1, which hands the choice to the stored target, then to the matching **Default** on the Approach component: **Default Stop Distance** 150 cm, **Default Max Approach Distance** 750 cm, **Default Facing Interp Speed** 12.
+The distance and facing overrides on the window can be left at -1, which hands the choice to the stored target, then to the matching **Default** on the Approach component: **Default Stop Distance** 150 cm, **Default Max Approach Distance** 750 cm, **Default Facing Interp Speed** 12. Past the max approach distance the window turns the character toward its target without closing on it, so the attack plays where the character stands.
 
 <Callout type="warning">
 **Speed Limit** on the Approach component is **Unlimited**, so a window covers whatever distance separates the two in the span it was given, which can cross a room in a fraction of a second. Set it to **Character's Max Speed** for a gap-close that reads like running, or to **Fixed Speed** with a **Max Approach Speed** in cm/s.
@@ -213,7 +213,7 @@ The same steering runs from Blueprint with no montage or notify involved, for a 
 - **Approach Location**: turn it toward a spot and glide it there over a number of seconds. The spot is exact, so no stop distance comes off it.
 - **Approach Offset**: move it a set distance along a direction of its own, for a step back or a sidestep with nothing to aim at. The direction is in the character's own space, and it defaults to Move Only so a knockback does not turn the character.
 
-These start at once rather than waiting on an animation. Seconds at or below zero runs until **Stop Approach** stops it, so a chase lasts as long as you want it to.
+These start at once rather than waiting on an animation. Seconds is how long the glide takes as well as how long the call runs, so at or below zero the character turns without gliding and keeps turning until **Stop Approach** stops it.
 
 <Collapsible title="Chasing a target that keeps moving" badge="Advanced">
 **Moving Target** on the Approach component decides where a glide aims while the target moves, and a window can override it per attack.
@@ -244,7 +244,7 @@ While the window runs, whatever else turns the character stands down, and gets i
 
 For an enemy, the controller stops writing facing for the length of the window, then resumes tracking. An ability that also sets **Lock AI Rotation** on the same montage composes without error, though the two ask for opposite things: the lock stops the controller aiming, and the window turns the character itself.
 
-A second window opening on a character that is already being steered takes over, so the window that opened last is the one steering.
+A second window opening on a character that is already being steered takes over, so the window that opened last is the one steering. A move already told exactly where to land is the exception: it keeps the character until it gets there.
 
 **Acquire Facing Control** and **Release Facing Control** take the facing for anything else that needs it, and **On Facing Control Changed** fires on both. Bind it from code that writes the character's rotation settings, so it stands down for the window and re-resolves once the facing comes back.
 </Collapsible>
@@ -261,7 +261,7 @@ Against a stationary target both machines pick the same landing spot and the mot
 1. The pawn carries an **Ability System Component**.
 2. The ability's **Net Execution Policy** is **Local Predicted**.
 3. The montage plays through the **Play Montage and Wait** ability task. The window borrows the ability the ability system recorded against the montage, and only that task registers one.
-4. Section changes go through the ability system's **Montage Jump To Section**, so the server jumps to the same section.
+4. Section changes go through the ability's **Montage Jump To Section**, so the server jumps to the same section.
 
 A player character gliding without an ability names itself once in the Output Log, so the tug has an explanation rather than looking like a bug.
 

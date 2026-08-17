@@ -1155,15 +1155,15 @@ export const WEAPON_BASE_DETAILS: UeDetailCategory[] = [
     properties: [
       { label: "Attach Socket", value: { kind: "text", value: "hand_r" } },
       { label: "Attach Offset", value: { kind: "text", value: "Identity" } },
-      { label: "Weapon Action Set", value: { kind: "asset", value: "DA_GreatswordActions" } },
+      { label: "Weapon Action Set", value: { kind: "asset", value: "DA_ActionSet_Sword" } },
       { label: "Weapon Reaction Set", value: { kind: "asset", value: "None" } },
-      { label: "Weapon Defense Set", value: { kind: "asset", value: "DA_GreatswordGuard" } },
+      { label: "Weapon Defense Set", value: { kind: "asset", value: "DA_SwordGuard" } },
     ],
   },
   {
     title: "SEC|Animation",
     properties: [
-      { label: "Anim Layer To Use", value: { kind: "asset", value: "ABP_Greatsword" } },
+      { label: "Anim Layer To Use", value: { kind: "asset", value: "ABP_Sword" } },
     ],
   },
   {
@@ -1197,7 +1197,7 @@ export const STATE_TREE_BEHAVIOR_CONFIG_DETAILS: UeDetailCategory[] = [
     properties: [
       {
         label: "Default State Tree",
-        value: { kind: "text", value: "Content/SoulslikeEnemyCombat/.../StateTree_SEC_Core" },
+        value: { kind: "text", value: "StateTree_SEC_Core" },
       },
     ],
     children: [
@@ -1273,7 +1273,7 @@ export const EQUIP_LOADOUT_ENTRY_DETAILS: UeDetailCategory[] = [
   {
     title: "Loadout",
     properties: [
-      { label: "Equippable Class", value: { kind: "asset", value: "BP_EnemyGreatsword" } },
+      { label: "Equippable Class", value: { kind: "asset", value: "BP_Sword" } },
       { label: "Socket Override", value: { kind: "text", value: "None" } },
       { label: "Use Transform Override", value: b(false) },
       { label: "Use As Weapon", value: b(true) },
@@ -1312,6 +1312,7 @@ export const VITALS_COMPONENT_DETAILS: UeDetailCategory[] = [
       { label: "Regen Rate Per Second", value: n(0) },
       { label: "Regen Delay Seconds", value: n(0) },
       { label: "Depleted Loose Tag", value: { kind: "text", value: "None" } },
+      { label: "Depleted Result Tag", value: { kind: "text", value: "None" } },
       { label: "Depleted Gameplay Event", value: { kind: "text", value: "None" } },
     ],
   },
@@ -1373,7 +1374,7 @@ export const DEFENSE_COMPONENT_DETAILS: UeDetailCategory[] = [
   {
     title: "SEC|Defense",
     properties: [
-      { label: "Defense Set", value: { kind: "asset", value: "DA_KnightArmour" } },
+      { label: "Defense Set", value: { kind: "asset", value: "DA_Defense_KnightArmour" } },
       { label: "Responses", value: { kind: "text", value: "3 Array elements" } },
     ],
   },
@@ -1391,7 +1392,7 @@ export const DEFENSE_INVULNERABLE_DETAILS: UeDetailCategory[] = [
     properties: [
       { label: "Required Tags", value: tagContainer(["SEC.State.Invulnerable"]) },
       { label: "Blocked Tags", value: tagContainer([]) },
-      { label: "Result Tag", value: { kind: "text", value: "SEC.Defense.Dodge" } },
+      { label: "Result Tag", value: { kind: "text", value: "SEC.Defense.Block" } },
     ],
   },
   {
@@ -1509,7 +1510,7 @@ export const ATTACK_TELEGRAPH_NOTIFY_DETAILS: UeDetailCategory[] = [
         defaultOpen: true,
         properties: [
           { label: "Radius", value: n(600, 0) },
-          { label: "Half Angle Degrees", value: n(60, 0, 180) },
+          { label: "Half Angle Degrees", value: n(45, 0, 180) },
           { label: "Yaw Offset Degrees", value: n(0, -180, 180) },
         ],
       },
@@ -1527,6 +1528,8 @@ export const APPROACH_WINDOW_NOTIFY_DETAILS: UeDetailCategory[] = [
     title: "Approach",
     properties: [
       { label: "Move By Offset", value: { kind: "bool", value: false } },
+      { label: "Offset Direction", value: { kind: "text", value: "X -1.0  Y 0.0  Z 0.0" }, disabled: true },
+      { label: "Offset Distance", value: n(50, 0), disabled: true },
       { label: "Approach Target Name", value: { kind: "text", value: "Target" } },
       { label: "Mode", value: { kind: "enum", value: "Move and Face" } },
       { label: "Stop Distance Override", value: n(-1, -1) },

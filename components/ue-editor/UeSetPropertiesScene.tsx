@@ -14,6 +14,8 @@ interface SceneRow {
   /** What the row reads before it. Defaults to the property's shipped default being visibly replaced. */
   from?: string;
   kind?: RowKind;
+  /** Indent one level, for a field that expands under the instanced object above it. */
+  indent?: boolean;
 }
 
 interface UeSetPropertiesSceneProps {
@@ -122,7 +124,7 @@ export default function UeSetPropertiesScene({
             >
               <span
                 className="w-[46%] shrink-0 truncate text-[10px]"
-                style={{ color: UE.foreground }}
+                style={{ color: UE.foreground, paddingLeft: row.indent ? 16 : 0 }}
               >
                 {row.name}
               </span>

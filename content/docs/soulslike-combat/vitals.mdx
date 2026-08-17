@@ -1,7 +1,7 @@
 ---
 title: "Vitals"
 description: "Give a pawn resource pools: health that kills it at zero, stamina that refills on its own, and any other pool you name."
-date: 2026-08-16
+date: 2026-08-17
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Vitals", "Health"]
 parent: "SoulslikeCombatDocs"
@@ -35,8 +35,7 @@ Set **Max Value** on the Health row. The pool starts full, and the plugin's enem
   section="Vitals > Index [0]"
   rows={[
     { name: "Vital Tag", value: "SEC.Vital.Health", kind: "text" },
-    { name: "Max Value", value: "450.0", from: "100.0" },
-    { name: "Regen Rate Per Second", value: "0.0", from: "0.0" }
+    { name: "Max Value", value: "450.0", from: "100.0" }
   ]}
   caption="One row is one pool. Max Value is the whole first pass."
 />
@@ -52,7 +51,7 @@ Press **+** on the **Vitals** array for a second row. Point **Vital Tag** at `SE
   section="Vitals > Index [1]"
   rows={[
     { name: "Vital Tag", value: "SEC.Vital.Stamina", kind: "text" },
-    { name: "Max Value", value: "100.0", from: "100.0" },
+    { name: "Max Value", value: "120.0", from: "100.0" },
     { name: "Regen Rate Per Second", value: "15.0", from: "0.0" },
     { name: "Regen Delay Seconds", value: "1.5", from: "0.0" }
   ]}
@@ -70,7 +69,7 @@ Press Play and run `SEC.Debug.Vitals 1`. Every pawn carrying vitals gets its poo
 </QuickStart>
 
 <Callout type="warning">
-A pool the pawn has no row for reads as nothing at all: a **Vital Gate** pointed at it passes, a **Vital Scorer** pointed at it scores flat, and health reads as full. Nothing logs. So a mistyped tag, or a health pool renamed without updating **Health Vital Tag** in Project Settings, leaves an enemy that cannot be gated and cannot die.
+A pool the pawn has no row for reads as nothing at all: a **Vital Gate** pointed at it passes, a **Vital Scorer** pointed at it scores flat, and health reads as full. Those readers say nothing in the log, so a mistyped tag, or a health pool renamed without updating **Health Vital Tag** in Project Settings, leaves an enemy that cannot be gated and cannot die. The write side is louder: **Modify Vital**, **Drain Vital**, **Set Vital** and **Fill Vital** each warn with the tag they could not find, and the damage path warns once per enemy class the first time a hit lands on a pawn carrying no health pool.
 </Callout>
 
 ---
@@ -89,7 +88,7 @@ Each row in the **Vitals** array is one pool. A row needs a tag and a maximum; t
 | **Regen Delay Seconds** | Seconds after any change before the pool starts climbing; each change restarts the wait. 0 resumes in the same instant. |
 | **Depleted Loose Tag** | Held on the pawn's ability system while the pool sits at zero with no regeneration running. Dropped when regeneration starts or the pool refills. |
 | **Depleted Result Tag** | Added to the hit report on the exact blow that empties the pool, so the attack that broke it can answer with its own effect. Later hits on the empty pool do not add it again. |
-| **Depleted Gameplay Event** | Sent to the pawn once per depletion, on the server. |
+| **Depleted Gameplay Event** | Sent to the pawn once per depletion, on the server. Skipped when the pawn has no ability system. |
 
 Two rows naming one tag keep the first. A pawn with an empty **Vitals** array carries no pools and does nothing.
 
@@ -97,7 +96,7 @@ Two rows naming one tag keep the first. A pawn with an empty **Vitals** array ca
 
 ## Spend it, heal it, read it
 
-Four nodes change a pool. Each runs on the server; a client call is ignored with a warning.
+These nodes change a pool. Each runs on the server; a client call is ignored with a warning.
 
 | Node | Does |
 |------|------|
@@ -130,6 +129,8 @@ Three fields on the row cover the usual jobs, so a guard break or an exhaustion 
 - **Depleted Gameplay Event** fires an ability directly. Point a stagger ability's activation at it and a stance pool at zero staggers the enemy.
 - **Depleted Result Tag** rides back on the blow that broke the pool, so the attacker can play a guard-break impact on that hit alone. See [Melee Trace](/docs/soulslike-combat/melee-trace).
 
+The loose tag and the gameplay event both go through the pawn's ability system, so a pawn without one gets neither. The result tag rides the hit report and needs no ability system.
+
 For anything else, bind **On Vital Depleted**, which carries the tag of the pool that emptied.
 
 ---
@@ -149,7 +150,7 @@ An AI carrying no vitals component, or no row for the configured tag, reads as f
 
 <Protip
   title="Bringing one back"
-  description="Handle Revive puts a dead enemy back under AI control. Re-arm it afterwards with Equip Starting Loadout, since death released the weapon."
+  description="Handle Revive puts a dead enemy back under AI control. Death unequips whatever it carried, dropping it when Drop Weapon On Death is ticked, so re-arm it afterwards with Equip Starting Loadout."
 />
 
 ---
@@ -184,7 +185,7 @@ SEC.Debug.WatchPawn Grunt // Narrow the overlays to one pawn by name
 The overlay reads on a client as well as the server. To leave it on for one pawn without touching the console, tick **Debug Overlay Vitals** on that pawn's **SEC Vitals** component.
 
 <Collapsible title="Nothing is spending or refilling" badge="Advanced">
-- **The tag has no row.** Mutators do nothing and readers answer 0. **Has Vital** tells you in one node.
+- **The tag has no row.** Mutators do nothing and readers answer 0. **Modify Vital**, **Drain Vital**, **Set Vital** and **Fill Vital** each warn with the tag they could not find, so the log names the typo; **Has Vital** answers the same question in one node.
 - **The call ran on a client.** Modify, Drain, Set and Fill are server-only and log a warning when a client calls them. Route the spend through a server event, or let the ability that runs the move do it on the authority.
 - **Max Value is 0.** The row is skipped at BeginPlay with a warning in the log.
 - **Regen Rate Per Second is 0.** The pool holds wherever it was left.
