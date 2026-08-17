@@ -1,10 +1,14 @@
 "use client";
 
 import { UE } from "./ue-theme";
+import { UeAssetThumbSquare } from "./UeAssetThumb";
 import { UeSceneFrame } from "./UeSceneFrame";
 import { useSceneClock } from "./useSceneClock";
 
 type RowKind = "number" | "text" | "bool" | "asset" | "class";
+
+const ROW_HEIGHT = 26;
+const ASSET_ROW_HEIGHT = 38;
 
 interface SceneRow {
   /** Editor DisplayName of the property. */
@@ -14,6 +18,8 @@ interface SceneRow {
   /** What the row reads before it. Defaults to the property's shipped default being visibly replaced. */
   from?: string;
   kind?: RowKind;
+  /** Underline color on an asset row thumbnail. Defaults to the data asset color. */
+  accent?: string;
   /** Indent one level, for a field that expands under the instanced object above it. */
   indent?: boolean;
 }
@@ -31,6 +37,7 @@ interface UeSetPropertiesSceneProps {
 function RowValue({ row, filled }: { row: SceneRow; filled: boolean }) {
   const kind = row.kind ?? "number";
   const text = filled ? row.value : (row.from ?? "");
+  const accent = row.accent;
 
   if (kind === "bool") {
     const on = filled ? row.value !== "false" : row.from === "true";
@@ -48,7 +55,39 @@ function RowValue({ row, filled }: { row: SceneRow; filled: boolean }) {
     );
   }
 
-  if (kind === "asset" || kind === "class") {
+  // An asset property stands taller than a text row: the editor shows the picked
+  // asset's thumbnail beside the picker, with the browse buttons under it.
+  if (kind === "asset") {
+    return (
+      <span className="flex flex-1 items-center gap-1.5">
+        <UeAssetThumbSquare accent={text ? accent ?? UE.dataAsset : UE.secondary} size={28} />
+        <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
+          <span
+            className="flex items-center justify-between gap-1 truncate rounded-[2px] border px-1.5 py-[2px] text-[10px]"
+            style={{
+              borderColor: UE.dropdownOutline,
+              background: UE.input,
+              color: text ? UE.foregroundHeader : UE.hover2,
+            }}
+          >
+            <span className="truncate">{text || "None"}</span>
+            <span style={{ color: UE.hover2 }}>▾</span>
+          </span>
+          <span className="flex items-center gap-1" style={{ color: UE.hover2 }}>
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden>
+              <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.2" />
+              <path d="M9.5 5.5 L6.5 8 L9.5 10.5" stroke="currentColor" strokeWidth="1.2" />
+            </svg>
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden>
+              <path d="M2 4.5 H6.5 L8 6.5 H14 V12.5 H2 Z" stroke="currentColor" strokeWidth="1.2" />
+            </svg>
+          </span>
+        </span>
+      </span>
+    );
+  }
+
+  if (kind === "class") {
     return (
       <span
         className="flex flex-1 items-center gap-1.5 truncate rounded-[2px] border px-1.5 py-[2px] text-[10px]"
@@ -58,12 +97,6 @@ function RowValue({ row, filled }: { row: SceneRow; filled: boolean }) {
           color: text ? UE.foregroundHeader : UE.hover2,
         }}
       >
-        {kind === "asset" && (
-          <span
-            className="h-2 w-2 shrink-0 rounded-[1px]"
-            style={{ background: text ? UE.dataAsset : UE.secondary }}
-          />
-        )}
         <span className="truncate">{text || "None"}</span>
       </span>
     );
@@ -91,6 +124,7 @@ export default function UeSetPropertiesScene({
   width = 400,
 }: UeSetPropertiesSceneProps) {
   const durations = [900, ...rows.map(() => 1000), 1800];
+  const bodyHeight = rows.reduce((total, r) => total + (r.kind === "asset" ? ASSET_ROW_HEIGHT : ROW_HEIGHT), 0);
   const { step, ref } = useSceneClock(durations);
   const focusedRow = step - 1;
 
@@ -99,7 +133,7 @@ export default function UeSetPropertiesScene({
       title={title}
       caption={caption}
       width={width}
-      height={44 + rows.length * 26}
+      height={30 + bodyHeight}
       frameRef={ref}
     >
       <div className="absolute inset-0" style={{ background: UE.background }}>
@@ -115,8 +149,9 @@ export default function UeSetPropertiesScene({
           return (
             <div
               key={row.name}
-              className="flex items-center gap-2 border-b px-2 py-[3px] transition-colors duration-200"
+              className="flex items-center gap-2 border-b px-2 transition-colors duration-200"
               style={{
+                height: row.kind === "asset" ? ASSET_ROW_HEIGHT : ROW_HEIGHT,
                 borderColor: UE.windowBorder,
                 background: focused ? UE.selectParent : i % 2 ? UE.panel : UE.background,
                 boxShadow: focused ? `inset 2px 0 0 ${UE.primary}` : "none",

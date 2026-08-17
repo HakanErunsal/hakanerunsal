@@ -8,6 +8,7 @@ import {
 } from "./ue-theme";
 import { getAssetAccent, getAssetTypeLabel } from "./UeAssetIcon";
 import type { UeAssetType } from "./ue-theme";
+import { UeAssetTile } from "./UeAssetThumb";
 import { UeSceneFrame } from "./UeSceneFrame";
 import { useSceneClock } from "./useSceneClock";
 
@@ -284,31 +285,14 @@ export default function UeCreateAssetScene({
         </div>
 
         {tileShown && (
-          <div
-            className="absolute flex flex-col overflow-hidden rounded-[2px]"
-            style={{ left: TILE.x, top: TILE.y, width: TILE.size }}
-          >
-            <div
-              className="relative flex items-center justify-center"
-              style={{ height: TILE.size, background: UE.input }}
-            >
-              <AssetGlyph accent={accent} size={44} />
-            </div>
-            <div
-              className="flex flex-col justify-center px-1 py-1"
-              style={{ height: TILE.labelHeight, background: renaming ? UE.selectInactive : UE.panel }}
-            >
-              <span
-                className="truncate text-[9px] leading-tight"
-                style={{ color: UE.foregroundHeader }}
-              >
-                {assetName}
-                {renaming && <span className="ml-px animate-pulse">|</span>}
-              </span>
-              <span className="truncate text-[7px] leading-tight" style={{ color: UE.hover2 }}>
-                {label}
-              </span>
-            </div>
+          <div className="absolute" style={{ left: TILE.x, top: TILE.y }}>
+            <UeAssetTile
+              accent={accent}
+              size={TILE.size}
+              name={assetName}
+              typeLabel={label}
+              renaming={renaming}
+            />
           </div>
         )}
 

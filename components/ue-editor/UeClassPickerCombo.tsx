@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
+import { UeInstancedObjectIcon } from "./UeAssetThumb";
 
 /**
  * Instanced-object combo box from the Details panel, opened.
@@ -107,9 +108,12 @@ export function UeClassPickerCombo({
         aria-expanded={open}
         aria-haspopup="listbox"
         onClick={() => setOpen((wasOpen) => !wasOpen)}
-        className="ue-dp-combo ue-dp-combo--interactive flex w-full max-w-[190px] items-center justify-between gap-1 pl-1.5 pr-1"
+        className="ue-dp-combo ue-dp-combo--interactive flex w-full max-w-[190px] items-center justify-between gap-1 pl-1 pr-1"
       >
-        <span className="truncate text-[13px] leading-[21px] text-[color:var(--uekit-foreground-header)]">{value}</span>
+        <span className="flex min-w-0 items-center gap-1.5">
+          <UeInstancedObjectIcon />
+          <span className="truncate text-[13px] leading-[21px] text-[color:var(--uekit-foreground-header)]">{value}</span>
+        </span>
         <svg className="h-2.5 w-2.5 shrink-0 text-[color:var(--uekit-hover2)]" viewBox="0 0 10 10" fill="currentColor" aria-hidden>
           <path d="M1 3 L9 3 L5 8 Z" />
         </svg>
