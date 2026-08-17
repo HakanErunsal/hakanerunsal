@@ -1,7 +1,7 @@
 ---
 title: "Combat Roles"
-description: "Coordinate multiple enemies with role slots, fitness scoring, and per-role action/movement/reaction sets."
-date: 2026-08-10
+description: "Coordinate a pack: cap how many enemies attack at once, and swap each enemy's moveset, reactions and movement to match the role it holds."
+date: 2026-08-16
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Combat Roles"]
 parent: "SoulslikeCombatDocs"
@@ -14,52 +14,99 @@ order: 8
     { label: "Combat Roles" }
 ]} />
 
-> Slot limits cap how many enemies attack at once. Fitness scoring fills open slots. A role change swaps ActionSet, ReactionSet, and movement profile.
+> Four enemies around one player: one pressing the attack, the rest circling and waiting their turn. Roles decide who is which, and swap each enemy's behaviour assets to match.
 
-## When to Use This
+<QuickStart time="60 seconds">
 
-- You run several enemies against one player and want staggered pressure.
-- You want Soulslike-style turn-taking without scripting each swap by hand.
-- One controller class should drive different archetypes (Attacker up front, Waiter at range) via tags.
-- You tune difficulty by raising or lowering Attacker caps per target pool.
+<QuickStep title="Register the player as a combat target">
 
-Set `bAutoRegisterForCombatRoles` to false on bosses, ambient critters, or any AI that should skip slot coordination.
+In the player pawn's **BeginPlay**, get the **AI Combat Role Subsystem** and call **Register Combat Target** with `Self`.
 
-Roles decide who is in the fight and how each enemy behaves. To cap how many of them swing at the same moment, reach for [Combat Tokens](/docs/soulslike-combat/combat-tokens), which gate one action rather than an enemy's whole behavior set. The two stack.
+`BP_SEC_PlayerCharacter` in the showcase content does exactly this, and `BP_Dummy` shows the same wiring on a stationary target.
+
+</QuickStep>
+
+<QuickStep title="Drop three or more enemies into the level">
+
+Each enemy joins the pool when its AI controller possesses it. **Auto-Register for Combat Roles** on the **Enemy AI Config** is ticked out of the box, so this step is already done.
+
+<UeSetPropertiesScene
+  title="EnemyConfig_Grunt"
+  section="Combat Role"
+  rows={[
+    { name: "Auto-Register for Combat Roles", value: "true", from: "true", kind: "bool" },
+    { name: "Allowed Roles (empty = any)", value: "Empty", from: "Empty", kind: "text" },
+    { name: "Priority", value: "0", from: "0" }
+  ]}
+  caption="An untouched config already joins the pool and accepts any role."
+/>
+
+</QuickStep>
+
+<QuickStep title="Cap how many attack at once">
+
+Open **Project Settings**, **Plugins**, **Soulslike Enemy Combat**. Under **Role Limits**, set the **Attacker** row to 1 for the classic one-at-a-time fight. It ships at 3.
+
+</QuickStep>
+
+<QuickStep title="Give the roles something to do">
+
+Open the **Enemy AI Config**. Under **Movement Profiles**, set **Default Movement Profile** to a patient profile, then add a **Role Movement Profiles** entry for `SEC.Role.Attacker` pointing at an aggressive one. The showcase content ships five to start from, `DA_MovementBehavior_Attacker` through `DA_MovementBehavior_Elite`.
+
+<UeSetPropertiesScene
+  title="EnemyConfig_Grunt"
+  section="Movement Profiles"
+  rows={[
+    { name: "Manage Movement Profiles Automatically", value: "true", from: "true", kind: "bool" },
+    { name: "Default Movement Profile", value: "DA_MovementBehavior_Waiter", kind: "asset" },
+    { name: "Role Movement Profiles", value: "1 Array element", from: "0 Array elements", kind: "text" }
+  ]}
+  caption="The default covers every role that has no entry of its own, so one override is enough to see the difference."
+/>
+
+</QuickStep>
+
+<QuickStep title="Play, and watch the roles swap">
+
+Press Play and run `SEC.Debug.Role 1` in the console. Each enemy gets its name and role above its head, coloured by role: red Attacker, orange Flanker, blue Waiter, green Supporter, purple Elite.
+
+</QuickStep>
+
+</QuickStart>
+
+<Callout type="warning">
+An enemy with no combat target holds no role. Role slots are counted per target, so an enemy the subsystem has not paired with one is skipped both when it registers and on the reassignment timer. If the roles above every head read empty, nothing registered the player. See [Getting Started](/docs/soulslike-combat/getting-started) and [Targeting](/docs/soulslike-combat/targeting-system).
+</Callout>
 
 ---
 
-## Built-in Roles
+## The six roles
 
-Roles use `SEC.Role.*` gameplay tags. Define custom tags under `SEC.Role` in **Project Settings → Gameplay Tags**, then add them to **Plugins → Soulslike Enemy Combat → Additional Roles**.
+Roles are gameplay tags under `SEC.Role`.
 
-| Role | Tag | Typical use |
-|------|-----|-------------|
-| None | `SEC.Role.None` | No coordinated role; assigned when no slot fits. |
-| Attacker | `SEC.Role.Attacker` | Primary melee pressure. |
-| Waiter | `SEC.Role.Waiter` | Holds distance, waits for a slot. |
-| Flanker | `SEC.Role.Flanker` | Circles for angle attacks. |
-| Supporter | `SEC.Role.Supporter` | Ranged or support from the back. |
-| Elite | `SEC.Role.Elite` | Boss-tier enemy; unlimited slots by default. |
+| Role | Tag | What it is for |
+|------|-----|----------------|
+| Attacker | `SEC.Role.Attacker` | Front-line pressure. The role the fight revolves around. |
+| Waiter | `SEC.Role.Waiter` | Holds distance and waits for a slot to open. |
+| Flanker | `SEC.Role.Flanker` | Circles for an angle. |
+| Supporter | `SEC.Role.Supporter` | Ranged fire or support from the back. |
+| Elite | `SEC.Role.Elite` | Boss-tier enemy. Unlimited slots out of the box. |
+| None | `SEC.Role.None` | What an enemy gets when the pass finds no free slot for it. |
 
-The subsystem reassigns roles on `RoleReassignmentInterval`. Each tick it scores (AI, role) pairs per combat target pool, applies slot limits, and notifies controllers on change.
+An enemy the pass cannot seat holds `SEC.Role.None`; the **Fallback Role** field in Project Settings takes no part in that.
 
 <CombatRoleVisualizer />
 
+To add a role of your own, define a tag under `SEC.Role` in **Project Settings**, **Gameplay Tags**, then list it under **Additional Roles** in **Project Settings**, **Plugins**, **Soulslike Enemy Combat**. It is scored and filled alongside the built-ins.
+
 ---
 
-## Project Settings: Slots and Timing
+## Cap how many hold each role
 
-Open **Project Settings → Plugins → Soulslike Enemy Combat**.
+**Role Limits** in **Project Settings**, **Plugins**, **Soulslike Enemy Combat** is a list of role and limit pairs. A role with no row has unlimited slots.
 
-### Role limits
-
-`Role Limits` is an array of `{ Role, Limit }`. Any role omitted from the array has unlimited slots.
-
-Defaults from `USoulslikeEnemyCombatSettings`:
-
-| Role | Default limit |
-|------|---------------|
+| Role | Ships at |
+|------|----------|
 | Attacker | 3 |
 | Flanker | 2 |
 | Supporter | 2 |
@@ -67,258 +114,229 @@ Defaults from `USoulslikeEnemyCombatSettings`:
 | Elite | unlimited |
 | None | unlimited |
 
-Call `SetRoleLimitOverride` at runtime to change a cap (`-1` = unlimited, `0` = disable the role). Full API: **Runtime control API** collapsible.
+Each combat target counts its own slots, so two players can each field three Attackers.
 
-### Reassignment timing
-
-<CombatRoleTimingDetails />
-
-- **`RoleReassignmentInterval`** (default `8` s): interval for `EvaluateRoleDistribution`. Set `0` and drive reassignment with `ForceReassignment`.
-- **`MinTimeInRole`** (default `8` s): hysteresis window. If the AI is still in its current role and `TimeInCurrentRole` is below this value, the evaluator adds `+0.3` to that role's adjusted fitness.
-- **`bReevaluateTargetsOnReassignment`**: with two or more registered combat targets, re-run each AI's `TargetSelector` at the start of each timer tick, before role evaluation. Ignored with a single target. Per-enemy opt-out: `bIgnoreTargetRedistribution` on `EnemyAIConfig`.
+<Callout type="info">
+Role limits cap how many enemies **hold** a role. To cap how many **swing** at the same moment, reach for [Combat Tokens](/docs/soulslike-combat/combat-tokens), which gate one action rather than an enemy's whole behaviour set. The two stack.
+</Callout>
 
 ---
 
-## EnemyAIConfig Setup
+## Give each role its own behaviour
 
-Create **Right-click → Miscellaneous → Data Asset → EnemyAIConfig**. Assign it on the pawn via `IEnemyAIConfigProvider`, or set **Default AI Config** on `SECCombatControllerComponent`.
+When an enemy's role changes, its controller resolves three assets and applies them.
 
-### Combat role fields
+| Per-role list | Falls back to | Master switch |
+|---------------|---------------|---------------|
+| **Role Action Sets** | **Default Action Set** | Manage Action Sets Automatically |
+| **Role Reaction Sets** | **Default Reaction Set** | Manage Reaction Sets Automatically |
+| **Role Movement Profiles** | **Default Movement Profile** | Manage Movement Profiles Automatically |
+
+All three live on the **Enemy AI Config**. A role with no entry in a list takes that category's default. An equipped weapon's own sets beat the config's role entries, so a bow-carrying skeleton keeps its archer moveset whatever role it holds. See [Actions](/docs/soulslike-combat/action-system), [Reactions](/docs/soulslike-combat/reaction-system), [Movement](/docs/soulslike-combat/movement-system).
+
+<Callout type="warning">
+Fill in the default as well as the role list. An enemy holding a role you did not list, or no role at all, gets whatever the default names; leave the default empty and it gets nothing.
+</Callout>
+
+---
+
+## Steer which enemy gets which role
+
+These sit under **Combat Role** on the **Enemy AI Config**.
 
 <CombatRoleConfigDetails />
 
-| Field | Notes |
-|-------|-------|
-| **Auto-Register for Combat Roles** | On possess, `SECCombatControllerComponent` calls `RegisterCombatant`. The config flag overrides the component default. |
-| **Allowed Roles** | Empty allows any built-in or custom role. Restrict an archer to `Waiter` and `Supporter`. |
-| **Priority** | Tiebreaker on equal adjusted fitness. Grunt `0`, elite `50`, mini-boss `100`, boss `200`. |
-| **Preferred Role** | Adds `+0.05` to adjusted fitness while scoring that role tag. |
-| **Fitness Evaluators** | Instanced `URoleEvaluator` objects. Empty list uses distance-only fallback (closer = higher score, 2000 cm cap). |
-| **Target Selector** | Picks a registered combat target when several exist. Falls back to project **Default Target Selector**. |
-| **Ignore Target Redistribution** | Skips periodic target re-evaluation on this AI. Use for bosses pinned to one player. |
-
-### Map roles to behavior assets
-
-On role change, `SECCombatControllerComponent::SyncStateForCombatRole` resolves and applies:
-
-| Asset | Config section | Managed by |
-|-------|----------------|------------|
-| [ActionSet](/docs/soulslike-combat/action-system) | `RoleActionSets` / `DefaultActionSet` | `bManageActionSetsAutomatically` |
-| [ReactionSet](/docs/soulslike-combat/reaction-system) | `RoleReactionSets` / `DefaultReactionSet` | `bManageReactionSetsAutomatically` |
-| [Movement profile](/docs/soulslike-combat/movement-system) | `RoleMovementProfiles` / `DefaultMovementProfile` | `bManageMovementProfilesAutomatically` |
-
-Unlisted roles use the default asset for that category. Equipped weapon overrides beat config role entries (same order as [Action](/docs/soulslike-combat/action-system) and [Reaction](/docs/soulslike-combat/reaction-system) resolution).
+| Field | What to do with it |
+|-------|--------------------|
+| **Auto-Register for Combat Roles** | Untick it to keep this enemy out of the pool. It takes no slot and holds no role, and its controller still applies the config's default action set, reaction set and movement profile at possession. |
+| **Allowed Roles (empty = any)** | Empty lets the enemy hold any role. List tags to pin an archer to Waiter and Supporter so it is not sent to the front. |
+| **Priority** | Higher values get first pick of limited slots. 0 for a grunt, 50 for an elite, 100 for a mini-boss, 200 for a boss. |
+| **Preferred Role** | Adds 0.05 to that role's fitness score, enough to break a tie. It must also appear in Allowed Roles, unless that list is empty. |
+| **Fitness Evaluators** | Empty scores on distance alone, closest first, out to 2000 cm. See the drawers below. |
+| **Target Selector** | Which registered target this enemy fights when several exist. See [Targeting](/docs/soulslike-combat/targeting-system). |
+| **Target Filter** | Which actors this enemy will fight at all, asked before any target is selected. See [Targeting](/docs/soulslike-combat/targeting-system). |
+| **Ignore Target Redistribution** | Pins this enemy to its target while the rest of the pack redistributes. Use it for a boss. |
 
 ---
 
-## Register a Combat Target
+## How often roles change
 
-`RegisterCombatant` runs on possess. `AssignRoleToNewCombatant` does nothing until the combatant has an `AssignedTarget`. Periodic evaluation skips combatants with no target.
+<CombatRoleTimingDetails />
 
-On the server, when the player enters combat:
+| Field | Default | What to do with it |
+|-------|---------|--------------------|
+| **Role Reassignment Interval** | 8 s | How often the whole pool is re-scored. Lower it for a fight that reshuffles quickly. Set it to 0 to stop the timer and drive reassignment by hand. |
+| **Min Time In Role** | 8 s | Hysteresis. An enemy still inside this window gets 0.3 added to its current role's score, which keeps it where it is. Lower it for more churn. |
+| **Reevaluate Targets On Reassignment** | off | Re-runs each enemy's Target Selector before roles are scored. Needs two or more registered targets; it does nothing with one. |
 
-```cpp
-UAICombatRoleSubsystem* Roles = GetWorld()->GetSubsystem<UAICombatRoleSubsystem>();
-Roles->RegisterCombatTarget(PlayerPawn, /*bAutoAssignUnassigned=*/true);
+A newly registered enemy does not wait for the timer. It takes the best free slot the moment it registers, without disturbing anyone else.
+
+---
+
+## Debug it
+
+```
+SEC.Debug.Role 1                  // Name and role above each enemy, coloured by role
+SEC.Debug.LogRoleAssignments 1    // Each role change, with the fitness score behind it
+SEC.Debug.LogRoleAssignments 2    // Adds every enemy-to-role pair the pass considered
 ```
 
-- **`RegisterCombatTarget`**: adds the actor to the target pool.
-  - **`bAutoAssignUnassigned`**: calls `ForceReassignment` and `EvaluateRoleDistribution` straight away. A combatant standing idle picks a target through its own Target Filter and Target Selector whether this is set or not, so an enemy whose team rules turn the target aside stays idle.
-  - **`bReevaluateExisting`**: calls `ReevaluateAllTargets()` so assigned combatants re-run `TargetSelector` (honors `bIgnoreTargetRedistribution`).
-- **`SetCombatTarget`**: deprecated; calls `RegisterCombatTarget(NewTarget, true)` with no `bReevaluateExisting`.
-- **`AddCombatTarget`**: registers the target only. Use `RegisterCombatTarget` unless you own assignment yourself.
+`SEC.Debug.All 1` turns every overlay section on at once, and `SEC.Debug.WatchPawn <name>` narrows them to one enemy. The role line replicates, so it reads on a client as well as on the server.
 
-Each target pool enforces role limits independently (two players can each field three Attackers). See **Multi-target control** for the rest of the API.
+The **SEC Combat Role** component on the pawn carries a **Debug Overlay Role** checkbox that draws the same line for that one enemy without touching the console.
 
----
+<Collapsible title="Nothing changes role" badge="Advanced">
+In the order worth checking:
 
-## Runtime Flow
+- **No registered combat target.** Slots are counted per target, so an enemy paired with none is skipped by registration and by the timer alike. This is the common one and it logs at Verbose.
+- **Auto-Register for Combat Roles is unticked** on the config.
+- **The controller has no SEC Combat Controller component.** That component is what calls **Register Combatant** at possession, so an enemy without it never joins the pool. Calling **Register Combatant** yourself succeeds either way, on default parameters: any role, priority 0, no evaluators. **Enemy Controller Base** ships with the component.
+- **Only one enemy is in the fight.** With default limits it takes Attacker and stays there. Roles move when there are more enemies than slots.
+- **Role Reassignment Interval is 0.** The timer auto-starts only when the interval is above 0. Call **Force Reassignment** yourself, or **Start Reassignment Timer** after setting an interval.
+- **Reassignment is paused.** **Pause Reassignment** freezes role changes until **Resume Reassignment**.
+- **The role is locked.** **Force Assign Role** with its lock argument set makes the evaluator skip that enemy. **Unlock Role** clears it.
+- **The enemy is mid-action.** An enemy whose action is executing counts as locked for that pass, keeps its role and holds its slot. Cap Attacker at 1, give it a long attack, and the pool reads frozen from the outside.
+- **Min Time In Role is long against the interval.** The hysteresis bonus then holds a role through most passes.
 
-1. On possess, `SECCombatControllerComponent` resolves `EnemyAIConfig` from the pawn's `IEnemyAIConfigProvider`, else `DefaultAIConfig`.
-2. With auto-register enabled, it calls `UAICombatRoleSubsystem::RegisterCombatant` (`AAIController` required).
-3. The combatant receives a target from `InitialTarget` (runtime-only), `TargetSelector`, or, with no selector configured, the first registered target its team rules allow it to fight.
-4. With a target set, `AssignRoleToNewCombatant` slots the newcomer without reshuffling the whole pool.
-5. Each `RoleReassignmentInterval` tick, `EvaluateRoleDistribution` groups by target, scores (AI, role) pairs, sorts by adjusted fitness then **Priority**, and greedily fills slots.
-6. `NotifyRoleChange` calls `SECCombatControllerComponent::HandleCombatRoleAssigned` when present, replicates to `SECCombatRoleComponent`, and runs **`SyncStateForCombatRole`**.
-
-No open slot in the greedy pass → `SEC.Role.None`. Before the first assignment, `CurrentRole` may be `FGameplayTag::EmptyTag`.
-
----
-
-## When the Role Changes
-
-`EnemyControllerBase` ships with `SECCombatControllerComponent`. On role change:
-
-1. `HandleCombatRoleAssigned` writes the tag to **`SECCombatRoleComponent`** on the pawn (replicated).
-2. **`SyncStateForCombatRole`** pushes the matching action set and reaction set, asks the equipped weapon what it gives for the new role, and applies the movement profile.
-
-Add **`SECCombatControllerComponent`** to custom `AAIController` classes, or call **`USECCombatRoleSyncLibrary`** yourself. Without that, `NotifyRoleChange` still fires on the global delegate but does not swap assets.
-
-<Collapsible title="Manual sync for custom controllers" badge="Alternative">
-
-`USECCombatRoleSyncLibrary` matches `SyncStateForCombatRole`:
-
-| Function | Syncs |
-|----------|-------|
-| `SyncAllForCombatRole(Controller, Pawn, RoleTag, AIConfig)` | Action + reaction + weapon sets + movement |
-| `SyncActionSetForRole(Pawn, RoleTag)` | `SECActionSetComponent` only |
-| `SyncReactionSetForRole(Pawn, RoleTag)` | `SECReactionSetComponent` only |
-| `SyncMovementProfileForRole(Controller, RoleTag, AIConfig)` | `MovementEvaluatorComponent` only |
-
-Bind `UAICombatRoleSubsystem::OnCombatRoleChanged` or `SECCombatControllerComponent::OnCombatRoleChanged`, then sync with the new tag and resolved `EnemyAIConfig`.
-
+An enemy reading `SEC.Role.None` was scored and found no free slot. Before its first assignment the tag is empty rather than None.
 </Collapsible>
 
----
+<Collapsible title="Score the fit yourself" badge="Advanced">
+Leave **Fitness Evaluators** empty and role fitness comes from distance alone, closest scoring highest, out to 2000 cm. Add evaluators to that list to score on anything else. Several combine into a weighted average.
 
-## Client Role Visibility
+Three fields sit on each one:
 
-`UAICombatRoleSubsystem` runs on the server. Controllers do not exist on clients. **`SECCombatRoleComponent`** on the pawn replicates the role tag for UI, VFX, or debug overlays.
+- **Role Influence Weights** maps a role tag to how strongly this evaluator counts for it: 1.0 full, 0.5 half, 0.0 not at all.
+- **Influence On Unlisted Roles** (0) is what a role missing from that map gets.
+- **Score Mode** reads the raw score as-is (*Higher Score = Better Fit*) or inverts it (*Lower Score = Better Fit*).
 
-- `EnemyCharacterBase` adds it by default.
-- The server sets it in `HandleCombatRoleAssigned` via `SetCombatRole`.
-- Clients read `GetCombatRole()` or bind `OnCombatRoleChanged`.
-- `SetCombatRole` on clients returns without doing work.
+### Distance Evaluator
 
----
-
-## Bosses and Opt-Out AI
-
-| Goal | Setting / API |
-|------|----------------|
-| Skip slot coordination | `bAutoRegisterForCombatRoles = false` on `EnemyAIConfig`. |
-| Pin to one player while targets shuffle | `bIgnoreTargetRedistribution = true` (skips `ReevaluateAllTargets` and periodic target re-evaluation). |
-| Script a fixed role | `ForceAssignRole(Controller, Role, bLockRole = true)`. |
-| Local role tag without consuming a slot | `ApplyLocalCombatRole` on `SECCombatControllerComponent` (logs a warning if the AI stays registered). |
-
-Unregistered AI can wire ActionSets and movement profiles by hand. They do not consume role slots.
-
----
-
-## Integration
-
-| System | Link |
-|--------|------|
-| [Action System](/docs/soulslike-combat/action-system) | `RoleActionSets` swap on role change. |
-| [Reaction System](/docs/soulslike-combat/reaction-system) | `RoleReactionSets` swap on role change. |
-| [Movement System](/docs/soulslike-combat/movement-system) | `RoleMovementProfiles` swap on role change. |
-| [Targeting System](/docs/soulslike-combat/targeting-system) | `TargetSelector` picks the combat target pool. |
-| [Multiplayer](/docs/soulslike-combat/multiplayer) | Role tag replicates via `SECCombatRoleComponent`. |
-
----
-
-<Collapsible title="Built-in fitness evaluators" badge="Advanced">
-
-Add instanced evaluators under **Role Settings → Fitness Evaluators** on `EnemyAIConfig`.
-
-### Distance Evaluator (`UDistanceRoleEvaluator`)
-
-Scores distance to the combat target. The C++ constructor sets **`Role Influence Weights`** to `{ SEC.Role.Attacker: 1.0 }`:
+Scores how far the enemy stands from its assigned target. The score peaks at 1 at **Ideal Distance** and falls off linearly to 0 at **Ideal Distance** plus or minus **Effective Range**. It ships weighted onto Attacker.
 
 <DistanceRoleEvaluatorDetails />
 
-Closer enemies as Attackers: **Ideal Distance** `0`, **Effective Range** `2000`, **Score Mode** *Higher Score = Better Fit*, **Role Influence Weights** `{ Attacker: 1.0 }`.
+- Closest enemies become Attackers: **Ideal Distance** 0, **Effective Range** 2000, *Higher Score = Better Fit*, weights `{ Attacker: 1.0 }`.
+- Farthest become Waiters: the same distances, *Lower Score = Better Fit*, weights `{ Waiter: 1.0 }`.
+- Mid-range enemies become Flankers: **Ideal Distance** 1000, **Effective Range** 500, *Higher Score = Better Fit*, weights `{ Flanker: 1.0 }`.
 
-Far enemies as Waiters: same distance fields, **Score Mode** *Lower Score = Better Fit*, weights `{ Waiter: 1.0 }`.
+### Cooldown Evaluator
 
-### Cooldown Evaluator (`UCooldownRoleEvaluator`)
-
-Scores cooldown load on the active ActionSet ("fatigue"):
+Scores how much of the enemy's moveset is on cooldown, so a spent Attacker rotates out and a fresh one steps in.
 
 <CooldownRoleEvaluatorDetails />
 
-Returns **`0.5`** when **`CurrentRole`** is absent from **Role Influence Weights**. With a listed current role, a high cooldown ratio lowers the score; **Current Role Penalty** applies when scoring "stay in current role" while abilities are on cooldown.
-
+It answers 0.5, a neutral score, whenever the role the enemy currently holds is missing from **Role Influence Weights**. List the roles you want to fatigue (Attacker, Flanker) and leave the passive ones out. **Current Role Penalty** (0.5) multiplies the score while the pass considers keeping the enemy in the role it already holds, so a lower value pushes harder for a swap.
 </Collapsible>
 
-<Collapsible title="Custom URoleEvaluator subclass" badge="Advanced">
+<Collapsible title="Writing your own evaluator" badge="Advanced">
+Subclass **Role Evaluator** in Blueprint or C++ and override **Evaluate Fitness**, returning 0 for unfit and 1 for a perfect fit. The subsystem applies **Score Mode** and the per-role weights afterwards, so return the raw number.
 
-`URoleEvaluator` is `Abstract`, `Blueprintable`, `EditInlineNew`. Override **`EvaluateFitness`** (raw `0.0–1.0`; the subsystem applies weights and **Score Mode** through `GetFinalScore`).
-
-`FRoleEvaluationContext` fields:
+The context hands you four things:
 
 | Field | Use |
 |-------|-----|
-| `Controller` | Pawn, components, `GetCombatantTarget` for the assigned target. |
-| `Role` | Role tag under evaluation. |
-| `CurrentRole` | Role tag currently assigned. |
-| `TimeInCurrentRole` | Seconds in `CurrentRole`. |
+| **Controller** | Reach the pawn and its components from here. |
+| **Role** | The role under evaluation. |
+| **Current Role** | The role the enemy holds right now. |
+| **Time In Current Role** | Seconds it has held that role. |
 
-The subsystem combines evaluators with a weighted average (per-evaluator influence for each role tag).
-
+Get the assigned target with **Get Combatant Target** on the subsystem. Return 0.5 when your criterion does not apply.
 </Collapsible>
 
-<Collapsible title="Runtime control API" badge="Advanced">
+<Collapsible title="Bosses and enemies that skip coordination" badge="Advanced">
+| Goal | Setting |
+|------|---------|
+| Skip slot coordination entirely | Untick **Auto-Register for Combat Roles** on the Enemy AI Config. |
+| Stay on one player while the pack redistributes | Tick **Ignore Target Redistribution**. |
+| Script a fixed role | **Force Assign Role** with its lock argument set. |
+| Wear a role tag without consuming a slot | **Apply Local Combat Role** on the SEC Combat Controller component. |
 
-Subsystem: **`UAICombatRoleSubsystem`** (world subsystem).
+**Apply Local Combat Role** resolves and applies the action set, reaction set, weapon sets and movement profile for a role, and publishes the tag for clients, without joining the coordination. An enemy still registered with the subsystem has it overwritten on the next pass, so pair it with an unregistered enemy.
 
-**Configuration**
-
-| Function | Purpose |
-|----------|---------|
-| `SetReassignmentInterval` | Seconds between auto evaluations (`0` = off). |
-| `SetMinTimeInRole` | Hysteresis window. |
-| `SetReevaluateTargetsOnReassignment` | Target re-pick before role eval (multi-target). |
-| `SetRoleLimitOverride` / `ClearRoleLimitOverride` / `ClearAllRoleLimitOverrides` | Runtime slot caps. |
-| `UpdateConfig(FAICombatRoleConfig, bLimitAttritionEnabled, bForceReevaluation)` | Bulk update; attrition mode keeps existing holders when limits shrink. |
-| `ResetToDefaultSettings` | Clear runtime overrides. |
-
-**Manual assignment**
-
-| Function | Purpose |
-|----------|---------|
-| `ForceAssignRole(Controller, Role, bLockRole)` | Bypass evaluation; optional lock. |
-| `UnlockRole` | Re-enable evaluation for a locked combatant. |
-| `ForceReassignment` / `ForceReassignmentForTarget` | Immediate re-eval. |
-| `PauseReassignment` / `ResumeReassignment` | Freeze role changes (cutscenes). |
-| `StartReassignmentTimer` / `StopReassignmentTimer` | Timer control when interval is `0`. |
-
-**Query**
-
-| Function | Purpose |
-|----------|---------|
-| `GetRole` / `GetRoleCount` / `GetCombatantsWithRole` | Current assignments. |
-| `IsRegistered` / `IsRoleLocked` / `GetAllCombatants` | Pool membership. |
-
-```cpp
-// Enrage: allow three Attackers, then re-evaluate immediately
-UAICombatRoleSubsystem* RoleSys = GetWorld()->GetSubsystem<UAICombatRoleSubsystem>();
-RoleSys->SetRoleLimitOverride(
-    USoulslikeEnemyCombatSettings::GetRoleAttacker(), 3);
-RoleSys->ForceReassignment();
-```
-
+An unregistered enemy wires its own sets through the config defaults and consumes no slots, which leaves the pack's Attacker cap for the enemies that need it.
 </Collapsible>
 
-<Collapsible title="Multi-target control" badge="Advanced">
+<Collapsible title="Several players, several pools" badge="Advanced">
+Each registered target keeps an independent pool with its own slot counts. Register a second player and the two pools fill separately.
 
-| Function | Purpose |
-|----------|---------|
-| `RegisterCombatTarget` / `UnregisterCombatTarget` / `GetAllCombatTargets` | Target registry. |
-| `AssignCombatantToTarget(Controller, Target, bTriggerRoleEvaluation)` | Move AI to a target pool (`nullptr` = unassigned). |
-| `GetCombatantTarget` / `GetCombatantsForTarget` | Query assignments. |
-| `GetRoleCountForTarget` / `GetCombatantsWithRoleForTarget` | Per-target slot usage. |
-| `ReassignCombatantTarget` / `ReevaluateAllTargets` | Re-run `TargetSelector`. |
-| `TransferCombatantsToTarget` / `BalanceCombatantsAcrossTargets` | Bulk redistribution. |
-| `SetPrimaryTargetAndAssignAll` | Assign all combatants to one target (boss/VIP). |
-| `SelectTargetFor(Controller, CandidateTargets)` | Custom candidate list + configured selector. |
+| Function | Does |
+|----------|------|
+| **Register Combat Target** | Adds the actor to the pool. **Auto Assign Unassigned** evaluates roles straight away instead of waiting for the timer; **Reevaluate Existing** also re-runs every assigned enemy's Target Selector. |
+| **Unregister Combat Target** | Removes it. Enemies left behind lose their target, reset to `SEC.Role.None`, and re-run their own Target Selector across the remaining targets. One whose selector answers nothing stays unassigned. |
+| **Assign Combatant To Target** | Moves one enemy to a pool. This one carries out the order as given, without asking the enemy's Target Filter. |
+| **Reassign Combatant Target** | Re-runs one enemy's Target Selector. |
+| **Reevaluate All Targets** | Re-runs every assigned enemy's Target Selector. Honours **Ignore Target Redistribution**. |
+| **Transfer Combatants To Target** | Hands one pool over to another target, for a player death handoff. |
+| **Balance Combatants Across Targets** | Round-robins the pack evenly, ignoring Target Selectors. |
+| **Set Primary Target And Assign All** | Puts the whole pack on one target, for a boss or a VIP. |
+| **Force Reassignment For Target** | Re-scores one pool instead of all of them. |
+| **Get Role Count For Target**, **Get Combatants With Role For Target** | Per-pool slot usage. |
 
-Built-in `UTargetSelector` subclasses: **`UFirstTargetSelector`**, **`UClosestTargetSelector`**, **`URandomTargetSelector`**, **`UBalancedTargetSelector`**, **`UAwarenessFilteredTargetSelector`** (perception-gated aggro).
-
+Team rules still apply. An enemy whose own Target Filter turns a target aside keeps what it had rather than being handed something it will not fight.
 </Collapsible>
 
-<Collapsible title="Subsystem delegates" badge="Advanced">
+<Collapsible title="Reading the role on a client" badge="Multiplayer">
+Role evaluation runs on the server, and AI controllers do not exist on clients. The **SEC Combat Role** component on the pawn replicates the tag so a nameplate, an icon or a debug overlay can read it anywhere.
 
-| Delegate | Fires when |
-|----------|------------|
-| `OnCombatRoleChanged` | Any role change (global). |
-| `OnCombatRoleChangedForTarget` | Role change with target context. |
-| `OnCombatantRegistered` / `OnCombatantUnregistered` | Combatant joins or leaves the pool. |
-| `OnCombatTargetRegistered` / `OnCombatTargetUnregistered` | Target added or removed. |
-| `OnCombatTargetChanged` | `SetPrimaryTargetAndAssignAll` and similar primary-target handoff. |
-| `OnCombatantsOrphaned` | Target lost; orphaned controllers reset to `SEC.Role.None`. Reassign in this handler. |
+<CombatRoleReplicatedDetails />
 
+**Enemy Character Base** adds the component by default. Read **Get Combat Role**, or bind **On Combat Role Changed**, which fires on the server and on every client. **Set Combat Role** is server only; the controller calls it, and calling it anywhere else changes what clients see and nothing more, since the behaviour assets resolve on the controller.
 </Collapsible>
+
+<Collapsible title="Driving roles from your own controller" badge="Alternative">
+A custom AI controller with no **SEC Combat Controller** component still receives the role change on the global delegate, but nothing swaps its assets. Bind **On Combat Role Changed** and sync by hand through the **SEC Combat Role Sync Library**:
+
+| Function | Syncs |
+|----------|-------|
+| **Sync All For Combat Role** | Action set, reaction set, the sets the equipped weapon gives, and the movement profile. |
+| **Sync Action Set For Role** | The action set alone. |
+| **Sync Reaction Set For Role** | The reaction set alone. |
+| **Sync Movement Profile For Role** | The movement profile alone. |
+
+Each takes the new role tag and finds the components it needs on the pawn and the controller. **Sync All For Combat Role** and **Sync Movement Profile For Role** also take the resolved **Enemy AI Config**; the action set and reaction set functions take the pawn and the role tag alone.
+</Collapsible>
+
+<Collapsible title="Changing the rules at runtime" badge="Advanced">
+Every function below sits on the **AI Combat Role Subsystem** and is callable from Blueprint.
+
+**Slots and timing**
+
+| Function | Does |
+|----------|------|
+| **Set Role Limit Override** | Caps a role for this session. `-1` is unlimited, `0` disables the role. **Clear Role Limit Override** and **Clear All Role Limit Overrides** put the project settings back. |
+| **Set Reassignment Interval** | Seconds between passes. 0 stops the timer. |
+| **Set Min Time In Role** | The hysteresis window. |
+| **Set Reevaluate Targets On Reassignment** | Target re-pick before each pass. |
+| **Update Config** | Bulk update. With attrition on, existing holders keep their roles when a limit shrinks instead of being stripped. |
+| **Reset To Default Settings** | Drops every runtime override. |
+
+**Assignment and queries**
+
+| Function | Does |
+|----------|------|
+| **Force Reassignment** | Re-scores every pool now. |
+| **Pause Reassignment**, **Resume Reassignment** | Freeze role changes through a cutscene. |
+| **Start Reassignment Timer**, **Stop Reassignment Timer** | Timer control. **Start Reassignment Timer** logs a warning and returns while the interval sits at 0, so set an interval first. |
+| **Force Assign Role**, **Unlock Role**, **Is Role Locked** | Scripted roles. |
+| **Get Role**, **Get Role Count**, **Get Combatants With Role** | Current assignments. |
+| **Is Registered**, **Get All Combatants**, **Get Total Combatant Count** | Pool membership. |
+
+An enrage phase that opens a slot is **Set Role Limit Override** on the Attacker tag followed by **Force Reassignment**, so the extra attacker steps in on the same frame rather than at the next 8 second pass.
+</Collapsible>
+
+<Collapsible title="Events you can bind" badge="Advanced">
+| Event | Fires when |
+|-------|------------|
+| **On Combat Role Changed** | Any role change. |
+| **On Combat Role Changed For Target** | The same, carrying which target the enemy is assigned to. |
+| **On Combatant Registered**, **On Combatant Unregistered** | An enemy joins or leaves the pool. |
+| **On Combat Target Registered**, **On Combat Target Unregistered** | A target is added or removed. |
+| **On Combat Target Changed** | A primary-target handoff. |
+| **On Combatants Orphaned** | A target was lost, carrying the enemies left behind. Their roles reset to `SEC.Role.None`; reassign them here. |
+</Collapsible>
+
+---
 
 <DocNav
   prev={{ title: "Reaction Set Editor", href: "/docs/soulslike-combat/reaction-set-editor" }}

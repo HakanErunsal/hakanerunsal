@@ -1,7 +1,7 @@
 ---
 title: "Targeting System"
-description: "Register combat targets, pick one per AI with TargetSelector, handle orphans and team filtering."
-date: 2026-08-10
+description: "Give every enemy something to fight: register the player once, pick how each AI chooses, and the pack engages."
+date: 2026-08-17
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Targeting", "Multi-Player"]
 parent: "SoulslikeCombatDocs"
@@ -14,229 +14,268 @@ order: 9
     { label: "Targeting System" }
 ]} />
 
-> Register player pawns as combat targets. Each AI gets one assigned target. `UTargetSelector` picks the pool if several exist.
+> Nothing in SEC runs until an enemy has something to fight. Register the player once, and each enemy takes a target from the pool by whatever rule you gave it.
 
-## When to Use This
+<QuickStart time="45 seconds">
 
-- Co-op with two or more player pawns as separate target pools.
-- Versus or FFA where AI should spread across teams or players.
-- Spawning AI before the player exists (lazy assignment on `RegisterCombatTarget`).
-- Bosses pinned to one player (`bIgnoreTargetRedistribution`).
+<QuickStep title="Register the player as a combat target">
 
-Single-player: one `RegisterCombatTarget` call is enough, and every combatant standing idle picks that pawn up. If an AI registers while targets already exist and no selector is configured, `RegisterCombatant` takes the first entry in `CombatTargets` its team rules allow it to fight.
-
-<TargetingVisualizer />
-
----
-
-## Register Combat Targets
-
-Use **`UAICombatRoleSubsystem`** (same subsystem as [Combat Roles](/docs/soulslike-combat/combat-roles)).
-
-On the server, register any pawn other AIs should fight over. In Blueprint, on the player pawn's **BeginPlay**: add **Get AI Combat Role Subsystem** (no inputs), then call **Register Combat Target** with **Target Actor** set to **Self** and **Auto Assign Unassigned** checked.
+On the player pawn's **Event BeginPlay**, add **Get AICombat Role Subsystem**, then call **Register Combat Target** with **Target Actor** set to **Self** and **Auto Assign Unassigned** ticked.
 
 <RegisterCombatTargetBlueprint />
 
-Search context menu: `Register Combat Target`, category **AI | Combat Role | Targeting**.
+Search the context menu for `Register Combat Target`, under **AI | Combat Role | Targeting**. AI decisions run on the server, so branch on **Has Authority** before the call.
 
-| Flag | Effect |
-|------|--------|
-| **`bAutoAssignUnassigned`** | Runs role evaluation straight away (`ForceReassignment()`) instead of leaving it to the reassignment timer. Idle combatants pick a target either way. Default: `false`. |
-| **`bReevaluateExisting`** | Calls `ReevaluateAllTargets()` so assigned combatants re-run `TargetSelector` (honors `bIgnoreTargetRedistribution`). Default: `false`. |
+</QuickStep>
 
-`SetCombatTarget(Player)` is deprecated: it calls `RegisterCombatTarget(Player, true)` only.
+<QuickStep title="Tell each enemy how to choose">
 
-Each registered target owns a separate [role pool](/docs/soulslike-combat/combat-roles). Two players can each cap at three Attackers independently.
+Open the enemy's **Enemy AI Config** and set **Target Selector** to **Closest Target Selector**.
+
+<UeSetPropertiesScene
+  title="EnemyConfig_Grunt"
+  section="Combat Role"
+  rows={[
+    { name: "Target Selector", value: "Closest Target Selector", kind: "class" },
+    { name: "Target Filter", value: "None", from: "None", kind: "class" },
+    { name: "Ignore Target Redistribution", value: "false", from: "false", kind: "bool" }
+  ]}
+  caption="Target Selector is the one field to fill. The other two have working defaults."
+/>
+
+</QuickStep>
+
+<QuickStep title="Play, and watch it engage">
+
+Press Play and run `SEC.Debug.Role 1`. Every enemy draws its name and combat role above its head, coloured by role. One that never took a target reads None.
+
+</QuickStep>
+
+</QuickStart>
+
+<Callout type="warning">
+**Target Selector** ships empty on the AI Config, and **Default Target Selector** ships empty in project settings. An enemy that registers while a target is already in the pool takes the first one it may fight, which hides the gap in a simple level. An enemy possessed or spawned before the player never picks one up and stands still forever. Fill in one of the two.
+</Callout>
 
 ---
 
-## Target Selectors
+## Pick how each enemy chooses
 
-On registration, target loss, or redistribution, the subsystem resolves **`UTargetSelector`** and calls `SelectTarget`.
+<TargetingVisualizer />
 
-| Selector | Behavior | Typical use |
-|----------|----------|-------------|
-| **`UFirstTargetSelector`** | First entry in the candidate list | Single-player default when you add the class in settings |
-| **`UClosestTargetSelector`** | Lowest squared distance from `FTargetSelectionContext` | Melee chase |
-| **`UBalancedTargetSelector`** | Fewest assigned combatants; sticky while tied for least-loaded | Co-op fairness |
-| **`URandomTargetSelector`** | Uniform random pick | Chaos encounters |
-| **`UAwarenessFilteredTargetSelector`** | Filters by `USECAwarenessComponent` state, then runs `InnerSelector` (closest if null) | Stealth / perception-gated aggro |
+| Selector | Picks | Use it for |
+|----------|-------|------------|
+| **First Target Selector** | The first registered target | Single player, one player pawn |
+| **Closest Target Selector** | The nearest target | Melee chasers |
+| **Balanced Target Selector** | The target with fewest enemies on it, staying put while tied for least loaded | Co-op fairness |
+| **Random Target Selector** | One target at random | Chaotic encounters |
+| **Fixed Target Selector** | The one actor carrying a tag you name | A training dummy, livestock, a siege gate |
+| **Awareness Filtered Target Selector** | Wraps another selector and offers it only targets this enemy has perceived | Stealth |
 
-Selectors are **`Abstract`, `Blueprintable`, `EditInlineNew`**. Set one on `EnemyAIConfig` or project settings.
-
-### Awareness Filtered Target Selector
-
-Set **Target Selector** to **Awareness Filtered Target Selector**, then fill the instanced fields below. Add **Awareness Config** on the same `EnemyAIConfig` ([Awareness System](/docs/soulslike-combat/awareness-system)).
-
-<AwarenessFilteredTargetSelectorDetails />
-
-| Field | Notes |
-|-------|-------|
-| **Min Required State** | Target awareness on this AI must be `>=` this state (`static_cast` on enum order). Default **Lost** passes **Lost** and **Detected**; **Unknown**, **Forgotten**, and **Suspicious** fail. |
-| **Inner Selector** | Runs on the filtered list. Null picks closest by squared distance. |
-| **Missing awareness component** | Warns once per controller, then runs the inner selector (or closest fallback) on the unfiltered list. |
-
-### Resolution order
-
-1. `EnemyAIConfig → Target Selector`
-2. **Project Settings → Default Target Selector**
-3. **Registration-only fallback:** if both are null during `RegisterCombatant`, the subsystem assigns the **first registered non-friendly** target in `CombatTargets`.
-4. **`SelectTargetForCombatant` / `SelectTargetFor`:** if no selector is configured, returns **`nullptr`** (no pick).
-
-Co-op and redistribution need **`Default Target Selector`** (for example `UBalancedTargetSelector`) or per-AI overrides.
-
-### Configure per AI
+### Where the selector comes from
 
 <TargetingConfigDetails />
 
-| Field | Notes |
-|-------|-------|
-| **Target Selector** | Instanced selector object. Null uses project default. |
-| **Ignore Target Redistribution** | Skips this AI in `ReevaluateAllTargets` and periodic target refresh. Boss pinned to one player. |
-
-### Project default
-
-**Project Settings → Plugins → Soulslike Enemy Combat → Combat Roles → Target Selection:**
+**Target Selector** on the AI Config answers first. Leave it empty and the project setting answers instead, under **Project Settings > Plugins > Soulslike Enemy Combat > Combat Roles > Target Selection**.
 
 <ProjectTargetingDetails />
 
+Set the project default once for a whole game, then override it on the configs that want something else.
+
+### Fight only what it has seen
+
+Set **Target Selector** to **Awareness Filtered Target Selector**, and fill in **Awareness Config** on the same AI Config. See [Awareness System](/docs/soulslike-combat/awareness-system).
+
+<AwarenessFilteredTargetSelectorDetails />
+
+| Field | What to do with it |
+|-------|--------------------|
+| **Min Required State** | How much the enemy has to know before a target counts. **Lost**, the default, keeps it engaged through the grace period after it loses sight. **Detected** demands current sight. **Suspicious** lets a heard target through. |
+| **Inner Selector** | Runs on what survives the filter, and takes any selector including another of these. Leave it empty for the nearest candidate. |
+
+<Callout type="warning">
+Without an awareness component on the AI controller the filter warns once, then passes the whole list through unfiltered, so the enemy fights everything. Controllers built on the plugin's base class carry one.
+</Callout>
+
+### Hunt one named actor
+
+**Fixed Target Selector** pins an enemy to a single actor and nobody else, the player included.
+
+1. Select the target actor in the level. Open the **Actor** category in the Details panel, click the advanced arrow, and add a name under **Tags**.
+2. Register that actor with **Register Combat Target**, the same node the player uses.
+3. Set **Required Tag** on the selector to the same name.
+
+**Keep Current Target If Untagged** is on, so an enemy already fighting keeps the fight if something strips the tag mid-combat. Leave **Required Tag** empty and the enemy targets nothing at all, which is deliberate rather than a fallback to whoever is nearest.
+
+<Callout type="warning">
+Nesting this inside an **Awareness Filtered Target Selector** gives an enemy that fights nothing, because that wrapper offers only targets the enemy has perceived and a training dummy is never sensed. Tick **Always Aware** on the awareness config, or use the Fixed selector on its own.
+</Callout>
+
 ---
 
-## Lazy Assignment
+## Decide who an enemy will fight at all
 
-Register combatants before you register targets. They stay unassigned until you call `RegisterCombatTarget`.
+A selector picks from what an enemy is willing to fight, and a filter decides that first. The built-in answer refuses the enemy itself and anything it counts as an ally, and lets the rest through. An actor with no team declared reads as fair game, which is the ordinary case for a player pawn that never sets one.
 
-Set `FAIRoleRegistrationParams::InitialTarget` at registration time to pin one AI to a specific pool without waiting for a selector.
+Add a **SEC Team** component to declare sides. Characters built on the plugin's enemy base class carry one already.
 
-An idle combatant calls `SelectTargetForCombatant` whenever a target registers, so it picks through its own Target Filter and Target Selector and needs a selector configured. An enemy whose team rules turn that target aside stays idle instead of being handed it. `bAutoAssignUnassigned = true` adds an immediate role evaluation pass on top.
+| Field | Default | What to do with it |
+|-------|---------|--------------------|
+| **Team Id** | 1 | 0 to 254. Use 0 for the player and 1 for enemies. 255 means no team. |
+| **Free For All** | off | Every other actor reads hostile, this actor's own team included, and **Team Id** stops deciding anything. |
+| **Ignore Player** | off | Team 0 and any player-controlled pawn read as neutral, so this actor leaves the player alone. |
+| **Excluded Team Ids** | empty | Actors on these teams read as neutral to this actor. |
+| **Allowed Hostile Team Ids** | empty | Fill it and only these teams can read hostile; everything else reads neutral. Leave it empty to filter with **Excluded Team Ids** instead. |
+| **Ignore Neutrals** | off | Keeps a teamless actor neutral while **Free For All** is on. Outside Free For All a teamless actor already reads neutral. |
+| **Fight Only** | empty | Pick one actor in the level and this pawn hunts that alone, whatever the rows above say. Its own team still reads friendly. |
+
+<Callout type="info">
+These rules change what an enemy will fight, not what its weapon will hit. A swing that catches a bystander still lands, because a melee trace decides what it damages through its own **Team Filter**.
+</Callout>
 
 ---
 
-## Target Loss
+## Several targets at once
 
-`UnregisterCombatTarget` or `OnDestroyed` on a registered target triggers this sequence:
+Each registered target owns its own [role pool](/docs/soulslike-combat/combat-roles), so two players each cap at three Attackers independently.
 
-1. Combatants on that target lose `AssignedTarget`; role resets to `SEC.Role.None` where applicable.
-2. **`OnCombatTargetUnregistered`** broadcasts.
-3. `SECCombatControllerComponent::HandleCombatTargetLost` fires **`OnCombatTargetLost`** on each orphaned controller.
-4. Subsystem calls `SelectTargetForCombatant(..., bIsTargetLossReselection = true)` and `AssignCombatantToTarget` if the selector returns an actor. (`SelectTargetFor` does not set this flag.)
-5. **`OnCombatantsOrphaned`** broadcasts with the lost target and orphaned controllers.
+For co-op, register every player pawn and set **Default Target Selector** to **Balanced Target Selector**. Enemies spread themselves across the players, and each one stays with its current target while that target is among the least loaded.
 
-Return **`nullptr`** from `SelectTarget` when `Context.bIsTargetLossReselection` is true to skip auto-reassign on the orphan path. Handle the orphan in `OnCombatTargetLost`.
+To pin a boss to whoever it first engaged, tick **Ignore Target Redistribution** on its AI Config. That enemy sits out the automatic redistribution passes, both the reassignment timer and the **Reevaluate Existing** pin, and keeps its target until the target dies. The hand-driven nodes in **Assigning targets by hand** below move it anyway.
 
-`EnemyControllerBase` exposes Blueprint event **`K2_OnCombatTargetLost`** on the same path.
+---
 
-```cpp
-USECCombatControllerComponent* CombatComp =
-    Controller->FindComponentByClass<USECCombatControllerComponent>();
-CombatComp->OnCombatTargetLost.AddDynamic(this, &AMyAIController::HandleTargetLost);
+## When a target dies
+
+Unregister the target, or let it be destroyed, and the sequence runs on its own:
+
+1. Every enemy assigned to it loses its target and its focus, and its combat role resets to None.
+2. Each of those controllers fires **On Combat Target Lost**, carrying the target it lost.
+3. Each one runs its selector again and takes another registered target if one is available.
+4. **On Combatants Orphaned** fires once, carrying the lost target and everyone freed by it.
+
+To send an enemy back to patrol instead of straight onto the next player, bind **On Combat Target Lost** on the pawn controller's **SEC Combat Controller** component, or implement the **On Combat Target Lost** event on an Enemy Controller Base subclass.
+
+---
+
+## Debug it
+
+```
+SEC.Debug.Role 1                 // Name and combat role above each enemy, coloured by role
+SEC.Debug.Decision 1             // Distance, angle, line of sight, speed and threat it scores against
+SEC.Debug.Teams 1                // Team ID, Free-For-All, and what the exclusion rules turn aside
+SEC.Debug.Awareness 1            // What each enemy knows about its target
+SEC.Debug.LogRoleAssignments 1   // Role assignment scoring, 1 for basic and 2 for verbose
 ```
 
----
+`SEC.Debug.All 1` turns every overlay on at once, and `SEC.Debug.WatchPawn <name>` narrows them to one enemy. Each overlay also has a checkbox on its own component, so one enemy can be isolated without the console.
 
-## Integration
+An enemy holding role None while a target is registered never took one. Check its **Target Selector** first, then its team rules with `SEC.Debug.Teams 1`.
 
-| System | Link |
-|--------|------|
-| [Combat Roles](/docs/soulslike-combat/combat-roles) | Per-target role pools; see RegisterCombatTarget there. |
-| [Awareness System](/docs/soulslike-combat/awareness-system) | `UAwarenessFilteredTargetSelector` + `AwarenessConfig` on the same `EnemyAIConfig`. |
-| [Action System](/docs/soulslike-combat/action-system) | Per-action target via [Contextual Execution](/docs/soulslike-combat/action-system#handing-an-action-data-at-the-moment-it-runs). |
-| [Movement System](/docs/soulslike-combat/movement-system) | `MovementEvaluatorComponent` reads `GetFocusActor()`; the subsystem sets focus when it assigns a target. |
-| [Multiplayer](/docs/soulslike-combat/multiplayer) | Register each player pawn as a combat target on the server. |
+<Collapsible title="Enemies that spawn before the player" badge="Advanced">
+An enemy registered while the target pool is empty stays idle. Every call to **Register Combat Target** gives each idle enemy another chance, running its own filter and selector over the pool, so a player who appears late is picked up without extra wiring. An enemy whose team rules turn that target aside stays idle rather than being handed it.
 
----
+That idle pass needs a selector. With none configured anywhere it returns nothing, which is the case the warning at the top of this page covers.
 
-<Collapsible title="Manual control API" badge="Advanced">
+**Auto Assign Unassigned** adds an immediate role evaluation on top of the idle pass. **Reevaluate Existing** also forces enemies that already have a target to run their selector again, for a target that registers closer than the one they picked.
 
-| Function | Purpose |
-|----------|---------|
-| `AssignCombatantToTarget(Controller, Target, bTriggerRoleEvaluation)` | Pin an AI to a pool (`nullptr` = unassigned). |
-| `SelectTargetFor(Controller, CandidateTargets)` | Run configured selector on a custom list (self + friendlies filtered). Returns `nullptr` if no selector is configured. |
-| `ReassignCombatantTarget(Controller)` | Re-run selector for one AI. On success, assigns the new target. On failure, clears assignment, resets role to None, and fires `HandleCombatTargetLost`. |
-| `ReevaluateAllTargets()` | Re-run selector for all combatants (skips `bIgnoreTargetRedistribution`). Keeps the current target if the selector returns `nullptr` or the same actor. |
-| `BalanceCombatantsAcrossTargets(bForceReassignment)` | Round-robin across targets; ignores selectors. |
-| `TransferCombatantsToTarget(From, To, bForceReassignment)` | Move a pool (for example player death handoff). |
-| `SetPrimaryTargetAndAssignAll(Target, bForceReassignment)` | Assign all combatants to one target. |
-
+To pin one enemy to a pool at the moment it registers, set **Initial Target (Runtime Only)** on the role registration parameters before registration. It skips the selector entirely.
 </Collapsible>
 
-<Collapsible title="Periodic target refresh" badge="Advanced">
-
-The reassignment timer updates **roles** only unless you enable **Re-evaluate Targets On Reassignment** under **Combat Roles → Timing**:
+<Collapsible title="Redistributing targets on a timer" badge="Advanced">
+The reassignment timer updates roles only, unless you tick **Reevaluate Targets On Reassignment** under **Project Settings > Plugins > Soulslike Enemy Combat > Combat Roles > Timing**:
 
 <CombatRoleTimingDetails />
 
-The flag runs only with **`CombatTargets.Num() > 1`**. Each cycle: `ReevaluateAllTargets()` (respects `bIgnoreTargetRedistribution`), then role evaluation. You can set the same flag on `FAICombatRoleConfig` via `UpdateConfig`.
+It has an effect only while more than one target is registered. Each cycle re-runs every enemy's selector, skipping any with **Ignore Target Redistribution**, then evaluates roles. An enemy keeps what it has when its selector answers with the same actor or with nothing.
 
-Toggle at runtime:
-
-```cpp
-Subsystem->SetReevaluateTargetsOnReassignment(true);
-```
-
+**Set Reevaluate Targets On Reassignment** toggles the same flag at runtime.
 </Collapsible>
 
-<Collapsible title="Custom UTargetSelector" badge="Advanced">
+<Collapsible title="Assigning targets by hand" badge="Alternative">
+For scripted encounters, drive the pools directly instead of leaving it to selectors. Every one of these lives on the AICombat Role Subsystem. **Reevaluate All Targets** is the only one that honours **Ignore Target Redistribution**; the rest carry out the order on a pinned enemy too.
 
-Subclass **`UTargetSelector`** in C++ or Blueprint. Override **`SelectTarget`**.
+| Node | Does |
+|------|------|
+| **Assign Combatant To Target** | Puts one enemy in one pool. Pass nothing to unassign. It carries out the order as given without asking the enemy's filter, so check the pairing yourself. |
+| **Reassign Combatant Target** | Re-runs the selector for one enemy. On failure it clears the assignment, resets the role to None, and fires the target-lost path. |
+| **Reevaluate All Targets** | Re-runs the selector for everyone, skipping **Ignore Target Redistribution**. |
+| **Balance Combatants Across Targets** | Round-robin across every registered target, ignoring selectors. Each enemy is still only handed a target its own team rules allow. |
+| **Transfer Combatants To Target** | Moves a whole pool, for a player-death handoff. An enemy that may not fight the destination is left where it was. |
+| **Set Primary Target And Assign All** | Puts everyone on one target, for a boss or a VIP. An enemy whose team rules refuse that target keeps what it had. |
+| **Select Target For** | Runs the enemy's configured selector over a candidate list of your own, such as sphere overlap results. Returns nothing when no selector is configured. |
+</Collapsible>
 
-`SelectTargetForCombatant` and `SelectTargetFor` build **`FTargetSelectionContext`** before they call your selector:
+<Collapsible title="Writing your own selector" badge="Advanced">
+Subclass **Target Selector** in Blueprint or C++ and override **Select Target**. It receives the controller, the candidate list, and a context the subsystem builds for it:
 
 <TargetSelectionContextDetails />
 
-The subsystem strips the AI's own pawn and everything its Target Filter refuses (`USECTargetFilter::CanFight`, which covers allies, excluded teams, and a named Fight Only target) from the candidate list. Return **`nullptr`** when `Context.bIsTargetLossReselection` is true to defer auto-reassign on the orphan path (`SelectTargetForCombatant` only).
+The candidate list arrives with everything its filter refuses already removed, the enemy itself included while the built-in answer is in play, so a selector decides preference rather than permission.
 
+Return nothing while **Is Target Loss Reselection** is true to take over the handoff after a target dies. The subsystem leaves the enemy unassigned and your **On Combat Target Lost** handler runs the retreat, the delay, or the re-aggro itself.
 </Collapsible>
 
-<Collapsible title="Team filtering" badge="Advanced">
+<Collapsible title="Writing your own filter" badge="Advanced">
+Subclass **SEC Target Filter** in Blueprint and override **Can Fight**, for a charmed enemy that turns on its own side. Set it on the AI Config's **Target Filter** for one enemy, or as **Default Target Filter** in project settings for all of them.
 
-Add a **SEC Team** component to an actor and set **Team ID** (`0` for the player, `1` for enemies, `255` for no team). `AEnemyCharacterBase` carries one already. The component also holds **Free For All** and the exclusion rules: **Ignore Player**, **Ignore Neutrals**, **Excluded Team Ids**, and **Allowed Hostile Team Ids**.
+Add a parent call first to keep the built-in answer and narrow it from there. Without one, the override replaces the self check, the ally check and the exclusion rules together.
 
-One filter decides whether an AI will fight an actor at all, and every targeting decision reads its answer: the selector's candidate list, a detected actor joining the shared pool, and the awareness pass that wakes an enemy up. The default answer refuses the AI itself, a declared ally, and anything its own exclusion rules turn aside. An actor carrying no team is fair game, which is the ordinary case for a player pawn that never declares one.
+Keep any property you add on a single-segment category (`Filter`, not `Filter|Advanced`). The class expands inline wherever it is set, and a nested category makes the details panel recurse until it overflows.
 
-**Exception:** `TransferCombatantsToTarget` moves combatants between pools as-is; it does not filter.
+One filter answers for every targeting decision: the candidate list a selector sees, an actor joining the shared pool, and the awareness pass that wakes an enemy up. Exclusion rules bite through it and nowhere else, so a hand-rolled friend-or-foe check reads an excluded actor as neutral and lets it straight through.
+</Collapsible>
 
-To change the answer, subclass **SEC Target Filter** in Blueprint and override **Can Fight**, for a charmed enemy that turns on its own side. Add a parent call to keep the default and narrow it from there; without one, the override replaces the self, ally and exclusion checks together. Set it on the AI Config's **Target Filter** for one enemy, or as **Default Target Filter** in project settings for all of them.
+<Collapsible title="Team reads and damage filtering" badge="Advanced">
+Team lookups read a **SEC Team** component on the actor, on its pawn, or on its controller, then fall back to the engine's own team agent. An actor with neither is neutral.
 
-Constants in `SECTeamID`: `Player = 0`, `Enemy = 1`, `NoTeam = 255`.
+| Node | Returns |
+|------|---------|
+| **Get Team Id** | 0 to 254, or 255 for no team |
+| **Set Team Id** | True when a component or the engine agent accepted the ID |
+| **Has Team** | Whether the actor has anything other than 255 |
+| **Get Relation** | Friendly, Hostile, or Neutral, answered by the first actor's own rules |
+| **Are Friendly** / **Are Hostile** | Same question as a bool |
+| **Can Damage** | Whether a damage causer may hit a target under a filter mode |
 
-**Damage (separate from targeting):** `USECTeamHelpers::CanDamageWithFilter` with `ESECTeamFilter` (`NoFilter`, `EnemiesOnly`, `FriendliesOnly`, `NeutralOnly`). Melee trace exposes **Team Filter** on the pawn's `SECMeleeTraceComponent`:
+Damage filtering is separate from targeting. **Can Damage** takes one of four modes: **No Filter**, **Enemies Only**, **Friendlies Only**, **Neutral Only**. The pawn's melee trace component exposes the same choice:
 
 <MeleeTraceTeamFilterDetails />
-
 </Collapsible>
 
-<Collapsible title="Query and legacy API" badge="Advanced">
+<Collapsible title="Subsystem events" badge="Advanced">
+| Event | Fires when |
+|-------|------------|
+| **On Combat Target Registered** | A target joins the pool |
+| **On Combat Target Unregistered** | A target leaves it |
+| **On Combatants Orphaned** | A target is lost, carrying it and every controller freed by it |
+| **On Combat Role Changed For Target** | A role changes, carrying which pool it happened in |
 
-**Query**
-
-| Function | Returns |
-|----------|---------|
-| `GetAllCombatTargets` / `HasCombatTarget` | Registered target pool |
-| `GetCombatantTarget(Controller)` | AI's assigned target |
-| `GetCombatantsForTarget(Target)` | Combatants on that target |
-| `GetRoleCountForTarget(Role, Target)` | Per-pool role usage |
-
-**Deprecated (compiler warnings)**
-
-| Legacy | Replacement |
-|--------|-------------|
-| `SetCombatTarget` | `RegisterCombatTarget(..., true)` |
-| `GetCombatTarget` | `GetCombatantTarget` or `GetAllCombatTargets` (returns first registered target) |
-
+The full list is on [Combat Roles](/docs/soulslike-combat/combat-roles).
 </Collapsible>
 
-<Collapsible title="Subsystem delegates" badge="Advanced">
+<Collapsible title="Querying the pools" badge="Advanced">
+| Node | Returns |
+|------|---------|
+| **Get All Combat Targets** / **Has Combat Target** | The registered target pool |
+| **Get Combatant Target** | One enemy's assigned target |
+| **Get Combatants For Target** | Everyone in that target's pool |
+| **Get Role Count For Target** | How many of a role that pool is using |
 
-| Delegate | Fires when |
-|----------|------------|
-| `OnCombatTargetRegistered` / `OnCombatTargetUnregistered` | Target added or removed |
-| `OnCombatantsOrphaned` | Target lost; controllers need a new assignment |
-| `OnCombatRoleChangedForTarget` | Role change with target context |
-
-Full list: [Combat Roles → Subsystem delegates](/docs/soulslike-combat/combat-roles).
-
+**Set Combat Target** and **Get Combat Target** are deprecated and warn on compile. **Set Combat Target** calls **Register Combat Target** with auto-assign on; **Get Combat Target** returns the first registered target. Use **Get Combatant Target** or **Get All Combat Targets** instead.
 </Collapsible>
+
+---
+
+## Where targeting connects
+
+| System | How |
+|--------|-----|
+| [Combat Roles](/docs/soulslike-combat/combat-roles) | Every target owns an independent role pool. |
+| [Awareness System](/docs/soulslike-combat/awareness-system) | The Awareness Filtered Target Selector gates candidates on what the enemy has perceived. |
+| [Movement System](/docs/soulslike-combat/movement-system) | Movement steers relative to the controller's focus actor, which is set when a target is assigned. |
+| [Action System](/docs/soulslike-combat/action-system) | Actions score against the assigned target, and one action can be handed another through [contextual execution](/docs/soulslike-combat/action-system#handing-an-action-data-at-the-moment-it-runs). |
+| [Multiplayer](/docs/soulslike-combat/multiplayer) | Register each player pawn on the server. |
 
 <DocNav
   prev={{ title: "Combat Roles", href: "/docs/soulslike-combat/combat-roles" }}

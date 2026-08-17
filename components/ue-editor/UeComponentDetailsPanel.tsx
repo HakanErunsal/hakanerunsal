@@ -11,8 +11,8 @@ export type UeDetailsSourceKind = "component" | "asset" | "blueprint" | "notify"
 export interface UeComponentDetailsPanelProps {
   /** Editor display name, e.g. "SEC Action Set Component" or "SEC Awareness Config". */
   displayName: string;
-  /** C++ type without prefix when possible, e.g. "SECActionSetComponent" or "SECAwarenessConfig". */
-  sourceClass: string;
+  /** C++ type without prefix when possible, e.g. "SECActionSetComponent" or "SECAwarenessConfig". Omit on a page that keeps class names out of visible text. */
+  sourceClass?: string;
   /** Parent context shown in the breadcrumb (actor class, asset instance, montage, etc.). */
   attachTo?: string;
   /** Caption under the panel (replication note, setup context, etc.). */
@@ -46,7 +46,7 @@ function UeSourceRow({
   sourceKind,
 }: {
   displayName: string;
-  sourceClass: string;
+  sourceClass?: string;
   sourceKind: UeDetailsSourceKind;
 }) {
   if (sourceKind === "component") {
@@ -58,7 +58,9 @@ function UeSourceRow({
       <UeAssetIcon type={sourceKindToAssetType(sourceKind)} showLabel={false} className="shrink-0" />
       <span className="min-w-0 truncate text-[13px] leading-none text-[color:var(--uekit-foreground-header)]">
         {displayName}
-        <span className="text-[color:var(--uekit-foreground-header)]"> ({sourceClass})</span>
+        {sourceClass && (
+          <span className="text-[color:var(--uekit-foreground-header)]"> ({sourceClass})</span>
+        )}
       </span>
     </div>
   );

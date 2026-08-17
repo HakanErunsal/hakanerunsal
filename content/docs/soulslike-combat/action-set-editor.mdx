@@ -1,7 +1,7 @@
 ---
 title: "Action Set Editor"
-description: "Author an enemy's moveset on a canvas and watch the AI choose between those actions while the game runs."
-date: 2026-07-29
+description: "Lay a moveset out as cards, wire the combos between them, and watch a live enemy score every card while the fight runs."
+date: 2026-08-16
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Actions", "Debugging"]
 parent: "SoulslikeCombatDocs"
@@ -14,73 +14,133 @@ order: 6
     { label: "Action Set Editor" }
 ]} />
 
-> Double-click an Action Set to lay its actions out as cards, wire up combos, and watch a live enemy decide between them.
+> One canvas for the whole moveset: a card per move, a wire per combo, and live scores drawn on those same cards while a real enemy fights.
 
-<ZoomableImage
-  src="../images/sec_actionset_graph_debug.png"
-  alt="The Action Set canvas during Play In Editor: DoubleAttack outlined in green with a RUNNING badge, SingleAttack, Dash and TripleAttack in amber with COOLDOWN badges, score bars and ready-in countdowns, and a wire running from SingleAttack to Dash"
+<QuickStart time="60 seconds">
+
+<QuickStep title="Open an Action Set on its canvas">
+
+Double-click any Action Set and it opens as cards. If you have none yet, right-click in the Content Browser, **SEC**, **Action Set**.
+
+<UeCreateAssetScene
+  create="Action Set"
+  assetName="DA_ActionSet_Grunt"
+  caption="Right-click in the Content Browser, SEC, Action Set."
 />
 
-## When to Use This
+</QuickStep>
 
-Open an Action Set here when you want to see the whole moveset at once, build a combo, or find out why an enemy is not using an attack you expected.
+<QuickStep title="Add a card">
 
-The canvas is where actions are added, removed and wired. The full **Actions** list is still reachable under **Advanced** in the panel on the right when no card is selected, for reordering or editing several actions at once.
+Right-click the empty canvas and choose **Add Action**. A card lands where you clicked, named `Action_1`, already carrying a **Gameplay Ability** execution method.
+
+Select it and press **F2** to rename it to something you will recognise in a log, such as `LightAttack`.
+
+</QuickStep>
+
+<QuickStep title="Fill in the panel on the right">
+
+With one card selected, the Details panel shows that action alone. Set **Ability Class** to **GA_SEC_MontageAbility**, then set the **Montage** on the payload that appears under it.
+
+<UeSetPropertiesScene
+  title="DA_ActionSet_Grunt"
+  section="Execution"
+  rows={[
+    { name: "Ability Class", value: "GA_SEC_MontageAbility", kind: "class" },
+    { name: "Montage", value: "AM_Attack_Light", kind: "asset" }
+  ]}
+  caption="One card selected, one action in the panel."
+/>
+
+</QuickStep>
+
+<QuickStep title="Wire a combo">
+
+Drag from the right edge of one card to the left edge of another. The first action prefers the second as its follow-up, at a **Bonus Multiplier** of 1.5.
+
+</QuickStep>
+
+<QuickStep title="Press Play and watch it decide">
+
+The **Watching** picker above the canvas lists every AI running this Action Set and latches onto the first one it finds. Cards light up as the fight runs: green on the move executing, amber on the one that scored highest, a countdown on anything cooling down.
+
+</QuickStep>
+
+</QuickStart>
+
+<Callout type="warning">
+The **Watching** picker fills from AI whose active Action Set is this asset, so an enemy reaches it through its **Enemy AI Config**, and it scores nothing until a combat target is registered. A picker stuck on **None** while the game runs is one of those two. See [Action System](/docs/soulslike-combat/action-system) and [Getting Started](/docs/soulslike-combat/getting-started).
+</Callout>
+
+---
 
 ## Reading a Card
 
-One card stands for one action. Everything on it comes from that action's settings, so a card is a summary you can read without opening anything.
+One card stands for one action, and everything on it comes from that action's settings.
 
 | Row | Shows |
 |-----|-------|
-| **Chip and title** | The execution method's family (Ability, By Tag, Burst, Tree, Custom) and the action's **Action ID**. |
-| **Execution line** | The execution method's own name, such as the ability class it runs. An action with nothing usable set says so in red. |
-| **Stats** | `w` is Selection Weight, `cd` is Cooldown Duration. `risk` appears when Risk Penalty is not 1, `max` when Max Consecutive Uses is set. |
-| **Band** | The sweet spot of the action's Distance Scorer, in centimetres. Absent when the action has no Distance Scorer, which means it ignores distance. |
-| **Badges** | How many scorers and gates the action carries, whether it has a lifecycle hook, and its own recovery time when it overrides the config's. |
-| **Chain rows** | One line per follow-up: the action it prefers next and the bonus that follow-up receives. |
+| **Chip** | Which family of execution method runs it: Ability, By Tag, Burst, Tree, Custom, or Unset. |
+| **Title** | The action's **Action ID**. |
+| **Execution line** | The execution method's own name, such as the ability class it runs. Red when nothing usable is set. |
+| **Weight**, **Cooldown** | **Selection Weight**, and **Cooldown Duration** in seconds. Cooldown reads `none` at 0. |
+| **Best range** | The sweet spot of the action's **Distance Scorer**, in centimetres. Absent when the action carries no Distance Scorer, which means it ignores distance. |
+| **Risk**, **Repeats** | **Risk Penalty** when it is something other than 1, and **Max Consecutive Uses** when one is set. |
+| **Scorers**, **Gates** | How many of each the action carries. |
+| **Recovery**, **Hook** | Its own recovery time when it overrides the config's, and whether a lifecycle hook is attached. |
 
-Hover a card for the same information as sentences, including anything the rows abbreviate.
+Rows appear only when they have something to say, so a plain attack card stays short. Hover the card for the same figures as sentences, plus one line per chain link and the bonus that follow-up receives.
 
-A card greys out when its **Enabled** box is unticked. A warning triangle appears when something about the action would stop it working: no execution method, an empty or repeated Action ID, or a chain link naming an action this set does not define. Hover the triangle to read which.
+A card greys out when **Enabled** is unticked. A warning triangle appears when something about the action would stop it working, and hovering the triangle names which:
 
-<Collapsible title="Zoom, layout, and where positions are stored" badge="Advanced">
+- No execution method, or one missing a field it needs to run.
+- An empty **Action ID**, or one another action already uses.
+- A chain link naming an action this set does not define.
+- **Manual Only** set on a card that something wires into, since a chain into it changes nothing.
+
+<Collapsible title="Zoom, layout, and where card positions live" badge="Advanced">
 The fine rows drop away as you zoom out, leaving the chip and the title, so a large moveset stays readable at a distance.
 
-Card positions are editor data saved on the asset. An Action Set that has never been opened on the canvas gets a grid layout the first time you open it, and you can drag cards anywhere from there. Nothing about how the AI runs depends on where a card sits, so a layout is free to be about readability.
-
-Give a card its own colour with **Use Custom Color** and **Custom Node Color** on the card, which is useful for marking a phase-two moveset or a set of openers.
+Card positions are editor data saved on the asset. An Action Set opened on the canvas for the first time gets a grid layout, and you can drag cards anywhere from there. Nothing about how the AI runs depends on where a card sits, so a layout is free to be about readability.
 </Collapsible>
+
+---
 
 ## Adding and Removing Actions
 
 Right-click empty canvas and choose **Add Action**. A card appears where you clicked and a matching entry is added to the asset, seeded with an ability execution method so it runs as soon as you pick an ability.
 
-Right-click a card for **Toggle Enabled** and **Delete**. Both apply to every selected card, so switching a group of openers off is one action. A mixed selection switches all of them on first, which makes a second use switch the whole group off together.
+Right-click a card for **Rename**, **Toggle Enabled** and **Delete**. Toggle and delete apply to the whole selection, so switching a group of openers off is one action. A mixed selection switches all of them on first, which makes a second use switch the group off together.
 
 Deleting a card removes the action from the asset and strips every chain link that named it, so no combo is left pointing at a missing action.
 
 Copy, cut, paste and duplicate work as they do in any Unreal graph. A pasted card gets a fresh Action ID and its own copies of the original's scorers, gates, hook and execution method, so editing the copy leaves the original alone.
 
+Right-click also offers **Add Comment**, or **Add Comment around selection** when cards are selected. A comment box groups cards under a label and changes nothing about how the AI runs.
+
 <Callout type="warning">
   Copying a card from one Action Set and pasting into another carries only the name. An action's settings live in the asset that holds it and cannot travel on the clipboard, so the pasted card arrives as a new empty action and says so in the message log. To reuse a tuned action across sets, copy its settings across in the details panel.
 </Callout>
 
+---
+
 ## Editing One Action
 
-Select a card and the details panel shows that action on its own, its groups laid out flat instead of nested inside an array row. Select nothing, or several cards, and the panel goes back to the hint and the Advanced list.
+Select a card and the details panel shows that action on its own, its groups laid out flat instead of nested inside an array row. Select nothing, or several cards, and the panel goes back to the hint, keeping the full **Actions** list under **Advanced** for reordering or editing several actions at once.
 
-The **Action ID** row renames the action. Every chain link that named the old ID follows the rename, across the whole set, in one undo step. An empty name, or one another action already uses, is refused with the reason shown as you type.
+The **Action ID** row renames the action. Every chain link that named the old ID follows the rename, across the whole set, in one undo step. An empty name, or one another action already uses, is refused with the reason shown as you type. Renaming a card title on the canvas does the same thing.
 
 <Callout type="info">
-  Action ID is what a chain link names and what cooldown tracking keys on. Renaming through this row keeps those in step. Renaming through the raw Actions array does not, and leaves any link that named the old ID pointing at nothing, which the card then flags with a warning.
+  Action ID is what a chain link names and what cooldown tracking keys on. Renaming through the card or the ID row keeps those in step. Renaming through the raw Actions array leaves any link that named the old ID pointing at nothing, which the card then flags with a warning.
 </Callout>
+
+---
 
 ## Building a Combo
 
 Drag from the right edge of one card to the left edge of another. The wire means the first action prefers the second as its follow-up: once the first one finishes, the second gets a score bonus for a short window.
 
-An action can prefer several follow-ups, each with its own bonus. The wire thickens and brightens as the bonus rises, so a strong combo pull is visible across the whole canvas without opening anything.
+An action can prefer several follow-ups, each with its own bonus, and it can wire into itself to repeat a swing. The wire thickens and brightens as the bonus rises, so a strong combo pull is visible across the whole canvas without opening anything.
 
 <ActionChainLinkDetails />
 
@@ -98,13 +158,13 @@ The window comes from **Chain Followup Window Seconds** on the Action Evaluation
 
 Inside the window, a chain target also bypasses the post-action recovery gate, which is how a combo continues while other offence stays held back. Everything else about the follow-up still applies: its cooldown, its gates, its own scorers. A bonus multiplies a score that has already survived all of them.
 
-The bonus lives on the action that starts the combo, alongside the name of the follow-up it points at. Removing a wire removes that link and leaves any other link on the same card untouched.
+The window arms on a clean completion. An interrupt or a cancel disarms it, so a parried enemy cannot combo through its own recovery.
 </Collapsible>
 
 <Collapsible title="A link naming an action that does not exist" badge="Advanced">
 A chain link whose target no action defines draws no wire and raises a warning on the card. The link is kept rather than dropped, because deleting it would throw away something you authored.
 
-This happens when an Action ID is renamed from the raw Actions array instead of the card's rename row. Fix it by pointing the link at the new name, or by deleting the link.
+This happens when an Action ID is renamed from the raw Actions array instead of the card or the ID row. Fix it by pointing the link at the new name, or by deleting the link.
 </Collapsible>
 
 ---
@@ -113,22 +173,27 @@ This happens when an Action ID is renamed from the raw Actions array instead of 
 
 Press Play and the canvas starts following a live enemy. The picker above the canvas lists every AI running this Action Set and latches onto the first one it finds, so a single enemy needs no setup at all.
 
+<ZoomableImage
+  src="../images/sec_actionset_graph_debug.png"
+  alt="The Action Set canvas during Play In Editor: DoubleAttack outlined in green with a RUNNING badge, SingleAttack, Dash and TripleAttack in amber with COOLDOWN badges, score bars and ready-in countdowns, and a wire running from SingleAttack to Dash"
+/>
+
 The cards you author on are the cards that light up. There is no second window to read and no separate view to switch to, so a score you disagree with is one click from the setting that produced it.
 
 <ActionCardStateLegend />
 
-Each card also carries a bar showing how it scored against the best action that round, with the time left on its cooldown drawn behind the fill. A card that a gate refused prints the reason where its score would go.
+Each card carries a bar showing how it scored against the best action that round, with the time left on its cooldown drawn behind the fill. Under the bar the card prints what it is doing: `ready in 1.4s` while a cooldown runs, the reason a gate refused it, or its score, with `chain x1.5` beside the score when a combo bonus is in play.
 
-When the AI is inside its post-action recovery window, the bar above the canvas says so and counts down, which explains a pause where every card looks available but nothing fires.
+While the AI sits in its post-action recovery window, the bar above the canvas reads `Recovering, 0.4s before the next action` and counts down, which explains a pause where every card looks available and nothing fires.
 
 ### Switching Enemies
 
 Pick another entry from **Watching** to follow a different enemy mid-fight. Two enemies running the same Action Set will often be scoring it differently, and comparing them is the fastest way to see a role or a distance band doing its job.
 
-If the enemy you are watching dies, the canvas attaches to another one running the same set, or falls back to nothing if there are none left.
+If the enemy you are watching dies, or a role change moves it to a different Action Set, the canvas attaches to another one running this set, or falls back to **None** when there are none left.
 
 <Callout type="warning">
-  Tuning weights, ranges, tag multipliers and chain bonuses while the game runs is safe and takes effect on the next decision. Adding, deleting or renaming an action mid-play is not: a running action holds a reference into the action list. The editor warns you once per session when you do it, and the fix is to restart Play In Editor.
+  Tuning weights, ranges, tag multipliers and chain bonuses while the game runs is safe and takes effect on the next decision. Adding, deleting or renaming an action mid-play is not: a running action holds a reference into the action list. The editor warns you once per session in the message log when you do it, and the fix is to restart Play In Editor.
 </Callout>
 
 <Collapsible title="Multiplayer and dedicated servers" badge="Multiplayer">
@@ -138,35 +203,35 @@ A dedicated server launched as its own process cannot be inspected from the edit
 </Collapsible>
 
 <Collapsible title="What the live view costs" badge="Advanced">
-Recording the per-action reasoning is asked for by the open editor and released when it closes, so an AI nobody is watching does the same work it always did.
+Recording the per-action reasoning is asked for by the open editor and released when it closes, so an AI nobody is watching carries none of that cost.
 
 None of it exists in a packaged game. The recording, the picker and the canvas are editor-only, so a shipped build carries no part of this.
 </Collapsible>
 
-<Collapsible title="Reading the scoring in the log instead" badge="C++">
-For a record you can scroll back through, or for an AI you cannot see on the canvas, the component still logs its reasoning:
+---
 
-```cpp
-// On ActionEvaluationComponent:
-ActionEvalComp->bDebugLogDecisions = true;  // Log the scoring breakdown
-ActionEvalComp->bDebugLogExecution = true;  // Log the execution flow
+## Debug It
+
+The canvas covers one enemy at a time. For a record you can scroll back through, or for an AI the canvas cannot reach:
+
+```
+SEC.Debug.Scoring 1              // Score list above each enemy, highest first
+SEC.Debug.Actions 1              // Cooldown list above each enemy
+SEC.Debug.LogActionDecisions 1   // Why each action scored what it did
+SEC.Debug.LogActionExecution 1   // Starts, ends and cooldowns
 ```
 
-`SEC.Debug.LogActionDecisions 1` does the same globally without touching a component.
+`SEC.Debug.ScoringRows` sets how many rows the score list keeps, 5 by default and 0 for all of them. `SEC.Debug.All 1` turns every overlay on at once, and `SEC.Debug.WatchPawn <name>` narrows them to one enemy.
 
-`GetAllScoreBreakdowns` returns the same per-action figures the canvas draws, as an array you can read from Blueprint for a custom debug widget.
+Saving the asset runs validation into the **Soulslike Enemy Combat** message log, which names any action that has nothing to run.
+
+<Collapsible title="Reading the same numbers from Blueprint" badge="Advanced">
+**Get All Score Breakdowns** on the **Action Evaluation** component returns the per-action figures the canvas draws, as an array you can feed into a debug widget of your own. It scores every action on the spot, so call it for a debug view rather than per tick.
+
+Each enemy's **Action Evaluation** component carries its own **Debug Log Decisions**, **Debug Log Execution** and **Debug Overlay Scoring** checkboxes, which turn the same output on for that one enemy without touching the console.
 </Collapsible>
 
 ---
-
-## Integration Points
-
-| System | How It Connects |
-|--------|-----------------|
-| [Action System](/docs/soulslike-combat/action-system) | The scoring, gates and execution methods every card shows |
-| [Combat Roles](/docs/soulslike-combat/combat-roles) | A role change swaps the Action Set, and the canvas detaches when the AI it was watching moves to a different one |
-| [Vitals](/docs/soulslike-combat/vitals) | A Vital Gate refusing an action is what a BLOCKED card reports |
-| [StateTree Integration](/docs/soulslike-combat/statetree) | The Poll Action task is what asks for the decision the canvas draws |
 
 <DocNav
   prev={{ title: "Action System", href: "/docs/soulslike-combat/action-system" }}

@@ -5,9 +5,8 @@ export default function SECDamageConfigDetails() {
   return (
     <UeComponentDetailsPanel
       displayName="SEC Damage Config"
-      sourceClass="SECDamageConfig"
       sourceKind="asset"
-      attachTo="DA_MeleeDamage"
+      attachTo="DA_Damage_Sword"
       note="Data asset assigned on the montage notify or the trace component Default Damage Config."
       categories={SEC_DAMAGE_CONFIG_DETAILS}
     />

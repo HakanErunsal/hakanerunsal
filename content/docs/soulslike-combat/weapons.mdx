@@ -1,7 +1,7 @@
 ---
 title: "Weapons"
-description: "Give an enemy a weapon from a loadout, with its own moveset, reactions, defenses and trace sockets."
-date: 2026-08-02
+description: "Arm an enemy: build a weapon Blueprint, drop it in the starting loadout, and the enemy spawns holding it and fighting from its moveset."
+date: 2026-08-16
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Weapons", "Combat"]
 parent: "SoulslikeCombatDocs"
@@ -14,135 +14,217 @@ order: 13
     { label: "Weapons" }
 ]} />
 
-> Fill in a loadout entry and the enemy spawns holding its weapon, sockets registered, animation layer linked, and the weapon's own moveset, reactions and defenses in force.
+> An enemy that spawns with its weapon in hand, sweeping from the blade, fighting from the moveset the weapon brings. Give the same skeleton a bow instead and it fights like an archer.
 
-## When to Use This
+<QuickStart time="60 seconds">
 
-- Arming an enemy with a sword, a staff, a bow.
-- A weapon that brings its own moveset, so a skeleton with a bow fights differently from the same skeleton with a club.
-- A shield or a torch carried alongside the weapon.
-- Swapping a weapon mid-fight, or leaving it on the ground when the enemy dies.
+<QuickStep title="Make the weapon Blueprint">
 
-An unarmed enemy needs none of this. Trace sockets registered straight onto the pawn cover fists and claws; see [Melee Trace](/docs/soulslike-combat/melee-trace).
+Right-click in the Content Browser, **Blueprint Class**, **All Classes**, and pick **SEC Weapon Base**. Name it `BP_Sword`.
+
+Add a **Static Mesh** component for the blade and drag it onto **DefaultSceneRoot** so the mesh is the root. The weapon attaches by its root, so a mesh whose pivot sits where the hand grips it needs no offset.
+
+</QuickStep>
+
+<QuickStep title="Set the hand it sits in and the moveset it brings">
+
+Open **Class Defaults**. **Attach Socket** is the socket on the enemy's mesh the weapon hangs from, `hand_r` out of the box. **Weapon Action Set** is the moveset the enemy fights from while holding it.
+
+<UeSetPropertiesScene
+  title="BP_Sword"
+  section="Weapon"
+  rows={[
+    { name: "Attach Socket", value: "hand_r", from: "hand_r", kind: "text" },
+    { name: "Weapon Action Set", value: "DA_ActionSet_Sword", kind: "asset" }
+  ]}
+  caption="Attach Socket has to exist on the enemy's skeletal mesh. Leave the set empty to keep the enemy's own moveset."
+/>
+
+</QuickStep>
+
+<QuickStep title="Tell it where it cuts">
+
+Add sockets to the weapon mesh at the hilt and the tip, then add one entry to **Trace Sockets** spanning them.
+
+<UeSetPropertiesScene
+  title="BP_Sword"
+  section="Trace Sockets"
+  rows={[
+    { name: "ID", value: "Blade", from: "None", kind: "text" },
+    { name: "Shape", value: "Capsule Two Point", from: "Sphere", kind: "text" },
+    { name: "Socket Or Bone Name", value: "blade_start", from: "TraceStart", kind: "text" },
+    { name: "End Socket Or Bone Name", value: "blade_end", from: "TraceEnd", kind: "text" }
+  ]}
+  caption="Equipping the weapon registers these on the wielder. Releasing it takes them away again."
+/>
+
+</QuickStep>
+
+<QuickStep title="Put it in the enemy's loadout">
+
+Open the enemy Blueprint, select its **SEC Equipment Component**, and add one entry to **Starting Loadout** naming the weapon class.
+
+<UeSetPropertiesScene
+  title="BP_Enemy"
+  section="Starting Loadout"
+  rows={[
+    { name: "Equippable Class", value: "BP_Sword", kind: "class" },
+    { name: "Socket Override", value: "None", from: "None", kind: "text" },
+    { name: "Use As Weapon", value: "true", from: "true", kind: "bool" }
+  ]}
+  caption="One entry per thing the enemy carries. Leave Socket Override empty to use the socket the weapon names itself."
+/>
+
+</QuickStep>
+
+<QuickStep title="Play, and watch it swing">
+
+Press Play. The weapon arrives in the enemy's hand, its trace sockets register, its animation layer links, and its sets reach the enemy. Run `SEC.Debug.Melee.DrawTracing 1` in the console to see the blade sweep.
+
+</QuickStep>
+
+</QuickStart>
+
+<Callout type="warning">
+**Use As Weapon** on the loadout entry decides whether any of the weapon reaches the enemy. With it off the weapon still spawns, attaches, and looks correct in the hand, while its moveset, its reactions and its animation layer go nowhere. One entry can be the weapon; mark two and the first one wins.
+</Callout>
+
+For the swings to deal damage, the attack montage also needs a trace window. See [Melee Trace](/docs/soulslike-combat/melee-trace).
 
 ---
 
-## The weapon Blueprint
-
-Create a Blueprint from **`ASECWeaponBase`** and add your weapon mesh.
+## What the weapon gives its wielder
 
 <WeaponBaseDetails />
 
-**`Attach Socket`** is the socket on the wielder's mesh the weapon hangs from. **`Attach Offset`** nudges it from there, and it stays at identity when the mesh is authored with its pivot where the hand grips it.
+| Field | Does |
+|-------|------|
+| **Attach Socket** | The socket on the enemy's mesh the weapon hangs from, `hand_r` by default. A socket that does not exist attaches the weapon at the mesh root and says so in the log. |
+| **Attach Offset** | Nudges the weapon from that socket. Leave it at identity when the mesh is authored with its pivot at the grip. |
+| **Weapon Action Set** | The moveset the enemy fights from while holding this. |
+| **Weapon Reaction Set** | The reactions it can answer with, for a parry that exists because it is carrying something to parry with. |
+| **Weapon Defense Set** | How the wielder answers an incoming hit while holding this: the parry, the block, the resistance the weapon brings. |
+| **Anim Layer To Use** | An animation layer linked onto the wielder, for locomotion and idles that belong to the weapon rather than the character. Only the equipped weapon's layer links, so an off-hand item does not replace it. |
 
-**`Weapon Action Set`** and **`Weapon Reaction Set`** are what the weapon gives its wielder. Fill in the action set and the enemy fights from that moveset while holding this weapon. Fill in the reaction set for a defence the weapon makes possible, a parry the enemy can only perform while carrying something to parry with. Leave either empty and the enemy keeps what its [AI Config](/docs/soulslike-combat/action-system#which-moveset-an-enemy-uses) gives it.
+**Weapon Action Set** and **Weapon Reaction Set** replace what the [AI Config](/docs/soulslike-combat/action-system#which-moveset-an-enemy-uses) gives. While the enemy holds the weapon its sets win; put the weapon down and the AI Config answers again. A runtime override set from Blueprint still outranks both. Leave either empty and the enemy keeps its own.
 
-**`Weapon Defense Set`** is how the wielder answers an incoming hit while holding this: the parry, the block or the resistance the weapon itself brings. The two sets above resolve to one winner; this one adds to what the pawn already answers with, since a weapon's parry and the pawn's own armour are both in force at once. A pawn with no defenses of its own gains these by picking the weapon up and loses them by putting it down. Everything held answers, so a shield in the off hand guards alongside the sword. Leave it empty for a weapon that changes nothing about being hit. See [Defense System](/docs/soulslike-combat/defense-system) for what a response can do and the order they run in.
+**Weapon Defense Set** adds instead of replacing, since a weapon's parry and a pawn's own armour are both in force at once. Everything held answers, so a shield in the off hand guards alongside the sword, and what the weapons bring runs ahead of the pawn's own responses. A pawn with no defenses of its own gains these by picking the weapon up. See [Defense System](/docs/soulslike-combat/defense-system).
 
-**`Anim Layer To Use`** links an animation layer onto the wielder while the weapon is equipped, for locomotion and idles that belong to the weapon rather than the character.
+### Where its swings sweep from
 
-### Trace sockets
-
-**`Trace Sockets`** is where the weapon's swings sweep from. Add sockets on the weapon mesh first (**`blade_start`**, **`blade_end`**), then one array entry per hit zone:
+**Trace Sockets** is where the weapon's swings sweep from. Add sockets on the weapon mesh first (`blade_start`, `blade_end`), then one array entry per contact point.
 
 <WeaponTraceSocketDetails />
 
-Equipping the weapon points each socket at the weapon mesh and registers it on the wielder's trace component. Releasing the weapon takes those sockets away again, so a dropped weapon stops sweeping.
-
-Per-attack damage comes from the montage notify or the trace component default, not from the weapon. [Melee Trace](/docs/soulslike-combat/melee-trace) covers the sweep, the damage config and the montage window.
+A socket that names no source of its own sweeps from the weapon's mesh, which is its skeletal mesh when it has one and its static mesh otherwise. Per-attack damage comes from the montage notify or the trace component default rather than from the weapon; [Melee Trace](/docs/soulslike-combat/melee-trace) covers the sweep shapes, the damage config and the montage window.
 
 ---
 
 ## Arming the enemy
 
-**`AEnemyCharacterBase`** already carries a **SEC Equipment Component**. Add one yourself for a pawn built from scratch.
+The plugin's enemy character already carries an **SEC Equipment Component**. Add one yourself for a pawn built from scratch.
 
 <EquipmentComponentDetails />
 
-Add one entry to **`Starting Loadout`** per thing the enemy carries:
+Each **Starting Loadout** entry is one thing the enemy carries.
 
 <EquipLoadoutEntryDetails />
 
-**`Equippable Class`** is the weapon Blueprint. Leave **`Socket Override`** empty to use the socket the weapon names itself. **`Use As Weapon`** marks which entry the enemy fights with, so a shield or a torch goes in with it turned off.
+**Equippable Class** is the weapon Blueprint. **Socket Override** left empty uses the socket the weapon names itself. Tick **Use Transform Override** to offset this entry from its socket instead of using the offset authored on the weapon, which an off-hand item usually needs. **Use As Weapon** marks the one the enemy fights with, so a shield or a torch goes in with it turned off.
 
-That is the setup. The weapon arrives in the enemy's hand on spawn, its trace sockets register, its animation layer links, and its sets reach the enemy.
+**Attach Mesh Component Tag** picks which of the pawn's meshes equipment hangs off, by component tag. Empty uses the pawn's own skeletal mesh. Untick **Equip Starting Loadout On Begin Play** to hold the list as data and arm the enemy later with **Equip Starting Loadout**.
+
+While a weapon is equipped the enemy holds `SEC.Weapon.Equipped`. Put that in an action's **Requires Tags** so an unarmed enemy cannot swing a sword it is not holding.
 
 <Callout type="info">
-An enemy has to be holding the weapon before any trace runs. A montage that opens a trace window on an enemy with an empty loadout sweeps nothing.
+Equipping runs on the server. The weapon actor replicates, and so does which held actor is the weapon, so a client sees the right thing in the right hand and relinks the animation layer itself.
 </Callout>
-
-### Swapping and dropping
-
-**Spawn And Equip** puts a new weapon in the hand and **Unequip Actor** takes one out. **`Swap Disposal`** decides what happens to the weapon being replaced, **`Teardown Disposal`** what happens to the pawn's own weapons when the pawn is destroyed. Both default to removing the weapon from the level.
-
-To leave a weapon on the floor, set the disposal to **`Drop`** and turn on physics from the weapon's **`On Unequipped`** event, which receives **`Should Drop`** with a suggested impulse and lifetime.
-
-Death releases the enemy's equipment through the combat controller. **`bDropWeaponOnDeath`** decides whether it asks the weapon to drop itself. Reviving does not re-arm the enemy; call **Equip Starting Loadout** for that.
 
 ---
 
-## Beyond the weapon base
+## Swapping and dropping
 
-<Collapsible title="Answering with a different set per combat role" badge="Advanced">
-**`Weapon Action Set`** and **`Weapon Reaction Set`** answer the same set for every combat role. To vary them, override **`Get Weapon Action Set For Role`** or **`Get Weapon Reaction Set For Role`** on the weapon and branch on the incoming role tag. Return nothing for a role to leave that role on its AI Config set.
+**Spawn And Equip** puts a new weapon in the hand, **Equip Actor** equips one that already exists, and **Unequip Actor** takes one out. **Set Equipped Weapon** chooses which of the things already held the enemy fights with, and clearing it hands both sets back to the AI Config.
 
-The equipment component asks again whenever the pawn's combat role changes, so a per-role answer stays current.
+Two fields decide what becomes of a weapon the pawn is done with.
 
-**`Weapon Defense Set`** has no per-role form. **Get Weapon Defense Set** answers the same for every role, and the responses compose with the pawn's own instead of replacing them.
+| Choice | What happens to it |
+|--------|--------------------|
+| **Destroy** | Removed from the level. The default for both fields. |
+| **Leave In World** | Detached and left standing where it was, no physics. |
+| **Drop** | Left in the level and asked to drop itself. Its **On Unequipped** event receives **Should Drop**, and turning on physics and setting a lifespan there is a couple of nodes. |
+
+**Swap Disposal** covers the outgoing weapon when a new one replaces it. **Teardown Disposal** covers what the component spawned when the pawn is destroyed, which is what a game wants when a corpse despawns and its sword stays lying there. A weapon handed in through **Equip Actor** belongs to whoever made it, so it is released rather than destroyed.
+
+Death releases the enemy's equipment through the combat controller. **Drop Weapon On Death** on that controller is on by default and releases with **Drop**; turn it off and death releases with **Leave In World** instead. Reviving does not re-arm the enemy, so call **Equip Starting Loadout** on the way back.
+
+**On Equipped Weapon Changed** fires on the server and on every client when the weapon changes, for a marker on the HUD or an ability that reads a socket. **On Equipped** and **On Unequipped** fire on the server for anything held.
+
+---
+
+## Debug it
+
+```
+SEC.Debug.Melee.DrawTracing 1    // Draw the sweeps the weapon's sockets make
+```
+
+Equipping reports its own problems into the Output Log under **LogSECEquipment** and **LogSECEquip**. Filter on those two and the log names the entry with no class, the pawn with no mesh to attach to, the socket that does not exist on the wielder's mesh, and the weapon carrying trace sockets that found no melee trace component to register on.
+
+<Collapsible title="It equips, but the enemy fights the same" badge="Advanced">
+- **Use As Weapon is off** on the entry. The weapon attaches and contributes nothing.
+- **Weapon Action Set is empty**, so resolution falls through to the AI Config, which is the point of leaving it empty.
+- **A runtime override is set** on the pawn's action set component. It outranks the weapon until it is cleared.
+- **The weapon answers nothing for this role.** A weapon overriding the per-role event and returning none for the enemy's current combat role leaves that role on its AI Config set.
+- **A second entry took the weapon slot.** The first entry marked **Use As Weapon** wins, and the rest attach inert.
 </Collapsible>
 
-<Collapsible title="A weapon that is not a SEC Weapon Base" badge="Advanced">
+<Collapsible title="It swings, but the blade sweeps nothing" badge="Advanced">
+- **The wielder has no SEC Melee Trace component.** The weapon carries its sockets and finds nothing to register them on, and says so in the log.
+- **The weapon has no mesh.** A socket that names neither a source component nor a **Source Component Tag** is pointed at the weapon's own mesh, so a weapon with none registers nothing.
+- **The socket names do not match the mesh.** **Socket Or Bone Name** and **End Socket Or Bone Name** have to exist on the weapon mesh.
+- **The montage window names a different ID.** **Socket IDs** on the trace window has to match a socket **ID** exactly. Leave it empty to sweep everything registered.
+- **The machine does not detect hits.** The trace component turns registration away wherever sweeps do not run, so a client registers nothing and needs nothing.
+</Collapsible>
+
+<Collapsible title="A different set per combat role" badge="Advanced">
+**Weapon Action Set** and **Weapon Reaction Set** answer the same set for every [combat role](/docs/soulslike-combat/combat-roles). To vary them, override **Get Weapon Action Set For Role** or **Get Weapon Reaction Set For Role** on the weapon and branch on the incoming role tag. Return nothing for a role to leave that role on its AI Config set.
+
+The equipment component asks again whenever the pawn's combat role changes, so a per-role answer stays current. **Refresh Weapon Sets For Role** does the same ask by hand, which a pawn driving its own equipment can call with an empty role to get the weapon's default answer.
+
+**Weapon Defense Set** has no per-role form. **Get Weapon Defense Set** answers the same for every role, and what it returns composes with the pawn's own instead of replacing it.
+</Collapsible>
+
+<Collapsible title="A weapon that is not a SEC Weapon Base" badge="Alternative">
 A weapon can be a plain **Actor**. Each interface it adds in Class Settings earns it one more thing, and adding none still gets it attached and released with the rest of the pawn's equipment.
 
 | Interface | What the weapon gains |
 |-----------|-----------------------|
 | none | Attaches at the socket the entry names, and is released on death and on teardown. |
-| **SEC Equippable** | Its own socket, offset, mesh, trace sockets and animation layer, and control of how it attaches. |
+| **SEC Equippable Interface** | Its own socket, offset, mesh, trace sockets and animation layer, and control of how it attaches. |
 | **SEC Weapon Action Set Provider** | Gives the enemy its moveset while equipped. |
 | **SEC Weapon Reaction Set Provider** | Gives the enemy its reactions while equipped. |
 | **SEC Weapon Defense Set Provider** | Gives the enemy its parry, block or resistance while equipped, on top of the pawn's own. |
 
-An actor implementing **SEC Equippable** attaches itself, so call **Apply Standard Equip** from its **`On Equipped`** event for the ordinary behavior. A weapon that places its own pieces, a bow with a quiver for instance, skips that node and does the attaching itself.
+An actor implementing **SEC Equippable Interface** attaches itself, so call **Apply Standard Equip** from its **On Equipped** event for the ordinary behavior. A weapon that places its own pieces, a bow with a quiver for instance, skips that node and does the attaching itself.
+
+Trace sockets register through that interface, so an actor that implements none of it contributes no sweeps.
 
 The actor needs a root component. Attaching moves an actor's root, so one without a root is refused and logs why.
 </Collapsible>
 
-<Collapsible title="Equipping without the component" badge="Advanced">
-Nothing requires the component. **SEC Equip Statics** carries the same act as Blueprint nodes, so a pawn can drive its own equipping instead.
+<Collapsible title="Equipping without the component" badge="Alternative">
+Nothing requires the equipment component. The nodes under **SEC | Equip** in the Blueprint palette carry the same act, so a pawn can drive its own equipping instead.
 
-**Equip Actor To Wielder** asks the equippable to equip itself, and **Set Equipped Weapon** on the equipment component points combat resolution at it. A pawn with no equipment component pushes the sets itself through **Set Provided Action Set** and **Set Provided Reaction Set**.
+**Equip Actor To Wielder** asks the weapon to equip itself, and **Set Equipped Weapon** on the equipment component points combat resolution at it. A pawn with no equipment component pushes the sets itself through **Set Provided Action Set** and **Set Provided Reaction Set** on its action and reaction set components, which sit above the AI Config and below a runtime override. Those slots read no weapon, so anything can drive them.
+
+Apply `SEC.Weapon.Equipped` yourself on this path, since the component is what adds and removes it.
 
 Call the nodes once per item, so a sword in one hand and a shield in the other are two calls. Branch on **Has Authority** first, since the nodes do what they are told wherever they run.
 
 **Apply Standard Equip** is the ordinary act on its own: take ownership, make the weapon visible, attach it at the socket, and register the trace sockets it carries. It reports which sockets took, and **Apply Standard Unequip** needs that list back to remove exactly those.
 </Collapsible>
 
-<Collapsible title="Where the weapon's sets land" badge="C++">
-The equipment component reads the weapon and pushes the result into the pawn:
-
-```cpp
-Pawn->ActionSetComponent->SetProvidedActionSet(WeaponActionSet);
-Pawn->ReactionSetComponent->SetProvidedReactionSet(WeaponReactionSet);
-```
-
-Those slots sit above the AI Config and below the runtime override. Pushing null hands resolution back to the AI Config, which is what an unarmed pawn resolves to. Neither set component reads a weapon, so anything can drive the slots.
-
-The defense set travels the other way: nothing pushes it. As a hit is worked out, the Defense component asks the pawn for its defense sets through `ISECDefenseSetProvider::GetDefenseSets`, and `AEnemyCharacterBase` answers with the set from every held actor implementing `ISECWeaponDefenseSetProvider`, in equip order. Those responses run ahead of the pawn's own.
-
-`USECEquipmentComponent::GetEquippedWeapon` answers which held actor is the weapon, and `SetEquippedWeapon` chooses among what the component already holds.
-</Collapsible>
-
 ---
-
-## Integration
-
-| System | Link |
-|--------|------|
-| [Melee Trace](/docs/soulslike-combat/melee-trace) | The sweep, the damage config, and the montage window that opens a trace. |
-| [Action System](/docs/soulslike-combat/action-system) | **`Weapon Action Set`** lands at priority 2 in action set resolution. |
-| [Reaction System](/docs/soulslike-combat/reaction-system) | **`Weapon Reaction Set`** lands at priority 2 in reaction set resolution. |
-| [Animation Integration](/docs/soulslike-combat/animation-integration) | The weapon's animation layer, and the montage windows its attacks open. |
-| [Multiplayer](/docs/soulslike-combat/multiplayer) | Equipping runs on the server; the weapon actor and the reference replicate from there. |
 
 <DocNav
   prev={{ title: "Melee Trace", href: "/docs/soulslike-combat/melee-trace" }}

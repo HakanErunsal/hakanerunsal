@@ -8,7 +8,7 @@ export default function TerritoryPostDetails() {
       sourceClass="SECTerritoryPostComponent"
       sourceKind="component"
       attachTo="Any placed actor"
-      note="Wander Radius and How To Pick show for the Radius shape only."
+      note="How To Pick shows for the Radius and Box shapes, Wander Radius for Radius, Wander Box Extent for Box."
       categories={TERRITORY_POST_DETAILS}
     />
   );

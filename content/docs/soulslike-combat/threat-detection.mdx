@@ -1,7 +1,7 @@
 ---
 title: "Threat Detection"
-description: "Track whether the focus target is looking at this AI and react through movement or custom logic."
-date: 2026-03-23
+description: "Turn the player's camera attention into a 0 to 1 reading, and make an enemy swap sides or give ground under a stare."
+date: 2026-08-17
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Threat Detection"]
 parent: "SoulslikeCombatDocs"
@@ -14,128 +14,153 @@ order: 10
     { label: "Threat Detection" }
 ]} />
 
-> Each tick, `ThreatDetectionComponent` checks whether the focus target's aim aligns with this AI. Alignment sets threat level; sustained stare inside the cone fires duration events.
+> An enemy that feels your camera on it. Hold a stare and it flips the side it circles on, or backs off to buy itself room.
 
 <ThreatVisualizer />
 
-## When to Use This
+<QuickStart time="30 seconds">
 
-- Enemies that swap strafe side or back off when the player stares at them.
-- Per-role threat response through [movement profiles](/docs/soulslike-combat/movement-system): turn flags on for one profile, leave them off for another.
-- Custom barks, animations, or action score boosts on `OnThreatLevelChanged` or `OnThreatDurationExceeded`.
-- An optional layer on [Targeting](/docs/soulslike-combat/targeting-system); you need a focus actor first.
+<QuickStep title="Check the controller carries the component">
 
-The component ticks each frame. Movement and actions stay separate: `SECCombatControllerComponent` binds delegates when it finds `ThreatDetectionComponent`, and built-in movement handlers run only if `MovementEvaluatorComponent` exists and the active profile enables them.
+An AI controller made from `EnemyControllerBase` ships a **Threat Detection** component and needs nothing added. On your own controller, add **Threat Detection** to the AI controller, not the pawn.
+
+</QuickStep>
+
+<QuickStep title="Turn on a response">
+
+Open the enemy's **Movement Behavior Profile** and under **Threat Response** tick **Swap Strafe On High Threat** and **Adjust Distance By Threat**. Both ship off, so this is the step that makes a stare visible.
+
+<UeSetPropertiesScene
+  title="DA_MovementBehavior_Attacker"
+  section="Threat Response"
+  rows={[
+    { name: "Swap Strafe On High Threat", value: "true", from: "false", kind: "bool" },
+    { name: "Adjust Distance By Threat", value: "true", from: "false", kind: "bool" }
+  ]}
+  caption="Both switches ship off. Tick them and a stare reaches movement. Threat Distance Scale under them stays greyed until Adjust Distance By Threat is on."
+/>
+
+</QuickStep>
+
+<QuickStep title="Play, and stare at it">
+
+Press Play, point the camera at the enemy and hold it there. Three seconds of looking flips the side it circles on. With **Adjust Distance By Threat** ticked as well, it widens the range it holds for as long as the camera stays on it.
+
+</QuickStep>
+
+<QuickStep title="See the numbers behind it">
+
+Run `SEC.Debug.Threat.Draw 1`. A cone draws forward from the player, and a ring above the enemy closes white through orange to red as the stare completes.
+
+</QuickStep>
+
+</QuickStart>
+
+<Callout type="warning">
+Threat reads the controller's focus actor, and nothing sets that until a combat target is registered. An enemy with no target sits at 0 however hard you stare at it. See [Getting Started](/docs/soulslike-combat/getting-started) and [Targeting](/docs/soulslike-combat/targeting-system).
+</Callout>
 
 ---
 
-## How It Works
+## Two readings, two questions
 
-Each tick, the component reads **`AAIController::GetFocusActor()`**:
+**Threat level** is how directly the focus target aims at this enemy, from 0 to 1. Any pawn contributes its control rotation, which for a player means the camera direction rather than the character's facing, so a player who swings the camera off an enemy reads 0 even while running straight at it. A focus actor that is not a pawn contributes its forward vector instead. The value tracks the aim frame by frame and carries no history.
 
-- **Pawn focus:** `GetControlRotation()` (camera / control rotation).
-- **Other actor:** actor forward vector.
-- **No focus:** threat level goes to `0`.
+**The stare timer** runs only while that aim sits inside **Player Look Angle Threshold** of the enemy. Hold it for **Player Look Time Threshold** and the duration event fires. Look away and the timer clears.
 
-The component builds a look dot from the focus target toward this AI:
-
-| Signal | Source | Range |
-|--------|--------|-------|
-| **Threat level** | `Clamp(LookDot, 0, 1)` when `LookDot > 0`, else `0` | Instant alignment, not time-based |
-| **`IsPlayerLookingAtMe()`** | `LookDot >= cos(PlayerLookAngleThreshold)` | Inside the angle cone; duration timer runs only while this is true |
-| **Look duration** | `PlayerLookAccumulatedTime` while `IsPlayerLookingAtMe()` | Drives `OnThreatDurationExceeded`; uses `CurrentThreatTimeThreshold` (starts at `PlayerLookTimeThreshold`) |
-
-Threat level can read above zero while `IsPlayerLookingAtMe()` stays false: the focus target aims toward the AI but sits outside the cone.
-
-Threat level follows aim alignment each tick. `OnThreatLevelChanged` fires when the value moves by more than `0.01`.
-
-Look duration hits **`CurrentThreatTimeThreshold`** and `OnThreatDurationExceeded` fires. The timer resets; the next threshold picks a random value in **`[PlayerLookTimeThreshold, PlayerLookTimeThreshold × 2]`**. Look-away clears duration and restores the base threshold.
+The two disagree on purpose. Threat level can read 0.7 while the timer has not started, because the camera points broadly toward the enemy without landing inside the cone.
 
 ---
 
-## Setup
-
-### 1. Component on the AI controller
-
-`AEnemyControllerBase` adds `ThreatDetectionComponent` in its constructor and calls `SetThreatDetectionEnabled(false)` until `SECCombatControllerComponent` turns evaluation on at BeginPlay.
-
-On a custom controller, add **Threat Detection Component** to the AIController, not the pawn.
-
-### 2. Enable evaluation
-
-`SECCombatControllerComponent` binds threat delegates on BeginPlay when it finds `ThreatDetectionComponent` on the same controller:
-
-<ThreatResponseWiringDetails />
-
-**Enable Threat Detection** defaults to on; BeginPlay calls `SetThreatDetectionEnabled(true)`. Uncheck it to skip threat evaluation (the component may still tick for debug draw). Delegates bind whenever the component exists. `EnemyControllerBase` starts with evaluation off; this flag turns it on.
-
-### 3. Focus target
-
-Register and assign a combat target so the AI sets focus on the player pawn ([Targeting System](/docs/soulslike-combat/targeting-system)). No focus means threat stays at zero.
-
-### 4. Tune detection
+## Tune the stare
 
 <ThreatDetectionDetails />
 
-| Field | Notes |
-|-------|-------|
-| **Player Look Angle Threshold** | Half-angle cone in degrees. Default `15`. |
-| **Player Look Time Threshold** | Seconds of continuous look before `OnThreatDurationExceeded`. Resets on look-away. |
+| Field | Default | What to do with it |
+|-------|---------|--------------------|
+| **Player Look Angle Threshold** | 15 degrees | Half-angle of the cone that counts as looking. Widen it toward 30 for an enemy that answers a glance, tighten it toward 5 for one that answers a dead-centre stare only. Accepts 5 to 90. |
+| **Player Look Time Threshold** | 3 seconds | How long the stare holds before the duration event fires. Accepts 0.1 to 10. |
 
-### 5. Movement responses (per combat role)
+Each time the duration fires, the timer resets and the next threshold rolls a random value between the base and double it, so a pack caught by one stare does not swap sides in lockstep. Looking away puts the next threshold back at the base value.
 
-`SECCombatControllerComponent` reads threat fields on the active **`UMovementBehaviorProfile`** and applies strafe swap or distance scaling when that profile enables them (profile swaps with [combat role](/docs/soulslike-combat/combat-roles)):
+---
+
+## Make movement answer it
+
+Both responses live on the [movement profile](/docs/soulslike-combat/movement-system), so each [combat role](/docs/soulslike-combat/combat-roles) can answer a stare its own way.
 
 <ThreatResponseProfileDetails />
 
-| Field | Notes |
-|-------|-------|
-| **Swap Strafe On High Threat** | On duration exceeded, `SECCombatControllerComponent` calls `MovementEvaluatorComponent::SwapStrafeSide()`. |
-| **Adjust Distance By Threat** | Each threat update sets `DistanceMultiplier = 1.0 + ThreatLevel × ThreatDistanceScale`. |
-| **Threat Distance Scale** | Requires adjust-by-threat. Clamped `0-5`. |
+| Field | Default | Does |
+|-------|---------|------|
+| **Swap Strafe On High Threat** | off | Each completed stare flips the side the enemy circles on. |
+| **Adjust Distance By Threat** | off | Threat widens the range the enemy holds, continuously rather than in steps. |
+| **Threat Distance Scale** | 1.0 | How far that widening goes. The held range is multiplied by `1 + threat x scale`, so scale 1 under a dead-centre stare doubles it. Accepts 0 to 5. |
 
-Assign profiles in `EnemyAIConfig → RoleMovementProfiles`. `MakeAttacker()` and `MakeWaiter()` leave threat fields at `false`; enable them on each `MovementBehaviorProfile` asset you assign.
+The **SEC Combat Controller** component is what carries a stare into movement. It binds the two threat events at BeginPlay and drives the **Movement Evaluator** on the same controller, so both components have to sit on that controller for either switch to do anything.
 
----
-
-## Read Threat Level
-
-Call **`Get Current Threat Level`** on `ThreatDetectionComponent` (BlueprintCallable, returns `0.0-1.0`).
-
-Bind **`On Threat Level Changed`** for continuous updates. Bind **`On Threat Duration Exceeded`** for stare-duration reactions; `SECCombatControllerComponent` wires strafe swap when the profile allows it.
+<Callout type="info">
+The profile that answers is the one the enemy's current role resolved to. Editing **Default Movement Profile** changes nothing for a role that has its own entry in **Role Movement Profiles**.
+</Callout>
 
 ---
 
-## Integration
+## Read it yourself
 
-| System | Link |
-|--------|------|
-| [Targeting System](/docs/soulslike-combat/targeting-system) | Focus actor from assigned combat target / `SetFocus`. |
-| [Movement System](/docs/soulslike-combat/movement-system) | Threat response fields on `MovementBehaviorProfile`; `SECCombatControllerComponent` wires them. |
-| [Action System](/docs/soulslike-combat/action-system) | Optional custom `USECScorer` reads `GetCurrentThreatLevel()` (see Advanced). |
-| [Combat Roles](/docs/soulslike-combat/combat-roles) | Each role can use a movement profile with its own threat toggles. Threat does not feed role assignment. |
+Movement is the one response SEC wires on its own. Everything else, a bark, an animation flag, a boss phase, binds to these.
+
+| Node | Gives you |
+|------|-----------|
+| **Get Current Threat Level** | The 0 to 1 reading, this frame. |
+| **Get Player Look Duration** | Seconds the current stare has held. Clears when the player looks away. |
+| **Is Player Looking At Me** | Whether the aim sits inside the angle cone. |
+| **Is Threat Detection Enabled** | Whether evaluation is running on this component. |
+| **On Threat Level Changed** | Fires when the reading moves by more than 0.01. |
+| **On Threat Duration Exceeded** | Fires when a stare completes, carrying the seconds it took. |
 
 ---
 
-<Collapsible title="Delegates and runtime API" badge="Advanced">
+## Debug it
 
-| Delegate / function | When |
-|---------------------|------|
-| `OnThreatLevelChanged` | Threat level moves by more than `0.01` since last broadcast |
-| `OnThreatDurationExceeded` | Continuous look within angle threshold reaches the time threshold |
-| `GetCurrentThreatLevel()` | Raw alignment `0-1` |
-| `GetPlayerLookDuration()` | Seconds accumulated this look session (resets on look-away) |
-| `IsPlayerLookingAtMe()` | Focus target inside `PlayerLookAngleThreshold` cone |
-| `SetThreatDetectionEnabled` / `IsThreatDetectionEnabled` | Toggle evaluation; disabling clears threat state (tick may still run for debug) |
-| `SetTickInterval` | Throttle tick rate (`0` = every frame) |
+```
+SEC.Debug.Threat.Draw 1   // Look cone from the player, filling ring above each enemy
+SEC.Debug.Decision 1      // Threat, distance, angle, sight and speed above each enemy
+```
 
-`ThreatDetectionComponent` belongs on the **AIController**, not the pawn. It never touches `MovementEvaluatorComponent`. `SECCombatControllerComponent::OnThreatLevelUpdated` and `OnThreatDurationExceeded` hold the movement hooks. `HandleDeath` calls `SetThreatDetectionEnabled(false)`.
+The cone turns red the moment the aim crosses inside the angle threshold, and the ring drawn about a metre above the enemy closes white through orange to red as the timer runs toward its current threshold.
 
+The decision line is an overlay section, so `SEC.Debug.All 1` brings it up with the rest and `SEC.Debug.WatchPawn <name>` narrows the overlays to one enemy. The threat drawing has its own switch and answers to neither.
+
+The **Threat Detection** component carries the same two switches per enemy. **Debug Draw Threat** draws the cone and ring for that one enemy with the console variable off. **Debug Log Threat** writes a record instead: the look angle, the running timer against the threshold it is chasing, and the length rolled for the next one.
+
+<Collapsible title="Nothing answers the stare" badge="Advanced">
+In the order worth checking:
+
+- **No combat target.** No focus actor means no threat, and this logs nothing at all. It is the common one.
+- **Both profile switches are off.** A new **Movement Behavior Profile** ships with **Swap Strafe On High Threat** and **Adjust Distance By Threat** unticked.
+- **The role uses a different profile.** Check **Role Movement Profiles** on the AI Config before assuming **Default Movement Profile** is the one in play.
+- **No Movement Evaluator, or no SEC Combat Controller, on the controller.** The switches have nothing to drive, or nothing to carry the events to them.
+- **The component sits on the pawn.** It belongs on the AI controller. Anywhere else it warns once at BeginPlay and stops.
+- **Enable Threat Detection is unticked** on the **SEC Combat Controller** component, so a controller made from `EnemyControllerBase` never starts evaluating.
+- **The enemy died.** Shutdown turns threat evaluation off, and a revive turns it back on.
 </Collapsible>
 
-<Collapsible title="Custom action scoring" badge="Advanced">
+<Collapsible title="Switching evaluation off, and throttling it" badge="Advanced">
+**Enable Threat Detection** on the **SEC Combat Controller** component turns evaluation on at BeginPlay. It ships ticked, and a controller made from `EnemyControllerBase` starts with evaluation off, so this box is what starts it.
 
-Add a Blueprint or C++ **`USECScorer`** to an action's scoring list. Read threat from the controller:
+<ThreatResponseWiringDetails />
+
+Unticking it leaves that switch-on undone and never turns a running component off. A hand-built controller carrying the component without the base class starts evaluating on its own, so call **Set Threat Detection Enabled** with false to stop it.
+
+**Set Threat Detection Enabled** flips it at runtime. Switching it off clears the reading, the timer and the looking flag, and the component keeps ticking so the debug drawing still works.
+
+**Set Tick Interval** throttles evaluation, in seconds between updates, where 0 evaluates every frame. Raising it toward 0.1 on a crowded arena costs a three second stare nothing.
+
+The delegates bind whether or not evaluation is enabled, so a handler stays connected across an off and on cycle.
+</Collapsible>
+
+<Collapsible title="Letting a stare bias which move an enemy picks" badge="C++">
+No shipped scorer reads this component. To let threat shape action scoring, subclass the scorer base and read the level off the controller:
 
 ```cpp
 float ScoreMultiplier_Implementation(const FSECScoringContext& Context) const override
@@ -147,30 +172,28 @@ float ScoreMultiplier_Implementation(const FSECScoringContext& Context) const ov
 }
 ```
 
-You write and tune the curve; the plugin ships no default scorer for threat.
+Add it to an action's **Scorers** list like any other. You author the curve. See [Action System](/docs/soulslike-combat/action-system).
 
+The scoring snapshot carries no threat figure. The one the debug overlay prints lives on the decision context that feeds the brain, blended from distance and angle to the target, and never reaches a scorer. Read the component when you want camera attention.
 </Collapsible>
 
-<Collapsible title="Debug" badge="Advanced">
+<Collapsible title="Wiring it without the SEC Combat Controller" badge="Alternative">
+The component senses and broadcasts; it drives nothing and holds no reference to movement. On a controller without the SEC pieces:
 
-Per-instance flags on the component (**Debug Log Threat**, **Debug Draw Threat**) or global console cheats:
+1. Add **Threat Detection** to the AI controller.
+2. Call **Set Threat Detection Enabled** with true.
+3. Bind **On Threat Duration Exceeded**, or **On Threat Level Changed**, to whatever the stare should cause.
 
-```
-SEC.Debug.Threat.Draw 1
-SEC.Debug.Threat.Log 1
-```
-
-Draw mode shows the look cone from the focus target and a progress arc on the AI while stared at (white → orange → red).
-
+Focus still has to come from somewhere, either **Set Focus** on the controller or SEC [targeting](/docs/soulslike-combat/targeting-system).
 </Collapsible>
 
-<Collapsible title="Manual wiring without SECCombatControllerComponent" badge="Alternative">
+<Collapsible title="Threat next to awareness" badge="Advanced">
+[Awareness](/docs/soulslike-combat/awareness-system) answers what this enemy has sensed: whether it has spotted a target, how sure it is, where it last saw it. Threat answers the opposite direction, whether the target is paying attention to this enemy.
 
-Add `ThreatDetectionComponent` to your AIController and call `SetThreatDetectionEnabled(true)`.
-
-Bind `OnThreatDurationExceeded` to your handler (strafe swap, bark, etc.). The component header documents no movement coupling; you wire the pairing.
-
+They share no state and neither gates the other. An enemy can sit at full threat while its awareness has lost the player behind a pillar.
 </Collapsible>
+
+---
 
 <DocNav
   prev={{ title: "Targeting System", href: "/docs/soulslike-combat/targeting-system" }}

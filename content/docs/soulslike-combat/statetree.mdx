@@ -1,7 +1,7 @@
 ---
 title: "StateTree Integration"
-description: "Graph-authored AI structure on top of the same combat pipeline as the native brain."
-date: 2026-07-29
+description: "Author the enemy's shape as a graph: point the AI Config at a StateTree and patrol, investigate, fight and walk home become states you can see."
+date: 2026-08-16
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "StateTree"]
 parent: "SoulslikeCombatDocs"
@@ -14,204 +14,241 @@ order: 18
     { label: "StateTree Integration" }
 ]} />
 
-> **`USECBrainComponent`** reads **`UEnemyAIConfig::StateTree`**. Set it and the brain runs a runtime **`UBotStateTreeAIComponent`**; leave it empty and the brain runs the native loop (build context, move, poll, execute) with no graph.
+> An enemy whose high-level behaviour is a graph you can read: patrol, investigate, fight, walk home. The combat underneath stays the same scoring and movement the plugin already runs.
 
-## When to Use This
+<QuickStart time="60 seconds">
 
-- Patrol, investigate, search, or boss phases you want to author in a StateTree.
-- Different high-level states that share the same combat loop subtree.
-- Awareness-driven branches without wiring perception delegates by hand.
+<QuickStep title="Point the AI Config at the shipped tree">
 
-Leave **`Default State Tree`** empty when pure combat is enough. Scoring, movement, and execution stay the same in both modes.
+In the Content Browser open **Settings** and tick **Show Plugin Content**. Then open your enemy's **Enemy AI Config** and under **Behavior** set **Default State Tree** to `StateTree_SEC_Core`.
 
----
-
-## How It Works
-
-On possession, **`SECBrainComponent`** resolves the config through **`SECCombatControllerComponent::ResolveAIConfig`**:
-
-1. **`StateTree` set:** **`SECBrainComponent`** spawns **`UBotStateTreeAIComponent`**, takes the brain slot, and hands it the tree.
-2. **`StateTree` empty:** tick the native loop on **`SECBrainComponent`** (`EvaluationCooldown` default 0.1s).
-3. **StateTree fails to start:** log a warning and fall back to the native loop.
-
-Call **`RefreshBrain()`** after you change the config at runtime without re-possessing.
-
-Both paths call the same components: **`USECDecisionLibrary`**, **`MovementEvaluatorComponent`**, **`ActionEvaluationComponent`**. StateTree tasks are thin wrappers around those APIs.
-
----
-
-## Setup
-
-Assign **`Default State Tree`** on **`UEnemyAIConfig`**.
-
-<StateTreeBehaviorConfigDetails />
-
-Shipped showcase path (plugin content): **`Content/SoulslikeEnemyCombat/Showcase/AI/StateTree/StateTree_SEC_Core`**. **`StateTree_RoleBehavior`** is the combat-loop subtree shown in the screenshots below.
-
-**Requirements on the controller:** **`SECCombatControllerComponent`**, **`ActionEvaluationComponent`**, **`MovementEvaluatorComponent`**, and **`SECBrainComponent`**. **`AEnemyControllerBase`** creates all four. Custom controllers need the same set.
-
----
-
-## Shipped Graph Layout
-
-**`StateTree_SEC_Core`** picks Idle vs Combat. Combat runs a role subtree when the AI has a focus target and a non-None combat role.
-
-<ZoomableImage
-  src="../images/sec_statetree_core.png"
-  alt="StateTree_SEC_Core: Combat runs Attacker_Subtree while the AI has a target and combat role; Idle otherwise"
+<UeSetPropertiesScene
+  title="EnemyConfig_Grunt"
+  section="Behavior"
+  rows={[
+    { name: "Default State Tree", value: "StateTree_SEC_Core", kind: "asset" }
+  ]}
+  caption="One field. Empty runs the native combat loop, filled runs the graph."
 />
 
-**`StateTree_RoleBehavior`** is the combat loop subtree: poll focus and role, build context, poll action, branch to **AI Movement** or **Do Action**, then a short Recovery delay before polling again.
+</QuickStep>
 
-<ZoomableImage
-  src="../images/sec_statetree_rolebehavior.png"
-  alt="StateTree_RoleBehavior: Role state polls and branches to Move or Action, with Recovery before returning to Role"
-/>
+<QuickStep title="Play, and watch it fight">
 
-<Callout type="info">
-  The graph **Recovery** state is a timed pause in the tree. [Action Recovery Time](/docs/soulslike-combat/action-system#recovery-a-gap-between-any-two-moves) on **`EnemyAIConfig`** only suspends offensive action selection while movement and reactions continue. Use Recovery for a brief settle; use **`ActionRecoveryTime`** to tune attack spacing.
+Press Play. The enemy stands idle until something registers as its target, then the Combat state takes over and runs the fight.
+
+Run `SEC.Debug.Decision 1` in the console to see the distance, angle, line of sight and threat the graph is deciding on, written above each enemy.
+
+</QuickStep>
+
+<QuickStep title="Copy the tree into your own content">
+
+Right-click `StateTree_SEC_Core`, **Duplicate**, and drop the copy in your project's Content folder. Repoint **Default State Tree** at the copy. Duplicate `StateTree_RoleBehavior` too and relink it inside your copy if you want to change the fight loop as well.
+
+Edits made to plugin content are overwritten by the next plugin update.
+
+</QuickStep>
+
+<QuickStep title="Add a state of your own">
+
+Open your copy and press **Add State**. Every plugin node sits in the node picker under **AI**: **AI | Decision** for the fight loop, **AI | Awareness**, **AI | Territory**, **AI | Actions**.
+
+</QuickStep>
+
+</QuickStart>
+
+<Callout type="warning">
+An enemy needs a registered combat target before the Combat branch does anything. The graph runs, the states select, and nothing happens because the controller has no focus actor. If the tree looks right and the enemy stands there, that is what is missing. See [Getting Started](/docs/soulslike-combat/getting-started) and [Targeting](/docs/soulslike-combat/targeting-system).
 </Callout>
 
 ---
 
-## Combat Loop Wiring
+## Which tree an enemy runs
 
-Bind these three tasks for the core fight loop:
+Three answers, and the first one that holds wins:
 
-```text
-Build Decision Context → Poll Action → Do Action
-         ↓
-   AI Movement (parallel tick while in Move state)
+| Source | Wins when |
+|--------|-----------|
+| **Default State Tree** on the Enemy AI Config | It names an asset. This is the one to fill in. |
+| **Fallback State Tree** on the StateTree component | The config named nothing, on a custom controller that carries the component itself. |
+| The native combat loop | Neither named anything. No graph, combat still works. |
+
+<StateTreeBehaviorConfigDetails />
+
+The tree resolves at possession. Change the config at runtime without re-possessing the pawn and call **Refresh Brain** on the **SEC Brain** component to pick the change up; it tears the previous brain down before starting the new one. A tree that fails to start logs a warning and the native loop takes over.
+
+<Callout type="info">
+The controller needs a **SEC Combat Controller**, an **Action Evaluation**, a **Movement Evaluator** and a **SEC Brain** component for the plugin nodes to find anything. **Enemy Controller Base** ships with all four plus threat, reaction and awareness. A custom controller needs the same set added by hand.
+</Callout>
+
+---
+
+## What the shipped tree does
+
+`StateTree_SEC_Core` is the top level, under `Showcase/AI/StateTree` in plugin content. Its root holds five states:
+
+| State | Runs |
+|-------|------|
+| **Combat** | The fight. Links `StateTree_RoleBehavior` as a subtree and watches the leash while it runs. |
+| **Investigate** | Walks to where the target was last perceived, stands there and looks around. |
+| **Patrol** | Walks the territory route, post to post, waiting at each. |
+| **Return Home** | Walks the enemy back to its ground once a fight ends, held out of combat on the way. |
+| **Idle** | Stands still. The fall-through when nothing above selects. |
+
+`StateTree_RoleBehavior` is the fight loop it links to. A Role state polls the target, builds the decision context and polls for an action, then branches to Move or Action, with a short jittered pause in Recovery before it polls again.
+
+<ZoomableImage
+  src="../images/sec_statetree_rolebehavior.png"
+  alt="StateTree_RoleBehavior: a Role state polls and branches to Move or Action, with Recovery before returning to Role"
+/>
+
+<Callout type="info">
+The graph's Recovery state is a pause in the tree and stops the enemy doing anything. [Action Recovery Time](/docs/soulslike-combat/action-system#recovery-a-gap-between-any-two-moves) on the AI Config holds offensive actions off while movement and reactions carry on. Use the graph state for a beat, the config value for attack spacing.
+</Callout>
+
+---
+
+## The fight, in four nodes
+
+| Node | Does |
+|------|------|
+| **Build Decision Context** | Fills the distance, angle, line of sight, health, stamina, speed and tags the scoring reads. Ticks. |
+| **Poll Action** | Scores the active Action Set and names a winner. Ticks. |
+| **Do Action** | Runs that action and finishes when it ends. |
+| **AI Movement** | Runs tactical positioning while the state is active. Ticks. |
+
+Three bindings wire the loop:
+
+1. Bind **Build Decision Context**'s **Out Decision Context** to **Poll Action**'s **In Decision Context**.
+2. Bind **Poll Action**'s **Out Chosen Action** to **Do Action**'s **In Chosen Action**.
+3. Branch on **Poll Action**'s **Has Valid Action** to pick between the Action state and the Move state.
+
+**Poll Action** re-scores every **Evaluation Cooldown** seconds (0.1 by default) and skips while an action is running, so the winner cannot change mid-swing. **Do Action** waits for the action to end and then finishes, succeeding or failing with it.
+
+<Callout type="info">
+Keep the state holding **AI Movement** in a running state through the fight. The task drives the pawn on tick, so a state the graph enters and leaves each frame moves nothing.
+</Callout>
+
+---
+
+## The rest of the nodes
+
+Every one of these binds its **AI Controller** pin from the graph context, so most of them need no wiring at all.
+
+### Target and role
+
+| Node | Does |
+|------|------|
+| **Poll Focus Actor** | Outputs **Focus Actor** and **Has Target**. Bind **Has Target** on a combat state's enter conditions. |
+| **Poll Combat Role** | Outputs **Current Role** and fires **On Role Changed**. See [Combat Roles](/docs/soulslike-combat/combat-roles). |
+| **ASC Has Tag** | Condition on the pawn's gameplay tags. Takes **Tags To Check**, a **Check Type** of Has Any or Has All, and **Invert Result**. Binds the **Pawn** pin rather than the controller. |
+
+### Awareness
+
+| Node | Does |
+|------|------|
+| **Awareness State At Least** | Condition. Passes when the target has reached **Min State** (Detected by default). The order runs Unknown, Forgotten, Suspicious, Lost, Detected. |
+| **Poll Last Known Location** | Outputs **Last Known Location**, **Age Seconds**, **Valid** and **Resolved Target**. Feed the location into an AI Move To. |
+
+Both take an optional **Target**. Leave it unbound and the enemy's most-aware target answers, which lets one Investigate state serve a noise and a target that slipped out of sight. See [Awareness](/docs/soulslike-combat/awareness-system).
+
+### Territory
+
+| Node | Does |
+|------|------|
+| **Territory Patrol** | Walks the route: one leg, the post's wait, then the next post. Runs until the graph transitions out. |
+| **Territory Investigate** | Walks to the spot on its **Location** pin and stands there for **Look Around Time** (3 seconds), then succeeds. |
+| **Return To Territory** | Walks the pawn back to its home post, or takes the ground under its feet when no route reaches home. |
+| **Monitor Combat Leash** | Tracks time spent outside the leash during one Combat activation and latches **Leash Broken** when the grace window runs out. |
+| **Hold Out Of Combat** | Takes the enemy out of the fight while the state runs. **Block Actions** is on, **Leave Coordination** is off. |
+| **Territory Owns Ground** | Condition: the enemy has a post it can reach, or a spot it took. |
+| **Pawn On Its Ground** | Condition: the pawn stands on the one spot it holds. Invert it into Return To Territory. |
+| **Pawn Outside Leash** | Condition: the pawn has been dragged past its edge. |
+| **Target Outside Leash** | Condition: the target stands past the edge. Bind **Target**, or it fails. |
+| **Target Eligible For Combat** | Condition: the leash permits fighting this target. |
+| **Resting Behavior Is** | Condition: branch a patroller against a sentry without a second graph. |
+
+See [Territory](/docs/soulslike-combat/territory) for posts, leash and resting behaviour.
+
+### Waiting for the enemy to finish
+
+Four conditions that stop a transition cutting an animation in half. Each takes an **Invert Result** tick, and each reads false when the controller has no component to ask.
+
+| Node | Passes while |
+|------|--------------|
+| **Action Executing** | An action is running. Invert it on a transition out of combat so the swing lands before the state changes. |
+| **Action Recovering** | The breather after an action is still open. Fill it with a strafe or a taunt instead of a blank pause. |
+| **Actions Blocked** | Something is holding offense shut: a running reaction, a stun, a scripted phase. |
+| **Reaction Executing** | A parry, dodge or flinch is playing. Invert it next to **Action Executing** for "doing nothing at all". |
+
+---
+
+## Debug it
+
+```
+SEC.Debug.Decision 1      // Distance, angle, sight, speed and threat above each enemy
+SEC.Debug.Actions 1       // Cooldown list above each enemy
+SEC.Debug.Scoring 1       // What the last poll scored, highest first
+SEC.Debug.Territory 1     // Owned ground, current post and leash margin
+SEC.Debug.Awareness 1     // Awareness state, meter and last-known age
 ```
 
-| Editor name | C++ struct | Role |
-|-------------|------------|------|
-| **Build Decision Context** | `FSTTask_BuildDecisionContext` | Fills **`OutDecisionContext`** each tick via **`USECDecisionLibrary`** |
-| **Poll Action** | `FSTTask_PollAction` | Scores on **`EvaluationCooldown`**; skips while an action runs |
-| **Do Action** | `FSTTask_DoAction` | Calls **`ExecuteAction`**; finishes on **`OnActionExecutionCompleted`** |
-| **AI Movement** | `FSTTask_AIMovement` | Calls **`MovementEvaluatorComponent::EvaluateAndMove`** |
+`SEC.Debug.All 1` turns every overlay on at once, and `SEC.Debug.WatchPawn <name>` narrows them to one enemy. Run it with no argument to list the pawns worth watching.
 
-**Poll Action** outputs **`OutChosenAction`** and **`bHasValidAction`**. Wire **`InChosenAction`** on **Do Action** from that output.
+For the graph itself, open the StateTree asset and use its **Debugger** tab, which records which states selected and which transitions fired.
 
-**Do Action** polls nothing. It binds **`ActionEvaluationComponent::OnActionExecutionCompleted`** and finishes the StateTree task when execution ends.
+Each task carries its own **Debug Log** tick: **Poll Action** logs what it scored and picked, **AI Movement** logs every movement result it receives, **Territory Patrol** and **Territory Investigate** log each leg and arrival.
 
----
-
-## Task Reference
-
-Combat tasks use **`USECDecisionLibrary`** and eval/movement components. Role polling uses **`SECCombatControllerComponent::ResolveCurrentCombatRole`**. Focus and awareness tasks read the controller directly (**`GetFocusActor`**, **`USECAwarenessComponent`**).
-
-### Combat and decision
-
-| Editor name | Use |
-|-------------|-----|
-| **Build Decision Context** | Every tick in active combat states |
-| **Poll Action** | Pick the next action from the active **`ActionSet`** |
-| **Do Action** | Run the chosen action |
-| **AI Movement** | Tactical positioning while in a Move state |
-
-### Polling helpers
-
-| Editor name | Use |
-|-------------|-----|
-| **Poll Combat Role** | Exposes **`CurrentRole`** and **`OnRoleChanged`** |
-| **Poll Focus Actor** | Exposes **`FocusActor`** and **`bHasTarget`** from **`GetFocusActor()`** |
-
-### Role sync (optional)
-
-| Editor name | Use |
-|-------------|-----|
-| **Sync Action Set** | Poll pawn **`SECActionSetComponent`** into **`ActionEvaluationComponent`** |
-| **Sync Reaction Set** | Poll pawn **`SECReactionSetComponent`** into **`ReactionEvaluationComponent`** |
-| **Sync Movement Profile** | Poll **`EnemyAIConfig`** movement profile into **`MovementEvaluatorComponent`** |
-
-**`SECCombatControllerComponent`** calls **`SyncStateForCombatRole`** when combat roles change (action set, reaction set, the equipped weapon's sets, movement profile). You only need the Sync tasks for custom controllers or when the graph must own sync timing.
-
-### Manual override
-
-| Editor name | Use |
-|-------------|-----|
-| **UpdateActionSet** | Sets a fixed **`ActionSet`** on **`ActionEvaluationComponent`** (boss phase swap, debug) |
-
----
-
-## Conditions
-
-| Editor name | C++ struct | Use |
-|-------------|------------|-----|
-| **ASC Has Tag** | `FSTCondition_ASCHasTag` | Gate on pawn ASC tags (**HasAny** / **HasAll**) |
-| **Awareness State At Least** | `FSTCondition_AwarenessState` | Branch on **`USECAwarenessComponent`** state |
-
-**ASC Has Tag** binds **`Pawn`**, not the controller. The pawn supplies its ability system through **`IAbilitySystemInterface`** or by carrying an **Ability System Component**; the condition finds either.
-
-**Awareness State At Least** compares **`GetAwarenessState(Target)`** to **`MinState`**. Empty **`Target`** uses the most-aware target. Ordering: Unknown &lt; Forgotten &lt; Suspicious &lt; Lost &lt; Detected.
-
----
-
-## Integration
-
-| System | StateTree touchpoint |
-|--------|---------------------|
-| [Action System](/docs/soulslike-combat/action-system) | **Poll Action** / **Do Action**; **`FDecisionContext::bHasLOS`** gates LOS actions |
-| [Movement System](/docs/soulslike-combat/movement-system) | **AI Movement**; profiles sync on role change or **Sync Movement Profile** |
-| [Awareness System](/docs/soulslike-combat/awareness-system) | **Awareness State At Least**; **Poll Last Known Location** |
-| [Combat Roles](/docs/soulslike-combat/combat-roles) | **Poll Combat Role**; Core tree checks role before Combat |
-| [Vitals](/docs/soulslike-combat/vitals) | Self health and stamina in the decision context read the pawn's vitals |
-| [Multiplayer Support](/docs/soulslike-combat/multiplayer) | Same server-side pipeline; graph runs on authority |
-
----
-
-<Collapsible title="Build Decision Context fields" badge="Advanced">
-
-Resolved once on EnterState from **`UEnemyAIConfig::DecisionContextParams`** via **`ResolveDecisionParams`**.
-
-Each tick fills **`FDecisionContext`**:
-
-- **Spatial:** distance, angle, **`bHasLOS`** (eyes-to-eyes trace on **`LineOfSightTraceChannel`**).
-- **Self:** **`HealthPercentage`** from the pawn's [health vital](/docs/soulslike-combat/vitals) if present, else 1.0; **`Stamina`** from the pawn's stamina vital if present, else 100; **`Speed`** from pawn velocity; **`AggressionLevel`** from params.
-- **Target:** **`ThreatLevel`** from focus distance and facing (not **`ThreatDetectionComponent`**).
-- **Tags:** ASC tags on self and target; **`WorldTags`** from **`USECWorldTagSubsystem`** on the server.
-
-GAS-backed health belongs in an Attribute Scorer on the action, not in the context struct.
-
+<Collapsible title="The graph runs but the enemy does nothing" badge="Advanced">
+- **No focus actor.** Nothing registered a combat target, so Combat selects and finds nothing to fight. This is the common one.
+- **AI Movement sits in a state the graph leaves each frame.** It drives the pawn on tick and needs to stay resident.
+- **Do Action does not finish.** The action's ability reaches no End Ability, so the task waits. The action's own timeout cuts it off after 30 seconds.
+- **Poll Action outputs nothing.** No Action Set resolved, or the enemy's gates all refused. `SEC.Debug.Scoring 1` names the refusal.
+- **A territory state fails outright.** Territory Patrol and Return To Territory fail when the controller has no Territory or Movement Evaluator component, so the graph falls through to the next state.
+- **The tree failed to start.** The brain logs a warning and runs the native loop instead, which fights but has no patrol or investigate.
 </Collapsible>
 
-<Collapsible title="Blueprint decision readers" badge="Advanced">
+<Collapsible title="What Build Decision Context fills in" badge="Advanced">
+The task resolves its tunables once on entering the state, from **Decision Context Params** on the AI Config, then refills the context each tick:
 
-| Node | Returns |
-|------|---------|
-| **Get Decision Context (AI Controller)** | **`FDecisionContext`** |
-| **Get Decision Context (Pawn)** | Same; resolves the pawn's controller first |
-| **Resolve Decision Params** | **`FSECDecisionContextParams`** from config |
+- **Spatial**: distance to the target, angle to it, and whether the line of sight trace on **Line Of Sight Trace Channel** reaches it.
+- **Self**: health as a 0 to 1 fraction from the pawn's [health vital](/docs/soulslike-combat/vitals) (1.0 with no vital), stamina from its stamina vital (100 with none), speed from pawn velocity, and **Aggression Level** straight from the params.
+- **Target**: a threat estimate from focus distance and facing, worked out here rather than read from the Threat Detection component.
+- **Tags**: gameplay tags on the enemy and on its target, plus the [world tags](/docs/soulslike-combat/action-system) the server holds.
 
-All three are server-only. Off authority they return defaults.
-
-A getter uses a fresh window and seed (**`DeltaTime = 0`**), so **`WindowId`** / **`Seed`** will not match the running brain cadence. Read spatial, health, threat, and tag fields live; do not expect identical score jitter.
-
+Health backed by a GAS attribute belongs in an Attribute Scorer on the action rather than in this context.
 </Collapsible>
 
-<Collapsible title="Awareness tasks" badge="Advanced">
+<Collapsible title="Reading the same numbers from Blueprint" badge="Advanced">
+Three nodes hand the decision context to a Blueprint: **Get Decision Context (AI Controller)**, **Get Decision Context (Pawn)** which resolves the controller for you, and **Resolve Decision Params** for the config values behind it. All three answer on the server and return defaults off authority.
 
-### Poll Last Known Location
-
-Reads **`USECAwarenessComponent::GetLastKnownLocation`**. Outputs **`LastKnownLocation`**, **`AgeSeconds`**, **`bValid`**, **`ResolvedTarget`**. Bind **`LastKnownLocation`** to **AI Move To** for search/investigate states.
-
-Empty **`Target`** uses **`GetMostAwareTarget`**.
-
-Typical loop: patrol below Suspicious; investigate at Suspicious; combat at Detected; search at Lost; drop to Idle on Forgotten. See [Awareness System](/docs/soulslike-combat/awareness-system).
-
+A getter opens a fresh scoring window with its own seed, so the window and seed it reports will not match the running brain's cadence. Read distance, angle, sight, health, threat and tags live; do not expect the score jitter to line up.
 </Collapsible>
 
-<Collapsible title="BotStateTreeAIComponent" badge="Advanced">
+<Collapsible title="Keeping sets in step from the graph" badge="Advanced">
+**Sync Action Set**, **Sync Reaction Set** and **Sync Movement Profile** poll the pawn's set components and apply what the current combat role resolves to.
 
-Runtime component created by **`SECBrainComponent`** when a StateTree is configured.
+The Combat Controller already pushes all three when the role changes, covering the equipped weapon's sets and the movement profile with it, so a controller built on **Enemy Controller Base** needs none of these tasks. Add them when a custom controller has no role-change events, or when the graph should own the timing.
+
+**UpdateActionSet** (its name carries no spaces in the picker) sets one fixed Action Set on the enemy for as long as the state runs. Use it for a boss phase swap or a debug state, rather than as the ordinary path.
+</Collapsible>
+
+<Collapsible title="Swapping subtrees for enemy variants" badge="Advanced">
+When a tree is configured, the brain creates a StateTree component on the controller at runtime and hands it the asset. It resolves what to run in order: the controller's cached config, then a pawn that supplies its own config, then the component's own **Fallback State Tree**.
 
 <BotStateTreeAIConfigDetails />
 
-Init order on possession: controller cached config → pawn **`IEnemyAIConfigProvider`** → **`FallbackStateTree`**.
+Untick **Auto Initialize From Config** to start the tree yourself instead of at possession. A linked-state override registered against a gameplay tag swaps one subtree for another, which is how several enemies share a top-level tree and differ only in the fight loop.
+</Collapsible>
 
-**`AddLinkedStateTreeOverride`** swaps subtrees by gameplay tag for variants.
+<Collapsible title="Running the fight without a graph" badge="Alternative">
+Leave **Default State Tree** empty and the SEC Brain runs a native loop: build the context, move, poll and execute. Scoring, movement, reactions and execution behave the same in both modes, so combat needs no graph at all.
 
+The native loop grows on its own as components are added. An [Awareness](/docs/soulslike-combat/awareness-system) component gives it an investigate phase. A [Territory](/docs/soulslike-combat/territory) component gives it a resting phase, a walk home when a fight ends, and a leash that calls off a chase gone too far.
+
+**Evaluation Cooldown** on the SEC Brain component sets how often it re-scores, 0.1 seconds by default, and **Min Phase Duration** (0.5 seconds) is the floor against phase flicker. **Get Brain Phase** reports Resting, Idle, Investigate or Combat, and **On Brain Phase Changed** fires on each switch.
+
+Reach for a graph when the enemy needs structure the loop has no opinion about: boss phases, scripted openings, a search pattern of your own design.
 </Collapsible>
 
 <DocNav

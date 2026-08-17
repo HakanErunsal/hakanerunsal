@@ -233,7 +233,7 @@ export default function ThreatVisualizer() {
             title="Viewport"
             breadcrumb={["LVL_SEC_Showcase", "Threat"]}
             assetType="visualizer"
-            caption="Enemy strafes around the player. Aim toward the AI to raise threat (even outside the 15° cone); hold inside the cone for 3s to fire OnThreatDurationExceeded and swap strafe side when the profile allows it."
+            caption="Enemy strafes around the player. Aim toward the AI to raise threat (even outside the 15° cone); hold inside the cone for 3s to fire On Threat Duration Exceeded and swap strafe side when the profile allows it."
         >
             <UeViewport
                 ref={containerRef}

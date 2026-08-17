@@ -15,7 +15,7 @@ export default function RegisterCombatTargetBlueprint() {
             <UeBlueprintSubsystemNode titleLines={["AICombat", "Role", "Subsystem"]} />
             <UeBlueprintFunctionNode
               title="Register Combat Target"
-              subtitle="Target is AI Combat Role Subsystem"
+              subtitle="Target is AICombat Role Subsystem"
               pins={[
                 { name: "Target", type: "object", direction: "input", connected: true },
                 { name: "Target Actor", type: "object", direction: "input", defaultValue: "Self" },

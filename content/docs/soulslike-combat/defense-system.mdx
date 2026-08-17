@@ -1,7 +1,7 @@
 ---
 title: "Defense System"
-description: "Decide what an incoming hit is worth: parries, blocks, invulnerability frames, and armour, in the order you author them."
-date: 2026-08-04
+description: "Give a pawn a guard: add the Defense component, author one response, and an incoming hit is parried, blocked or ignored before it reaches health."
+date: 2026-08-16
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Defense", "Combat"]
 parent: "SoulslikeCombatDocs"
@@ -16,88 +16,81 @@ order: 14.5
 
 > A pawn carries an ordered list of answers to an incoming hit. The first one that fits decides what the blow was worth and reports back, so the attacker can tell a parry from a block.
 
-## When to Use This
+<QuickStart time="60 seconds">
 
-- A parry window that turns a blow aside and costs the attacker its swing.
-- A guard that soaks damage while it drains stamina, and breaks when the stamina runs out.
-- Invulnerability frames on a dodge or a roll.
-- Armour and elemental resistance, on the pawn or on the gear it carries.
-- A shield that brings its own block, gained by picking it up and lost by putting it down.
+<QuickStep title="Add the Defense component">
 
-Player pawns and enemies use the same component, and nothing here needs a C++ class. Armour and resistance work on a bare pawn; a parry or a dodge reads state tags, which come from the pawn's ability system or from an override of **Get State Tags**.
+Select the pawn, **Add Component**, **SEC Defense**. An enemy built on `EnemyCharacterBase` already carries one named **Defense**; select that instead of adding a second.
 
----
+</QuickStep>
 
-## How It Works
+<QuickStep title="Author one response">
 
-Add a **SEC Defense** component to the pawn and fill in its **Responses**. Each entry is one answer to one kind of hit. When a blow arrives, the component walks the list from the top and offers the hit to each response in turn. A response reads what the pawn is doing, which direction the blow came from, and what kind of damage it is, then either passes or claims the hit and sets what it is worth.
+On the component, press **+** on **Responses** and pick **SEC Block**. Set **Required Tags** to the tag the guard holds while it is up, and **Result Tag** to `SEC.Defense.Block` so the attacker learns what happened.
 
-The first response that claims the hit ends the walk, and what survives is what the pawn takes.
+<UeSetPropertiesScene
+  title="SEC Defense"
+  section="Block"
+  rows={[
+    { name: "Required Tags", value: "SEC.State.Blocking", kind: "text" },
+    { name: "Arc Half Angle Degrees", value: "60", from: "60" },
+    { name: "Damage Multiplier", value: "0.2", from: "0.2" },
+    { name: "Result Tag", value: "SEC.Defense.Block", kind: "text" }
+  ]}
+  caption="Required Tags is the only field with nothing in it. The arc and the multiplier ship ready to use."
+/>
 
-<DefenseResponseOrder />
+</QuickStep>
 
-A Defense component with nothing authored reports the incoming damage unchanged, so dropping it onto an existing pawn changes nothing until you write the first response.
+<QuickStep title="Answer Handle Incoming Damage">
 
-<Callout type="info">
-Working out the answer spends nothing. The component charges what the responses cost afterwards, which is what lets **Preview Incoming Damage** run the same walk on any machine to show a player what a hit would cost before it lands.
-</Callout>
-
----
-
-## Setup
-
-### 1. Add the component
-
-Add **SEC Defense** to the pawn. `AEnemyCharacterBase` ships with one already.
-
-<DefenseComponentDetails />
-
-| Field | Sets |
-|-------|------|
-| **Defense Set** | A shareable list of responses, for armour or a stance several characters use. Authored in a **SEC Defense Rule Set** asset. Runs last, under everything in Responses, so a broad resistance here shaves whatever the answers above it let through. Empty means everything is authored on this pawn. |
-| **Responses** | Responses authored on this pawn alone, running after whatever the pawn is carrying brings and before the Defense Set. Order matters: the component walks the combined list top down, and the first response that handles the hit usually ends it. |
-
-### 2. Wire Handle Incoming Damage
-
-In the pawn's **Class Settings**, add the **SEC Damageable** interface, then implement **Handle Incoming Damage** with one node.
+In the pawn's **Class Settings**, add the **SEC Damageable** interface, then implement **Handle Incoming Damage** with one node. **Resolve Defense and Apply Damage** runs the responses, charges what they cost, takes what survived off the pawn's health pool, and reports back.
 
 <DefenseResolveGraph />
 
-**Resolve Defense and Apply Damage** is the whole answer in one call: run the responses, charge what they cost, take what survived off the pawn's health pool, and report back with **Was Fatal** set when that emptied it. A pawn with no vitals component resolves the hit normally, takes nothing off anything, and names itself once in the Output Log.
+Enemies built on `EnemyCharacterBase` answer this already, so skip this step there.
 
-Two variations cover the rest:
+</QuickStep>
 
-- **A pawn wired through Event Any Damage.** Call **Resolve Defense and Apply Damage (Any Damage Event)** instead. It takes loose numbers and works the blow's direction out from where the attacker is standing, so a directional defense rule still has a bearing to measure against. It takes the surviving damage off the health pool too, so nothing after it should subtract health again.
-- **A project running its own health.** Call **Resolve Incoming Damage** on the component, subtract the result's **Damage Applied** from your own health variable, and return the result. That node runs the responses and charges their costs; taking the damage off a pool is then yours to do.
+<QuickStep title="Play, and hit it while the tag is held">
 
-<Callout type="info">
-Enemies deriving from `AEnemyCharacterBase` answer Handle Incoming Damage in C++ already, through a component named **Defense**. Author responses on it and the enemy is done.
+A fifth of the damage lands, and the swing comes back carrying `SEC.Defense.Block`. Drop the tag and the same blow lands whole.
+
+</QuickStep>
+
+</QuickStart>
+
+<Callout type="warning">
+A response answers only while the pawn holds the tags in its **Required Tags**, and nothing in the plugin puts them there. A guard ability, a [reaction](/docs/soulslike-combat/reaction-system), or a [montage window](/docs/soulslike-combat/animation-integration) has to hold one while the guard is up. Until something does, the response sits inert and hits land at full damage.
 </Callout>
 
-### 3. Author the responses
-
-Four kinds ship with the plugin. Add them to **Responses** in this order to start from a sane list.
-
-| Response | What it does |
-|----------|--------------|
-| **SEC Invulnerable** | Ignores the hit outright while the pawn holds a tag. No arc, no cost. |
-| **SEC Parry** | Turns the hit aside inside a timed window, from the front. |
-| **SEC Block** | Soaks the hit while a guard is up, usually against a vital. |
-| **SEC Damage Type Resistance** | Scales the hit by what kind of damage it is. Armour. |
-
-Most situational at the top. The resistance sits at the bottom, on the component or in a shared set, with **Continue After Claim** ticked so it trims whatever the responses above it let through.
+A Defense component with nothing authored reports the incoming damage unchanged, so dropping it onto an existing pawn changes nothing until you write the first response.
 
 ---
 
-## The four responses
+## The responses that ship
+
+Add them to **Responses** in this order to start from a sane list: most situational at the top, the scaling ones at the bottom.
+
+| Response | Answers when | Ships with |
+|----------|--------------|------------|
+| **SEC Invulnerable** | The pawn holds the tags. No arc, so it answers from every direction, and no cost. | Damage fixed at 0 |
+| **SEC Parry** | The pawn holds the tags and the blow arrives inside the arc. | 90 degree half arc, multiplier 0 |
+| **SEC Block** | The pawn holds the tags and the blow arrives inside the arc. | 60 degree half arc, multiplier 0.2, cost per damage 1 |
+| **SEC Damage Modifier** | The pawn holds the tags, whatever the attack is. Scales a hit by what the pawn is: double against a stance-broken enemy, half against a buffed one. | Multiplier 1, **Continue After Claim** on |
+| **SEC Damage Type Resistance** | The attack's damage type matches. Armour and elemental resistance. | Multiplier 1, **Continue After Claim** on |
+
+The last two scale a hit rather than answering it, so a blow only they touched still reads as unguarded to the attacker.
 
 ### Where the tags come from
 
-A response reads the pawn's current state tags and nothing else. Whatever grants a tag decides when the response is live: a [reaction](/docs/soulslike-combat/reaction-system) on an enemy, an input-driven ability on the player, or a [montage window](/docs/soulslike-combat/animation-integration) that holds a tag for the frames it covers.
+A response reads the pawn's current state tags and nothing else. Whatever grants a tag decides when the response is live: a [reaction](/docs/soulslike-combat/reaction-system) on an enemy, an input-driven ability on a player, or a [montage window](/docs/soulslike-combat/animation-integration) that holds a tag for the frames it covers.
 
 That is the seam between the two halves of a defence. The reaction picks the animation and plays it; the response prices a hit that lands during it. One enemy parry reaction plus one **SEC Parry** response covers the whole move, and neither knows about the other beyond the tag they share.
 
-Override **Get State Tags** on the component for a pawn that keeps its states somewhere other than an ability system.
+---
+
+## Author a response
 
 ### What a guard reads
 
@@ -107,28 +100,39 @@ Override **Get State Tags** on the component for a pawn that keeps its states so
 |-------|------|
 | **Required Tags** | Tags the pawn must all hold for this to answer, which is what the parry, guard, or dodge ability grants while it runs. Empty answers without a tag gate. |
 | **Blocked Tags** | Tags that stop this answering when the pawn holds any of them, such as a stagger. Empty stops nothing. |
-| **Arc Half Angle Degrees** | Half the width of the arc the blow must arrive inside, in degrees to either side of straight ahead. 60 accepts anything up to 60 degrees off the front, 180 accepts all round. A blow carrying no direction counts as frontal, so an attack with none cannot slip past a raised guard. Parry starts at 90, Block at 60. **SEC Invulnerable** has no arc and answers from all round. |
+| **Arc Half Angle Degrees** | Half the width of the arc the blow must arrive inside, in degrees to either side of straight ahead. 60 accepts anything up to 60 degrees off the front, 180 accepts all round. A blow carrying no direction counts as frontal, so an attack with none cannot slip past a raised guard. Parry starts at 90, Block at 60. **SEC Invulnerable** has no arc. |
 | **Damage Multiplier** | How much of the hit still lands. 0 stops it completely, 0.2 lets a fifth through as chip damage, 1 changes nothing. Parry starts at 0, Block at 0.2. |
-| **Outcome Tag** | What to call this answer, reported to the attacker so its swing and its impact effects can react. |
+| **Result Tag** | What to call this answer, reported to the attacker so its swing and its impact effects can react. |
 
 ### What every response carries
 
-These four sit on the base class, so each of the four kinds has them.
+These sit on the base class, so each kind has them.
 
 | Field | Sets |
 |-------|------|
 | **Continue After Claim** | Keep running the responses below this one after this one answers, so a resistance can shave what a block let through. Off by default, which is what a parry wants. |
 | **Cost Vital Tag** | Vital this answer charges, such as stamina for a raised guard. Leave it unset and the answer is free, which also means the pawn needs no vitals at all. |
-| **Flat Cost** | Units charged per hit, whatever the blow was worth. Ignored while Cost Vital Tag is unset. |
+| **Flat Cost** | Units charged per hit, whatever the blow was worth. Ignored while **Cost Vital Tag** is unset. |
 | **Cost Per Damage** | Extra units charged per point of incoming damage, measured against the blow before anything reduced it. 1 charges the whole hit to the vital, 0 turns the scaled part off. |
+| **Vital Damage Multipliers** | Channels this response treats differently from health. Empty and one **Damage Multiplier** covers every channel, so a block that halves health halves stance with it. Add a row to let stance or poise through at its own rate. |
 
-### Dodge invulnerability frames
+<Callout type="info">
+Working out the answer spends nothing. The component charges what the responses cost afterwards, which is what lets **Preview Incoming Damage** run the same walk on any machine and show a player what a hit would cost before it lands.
+</Callout>
 
-Give the dash or roll ability a tag while it runs, put **SEC Invulnerable** at the top of the list, and point **Required Tags** at that tag.
+---
+
+## Worked examples
+
+### Frames where the pawn takes nothing
+
+Give the ability a tag while it runs, put **SEC Invulnerable** at the top of the list, and point **Required Tags** at that tag.
 
 <DefenseInvulnerableDetails />
 
-Damage during the dash is zero, from any direction, at no cost. `SEC.State.Invulnerable` ships as a starting tag for this; a [montage window](/docs/soulslike-combat/animation-integration) holds it for exactly the frames it covers.
+Damage is zero from any direction, at no cost. `SEC.State.Invulnerable` ships as a starting tag for a boss in an immune phase or an actor a script has put out of reach. The blow still lands, still plays its impact effect, and still reports back.
+
+For the invulnerability frames of a dodge, where a sweep should attempt nothing at all, list `SEC.State.Intangible` in **Pass Through Tags** on the attacker's melee trace instead. That tag is already in the shipped list, so a [montage window](/docs/soulslike-combat/animation-integration) holding it across the roll is the whole setup. Reach for **SEC Invulnerable** when the hit has to resolve, or when damage arrives from something other than a sweep.
 
 ### A parry, front only
 
@@ -146,7 +150,7 @@ Give the guard ability a tag it holds while the guard is up, put **SEC Block** u
 
 A response's charge is **Flat Cost** plus **Cost Per Damage** times the blow before anything reduced it. The values above cost 45 stamina against a 40 damage swing.
 
-**Running out is a guard break.** Before a costed response answers, the component asks whether the pawn can pay. One that cannot pay steps aside and the next response down takes the hit, so an exhausted pawn eats the blow at whatever the responses under the block make of it. The component measures two responses drawing on one vital against a running total, so a pool that covers one of them does not cover both.
+**Running out is a guard break.** Before a costed response answers, the component asks whether the pawn can pay. One that cannot pay steps aside and the next response down takes the hit, so an exhausted pawn eats the blow at whatever the responses under the block make of it. Two responses drawing on one vital are measured against a running total, so a pool that covers one of them does not cover both.
 
 The pool comes from the pawn's [Vitals](/docs/soulslike-combat/vitals) component. A pawn with a costed response and no vitals component answers for free and names itself once in the Output Log.
 
@@ -158,106 +162,148 @@ The pool comes from the pawn's [Vitals](/docs/soulslike-combat/vitals) component
 |-------|------|
 | **Damage Type Tag** | Which kind of damage this resists, matched off the attack's own damage type. A parent tag covers everything beneath it, so `SEC.Damage.Physical` resists slashing, piercing, and bludgeoning at once. Leave it unset to scale every hit, which is flat armour. |
 | **Damage Multiplier** | How much of the hit still lands. Starts at 1, which changes nothing. |
-| **Outcome Tag** | Leave it unset for plain armour, which shaves the damage without telling the attacker anything. |
+| **Result Tag** | Leave it unset for plain armour, which shaves the damage without telling the attacker anything. |
 
-This is the one kind that answers by what the attack is rather than by what the pawn is doing, which is why it ships with **Continue After Claim** on and a hit that only armour touched still reads as unguarded. [Melee Trace](/docs/soulslike-combat/melee-trace) covers the damage type vocabulary and where an attack picks its type.
+This kind answers by what the attack is rather than by what the pawn is doing, which is why it ships with **Continue After Claim** on and a hit that only armour touched still reads as unguarded. [Melee Trace](/docs/soulslike-combat/melee-trace) covers the damage type vocabulary and where an attack picks its type.
+
+---
+
+## Where the responses come from
+
+<DefenseResponseOrder />
+
+| Field | Sets |
+|-------|------|
+| **Defense Set** | A shareable list of responses, for armour or a stance several characters use. Runs last, under everything in **Responses**, so a broad resistance here shaves whatever the answers above it let through. Empty means everything is authored on this pawn. |
+| **Responses** | Responses authored on this pawn alone, running after whatever the pawn is carrying brings and before the **Defense Set**. |
+
+<DefenseComponentDetails />
+
+### A rule set several characters point at
+
+Right-click in the Content Browser, **SEC**, **Defense Rule Set**. Author its **Responses**, then point a Defense component's **Defense Set** at it.
+
+<UeCreateAssetScene
+  create="Defense Rule Set"
+  assetName="DA_KnightArmour"
+  caption="Right-click in the Content Browser, SEC, Defense Rule Set."
+/>
+
+### A weapon that brings its own
+
+Fill in **Weapon Defense Set** on a weapon Blueprint built on `SECWeaponBase` and point it at a rule set holding the parry, the block, or whatever the weapon is worth. Arm the enemy through the equipment component's **Starting Loadout** or an **Equip Actor** call, and it answers with those for as long as it holds the item.
+
+A shield in the off hand works the same way. Everything held that carries a set contributes, in the order the pawn equipped them, and all of them answer ahead of the pawn's own responses. `EnemyCharacterBase` gathers them from its equipment already. See [Weapons](/docs/soulslike-combat/weapons).
 
 ---
 
 ## Telling the attacker what happened
 
-Every response that answers adds its **Outcome Tag** to the result, and that reaches the attacker in the damage result's **Result Tags**. Two things read them.
+Every response that answers adds its **Result Tag** to the result, and that reaches the attacker in the damage result's **Result Tags**. Two things read them.
 
-**The attacker's melee trace.** **Skip Record Tags** on the attacker's trace component lists the outcomes that leave the target hittable for the rest of the swing. A match means the swing was not spent, so it can connect again on a later frame, which is what a dodge wants. No match records the hit, so a parry or a block costs the attacker that swing. Both readings are legitimate; pick per game. See [Melee Trace](/docs/soulslike-combat/melee-trace).
+**The attacker's melee trace.** **Skip Record Tags** on the attacker's trace component lists the outcomes that leave the target hittable for the rest of the swing. A match means the swing was not spent, so it can connect again on a later frame. No match records the hit, so a parry or a block costs the attacker that swing. Both readings are legitimate; pick per game. See [Melee Trace](/docs/soulslike-combat/melee-trace).
 
-**Hit effects.** An effect on the damage config sits out a hit through **Suppress On Result Tags**, so a parried blow need not shake the screen or spray blood.
+**Hit effects.** An effect on the damage config sits out a hit through **Suppress On Result Tags**, so a parried blow need not shake the screen or spray blood. **Require Any Result Tags** does the opposite and gives a parry its own sparks.
 
 Four tags ship: `SEC.Defense.Parry`, `SEC.Defense.Block`, `SEC.Defense.Dodge`, and `SEC.Defense.Clash`. A tag of your own works the same way, and listing a parent covers everything beneath it.
 
 <Callout type="warning">
-A response that answers a hit without an **Outcome Tag** leaves the attacker unable to tell what happened, so the swing is spent as if the blow had landed. The Output Log names the response once when that happens.
+A parry, block or invulnerable response that answers a hit without a **Result Tag** leaves the attacker unable to tell what happened, so the swing is spent as if the blow had landed. The Output Log names the response once when that happens.
 </Callout>
 
 ---
 
-## Sharing responses between characters
+## Debug it
 
-### A rule set several characters point at
+Press Play and swing at the pawn with the tag held, then without it.
 
-Create a **SEC Defense Rule Set** (Right-click → Miscellaneous → Data Asset) and author its **Responses**. Point a Defense component's **Defense Set** at it. Those run last, under everything on the component, so shared armour trims what the pawn's own answers let through.
+```
+SEC.Debug.Melee.DrawTracing 1    // The attacker's sweep, so you can see the blow reach the pawn
+```
 
-### A weapon that brings its own
+Filter the Output Log to **LogSECCore**. The defense path names each problem once per class rather than every frame, and the four it reports cover most of what goes wrong: a response that charges a vital the pawn has no component for, a response that answered without a **Result Tag**, a pawn with no health pool to take the damage off, and an attack listing the health pool as an extra damage channel.
 
-Fill in **Weapon Defense Set** on a Blueprint deriving from **`ASECWeaponBase`** and point it at a rule set holding the parry, the block, or whatever the weapon is worth. Arm the enemy through the equipment component's **Starting Loadout** or an **Equip Actor** call, and it answers with those for as long as it holds the item.
+**Preview Incoming Damage** on the component reaches the same answer as the real resolve and charges nothing, so a debug widget can print what any hit would cost before it lands.
 
-A shield in the off hand works the same way. Everything held that carries a set contributes, in the order the pawn equipped them, and all of them answer ahead of the pawn's own responses. `AEnemyCharacterBase` gathers them from its equipment already. See [Weapons](/docs/soulslike-combat/weapons).
+<Collapsible title="The pawn is hit and nothing changes" badge="Advanced">
+In the order worth checking:
+
+- **Nothing grants the tag.** **Required Tags** names a tag no ability, reaction or montage window ever holds, so the response never gets its turn. This is the common one and it logs nothing.
+- **Handle Incoming Damage is not implemented.** Without the **SEC Damageable** interface on the pawn, **Deal Damage** falls back to Unreal's point damage and the Defense component never runs.
+- **The blow came from outside the arc.** Parry and Block measure the direction the hit arrived from against the pawn's real facing. A hit from behind falls through to whatever sits below.
+- **The pawn cannot pay.** A costed response the pawn cannot afford steps aside on purpose, which is the guard break.
+- **A response above it claimed the hit.** The first response that answers ends the walk unless it has **Continue After Claim** ticked.
+- **The call ran off the server.** Charging a cost and draining health both need the authority.
+</Collapsible>
+
+<Collapsible title="Stance, poise and other damage channels" badge="Advanced">
+An attack can carry damage to pools other than health. One **Damage Multiplier** covers every channel by default, so a block that halves the health damage halves the stance damage with it.
+
+Add a **Vital Damage Multipliers** row on the response to give one channel its own rate: name the channel's vital tag and set how much of it still lands. 0 stops that channel, 1 passes it untouched, and above 1 raises it, which is how a block that costs extra stance is authored.
+
+The health figure and the extra channels are both reported after the walk, so a project applying them by hand has each of them separately. See [Vitals](/docs/soulslike-combat/vitals).
+</Collapsible>
+
+<Collapsible title="Scaling a hit by what the pawn is" badge="Advanced">
+**SEC Damage Modifier** takes **Required Tags** and **Blocked Tags** but no arc, and multiplies the hit by **Damage Multiplier**: 2 doubles it, 0.5 halves it, 1 changes nothing.
+
+It ships with **Continue After Claim** on and leaves the outcome alone, so a hit that only this touched still reads as unguarded and the attacker's swing is spent normally. Gate it on `SEC.State.StanceBroken` for the window where a guard-broken enemy takes extra, or on a buff tag for a target that takes less.
+
+Its multiplier applies to every channel the hit carries, so pair it with a **Vital Damage Multipliers** row when one channel should scale at its own rate.
+</Collapsible>
 
 <Collapsible title="Bringing responses in from somewhere other than a weapon" badge="Advanced">
-
 Two interfaces cover the rest of the cases, and both are Blueprint-implementable from Class Settings.
 
 | Interface | Where | What it answers |
 |-----------|-------|-----------------|
-| **SEC Weapon Defense Set Provider** | On the item | **Get Weapon Defense Set**, for an equippable that is not a `ASECWeaponBase`. |
+| **SEC Weapon Defense Set Provider** | On the item | **Get Weapon Defense Set**, for an equippable that is not a weapon Blueprint. |
 | **SEC Defense Set Provider** | On the pawn | **Get Defense Sets**, one entry per thing in force, for a pawn that gathers its own way. |
 
 The component stores nothing. It asks the pawn each time it works a hit out, so a set stops answering the moment the pawn stops carrying what brought it. Returning an empty list leaves the pawn on its own responses.
 
 For a list built some other way again, override **Get Effective Responses** on the component and return the responses in the order you want them run.
-
 </Collapsible>
 
 <Collapsible title="Writing a response of your own" badge="Advanced">
-
 Subclass **SEC Defense Rule** in Blueprint and implement two events.
 
 | Event | Do |
 |-------|-----|
 | **Should Apply** | Judge whether this response handles the hit and change nothing. The context carries the defender, the pawn's state tags, the hit, and the blow before anything reduced it. |
-| **Apply** | Change what the hit is worth. Scale or zero **Final Damage** and add an outcome tag saying what happened. |
+| **Apply** | Change what the hit is worth. Scale or zero **Final Damage** and add a tag saying what happened. |
 
 **Apply** runs only after **Should Apply** agreed and the component found the cost affordable, so a response has no reason to re-check its own gate. Override **Get Display Name** for an editor row title that includes the values authored on the instance.
 
 A parry that scales with a stat, a block that only answers heavy attacks, a resistance keyed to a boss phase: each is one **Should Apply** branch.
-
 </Collapsible>
 
 <Collapsible title="Costs against a project's own resources" badge="Advanced">
-
 **Can Afford Response Cost** and **Pay Response Cost** on the component are the seam. The defaults read and drain the pawn's Vitals component; override both together for a project running its own pools.
 
 The component asks **Can Afford Response Cost** while it works a hit out, so that override must change nothing: a response the pawn cannot pay for steps aside rather than answering. **Pay Response Cost** runs afterwards, on the authority, and reports how much came off.
 
+A pawn that keeps its states somewhere other than an ability system overrides **Get State Tags** in the same way, and every tag gate reads from what it returns.
 </Collapsible>
 
-<Collapsible title="Splitting the resolve into its three steps" badge="C++">
+<Collapsible title="A pawn wired through Event Any Damage" badge="Alternative">
+Call **Resolve Defense and Apply Damage (Any Damage Event)** instead. It takes the loose numbers Unreal's damage event hands over and works the blow's direction out from where the attacker is standing, so a directional response still has a bearing to measure against.
 
-`USECDefenseStatics` carries the same act as Blueprint nodes, so a project can drive each step itself.
+It takes the surviving damage off the health pool too, so nothing after it should subtract health again. Prefer the version in the quick start wherever a damage info exists, since that one carries the exact hit and the attack's own tags.
+</Collapsible>
 
-```cpp
-FSECDefenseResult DefenseResult = USECDefenseStatics::EvaluateDefense(
-    Defender, Defense->GetEffectiveResponses(), DamageInfo, Defense);
+<Collapsible title="Running your own health pool" badge="Alternative">
+Call **Resolve Incoming Damage** on the component instead of the one-node version. It runs the responses and charges what they cost, then hands back the result without touching any pool. Subtract its **Damage Applied** from your own health variable and return the result unchanged, so the attacker still gets the tags.
 
-USECDefenseStatics::ApplyDefenseResult(DefenseResult, Defense);   // charges the costs, server only
-
-FSECDamageResult Result;
-USECDefenseStatics::FillDamageResult(DefenseResult, Result);      // DamageApplied + ResultTags
-```
-
-`FSECDefenseResult` carries **Outcome** (`Unguarded`, `Blocked`, `Parried`), **Outcome Tags**, **Final Damage**, and the **Costs** the answering responses ran up. `EvaluateDefense` changes nothing at all, which is what makes it safe on any machine.
-
-`ResolveIncomingDamage` on the component is those three steps in order. `PreviewIncomingDamage` is the first and third, skipping the charge.
-
+To drive each step yourself, **Evaluate Defense**, **Apply Defense Result** and **Fill Damage Result** are the same act split three ways: work out the answer, charge the costs on the server, then stamp the decision into the damage report.
 </Collapsible>
 
 <Collapsible title="Multiplayer" badge="Multiplayer">
-
 Charging a cost and draining health both need the authority, so run **Resolve Defense and Apply Damage** on the server. A call anywhere else charges nothing and returns 0.
 
 **Preview Incoming Damage** reaches the same answer on any machine, so a guard meter or a damage-preview widget on the owning client can call it freely.
 
 Vitals replicate on their own, so the client sees the stamina a block spent without any extra wiring. See [Vitals](/docs/soulslike-combat/vitals).
-
 </Collapsible>
 
 ---
@@ -268,7 +314,9 @@ Vitals replicate on their own, so the client sees the stamina a block spent with
 |------|-----|
 | [Attack Telegraphs](/docs/soulslike-combat/attack-telegraphs) | How an enemy learns a blow is coming in time to raise the guard these responses price. |
 | [Reaction System](/docs/soulslike-combat/reaction-system) | The other half of a defence: the reaction plays the parry, the response decides what it was worth. |
-| [Melee Trace](/docs/soulslike-combat/melee-trace) | Where the hit comes from, **Skip Record Tags**, and the damage type vocabulary. |
+| [Melee Trace](/docs/soulslike-combat/melee-trace) | Where the hit comes from, **Skip Record Tags**, **Pass Through Tags**, and the damage type vocabulary. |
 | [Vitals](/docs/soulslike-combat/vitals) | The pools a costed response charges, and the health a resolved hit comes off. |
 | [Weapons](/docs/soulslike-combat/weapons) | **Weapon Defense Set**, and arming an enemy so it arrives. |
 | [Animation Integration](/docs/soulslike-combat/animation-integration) | Montage windows that hold a state tag for exactly the frames a response should answer on. |
+</content>
+</invoke>

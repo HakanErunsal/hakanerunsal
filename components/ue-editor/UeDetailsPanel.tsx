@@ -513,10 +513,10 @@ export const REACTION_EXECUTION_DETAILS: UeDetailCategory[] = [
   {
     title: "Execution",
     properties: [
-      { label: "Ability Class", value: { kind: "asset", value: "None" } },
-      { label: "Ability Timeout", value: n(0) },
-      { label: "Wait For Ability End", value: b(true) },
-      { label: "Activation Tag", value: { kind: "text", value: "None" } },
+      { label: "Execution Method", value: { kind: "enum", value: "Gameplay Ability" } },
+      { label: "  Ability Class", value: { kind: "asset", value: "GA_SEC_MontageAbility" } },
+      { label: "  Payload", value: { kind: "enum", value: "Montage Payload" } },
+      { label: "    Montage", value: { kind: "asset", value: "AM_Parry" } },
       { label: "Cancel Current Action", value: b(true) },
     ],
   },
@@ -625,6 +625,7 @@ export const COMBAT_ROLE_CONFIG_DETAILS: UeDetailCategory[] = [
       { label: "Preferred Role", value: { kind: "text", value: "None" } },
       { label: "Fitness Evaluators", value: { kind: "text", value: "0 Array elements" } },
       { label: "Target Selector", value: { kind: "asset", value: "None" } },
+      { label: "Target Filter", value: { kind: "asset", value: "None" } },
       { label: "Ignore Target Redistribution", value: b(false) },
     ],
   },
@@ -641,7 +642,7 @@ export const COMBAT_ROLE_TIMING_DETAILS: UeDetailCategory[] = [
     properties: [
       { label: "Role Reassignment Interval", value: n(8) },
       { label: "Min Time In Role", value: n(8) },
-      { label: "Re-evaluate Targets On Reassignment", value: b(false) },
+      { label: "Reevaluate Targets On Reassignment", value: b(false) },
     ],
   },
 ];
@@ -700,6 +701,7 @@ export const TARGETING_CONFIG_DETAILS: UeDetailCategory[] = [
     title: "Combat Role",
     properties: [
       { label: "Target Selector", value: { kind: "asset", value: "None" } },
+      { label: "Target Filter", value: { kind: "asset", value: "None" } },
       { label: "Ignore Target Redistribution", value: b(false) },
     ],
   },
@@ -708,7 +710,10 @@ export const TARGETING_CONFIG_DETAILS: UeDetailCategory[] = [
 export const PROJECT_TARGETING_DETAILS: UeDetailCategory[] = [
   {
     title: "Target Selection",
-    properties: [{ label: "Default Target Selector", value: { kind: "asset", value: "None" } }],
+    properties: [
+      { label: "Default Target Selector", value: { kind: "asset", value: "None" } },
+      { label: "Default Target Filter", value: { kind: "asset", value: "None" } },
+    ],
   },
 ];
 
@@ -736,6 +741,7 @@ export const AWARENESS_CONFIG_SENSES_DETAILS: UeDetailCategory[] = [
           { label: "Sight Radius", value: n(1500, 0, undefined, 0) },
           { label: "Lose Sight Radius", value: n(1800, 0, undefined, 0) },
           { label: "Peripheral Vision Half Angle", value: n(90, 1, 180, 0) },
+          { label: "Sight Max Age", value: n(5, 0) },
         ],
       },
       {
@@ -743,6 +749,7 @@ export const AWARENESS_CONFIG_SENSES_DETAILS: UeDetailCategory[] = [
         properties: [
           { label: "Enable Hearing", value: b(true) },
           { label: "Hearing Range", value: n(1200, 0, undefined, 0) },
+          { label: "Hearing Max Age", value: n(4, 0) },
         ],
       },
       {
@@ -1065,12 +1072,14 @@ export const MELEE_TRACE_COMPONENT_DETAILS: UeDetailCategory[] = [
       { label: "Base Damage", value: n(10, 0) },
       { label: "Damage Type Class", value: { kind: "asset", value: "None" } },
       { label: "Hit Reset Interval", value: n(0, 0) },
+      { label: "Max Targets Per Swing", value: n(0, 0) },
       { label: "Team Filter", value: { kind: "enum", value: "No Filter" } },
     ],
   },
   {
     title: "SEC | Melee Trace | Damage",
     properties: [
+      { label: "Pass Through Tags", value: { kind: "text", value: "1 tag" } },
       { label: "Skip Record Tags", value: { kind: "text", value: "0 tags" } },
       { label: "Sense Component Tags", value: { kind: "text", value: "0 Array elements" } },
       { label: "Damage Application", value: { kind: "enum", value: "Damageable Interface" } },
@@ -1103,10 +1112,13 @@ export const SEC_DAMAGE_CONFIG_DETAILS: UeDetailCategory[] = [
     title: "Damage",
     properties: [
       { label: "Damage", value: n(10, 0) },
+      { label: "Additional Vital Damage", value: { kind: "text", value: "0 Array elements" } },
       { label: "Damage Type", value: { kind: "text", value: "None" } },
       { label: "Damage Type Class", value: { kind: "asset", value: "None" } },
       { label: "Damage Tags", value: { kind: "text", value: "0 tags" } },
       { label: "Multi Hit Interval", value: n(-1, -1) },
+      { label: "Max Targets Per Swing Override", value: n(-1, -1) },
+      // Authored Hit Direction Local sits behind EditConditionHides, so it appears only once Use Authored Hit Direction is ticked.
       { label: "Use Authored Hit Direction", value: b(false) },
     ],
   },
@@ -1124,7 +1136,7 @@ export const MELEE_TRACE_NOTIFY_DETAILS: UeDetailCategory[] = [
     title: "Melee Trace",
     properties: [
       { label: "Socket IDs", value: { kind: "text", value: "1 Array element" } },
-      { label: "Damage Config", value: { kind: "asset", value: "DA_SwordDamage" } },
+      { label: "Damage Config", value: { kind: "asset", value: "DA_Damage_Sword" } },
     ],
   },
   {
@@ -1365,7 +1377,7 @@ export const DEFENSE_COMPONENT_DETAILS: UeDetailCategory[] = [
 ];
 
 /**
- * The four shipped USECDefenseRule subclasses as instanced entries on the Responses array,
+ * Shipped USECDefenseRule subclasses as instanced entries on the Responses array,
  * each carrying the values its worked example on the Defense System page authors. Categories
  * run derived first, then the base class Cost and Defense Rule groups, the order the details
  * panel lists them. Verified against SECDefenseRules.h and SECDefenseRule.h.
@@ -1376,7 +1388,7 @@ export const DEFENSE_INVULNERABLE_DETAILS: UeDetailCategory[] = [
     properties: [
       { label: "Required Tags", value: tagContainer(["SEC.State.Invulnerable"]) },
       { label: "Blocked Tags", value: tagContainer([]) },
-      { label: "Outcome Tag", value: { kind: "text", value: "SEC.Defense.Dodge" } },
+      { label: "Result Tag", value: { kind: "text", value: "SEC.Defense.Dodge" } },
     ],
   },
   {
@@ -1401,7 +1413,7 @@ export const DEFENSE_PARRY_DETAILS: UeDetailCategory[] = [
       { label: "Blocked Tags", value: tagContainer([]) },
       { label: "Arc Half Angle Degrees", value: n(60, 0, 180) },
       { label: "Damage Multiplier", value: n(0, 0, 1, 2) },
-      { label: "Outcome Tag", value: { kind: "text", value: "SEC.Defense.Parry" } },
+      { label: "Result Tag", value: { kind: "text", value: "SEC.Defense.Parry" } },
     ],
   },
   {
@@ -1426,7 +1438,7 @@ export const DEFENSE_BLOCK_DETAILS: UeDetailCategory[] = [
       { label: "Blocked Tags", value: tagContainer(["Player.State.Staggered"]) },
       { label: "Arc Half Angle Degrees", value: n(60, 0, 180) },
       { label: "Damage Multiplier", value: n(0.2, 0, 1, 2) },
-      { label: "Outcome Tag", value: { kind: "text", value: "SEC.Defense.Block" } },
+      { label: "Result Tag", value: { kind: "text", value: "SEC.Defense.Block" } },
     ],
   },
   {
@@ -1450,7 +1462,7 @@ export const DEFENSE_RESISTANCE_DETAILS: UeDetailCategory[] = [
     properties: [
       { label: "Damage Type Tag", value: { kind: "text", value: "SEC.Damage.Physical.Slashing" } },
       { label: "Damage Multiplier", value: n(0.6, 0, 1, 2) },
-      { label: "Outcome Tag", value: { kind: "text", value: "None" } },
+      { label: "Result Tag", value: { kind: "text", value: "None" } },
     ],
   },
   {
@@ -1613,26 +1625,29 @@ export const TERRITORY_POST_DETAILS: UeDetailCategory[] = [
     title: "Post",
     properties: [
       { label: "Shape", value: { kind: "enum", value: "Point" } },
-      { label: "How To Pick", value: { kind: "enum", value: "Random" } },
       { label: "Pass Through", value: b(false) },
+      { label: "Snap To Ground", value: b(true) },
       { label: "Track Owner Movement", value: b(false) },
     ],
     children: [
       {
         title: "Wander",
-        properties: [{ label: "Wander Radius", value: n(400, 0, undefined, 0) }],
+        properties: [
+          { label: "How To Pick", value: { kind: "enum", value: "Random" } },
+          { label: "Wander Radius", value: n(400, 0, undefined, 0) },
+          { label: "Wander Box Extent", value: { kind: "text", value: "400.0, 400.0, 200.0" } },
+        ],
       },
       {
         title: "Arrival",
         properties: [
           { label: "Wait Time", value: n(3, 0) },
           { label: "Wait Time Variance", value: n(1, 0) },
-          { label: "Face Anchor Rotation On Arrival", value: b(false) },
           { label: "Arrival Radius Override", value: n(0, 0, undefined, 0) },
         ],
       },
       {
-        title: "Performance",
+        title: "Advanced",
         properties: [{ label: "Point Sample Attempts", value: n(12, 1, 32, 0) }],
       },
     ],
@@ -1645,32 +1660,40 @@ export const TERRITORY_COMPONENT_DETAILS: UeDetailCategory[] = [
     title: "Territory",
     properties: [
       { label: "Posts", value: { kind: "text", value: "0 Array elements" } },
-      { label: "Post Order", value: { kind: "enum", value: "Sequential Loop" } },
-      { label: "Arrival Radius", value: n(100, 10, undefined, 0) },
+      { label: "Resting Behavior", value: { kind: "enum", value: "Patrol Posts" } },
     ],
     children: [
       {
         title: "Leash",
         properties: [
+          { label: "Leash Enabled", value: b(false) },
+          { label: "Leash Anchor", value: { kind: "enum", value: "Self" } },
           { label: "Leash Radius", value: n(2000, 0, undefined, 0) },
-          { label: "Leash Anchor", value: { kind: "enum", value: "Home Post" } },
+          { label: "Leash Anchor Actor", value: { kind: "asset" } },
+          { label: "Track Leash Anchor", value: b(false) },
           { label: "Only Fight Inside Leash", value: b(true) },
           { label: "Leash Break Grace Time", value: n(2, 0) },
           { label: "Disengage Behavior", value: { kind: "enum", value: "Return To Post" } },
         ],
       },
       {
+        title: "Arrival",
+        properties: [{ label: "Arrival Radius", value: n(100, 10, undefined, 0) }],
+      },
+      {
         title: "Route",
         properties: [
+          { label: "Post Order", value: { kind: "enum", value: "Sequential Loop" } },
           { label: "Patrol Start Delay", value: n(1, 0) },
           { label: "Patrol Start Variance", value: n(1, 0) },
-          { label: "Walk Retry Interval", value: n(1, 0.1) },
-          { label: "Walk Retry Limit", value: n(3, 0, 20, 0) },
         ],
       },
       {
-        title: "Performance",
-        properties: [{ label: "Wander Sample Attempts", value: n(4, 1, 20, 0) }],
+        title: "Advanced",
+        properties: [
+          { label: "Walk Retry Interval", value: n(1, 0.1) },
+          { label: "Walk Retry Limit", value: n(3, 0, 20, 0) },
+        ],
       },
       {
         title: "Debug",
@@ -1688,7 +1711,7 @@ export const BRAIN_TERRITORY_DETAILS: UeDetailCategory[] = [
       {
         title: "Territory",
         properties: [
-          { label: "Disengage Focus Policy", value: { kind: "enum", value: "Keep Target" } },
+          { label: "Leave Coordination While Disengaging", value: b(false) },
           { label: "Block Actions While Disengaging", value: b(true) },
         ],
       },

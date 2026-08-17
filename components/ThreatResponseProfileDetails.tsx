@@ -8,7 +8,7 @@ export default function ThreatResponseProfileDetails() {
       sourceClass="MovementBehaviorProfile"
       sourceKind="asset"
       attachTo="Movement profile asset"
-      note="Role-swapped fields on the active movement profile. Make* presets leave both flags false."
+      note="Role-swapped fields on the active movement profile. Both switches ship off on a new profile."
       categories={THREAT_RESPONSE_PROFILE_DETAILS}
     />
   );

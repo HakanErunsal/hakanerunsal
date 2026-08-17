@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { docs, articles, projects } from "#site/content";
 import { SecDocSearch } from "@/components/sec-doc-search";
 import { isRigbak } from "@/lib/site-mode";
-import { ownedDocs } from "@/lib/docs-ownership";
+import { listedDocs, docHref, isOffsiteDoc } from "@/lib/docs-ownership";
 import { brandConfig } from "@/config/site";
 
 // ──────────────────────────────────────
@@ -23,29 +23,38 @@ interface TreeNode {
     children: TreeNode[];
     date?: string;
     image?: string;
+    /** Set when the page lives on another host, so the link leaves this site. */
+    href?: string;
 }
 
 // ──────────────────────────────────────
 //  Build trees for each section
 // ──────────────────────────────────────
 function buildDocTree(): TreeNode[] {
-    const publishedDocs = ownedDocs(docs).filter(d => d.published);
+    const publishedDocs = listedDocs(docs).filter(d => d.published);
     const rootDocs = publishedDocs.filter(d => !d.parent);
 
     return rootDocs.map(rootDoc => {
-        const children = publishedDocs
-            .filter(d => d.parent === rootDoc.slugAsParams)
-            .sort((a, b) => {
-                const ao = a.order ?? Number.MAX_SAFE_INTEGER;
-                const bo = b.order ?? Number.MAX_SAFE_INTEGER;
-                if (ao !== bo) return ao - bo;
-                return a.title.localeCompare(b.title);
-            });
+        const offsite = isOffsiteDoc(rootDoc.slugAsParams);
+
+        // An off-site product shows as a leaf. Its pages are rendered by the
+        // host that owns them, so there is nothing here to expand.
+        const children = offsite
+            ? []
+            : publishedDocs
+                .filter(d => d.parent === rootDoc.slugAsParams)
+                .sort((a, b) => {
+                    const ao = a.order ?? Number.MAX_SAFE_INTEGER;
+                    const bo = b.order ?? Number.MAX_SAFE_INTEGER;
+                    if (ao !== bo) return ao - bo;
+                    return a.title.localeCompare(b.title);
+                });
 
         return {
             title: rootDoc.title,
             slug: rootDoc.slug,
             slugAsParams: rootDoc.slugAsParams,
+            href: offsite ? docHref(rootDoc.slug, rootDoc.slugAsParams) : undefined,
             children: children.map(child => ({
                 title: child.title,
                 slug: child.slug,
@@ -153,7 +162,7 @@ function TreeSection({ node, pathname }: { node: TreeNode; pathname: string }) {
                 )}
                 {!hasChildren && <span className="w-6 flex-shrink-0" />}
                 <Link
-                    href={`/${node.slug}`}
+                    href={node.href ?? `/${node.slug}`}
                     className={cn(
                         "block py-1.5 px-2 text-sm rounded transition-colors duration-150 truncate flex-1",
                         isActive
@@ -200,7 +209,7 @@ function ListItem({ node, pathname }: { node: TreeNode; pathname: string }) {
     return (
         <li>
             <Link
-                href={`/${node.slug}`}
+                href={node.href ?? `/${node.slug}`}
                 className={cn(
                     "block py-1.5 px-3 text-sm rounded transition-colors duration-150 truncate",
                     isActive
