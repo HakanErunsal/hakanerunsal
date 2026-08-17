@@ -25,7 +25,7 @@ export function UeDetailsSection({
   return (
     <details open={defaultOpen} className={cn("ue-dp-section group", className)}>
       <summary
-        className="ue-dp-header flex cursor-pointer list-none items-center gap-1.5 text-[13px] font-normal select-none [&::-webkit-details-marker]:hidden"
+        className="ue-dp-header flex cursor-pointer list-none items-center gap-1.5 text-[15px] font-normal select-none [&::-webkit-details-marker]:hidden"
         style={{ paddingLeft: 8, color: UE.foregroundHeader }}
       >
         <SectionTriangle />
@@ -47,7 +47,7 @@ export function UePropertyRow({ label, children, className }: UePropertyRowProps
   return (
     <div className={cn("ue-dp-row flex min-h-[30px] items-center", className)}>
       <div
-        className="flex shrink-0 items-center text-[13px]"
+        className="flex shrink-0 items-center text-[15px]"
         style={{ width: "56%", paddingLeft: 22, color: UE.foreground }}
       >
         <span className="truncate">{label}</span>
@@ -70,7 +70,7 @@ export function UeAssetPicker({
   return (
     <div className={cn("flex min-w-0 flex-1 items-center gap-1", className)}>
       <div className="ue-dp-asset ue-asset-picker flex min-w-0 flex-1 items-center justify-between gap-1 px-2.5">
-        <span className="truncate text-[13px]" style={{ color: UE.foregroundHeader }}>
+        <span className="truncate text-[15px]" style={{ color: UE.foregroundHeader }}>
           {value ?? placeholder}
         </span>
         <Triangle />

@@ -195,7 +195,7 @@ function Menu({
         return (
           <div
             key={item}
-            className="flex items-center justify-between gap-3 whitespace-nowrap px-2 text-[10px]"
+            className="flex items-center justify-between gap-3 whitespace-nowrap px-2 text-[11px]"
             style={{
               height: ROW_HEIGHT,
               background: on ? UE.primary : "transparent",
@@ -278,7 +278,7 @@ export default function UeCreateAssetScene({
     <UeSceneFrame title="Content Browser" caption={caption} width={width} height={380} frameRef={ref}>
       <div className="absolute inset-0 overflow-hidden p-2" style={{ background: UE.recessed }}>
         <div
-          className="flex items-center gap-1 rounded-[2px] px-1.5 py-1 text-[9px]"
+          className="flex items-center gap-1 rounded-[2px] px-1.5 py-1 text-[10px]"
           style={{ background: UE.panel, color: UE.hover2 }}
         >
           <span style={{ color: UE.accentFolder }}>▸</span> Content

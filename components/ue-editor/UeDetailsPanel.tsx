@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
-import { UE, UE_KIT } from "./ue-theme";
+import { SEC_ASSET_ACCENTS, UE, UE_KIT } from "./ue-theme";
+import { UeAssetBrowseButtons, UeAssetThumbSquare, UeInstancedObjectIcon } from "./UeAssetThumb";
 
 /**
  * UE 5.8 Details panel template.
@@ -18,7 +19,13 @@ export type UeDetailValue =
   | { kind: "number"; value: number; min?: number; max?: number; decimals?: number }
   | { kind: "enum"; value: string }
   | { kind: "asset"; value?: string }
+  /** A UObject asset reference: thumbnail, combo and browse buttons, the way any object pointer (not a class reference) renders. */
+  | { kind: "objectAsset"; value?: string; accent?: string; variant?: "wheel" | "montage" | "tree" }
+  /** An Instanced, DefaultToInstanced UObject property: a polymorphic subobject picked and edited inline, with no Content Browser asset behind it. */
+  | { kind: "instancedObject"; value?: string }
   | { kind: "text"; value: string }
+  /** A TArray property header: element count plus the add and empty-array buttons. */
+  | { kind: "arrayCount"; count: number }
   /** FGameplayTagContainer: count label plus listed tags when non-empty. */
   | { kind: "tagContainer"; tags: string[] }
   /** Any widget the schema has no shape for, an interactive combo among them. */
@@ -69,23 +76,16 @@ export function SectionTriangle() {
   );
 }
 
-function UeCheckbox({ checked, disabled }: { checked: boolean; disabled?: boolean }) {
+/** The one bool checkbox glyph, shared by the details panel and the animated scenes so neither drifts from the other: a plain box, a blue check, no fill. */
+export function UeCheckbox({ checked, disabled }: { checked: boolean; disabled?: boolean }) {
   return (
     <span
-      className={cn("ue-dp-check inline-flex h-[17px] w-[15px] items-center justify-center", disabled && "opacity-50")}
+      className={cn("ue-dp-check inline-flex h-4 w-4 items-center justify-center", disabled && "opacity-50")}
       data-checked={checked}
-      style={checked ? { background: UE.primary, borderColor: UE.primary } : undefined}
       aria-hidden
     >
       {checked && (
-        <svg
-          viewBox="0 0 12 12"
-          className="h-[13px] w-[11px]"
-          style={{ color: UE.foregroundHover }}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-        >
+        <svg viewBox="0 0 12 12" className="h-[13px] w-[13px]" fill="none" stroke={UE.primary} strokeWidth="2.2">
           <path d="M2.5 6.2 L4.8 8.6 L9.5 3.4" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       )}
@@ -116,7 +116,7 @@ function UeNumericField({
   return (
     <div className={cn("ue-dp-num relative flex items-center", disabled && "opacity-50")}>
       {hasRange && <div className="ue-dp-num-fill absolute inset-y-0 left-0" style={{ width: `${fill * 100}%` }} aria-hidden />}
-      <span className="relative pl-1.5 text-[13px]" style={{ color: UE.foregroundHeader }}>{formatNumber(value, decimals)}</span>
+      <span className="relative pl-1.5 text-[15px]" style={{ color: UE.foregroundHeader }}>{formatNumber(value, decimals)}</span>
     </div>
   );
 }
@@ -124,7 +124,7 @@ function UeNumericField({
 function UeComboField({ value, disabled }: { value: string; disabled?: boolean }) {
   return (
     <div className={cn("ue-dp-combo relative flex items-center justify-between gap-1 pl-1.5 pr-1", disabled && "opacity-50")}>
-      <span className="truncate text-[13px] leading-[21px]" style={{ color: UE.foregroundHeader }}>{value}</span>
+      <span className="truncate text-[15px] leading-[21px]" style={{ color: UE.foregroundHeader }}>{value}</span>
       <Triangle />
     </div>
   );
@@ -135,20 +135,82 @@ function UeTagContainerField({ tags }: { tags: string[] }) {
   const countLabel = count === 1 ? "1 Gameplay Tag" : `${count} Gameplay Tags`;
 
   if (count === 0) {
-    return <span className="text-[13px]" style={{ color: UE.hover2 }}>0 Gameplay Tags</span>;
+    return <span className="text-[15px]" style={{ color: UE.hover2 }}>0 Gameplay Tags</span>;
   }
 
   return (
     <div className="ue-dp-tag-container flex min-w-0 flex-col gap-1 py-0.5">
       <div className="ue-dp-combo flex items-center justify-between gap-1 pl-1.5 pr-1">
-        <span className="text-[13px] leading-[21px]" style={{ color: UE.foregroundHeader }}>{countLabel}</span>
+        <span className="text-[15px] leading-[21px]" style={{ color: UE.foregroundHeader }}>{countLabel}</span>
         <Triangle />
       </div>
       {tags.map((tag) => (
         <div key={tag} className="ml-4 border-l pl-2" style={{ borderColor: UE.secondary }}>
-          <span className="ue-dp-tag-name font-mono text-[12px] leading-snug" style={{ color: UE_KIT.gameplayTagText }}>{tag}</span>
+          <span className="ue-dp-tag-name font-mono text-[13px] leading-snug" style={{ color: UE_KIT.gameplayTagText }}>{tag}</span>
         </div>
       ))}
+    </div>
+  );
+}
+
+function UeObjectAssetField({
+  value,
+  accent,
+  variant = "wheel",
+}: {
+  value?: string;
+  accent?: string;
+  variant?: "wheel" | "montage" | "tree";
+}) {
+  const filled = Boolean(value) && value !== "None";
+  return (
+    <div className="flex flex-1 items-center gap-1.5">
+      <UeAssetThumbSquare accent={filled ? accent ?? UE.dataAsset : UE.secondary} size={40} showWheel={filled} variant={variant} />
+      <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
+        <div className="ue-dp-asset flex items-center justify-between gap-1 rounded-full px-2">
+          <span className="truncate text-[15px] leading-[21px]" style={{ color: UE.foregroundHeader }}>
+            {value ?? "None"}
+          </span>
+          <Triangle />
+        </div>
+        <UeAssetBrowseButtons />
+      </span>
+    </div>
+  );
+}
+
+function UeInstancedObjectField({ value }: { value?: string }) {
+  return (
+    <div className="flex flex-1 items-center gap-1.5">
+      <UeInstancedObjectIcon />
+      <div className="ue-dp-asset flex flex-1 items-center justify-between gap-1 rounded-full px-2">
+        <span className="truncate text-[15px] leading-[21px]" style={{ color: UE.foregroundHeader }}>
+          {value ?? "None"}
+        </span>
+        <Triangle />
+      </div>
+    </div>
+  );
+}
+
+function UeArrayCountField({ count }: { count: number }) {
+  const label = count === 1 ? "1 Array element" : `${count} Array elements`;
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-[15px]" style={{ color: UE.foregroundHeader }}>{label}</span>
+      <span className="flex items-center gap-1" style={{ color: UE.hover2 }}>
+        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden>
+          <path d="M8 3 V13 M3 8 H13" stroke="currentColor" strokeWidth="1.4" />
+        </svg>
+        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden>
+          <path
+            d="M3 4.5 H13 M6.5 4.5 V3.2 H9.5 V4.5 M4.5 4.5 L5.2 13 H10.8 L11.5 4.5"
+            stroke="currentColor"
+            strokeWidth="1.2"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </span>
     </div>
   );
 }
@@ -164,14 +226,20 @@ function UeValueWidget({ value }: { value: UeDetailValue }) {
     case "asset":
       return (
         <div className="ue-dp-asset flex items-center justify-between gap-1 rounded-full px-2">
-          <span className="truncate text-[13px] leading-[21px]" style={{ color: UE.foregroundHeader }}>{value.value ?? "None"}</span>
+          <span className="truncate text-[15px] leading-[21px]" style={{ color: UE.foregroundHeader }}>{value.value ?? "None"}</span>
           <Triangle />
         </div>
       );
+    case "objectAsset":
+      return <UeObjectAssetField value={value.value} accent={value.accent} variant={value.variant} />;
+    case "instancedObject":
+      return <UeInstancedObjectField value={value.value} />;
+    case "arrayCount":
+      return <UeArrayCountField count={value.count} />;
     case "tagContainer":
       return <UeTagContainerField tags={value.tags} />;
     case "text":
-      return <span className="text-[13px]" style={{ color: UE.foregroundHeader }}>{value.value}</span>;
+      return <span className="text-[15px]" style={{ color: UE.foregroundHeader }}>{value.value}</span>;
     case "node":
       return <>{value.node}</>;
   }
@@ -179,18 +247,20 @@ function UeValueWidget({ value }: { value: UeDetailValue }) {
 
 function PropertyRow({ property, indent }: { property: UeDetailProperty; indent: number }) {
   const isTagContainer = property.value.kind === "tagContainer";
+  const isObjectAsset = property.value.kind === "objectAsset";
 
   return (
     <div
       className={cn(
-        "ue-dp-row flex min-h-[30px]",
+        "ue-dp-row flex",
+        isObjectAsset ? "min-h-[52px] items-center py-1" : "min-h-[30px]",
         isTagContainer ? "items-start py-1" : "items-center",
         property.disabled && "ue-dp-row--disabled",
       )}
     >
       <div
         className={cn(
-          "flex shrink-0 items-center text-[13px]",
+          "flex shrink-0 items-center text-[15px]",
           isTagContainer && "pt-0.5",
         )}
         style={{ width: "56%", paddingLeft: indent, color: UE.foreground }}
@@ -215,7 +285,7 @@ function Category({ category, level }: { category: UeDetailCategory; level: numb
   return (
     <details open={category.defaultOpen ?? true} className="ue-dp-section group">
       <summary
-        className="ue-dp-header flex cursor-pointer list-none items-center gap-1.5 text-[13px] select-none [&::-webkit-details-marker]:hidden"
+        className="ue-dp-header flex cursor-pointer list-none items-center gap-1.5 text-[15px] select-none [&::-webkit-details-marker]:hidden"
         style={{ paddingLeft: headerPad, color: UE.foregroundHeader }}
       >
         <SectionTriangle />
@@ -426,6 +496,28 @@ export const MOVEMENT_PROFILE_DETAILS: UeDetailCategory[] = [
     ],
   },
   {
+    title: "Strafe",
+    properties: [
+      { label: "Enable Strafing", value: b(true) },
+      { label: "Strafe Preference Weight", value: n(1, 0) },
+      { label: "Auto Strafe Swap", value: b(true) },
+      { label: "Strafe Swap Threshold", value: n(3, 1.1) },
+      { label: "Strafe Swap Cooldown", value: n(2, 0.5) },
+    ],
+  },
+  {
+    title: "Strafe Time Limits",
+    properties: [
+      { label: "Enable Strafe Time Limit", value: b(true) },
+      { label: "Strafe Time Limit", value: n(5, 1) },
+      { label: "Strafe Time Limit Fluctuation", value: n(2.5, 0) },
+      { label: "Rest After Strafe Swap", value: b(false) },
+      // EditCondition bRestAfterStrafeSwap is false by default, so these are greyed out.
+      { label: "Strafe Swap Rest Time", value: n(0.5, 0.1), disabled: true },
+      { label: "Strafe Swap Rest Fluctuation", value: n(0.25, 0, undefined, 2), disabled: true },
+    ],
+  },
+  {
     title: "Positioning Rules",
     properties: [{ label: "Positioning Rules", value: { kind: "text", value: "0 Array elements" } }],
   },
@@ -516,7 +608,7 @@ export const REACTION_EXECUTION_DETAILS: UeDetailCategory[] = [
       { label: "Execution Method", value: { kind: "enum", value: "Gameplay Ability" } },
       { label: "  Ability Class", value: { kind: "asset", value: "GA_SEC_MontageAbility" } },
       { label: "  Payload", value: { kind: "enum", value: "Montage Payload" } },
-      { label: "    Montage", value: { kind: "asset", value: "AM_Parry" } },
+      { label: "    Montage", value: { kind: "objectAsset", value: "AM_Parry", accent: UE.animMontage, variant: "montage" } },
       { label: "Cancel Current Action", value: b(true) },
     ],
   },
@@ -624,8 +716,8 @@ export const COMBAT_ROLE_CONFIG_DETAILS: UeDetailCategory[] = [
       { label: "Priority", value: n(0, 0, 1000, 0) },
       { label: "Preferred Role", value: { kind: "text", value: "None" } },
       { label: "Fitness Evaluators", value: { kind: "text", value: "0 Array elements" } },
-      { label: "Target Selector", value: { kind: "asset", value: "None" } },
-      { label: "Target Filter", value: { kind: "asset", value: "None" } },
+      { label: "Target Selector", value: { kind: "instancedObject" } },
+      { label: "Target Filter", value: { kind: "instancedObject" } },
       { label: "Ignore Target Redistribution", value: b(false) },
     ],
   },
@@ -700,8 +792,8 @@ export const TARGETING_CONFIG_DETAILS: UeDetailCategory[] = [
   {
     title: "Combat Role",
     properties: [
-      { label: "Target Selector", value: { kind: "asset", value: "None" } },
-      { label: "Target Filter", value: { kind: "asset", value: "None" } },
+      { label: "Target Selector", value: { kind: "instancedObject" } },
+      { label: "Target Filter", value: { kind: "instancedObject" } },
       { label: "Ignore Target Redistribution", value: b(false) },
     ],
   },
@@ -711,8 +803,8 @@ export const PROJECT_TARGETING_DETAILS: UeDetailCategory[] = [
   {
     title: "Target Selection",
     properties: [
-      { label: "Default Target Selector", value: { kind: "asset", value: "None" } },
-      { label: "Default Target Filter", value: { kind: "asset", value: "None" } },
+      { label: "Default Target Selector", value: { kind: "instancedObject" } },
+      { label: "Default Target Filter", value: { kind: "instancedObject" } },
     ],
   },
 ];
@@ -723,7 +815,10 @@ export const AWARENESS_ENEMY_AI_CONFIG_DETAILS: UeDetailCategory[] = [
     title: "Awareness",
     properties: [
       { label: "Manage Awareness Automatically", value: b(true) },
-      { label: "Awareness Config", value: { kind: "asset", value: "DA_EnemyAwareness" } },
+      {
+        label: "Awareness Config",
+        value: { kind: "objectAsset", value: "DA_EnemyAwareness", accent: SEC_ASSET_ACCENTS["Awareness Config"] },
+      },
     ],
   },
 ];
@@ -769,8 +864,8 @@ export const AWARENESS_CONFIG_ESCALATION_DETAILS: UeDetailCategory[] = [
       { label: "Escalation Rate", value: n(0.9, 0.01) },
       { label: "Suspicion Threshold", value: n(0.2, 0, 1) },
       { label: "Hearing Bump", value: n(0.45, 0, 0.99) },
-      { label: "Distance Rate Curve", value: { kind: "asset", value: "None" } },
-      { label: "Angle Rate Curve", value: { kind: "asset", value: "None" } },
+      { label: "Distance Rate Curve", value: { kind: "objectAsset", accent: UE.curveFloat } },
+      { label: "Angle Rate Curve", value: { kind: "objectAsset", accent: UE.curveFloat } },
     ],
   },
 ];
@@ -802,7 +897,7 @@ export const AWARENESS_FILTERED_TARGET_SELECTOR_DETAILS: UeDetailCategory[] = [
     title: "Awareness Filter",
     properties: [
       { label: "Min Required State", value: { kind: "enum", value: "Lost" } },
-      { label: "Inner Selector", value: { kind: "asset", value: "None" } },
+      { label: "Inner Selector", value: { kind: "instancedObject" } },
     ],
   },
 ];
@@ -925,24 +1020,37 @@ export const ENEMY_AI_CONFIG_SETS_DETAILS: UeDetailCategory[] = [
     title: "Action Sets",
     properties: [
       { label: "Manage Action Sets Automatically", value: b(true) },
-      { label: "Default Action Set", value: { kind: "asset", value: "DA_SEC_ActionSet_Attacker" } },
-      { label: "Role Action Sets", value: { kind: "text", value: "3 Array elements" } },
+      {
+        label: "Default Action Set",
+        value: { kind: "objectAsset", value: "DA_SEC_ActionSet_Attacker", accent: SEC_ASSET_ACCENTS["Action Set"] },
+      },
+      { label: "Role Action Sets", value: { kind: "arrayCount", count: 3 } },
     ],
   },
   {
     title: "Reaction Sets",
     properties: [
       { label: "Manage Reaction Sets Automatically", value: b(true) },
-      { label: "Default Reaction Set", value: { kind: "asset", value: "DA_SEC_ReactionSet_Default" } },
-      { label: "Role Reaction Sets", value: { kind: "text", value: "1 Array element" } },
+      {
+        label: "Default Reaction Set",
+        value: { kind: "objectAsset", value: "DA_SEC_ReactionSet_Default", accent: SEC_ASSET_ACCENTS["Reaction Set"] },
+      },
+      { label: "Role Reaction Sets", value: { kind: "arrayCount", count: 1 } },
     ],
   },
   {
     title: "Movement Profiles",
     properties: [
       { label: "Manage Movement Profiles Automatically", value: b(true) },
-      { label: "Default Movement Profile", value: { kind: "asset", value: "DA_SEC_Movement_Attacker" } },
-      { label: "Role Movement Profiles", value: { kind: "text", value: "2 Array elements" } },
+      {
+        label: "Default Movement Profile",
+        value: {
+          kind: "objectAsset",
+          value: "DA_SEC_Movement_Attacker",
+          accent: SEC_ASSET_ACCENTS["Movement Behavior Profile"],
+        },
+      },
+      { label: "Role Movement Profiles", value: { kind: "arrayCount", count: 2 } },
     ],
   },
 ];
@@ -976,7 +1084,7 @@ export const WALKTHROUGH_LIGHT_ATTACK_DETAILS: UeDetailCategory[] = [
     properties: [
       { label: "Execution Method", value: { kind: "enum", value: "Gameplay Ability" } },
       { label: "  Ability Class", value: { kind: "asset", value: "GA_SEC_MontageAbility" } },
-      { label: "  Montage", value: { kind: "asset", value: "AM_Attack_Light" } },
+      { label: "  Montage", value: { kind: "objectAsset", value: "AM_Attack_Light", accent: UE.animMontage, variant: "montage" } },
     ],
   },
   {
@@ -1021,7 +1129,7 @@ export const WALKTHROUGH_HEAVY_ATTACK_DETAILS: UeDetailCategory[] = [
     properties: [
       { label: "Execution Method", value: { kind: "enum", value: "Gameplay Ability" } },
       { label: "  Ability Class", value: { kind: "asset", value: "GA_SEC_MontageAbility" } },
-      { label: "  Montage", value: { kind: "asset", value: "AM_Attack_Heavy" } },
+      { label: "  Montage", value: { kind: "objectAsset", value: "AM_Attack_Heavy", accent: UE.animMontage, variant: "montage" } },
     ],
   },
   {
@@ -1052,7 +1160,7 @@ export const WALKTHROUGH_RETREAT_DETAILS: UeDetailCategory[] = [
     properties: [
       { label: "Execution Method", value: { kind: "enum", value: "Behavior Tree Sequence" } },
       { label: "  Behavior Tree Sequence", value: { kind: "text", value: "1 Array element" } },
-      { label: "    [0]", value: { kind: "asset", value: "BT_QuickBackstep" } },
+      { label: "    [0]", value: { kind: "objectAsset", value: "BT_QuickBackstep", accent: UE.behaviorTree } },
     ],
   },
   {
@@ -1074,7 +1182,9 @@ export const WALKTHROUGH_RETREAT_DETAILS: UeDetailCategory[] = [
 export const COMBAT_CONTROLLER_DETAILS: UeDetailCategory[] = [
   {
     title: "AI|SEC",
-    properties: [{ label: "Default AI Config", value: { kind: "asset", value: "None" } }],
+    properties: [
+      { label: "Default AI Config", value: { kind: "objectAsset", accent: SEC_ASSET_ACCENTS["Enemy AI Config"] } },
+    ],
   },
   {
     title: "AI|SEC|Combat Role",
@@ -1099,7 +1209,10 @@ export const MELEE_TRACE_COMPONENT_DETAILS: UeDetailCategory[] = [
   {
     title: "Damage",
     properties: [
-      { label: "Default Damage Config", value: { kind: "asset", value: "None" } },
+      {
+        label: "Default Damage Config",
+        value: { kind: "objectAsset", accent: SEC_ASSET_ACCENTS["Damage Config"] },
+      },
       { label: "Base Damage", value: n(10, 0) },
       { label: "Damage Type Class", value: { kind: "asset", value: "None" } },
       { label: "Hit Reset Interval", value: n(0, 0) },
@@ -1167,7 +1280,10 @@ export const MELEE_TRACE_NOTIFY_DETAILS: UeDetailCategory[] = [
     title: "Melee Trace",
     properties: [
       { label: "Socket IDs", value: { kind: "text", value: "1 Array element" } },
-      { label: "Damage Config", value: { kind: "asset", value: "DA_Damage_Sword" } },
+      {
+        label: "Damage Config",
+        value: { kind: "objectAsset", value: "DA_Damage_Sword", accent: SEC_ASSET_ACCENTS["Damage Config"] },
+      },
     ],
   },
   {
@@ -1183,9 +1299,15 @@ export const WEAPON_BASE_DETAILS: UeDetailCategory[] = [
     properties: [
       { label: "Attach Socket", value: { kind: "text", value: "hand_r" } },
       { label: "Attach Offset", value: { kind: "text", value: "Identity" } },
-      { label: "Weapon Action Set", value: { kind: "asset", value: "DA_ActionSet_Sword" } },
-      { label: "Weapon Reaction Set", value: { kind: "asset", value: "None" } },
-      { label: "Weapon Defense Set", value: { kind: "asset", value: "DA_SwordGuard" } },
+      {
+        label: "Weapon Action Set",
+        value: { kind: "objectAsset", value: "DA_ActionSet_Sword", accent: SEC_ASSET_ACCENTS["Action Set"] },
+      },
+      { label: "Weapon Reaction Set", value: { kind: "objectAsset", accent: SEC_ASSET_ACCENTS["Reaction Set"] } },
+      {
+        label: "Weapon Defense Set",
+        value: { kind: "objectAsset", value: "DA_SwordGuard", accent: SEC_ASSET_ACCENTS["Defense Rule Set"] },
+      },
     ],
   },
   {
@@ -1225,7 +1347,7 @@ export const STATE_TREE_BEHAVIOR_CONFIG_DETAILS: UeDetailCategory[] = [
     properties: [
       {
         label: "Default State Tree",
-        value: { kind: "text", value: "StateTree_SEC_Core" },
+        value: { kind: "objectAsset", value: "StateTree_SEC_Core", accent: UE_KIT.stateTreeAsset, variant: "tree" },
       },
     ],
     children: [
@@ -1248,7 +1370,7 @@ export const BOT_STATE_TREE_AI_DETAILS: UeDetailCategory[] = [
     title: "AI|StateTree",
     properties: [
       { label: "Auto Initialize From Config", value: b(true) },
-      { label: "Fallback State Tree", value: { kind: "asset", value: "None" } },
+      { label: "Fallback State Tree", value: { kind: "objectAsset", accent: UE_KIT.stateTreeAsset, variant: "tree" } },
     ],
   },
 ];
@@ -1268,12 +1390,20 @@ export const MULTIPLAYER_ACTION_STATE_DETAILS: UeDetailCategory[] = [
     properties: [
       { label: "Current Action Id", value: { kind: "text", value: "None" } },
       { label: "Action Executing", value: b(false) },
-      { label: "Active Action Set", value: { kind: "asset", value: "DA_EnemyActions" } },
+      {
+        label: "Active Action Set",
+        value: { kind: "objectAsset", value: "DA_EnemyActions", accent: SEC_ASSET_ACCENTS["Action Set"] },
+      },
     ],
   },
   {
     title: "SEC|ActionSet",
-    properties: [{ label: "Provided Action Set", value: { kind: "asset", value: "DA_GreatswordActions" } }],
+    properties: [
+      {
+        label: "Provided Action Set",
+        value: { kind: "objectAsset", value: "DA_GreatswordActions", accent: SEC_ASSET_ACCENTS["Action Set"] },
+      },
+    ],
   },
 ];
 
@@ -1402,7 +1532,10 @@ export const DEFENSE_COMPONENT_DETAILS: UeDetailCategory[] = [
   {
     title: "SEC|Defense",
     properties: [
-      { label: "Defense Set", value: { kind: "asset", value: "DA_Defense_KnightArmour" } },
+      {
+        label: "Defense Set",
+        value: { kind: "objectAsset", value: "DA_Defense_KnightArmour", accent: SEC_ASSET_ACCENTS["Defense Rule Set"] },
+      },
       { label: "Responses", value: { kind: "text", value: "3 Array elements" } },
     ],
   },
@@ -1566,7 +1699,7 @@ export const APPROACH_WINDOW_NOTIFY_DETAILS: UeDetailCategory[] = [
       { label: "Override Speed Limit", value: { kind: "bool", value: false } },
       { label: "Speed Limit Override", value: { kind: "enum", value: "Unlimited" } },
       { label: "Max Approach Speed Override", value: n(600, 0) },
-      { label: "Time Mapping Curve Override", value: { kind: "asset" } },
+      { label: "Time Mapping Curve Override", value: { kind: "objectAsset", accent: UE.curveFloat } },
     ],
   },
 ];

@@ -5,7 +5,7 @@ date: 2026-08-17
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Territory", "Patrol"]
 parent: "SoulslikeCombatDocs"
-order: 11.5
+order: 14
 ---
 
 <Breadcrumb items={[
@@ -33,6 +33,9 @@ Select the enemy in the level. On its **SEC Territory** component, add each post
   section="Territory"
   rows={[
     { name: "Posts", value: "3 Array elements", from: "0 Array elements", kind: "text" },
+    { name: "  [0]", value: "Post_Gate", kind: "text", indent: true, revealAt: 0 },
+    { name: "  [1]", value: "Post_Courtyard", kind: "text", indent: true, revealAt: 0 },
+    { name: "  [2]", value: "Post_Tower", kind: "text", indent: true, revealAt: 0 },
     { name: "Resting Behavior", value: "Patrol Posts", from: "Patrol Posts" }
   ]}
   caption="Posts sit on the placed pawn, so the route is edited next to the enemy that walks it."

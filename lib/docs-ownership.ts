@@ -28,7 +28,33 @@ export function ownedDocs<T extends { slugAsParams: string }>(all: T[]): T[] {
     return all.filter((doc) => isRigbakDoc(doc.slugAsParams) === isRigbak);
 }
 
+/** True when this build lists a doc but another host holds the page. */
+export function isOffsiteDoc(slugAsParams: string): boolean {
+    return isRigbakDoc(slugAsParams) !== isRigbak;
+}
+
+/**
+ * The docs a navigation surface lists. The portfolio lists every product,
+ * including the ones rigbak.com holds, so a reader finds all of the work from
+ * one place; those entries link out rather than resolving locally.
+ *
+ * rigbak.com lists only what it sells, so personal work stays off the
+ * storefront.
+ *
+ * Navigation only. app/sitemap.ts stays on ownedDocs, so each host advertises
+ * the URLs it answers itself, while generateStaticParams stays on the full set,
+ * so both builds render every doc and each page names its owning host.
+ */
+export function listedDocs<T extends { slugAsParams: string }>(all: T[]): T[] {
+    return isRigbak ? all.filter((doc) => isRigbakDoc(doc.slugAsParams)) : all;
+}
+
 /** Host a doc is canonical on, whichever build rendered it. */
 export function docHost(slugAsParams: string): string {
     return isRigbakDoc(slugAsParams) ? siteConfig.docsUrl : siteConfig.url;
+}
+
+/** Where a doc link points: a local path, or the owning host when this build has no such page. */
+export function docHref(slug: string, slugAsParams: string): string {
+    return isOffsiteDoc(slugAsParams) ? `${docHost(slugAsParams)}/${slug}` : `/${slug}`;
 }

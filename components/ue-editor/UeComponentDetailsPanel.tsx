@@ -56,7 +56,7 @@ function UeSourceRow({
   return (
     <div className="ue-component-row ue-component-row-selected flex w-full items-center gap-1.5 px-1.5 py-0.5">
       <UeAssetIcon type={sourceKindToAssetType(sourceKind)} showLabel={false} className="shrink-0" />
-      <span className="min-w-0 truncate text-[13px] leading-none text-[color:var(--uekit-foreground-header)]">
+      <span className="min-w-0 truncate text-[15px] leading-none text-[color:var(--uekit-foreground-header)]">
         {displayName}
       </span>
     </div>

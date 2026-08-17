@@ -5,7 +5,7 @@ date: 2026-08-16
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Combat Roles"]
 parent: "SoulslikeCombatDocs"
-order: 8
+order: 9
 ---
 
 <Breadcrumb items={[
@@ -59,7 +59,9 @@ Open the **Enemy AI Config**. Under **Movement Profiles**, set **Default Movemen
   rows={[
     { name: "Manage Movement Profiles Automatically", value: "true", from: "true", kind: "bool" },
     { name: "Default Movement Profile", value: "DA_MovementBehavior_Waiter", kind: "asset" },
-    { name: "Role Movement Profiles", value: "1 Array element", from: "0 Array elements", kind: "text" }
+    { name: "Role Movement Profiles", value: "1 Array element", from: "0 Array elements", kind: "text" },
+    { name: "  [0] Role", value: "SEC.Role.Attacker", kind: "text", indent: true, revealAt: 2 },
+    { name: "  [0] Movement Profile", value: "DA_MovementBehavior_Attacker", kind: "asset", indent: true, revealAt: 2 }
   ]}
   caption="The default covers every role that has no entry of its own, so one override is enough to see the difference."
 />
@@ -339,6 +341,6 @@ An enrage phase that opens a slot is **Set Role Limit Override** on the Attacker
 ---
 
 <DocNav
-  prev={{ title: "Reaction Set Editor", href: "/docs/soulslike-combat/reaction-set-editor" }}
-  next={{ title: "Targeting System", href: "/docs/soulslike-combat/targeting-system" }}
+  prev={{ title: "Attack Telegraphs", href: "/docs/soulslike-combat/attack-telegraphs" }}
+  next={{ title: "Combat Tokens", href: "/docs/soulslike-combat/combat-tokens" }}
 />

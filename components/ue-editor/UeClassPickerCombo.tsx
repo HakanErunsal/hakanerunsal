@@ -112,7 +112,7 @@ export function UeClassPickerCombo({
       >
         <span className="flex min-w-0 items-center gap-1.5">
           <UeInstancedObjectIcon />
-          <span className="truncate text-[13px] leading-[21px] text-[color:var(--uekit-foreground-header)]">{value}</span>
+          <span className="truncate text-[15px] leading-[21px] text-[color:var(--uekit-foreground-header)]">{value}</span>
         </span>
         <svg className="h-2.5 w-2.5 shrink-0 text-[color:var(--uekit-hover2)]" viewBox="0 0 10 10" fill="currentColor" aria-hidden>
           <path d="M1 3 L9 3 L5 8 Z" />
@@ -145,7 +145,7 @@ export function UeClassPickerCombo({
                   setOpen(false);
                 }}
                 className={cn(
-                  "ue-dp-picker-item flex w-full items-center px-2 py-[3px] text-left text-[13px] leading-[18px]",
+                  "ue-dp-picker-item flex w-full items-center px-2 py-[3px] text-left text-[15px] leading-[18px]",
                   option === value ? "text-[color:var(--uekit-foreground-hover)]" : "text-[color:var(--uekit-foreground-header)]",
                 )}
                 data-selected={option === value}

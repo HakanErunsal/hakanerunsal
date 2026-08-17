@@ -5,7 +5,7 @@ date: 2026-08-16
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Reactions", "Debugging"]
 parent: "SoulslikeCombatDocs"
-order: 7.25
+order: 7
 ---
 
 <Breadcrumb items={[
@@ -20,13 +20,13 @@ order: 7.25
 
 <QuickStep title="Open a Reaction Set on its canvas">
 
-Double-click any Reaction Set and it opens as cards, under a tab called **Triggers and Reactions**. If you have none yet, right-click in the Content Browser, **SEC**, **Reaction Set**.
+Double-click the `DA_ReactionSet_Grunt` you created on the [Reaction System](/docs/soulslike-combat/reaction-system) page and it opens as cards, under a tab called **Triggers and Reactions**.
 
-<UeCreateAssetScene
-  create="Reaction Set"
-  assetName="DA_ReactionSet_Grunt"
-  caption="Right-click in the Content Browser, SEC, Reaction Set."
-/>
+<UeDoubleClickHint accent="#966CB0" assetName="DA_ReactionSet_Grunt" />
+
+This is the canvas that opens, not a details panel: a blue **Trigger** card for each event the enemy answers, wired to the purple **Reaction** cards it may pick.
+
+<ReactionSetGraphScene />
 
 </QuickStep>
 
@@ -41,7 +41,7 @@ Select it, press **F2**, and rename it `Parry`. In the panel on the right, set *
   section="Execution"
   rows={[
     { name: "Ability Class", value: "GA_SEC_MontageAbility", kind: "class" },
-    { name: "Montage", value: "AM_Parry", kind: "asset" }
+    { name: "Montage", value: "AM_Parry", kind: "asset", thumb: "montage", accent: "#6464FF" }
   ]}
   caption="One card selected, one reaction in the panel."
 />
@@ -71,11 +71,6 @@ The **Watching** picker above the canvas lists every enemy running this Reaction
 <Callout type="warning">
 An attack that does not announce itself reaches no rule, so the canvas has nothing to report however the cards are wired. Add the **SEC Attack Telegraph** notify to the attacker's montage where the wind-up starts; without it the picker still names an enemy while the line beside it never leaves **Nothing answering right now**. The **Watching** picker fills from AI whose active Reaction Set is this asset, which they reach through a runtime override, an equipped weapon, their **Enemy AI Config**, or **Default Reaction Set** on their **SEC Reaction Set Component**, so a picker stuck on **None** while the game runs means none of those routes landed on this asset. See [Attack Telegraphs](/docs/soulslike-combat/attack-telegraphs) and [Reaction System](/docs/soulslike-combat/reaction-system).
 </Callout>
-
-<ZoomableImage
-  src="../images/sec_reactionset_graph.png"
-  alt="The Reaction Set canvas: three blue TRIGGER cards named GuardFrontal, GuardSides and GuardBack on the left, two purple REACTION cards named Block and Dodge on the right, with arrows running from GuardFrontal to both reactions and from GuardSides to Dodge"
-/>
 
 ---
 
@@ -257,5 +252,5 @@ A dedicated server launched as its own process cannot be inspected from the edit
 
 <DocNav
   prev={{ title: "Reaction System", href: "/docs/soulslike-combat/reaction-system" }}
-  next={{ title: "Combat Roles", href: "/docs/soulslike-combat/combat-roles" }}
+  next={{ title: "Attack Telegraphs", href: "/docs/soulslike-combat/attack-telegraphs" }}
 />

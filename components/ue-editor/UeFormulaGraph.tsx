@@ -42,7 +42,7 @@ function FormulaOpChip({ op }: { op: "×" | "÷" }) {
       }}
       aria-hidden
     >
-      <span className="font-mono text-[20px] font-bold leading-none text-[color:var(--uekit-bp-text)]">{op}</span>
+      <span className="font-mono text-[22px] font-bold leading-none text-[color:var(--uekit-bp-text)]">{op}</span>
     </div>
   );
 }
@@ -129,7 +129,7 @@ export function UeFormulaGraph({
           </svg>
 
           <div className="pointer-events-none absolute left-1/2 top-1/2 z-[2] flex w-[84px] -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center text-center">
-            <span className="text-[14px] font-semibold leading-tight text-[color:var(--uekit-bp-text)]">
+            <span className="text-[16px] font-semibold leading-tight text-[color:var(--uekit-bp-text)]">
               {resultLabel}
             </span>
           </div>
@@ -156,10 +156,10 @@ export function UeFormulaGraph({
                 kind="variable-get"
                 title={s.factor.label}
                 headerColor={FLOAT}
-                className="[&_span.relative]:text-[14px] [&_span.relative]:font-medium [&_span.relative]:text-[color:var(--uekit-bp-text)]"
+                className="[&_span.relative]:text-[16px] [&_span.relative]:font-medium [&_span.relative]:text-[color:var(--uekit-bp-text)]"
               />
               {s.factor.note && (
-                <span className="max-w-[130px] text-center text-[12px] leading-tight text-[color:var(--uekit-bp-subtitle)]">
+                <span className="max-w-[130px] text-center text-[13px] leading-tight text-[color:var(--uekit-bp-subtitle)]">
                   {s.factor.note}
                 </span>
               )}

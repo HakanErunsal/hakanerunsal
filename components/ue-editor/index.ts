@@ -9,6 +9,7 @@ export {
 } from "./UeBlueprintNode";
 export { UeBlueprintPinRow, UeBlueprintExecRow } from "./UeBlueprintPin";
 export { UeBlueprintGraph, UeBlueprintComment } from "./UeBlueprintGraph";
+export { UeBlueprintWire } from "./UeBlueprintWire";
 export {
   UeBlueprintVariables,
   UeMyBlueprintPanel,
@@ -32,6 +33,7 @@ export { UeContentBrowserTile } from "./UeContentBrowserTile";
 export { UeDetailsSection, UePropertyRow, UeAssetPicker, UeAssetThumbnail } from "./UeDetailsSection";
 export {
   UeDetailsPanel,
+  UeCheckbox,
   MOVEMENT_EVALUATOR_DETAILS,
   MOVEMENT_PROFILE_DETAILS,
   ACTION_COOLDOWN_DETAILS,

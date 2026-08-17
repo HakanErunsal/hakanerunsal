@@ -4,7 +4,7 @@ import { sortDocs } from "@/lib/utils";
 import { docs } from "#site/content";
 import MediaCard from "@/components/media-card";
 import { brandConfig } from "@/config/site";
-import { ownedDocs } from "@/lib/docs-ownership";
+import { listedDocs, docHref, docHost, isOffsiteDoc } from "@/lib/docs-ownership";
 
 export const metadata: Metadata = {
     title: "Documentation",
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 export default function DocsPage() {
     // Sorting and selecting published docs (excluding sub-pages with parent field)
     const publishedDocs = sortDocs(
-        ownedDocs(docs).filter(d => d.published && !d.parent)
+        listedDocs(docs).filter(d => d.published && !d.parent)
     ).slice(0, 20);
 
     return (
@@ -40,6 +40,12 @@ export default function DocsPage() {
                     <div key={doc.slug}>
                         <MediaCard
                             slug={doc.slug}
+                            href={docHref(doc.slug, doc.slugAsParams)}
+                            offsiteLabel={
+                                isOffsiteDoc(doc.slugAsParams)
+                                    ? new URL(docHost(doc.slugAsParams)).host
+                                    : undefined
+                            }
                             image={doc.image?.src || ''}
                             title={doc.title}
                         />

@@ -81,13 +81,13 @@ function VariableTreeItem({
           <span className="inline-block w-[14px] shrink-0" aria-hidden />
         )}
 
-        <span className="min-w-0 flex-1 truncate text-[13px] text-[color:var(--uekit-foreground)]">{item.name}</span>
+        <span className="min-w-0 flex-1 truncate text-[15px] text-[color:var(--uekit-foreground)]">{item.name}</span>
 
         {item.type && (
           <span className="ml-2 flex shrink-0 items-center gap-1.5">
             <UeVariableTypePill type={item.type} />
             {typeLabel && (
-              <span className="max-w-[120px] truncate text-[13px] text-[color:var(--uekit-hover2)]">{typeLabel}</span>
+              <span className="max-w-[120px] truncate text-[15px] text-[color:var(--uekit-hover2)]">{typeLabel}</span>
             )}
             <span className="ue-mybp-row-icons ml-1 flex items-center gap-1 text-[color:var(--uekit-hover2)]">
               <Bell className={cn("h-3 w-3", item.fieldNotify && "text-[color:var(--uekit-foreground)]")} />
@@ -154,7 +154,7 @@ export function UeMyBlueprintPanel({
   return (
     <div className={cn("ue-mybp-panel overflow-hidden rounded-[2px] border border-[color:var(--uekit-window-border)]", className)}>
       <div className="border-b border-[color:var(--uekit-window-border)] bg-[color:var(--uekit-recessed)] px-2 py-1">
-        <span className="text-[13px] font-normal text-[color:var(--uekit-foreground-header)]">{title}</span>
+        <span className="text-[15px] font-normal text-[color:var(--uekit-foreground-header)]">{title}</span>
       </div>
       <div className="bg-[color:var(--uekit-background)] py-1">
         <UeBlueprintVariables items={items} hideComponentLabels={hideComponentLabels} />

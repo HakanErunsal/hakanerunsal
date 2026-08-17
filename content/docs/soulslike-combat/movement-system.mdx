@@ -1,11 +1,11 @@
 ---
 title: "Movement System"
 description: "Give an enemy tactical positioning: create a movement profile, set the range it holds, point the AI Config at it."
-date: 2026-08-15
+date: 2026-08-17
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Movement"]
 parent: "SoulslikeCombatDocs"
-order: 4
+order: 3
 ---
 
 
@@ -110,10 +110,14 @@ The profile editor has a **Watching** picker. Start Play In Editor, pick a runni
 
 **Threat Response** needs a [Threat Detection](/docs/soulslike-combat/threat-detection) component on the controller. Without one, both switches sit inert.
 
+Untick **Enable Strafing** and this role stops circling entirely: the enemy still approaches, retreats, and steps around other enemies, every other **Strafe** and **Strafe Time Limits** field goes inert, and the side it was circling on is remembered for whenever strafing comes back on. With it ticked, **Strafe Preference Weight** balances circling against closing or opening distance: 1.0 is balanced, below 1.0 favors approach and retreat, above 1.0 favors circling. Tick **Auto Strafe Swap** and the enemy switches sides on its own once the far side scores enough better, by the ratio in **Strafe Swap Threshold**, no sooner than **Strafe Swap Cooldown** allows.
+
+**Strafe Time Limits** forces a side swap after too long on one side, separately from any score-driven swap. With **Enable Strafe Time Limit** ticked, a swap fires after roughly **Strafe Time Limit** seconds, varied by **Strafe Time Limit Fluctuation** so a pack does not swap in lockstep. Tick **Rest After Strafe Swap** to pause briefly right after one of these forced swaps, for **Strafe Swap Rest Time** seconds, varied by **Strafe Swap Rest Fluctuation**.
+
 **Positioning Rules** shape where the enemy wants to stand. Add an **Angle Preference Rule** and set **Preferred Angle** to 0 for frontal, 90 for flanking, 180 for behind the target. Tick **Avoid Instead** to invert it. Rules stack, each with its own **Weight**.
 
 <Callout type="info">
-A profile carries the fields above and nothing else. Sample count, avoidance, navmesh sampling, strafe speed and swap timing, detour, and stuck detection all live on the **Movement Evaluator** component, so they are the same for every role on that controller.
+A profile carries the fields above and nothing else. Sample count, avoidance, navmesh sampling, strafe speed, detour, and stuck detection all live on the **Movement Evaluator** component, so they are the same for every role on that controller.
 </Callout>
 
 ### One profile per combat role

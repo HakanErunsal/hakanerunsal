@@ -42,7 +42,7 @@ export function UePanel({
       <div className="flex items-stretch border-b border-[color:var(--uekit-window-border)] bg-[color:var(--uekit-background)]">
         <div className="ue-panel-tab flex items-center gap-2 px-3 py-1">
           {showTitleIcon && <UeAssetIcon type={assetType} showLabel={false} />}
-          <span className="text-[13px] text-[color:var(--uekit-foreground-header)]">{title}</span>
+          <span className="text-[15px] text-[color:var(--uekit-foreground-header)]">{title}</span>
         </div>
         {(headerRight || toolbarRight) && (
           <div className="ml-auto flex items-center gap-2 px-2">{headerRight ?? toolbarRight}</div>
@@ -52,7 +52,7 @@ export function UePanel({
       {!compact && (crumbs.length > 0 || toolbarRight) && (
         <div className="flex items-center gap-2 border-b border-[color:var(--uekit-window-border)] bg-[color:var(--uekit-recessed)] px-2 py-1">
           {crumbs.length > 0 && (
-            <div className="flex min-w-0 flex-1 items-center gap-0.5 truncate text-[13px] text-[color:var(--uekit-hover2)]">
+            <div className="flex min-w-0 flex-1 items-center gap-0.5 truncate text-[15px] text-[color:var(--uekit-hover2)]">
               {crumbs.map((crumb, i) => (
                 <span key={i} className="flex items-center gap-0.5">
                   {i > 0 && <span className="text-[color:var(--uekit-hover)]">&gt;</span>}

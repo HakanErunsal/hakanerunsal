@@ -5,7 +5,7 @@ date: 2026-08-17
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Actions", "Debugging"]
 parent: "SoulslikeCombatDocs"
-order: 6
+order: 5
 ---
 
 <Breadcrumb items={[
@@ -20,13 +20,13 @@ order: 6
 
 <QuickStep title="Open an Action Set on its canvas">
 
-Double-click any Action Set and it opens as cards. If you have none yet, right-click in the Content Browser, **SEC**, **Action Set**.
+Double-click the `DA_ActionSet_Grunt` you created on the [Action System](/docs/soulslike-combat/action-system) page and it opens as cards.
 
-<UeCreateAssetScene
-  create="Action Set"
-  assetName="DA_ActionSet_Grunt"
-  caption="Right-click in the Content Browser, SEC, Action Set."
-/>
+<UeDoubleClickHint accent="#7890B8" assetName="DA_ActionSet_Grunt" />
+
+This is the canvas that opens, not a details panel: an orange card per action, chained where one is meant to follow another.
+
+<ActionSetGraphScene />
 
 </QuickStep>
 
@@ -47,7 +47,7 @@ With one card selected, the Details panel shows that action alone. Set **Ability
   section="Execution"
   rows={[
     { name: "Ability Class", value: "GA_SEC_MontageAbility", kind: "class" },
-    { name: "Montage", value: "AM_Attack_Light", kind: "asset" }
+    { name: "Montage", value: "AM_Attack_Light", kind: "asset", thumb: "montage", accent: "#6464FF" }
   ]}
   caption="One card selected, one action in the panel."
 />
@@ -57,6 +57,8 @@ With one card selected, the Details panel shows that action alone. Set **Ability
 <QuickStep title="Wire a combo">
 
 Drag from the right edge of one card to the left edge of another. The first action prefers the second as its follow-up, at a **Bonus Multiplier** of 1.5.
+
+<ComboWireScene />
 
 </QuickStep>
 

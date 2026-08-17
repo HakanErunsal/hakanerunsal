@@ -39,7 +39,7 @@ export function UeComponentRow({
       )}
     >
       <UeActorComponentIcon className="h-4 w-4 shrink-0" />
-      <span className="min-w-0 truncate text-[13px] leading-none text-[color:var(--uekit-foreground-header)]">
+      <span className="min-w-0 truncate text-[15px] leading-none text-[color:var(--uekit-foreground-header)]">
         {displayName}
       </span>
     </Tag>

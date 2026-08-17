@@ -5,7 +5,7 @@ date: 2026-08-17
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "StateTree"]
 parent: "SoulslikeCombatDocs"
-order: 18
+order: 22
 ---
 
 <Breadcrumb items={[
@@ -26,7 +26,7 @@ In the Content Browser open **Settings** and tick **Show Plugin Content**. Then 
   title="EnemyConfig_Grunt"
   section="Behavior"
   rows={[
-    { name: "Default State Tree", value: "StateTree_SEC_Core", kind: "asset" }
+    { name: "Default State Tree", value: "StateTree_SEC_Core", kind: "asset", thumb: "tree", accent: "#C9B91D" }
   ]}
   caption="One field. Empty runs the native combat loop, filled runs the graph."
 />
@@ -253,5 +253,5 @@ Reach for a graph when the enemy needs structure the loop has no opinion about: 
 
 <DocNav
   prev={{ title: "Multiplayer Support", href: "/docs/soulslike-combat/multiplayer" }}
-  next={{ title: "Patterns & Examples", href: "/docs/soulslike-combat/patterns" }}
+  next={{ title: "Core Architecture", href: "/docs/soulslike-combat/architecture" }}
 />

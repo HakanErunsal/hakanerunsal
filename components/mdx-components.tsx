@@ -101,6 +101,10 @@ import UeClip from '@/components/UeClip';
 import { QuickStart, QuickStep } from '@/components/QuickStart';
 import UeCreateAssetScene from '@/components/ue-editor/UeCreateAssetScene';
 import UeSetPropertiesScene from '@/components/ue-editor/UeSetPropertiesScene';
+import UeDoubleClickHint from '@/components/ue-editor/UeDoubleClickHint';
+import ReactionSetGraphScene from '@/components/ReactionSetGraphScene';
+import ActionSetGraphScene from '@/components/ActionSetGraphScene';
+import ComboWireScene from '@/components/ComboWireScene';
 
 const useMDXComponent = (code: string) => {
   const fn = new Function(code);
@@ -119,6 +123,10 @@ const components = {
   QuickStep,
   UeCreateAssetScene,
   UeSetPropertiesScene,
+  UeDoubleClickHint,
+  ReactionSetGraphScene,
+  ActionSetGraphScene,
+  ComboWireScene,
   GameStatusBadge,
   Breadcrumb,
   DocNav,

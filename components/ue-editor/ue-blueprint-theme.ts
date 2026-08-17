@@ -31,7 +31,8 @@ export const UE_BP_TITLE = {
   terminator: linearToHex(0.6, 0, 1),
   branch: linearToHex(1, 1, 1),
   sequence: linearToHex(0.8, 0.4, 0.4),
-  result: linearToHex(1, 0.65, 0.4),
+  /** Sampled from the UE 5.8 editor's own Return Node header. */
+  result: "#6F1D85",
   comment: linearToHex(0.15, 0.15, 0.15),
 } as const;
 
@@ -47,7 +48,8 @@ export const UE_BP_PIN = {
   name: linearToHex(0.607717, 0.224984, 1),
   string: linearToHex(1, 0, 0.660537),
   text: linearToHex(0.8, 0.2, 0.4),
-  object: linearToHex(0, 0.4, 0.91),
+  /** Sampled from the UE 5.8 editor; the linear-to-sRGB formula undershoots this one. */
+  object: "#0687BF",
   class: linearToHex(0.1, 0, 0.5),
   interface: linearToHex(0.8784, 1, 0.4),
   struct: linearToHex(0, 0.1, 0.6),
@@ -122,7 +124,8 @@ export const UE_BP_PIN_SRGB = {
   name: linearToSrgbHex(0.607717, 0.224984, 1),
   string: linearToSrgbHex(1, 0, 0.660537),
   text: linearToSrgbHex(0.8, 0.2, 0.4),
-  object: linearToSrgbHex(0, 0.4, 0.91),
+  /** Sampled from the UE 5.8 editor; the linear-to-sRGB formula undershoots this one. */
+  object: "#0687BF",
   class: linearToSrgbHex(0.1, 0, 0.5),
   interface: linearToSrgbHex(0.8784, 1, 0.4),
   struct: linearToSrgbHex(0, 0.1, 0.6),

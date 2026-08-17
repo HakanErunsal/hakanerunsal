@@ -47,7 +47,7 @@ export function UeAssetIcon({ type, showLabel = true, className }: UeAssetIconPr
           <rect x="1" y="14" width="14" height="1.5" fill={color} />
         </svg>
       )}
-      {showLabel && <span className="text-[12px] text-[color:var(--uekit-hover2)]">{label}</span>}
+      {showLabel && <span className="text-[13px] text-[color:var(--uekit-hover2)]">{label}</span>}
     </div>
   );
 }

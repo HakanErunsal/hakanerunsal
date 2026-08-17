@@ -73,7 +73,7 @@
   min-height: 26px;
   border-bottom: 1px solid transparent;
   color: var(--uekit-foreground);
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .ue-component-row:hover {
@@ -274,7 +274,7 @@
   background: transparent;
   border: none;
   outline: none;
-  font-size: 13px;
+  font-size: 15px;
   color: var(--uekit-foreground);
 }
 
@@ -351,7 +351,7 @@
   align-items: center;
   gap: 4px;
   padding: 2px 6px;
-  font-size: 13px;
+  font-size: 15px;
   color: var(--uekit-foreground);
   border-bottom: 1px solid var(--uekit-window-border);
 }
@@ -486,13 +486,8 @@
   position: relative;
 }
 
-/* Exec pins — white right-pointing arrows (both input & output point right) */
+/* Exec pins — right-pointing arrows, hollow when unconnected, filled when connected (UE Pin.svg) */
 .ue-bp-exec-pin {
-  width: 0;
-  height: 0;
-  border-top: 5px solid transparent;
-  border-bottom: 5px solid transparent;
-  border-left: 9px solid var(--uekit-foreground-hover);
   filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.7));
 }
 
@@ -501,12 +496,11 @@
 }
 
 .ue-bp-exec-row {
-  margin-bottom: 2px;
+  margin-bottom: 8px;
 }
 
 /* Data pins — hollow rings when unconnected, filled when connected (UE Pin.svg) */
 .ue-bp-data-pin {
-  position: relative;
   width: 11px;
   height: 11px;
   border-radius: 50%;
@@ -522,7 +516,7 @@
 
 .ue-bp-pin-label {
   color: var(--uekit-foreground-header);
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1.2;
 }
 
@@ -531,7 +525,7 @@
   background: rgba(0, 0, 0, 0.35);
   border-radius: 2px;
   padding: 0 4px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--uekit-foreground);
 }
 
@@ -569,7 +563,7 @@
 .ue-bp-subsystem-node {
   border-radius: 11px;
   border: 1px solid rgba(0, 0, 0, 0.72);
-  background: linear-gradient(180deg, rgba(34, 34, 38, 0.98) 0%, rgba(14, 14, 16, 0.99) 100%);
+  background: linear-gradient(180deg, rgba(34, 34, 38, 0.88) 0%, rgba(14, 14, 16, 0.9) 100%);
   box-shadow:
     0 3px 10px rgba(0, 0, 0, 0.55),
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
@@ -580,7 +574,7 @@
   position: absolute;
   inset: 0;
   border-radius: 11px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, transparent 38%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, transparent 35%);
   pointer-events: none;
 }
 

@@ -1,7 +1,8 @@
 "use client";
 
 import { UE } from "./ue-theme";
-import { UeAssetThumbSquare } from "./UeAssetThumb";
+import { UeAssetBrowseButtons, UeAssetThumbSquare } from "./UeAssetThumb";
+import { UeCheckbox } from "./UeDetailsPanel";
 import { UeSceneFrame } from "./UeSceneFrame";
 import { useSceneClock } from "./useSceneClock";
 
@@ -21,8 +22,12 @@ interface SceneRow {
   kind?: RowKind;
   /** Underline color on an asset row thumbnail. Defaults to the data asset color. */
   accent?: string;
+  /** A montage renders its own pose thumbnail rather than the generic data-asset wheel. */
+  thumb?: "wheel" | "montage" | "tree";
   /** Indent one level, for a field that expands under the instanced object above it. */
   indent?: boolean;
+  /** Index of the row that must already be filled before this one exists at all, for a child row an array has no business showing before its parent reads a nonzero count. */
+  revealAt?: number;
 }
 
 interface UeSetPropertiesSceneProps {
@@ -42,29 +47,23 @@ function RowValue({ row, filled }: { row: SceneRow; filled: boolean }) {
 
   if (kind === "bool") {
     const on = filled ? row.value !== "false" : row.from === "true";
-    return (
-      <span
-        className="flex h-3 w-3 items-center justify-center rounded-[2px] border text-[9px] leading-none"
-        style={{
-          borderColor: UE.dropdownOutline,
-          background: on ? UE.primary : UE.input,
-          color: UE.foregroundHeader,
-        }}
-      >
-        {on ? "✓" : ""}
-      </span>
-    );
+    return <UeCheckbox checked={on} />;
   }
 
   // An asset property stands taller than a text row: the editor shows the picked
   // asset's thumbnail beside the picker, with the browse buttons under it.
   if (kind === "asset") {
     return (
-      <span className="flex flex-1 items-center gap-1.5">
-        <UeAssetThumbSquare accent={text ? accent ?? UE.dataAsset : UE.secondary} size={28} />
+      <span className="flex min-w-0 flex-1 items-center gap-1.5">
+        <UeAssetThumbSquare
+          accent={text ? accent ?? UE.dataAsset : UE.secondary}
+          size={40}
+          showWheel={Boolean(text)}
+          variant={row.thumb ?? "wheel"}
+        />
         <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
           <span
-            className="flex items-center justify-between gap-1 truncate rounded-[2px] border px-1.5 py-[2px] text-[10px]"
+            className="flex items-center justify-between gap-1 truncate rounded-[2px] border px-1.5 py-[2px] text-[15px]"
             style={{
               borderColor: UE.dropdownOutline,
               background: UE.input,
@@ -74,15 +73,7 @@ function RowValue({ row, filled }: { row: SceneRow; filled: boolean }) {
             <span className="truncate">{text || "None"}</span>
             <span style={{ color: UE.hover2 }}>▾</span>
           </span>
-          <span className="flex items-center gap-1" style={{ color: UE.hover2 }}>
-            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden>
-              <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.2" />
-              <path d="M9.5 5.5 L6.5 8 L9.5 10.5" stroke="currentColor" strokeWidth="1.2" />
-            </svg>
-            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden>
-              <path d="M2 4.5 H6.5 L8 6.5 H14 V12.5 H2 Z" stroke="currentColor" strokeWidth="1.2" />
-            </svg>
-          </span>
+          <UeAssetBrowseButtons />
         </span>
       </span>
     );
@@ -91,7 +82,7 @@ function RowValue({ row, filled }: { row: SceneRow; filled: boolean }) {
   if (kind === "class") {
     return (
       <span
-        className="flex flex-1 items-center gap-1.5 truncate rounded-[2px] border px-1.5 py-[2px] text-[10px]"
+        className="flex min-w-0 flex-1 items-center gap-1.5 truncate rounded-[2px] border px-1.5 py-[2px] text-[15px]"
         style={{
           borderColor: UE.dropdownOutline,
           background: UE.input,
@@ -105,7 +96,7 @@ function RowValue({ row, filled }: { row: SceneRow; filled: boolean }) {
 
   return (
     <span
-      className="flex-1 truncate rounded-[2px] border px-1.5 py-[2px] text-[10px]"
+      className="min-w-0 flex-1 truncate rounded-[2px] border px-1.5 py-[2px] text-[15px]"
       style={{ borderColor: UE.dropdownOutline, background: UE.input, color: UE.foregroundHeader }}
     >
       {text || " "}
@@ -139,7 +130,7 @@ export default function UeSetPropertiesScene({
     >
       <div className="absolute inset-0" style={{ background: UE.background }}>
         <div
-          className="flex items-center gap-1 border-b px-2 py-1 text-[10px] uppercase tracking-wide"
+          className="flex items-center gap-1 border-b px-2 py-1 text-[15px] uppercase tracking-wide"
           style={{ borderColor: UE.windowBorder, background: UE.header, color: UE.foregroundHeader }}
         >
           <span style={{ color: UE.hover2 }}>▾</span>
@@ -147,6 +138,9 @@ export default function UeSetPropertiesScene({
         </div>
         {rows.map((row, i) => {
           const focused = i === focusedRow;
+          if (row.revealAt !== undefined && focusedRow < row.revealAt) {
+            return null;
+          }
           return (
             <div
               key={row.name}
@@ -159,7 +153,7 @@ export default function UeSetPropertiesScene({
               }}
             >
               <span
-                className="w-[46%] shrink-0 truncate text-[10px]"
+                className="w-[46%] shrink-0 truncate text-[15px]"
                 style={{ color: UE.foreground, paddingLeft: row.indent ? 16 : 0 }}
               >
                 {row.name}

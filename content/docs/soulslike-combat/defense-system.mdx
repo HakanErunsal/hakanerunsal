@@ -1,11 +1,11 @@
 ---
 title: "Defense System"
-description: "Give a pawn a guard: add the Defense component, author one response, and an incoming hit is parried, blocked or ignored before it reaches health."
+description: "Give a pawn a guard: create a Defense Rule Set, author one response, and an incoming hit is parried, blocked or ignored before it reaches health."
 date: 2026-08-17
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Defense", "Combat"]
 parent: "SoulslikeCombatDocs"
-order: 14.5
+order: 18
 ---
 
 <Breadcrumb items={[
@@ -24,18 +24,45 @@ Select the pawn, **Add Component**, **SEC Defense**. An enemy built on `EnemyCha
 
 </QuickStep>
 
+<QuickStep title="Create a Defense Rule Set">
+
+Right-click in the Content Browser, **SEC**, **Defense Rule Set**.
+
+<UeCreateAssetScene
+  create="Defense Rule Set"
+  assetName="DA_Defense_KnightArmour"
+  caption="Right-click in the Content Browser, SEC, Defense Rule Set."
+/>
+
+</QuickStep>
+
 <QuickStep title="Author one response">
 
-On the component, press **+** on **Responses** and pick **SEC Block**. Set **Required Tags** to the tag the guard holds while it is up, and **Result Tag** to `SEC.Defense.Block` so the attacker learns what happened.
+On the asset, press **+** on **Responses** and pick **SEC Block**. Set **Required Tags** to the tag the guard holds while it is up, and **Result Tag** to `SEC.Defense.Block` so the attacker learns what happened.
 
 <UeSetPropertiesScene
-  title="SEC Defense"
+  title="DA_Defense_KnightArmour"
   section="Block"
   rows={[
     { name: "Required Tags", value: "SEC.State.Blocking", kind: "text" },
     { name: "Result Tag", value: "SEC.Defense.Block", kind: "text" }
   ]}
   caption="Required Tags and Result Tag both ship empty, so they are the two to fill in. The 60 degree arc and the 0.2 multiplier ship ready to use."
+/>
+
+</QuickStep>
+
+<QuickStep title="Point the Defense component at it">
+
+Select the pawn's **SEC Defense** component and set **Defense Set** to the asset.
+
+<UeSetPropertiesScene
+  title="SEC Defense"
+  section="SEC|Defense"
+  rows={[
+    { name: "Defense Set", value: "DA_Defense_KnightArmour", kind: "asset", accent: "#C91D55" }
+  ]}
+  caption="Defense Set answers after everything authored directly on the component, which ships empty."
 />
 
 </QuickStep>
@@ -64,7 +91,11 @@ A fifth of the damage lands, and the swing comes back carrying `SEC.Defense.Bloc
 A response answers only while the pawn holds the tags in its **Required Tags**, and nothing in the plugin puts them there. A guard ability, a [reaction](/docs/soulslike-combat/reaction-system), or a [montage window](/docs/soulslike-combat/animation-integration) has to hold one while the guard is up. Until something does, the response sits inert and hits land at full damage.
 </Callout>
 
-A Defense component with nothing authored reports the incoming damage unchanged, so dropping it onto an existing pawn changes nothing until you write the first response.
+<Callout type="info">
+A response only that one pawn needs does not need the asset. Press **+** on the component's own **Responses** instead of creating a Defense Rule Set, using the same **Required Tags** and **Result Tag** fields. Responses authored there run ahead of the Defense Set, so the two combine rather than compete.
+</Callout>
+
+A Defense component with nothing authored and no Defense Set reports the incoming damage unchanged, so dropping it onto an existing pawn changes nothing until you write the first response.
 
 ---
 
@@ -179,15 +210,9 @@ This kind answers by what the attack is rather than by what the pawn is doing, w
 
 <DefenseComponentDetails />
 
-### A rule set several characters point at
+### Pointing several characters at the same set
 
-Right-click in the Content Browser, **SEC**, **Defense Rule Set**. Author its **Responses**, then point a Defense component's **Defense Set** at it.
-
-<UeCreateAssetScene
-  create="Defense Rule Set"
-  assetName="DA_Defense_KnightArmour"
-  caption="Right-click in the Content Browser, SEC, Defense Rule Set."
-/>
+Set more than one Defense component's **Defense Set** to the same asset, `DA_Defense_KnightArmour` from the walkthrough above or a copy authored for another archetype, to give every pawn carrying it the same answers. Edit the asset once and every pawn pointed at it picks up the change.
 
 ### A weapon that brings its own
 
@@ -318,3 +343,8 @@ Vitals replicate on their own, so the client sees the stamina a block spent with
 | [Vitals](/docs/soulslike-combat/vitals) | The pools a costed response charges, and the health a resolved hit comes off. |
 | [Weapons](/docs/soulslike-combat/weapons) | **Weapon Defense Set**, and arming an enemy so it arrives. |
 | [Animation Integration](/docs/soulslike-combat/animation-integration) | Montage windows that hold a state tag for exactly the frames a response should answer on. |
+
+<DocNav
+  prev={{ title: "Vitals", href: "/docs/soulslike-combat/vitals" }}
+  next={{ title: "Animation Integration", href: "/docs/soulslike-combat/animation-integration" }}
+/>

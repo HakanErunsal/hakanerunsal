@@ -40,7 +40,7 @@ export function UeSceneFrame({
           style={{ borderColor: UE.windowBorder, background: UE.title }}
         >
           <span className="h-2 w-2 rounded-full" style={{ background: UE.dropdownOutline }} />
-          <span className="text-[10px]" style={{ color: UE.foreground }}>
+          <span className="text-[11px]" style={{ color: UE.foreground }}>
             {title}
           </span>
         </div>
@@ -49,7 +49,7 @@ export function UeSceneFrame({
         </div>
       </div>
       {caption && (
-        <figcaption className="mt-1.5 !text-left text-[12px] leading-snug text-muted-foreground">
+        <figcaption className="mt-1.5 !text-left text-[13px] leading-snug text-muted-foreground">
           {caption}
         </figcaption>
       )}

@@ -48,7 +48,7 @@ export function UeBlueprintComment({
       className={cn("ue-bp-comment relative rounded-sm border p-4", className)}
       style={{ backgroundColor: color, borderColor: UE_KIT.bpCommentBorder }}
     >
-      <div className="mb-3 text-[14px] font-normal" style={{ color: UE_KIT.bpCommentTitle }}>
+      <div className="mb-3 text-[16px] font-normal" style={{ color: UE_KIT.bpCommentTitle }}>
         {title}
       </div>
       {children}

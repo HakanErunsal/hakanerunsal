@@ -105,6 +105,12 @@ export const UE = {
   dataAsset: "#C91D55",
   /** AssetDefinition_Blueprint.h — FColor(63, 126, 255) */
   blueprint: "#3F7EFF",
+  /** AssetDefinition_AnimMontage.h — FColor(100, 100, 255) */
+  animMontage: "#6464FF",
+  /** BehaviorTreeEditor's AssetDefinition_BehaviorTree.cpp — FColor(149, 70, 255) */
+  behaviorTree: "#9546FF",
+  /** AssetDefinition_Curve.h, inherited by UAssetDefinition_CurveFloat — FColor(78, 40, 165) */
+  curveFloat: "#4E28A5",
 } as const;
 
 /**
@@ -116,8 +122,8 @@ export const UE = {
 export const UE_KIT = {
   /** Tag name text in a gameplay tag container. Reading affordance with no engine counterpart. */
   gameplayTagText: "#7EC8E3",
-  /** StateTree asset underline in the Content Browser. */
-  stateTreeAsset: "#A139BF",
+  /** AssetDefinition_StateTree.cpp GetAssetColor() — FColor(201, 185, 29) */
+  stateTreeAsset: "#C9B91D",
   /** Object pin color. Fallback when a graph leaves --pin-color or --pill-color unset. */
   pinFallback: "#0066E8",
   /** Selection outline glow on a graph node. */

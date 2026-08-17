@@ -57,8 +57,8 @@ export function UeContentBrowserTile({
         <div className="absolute inset-x-0 bottom-0 h-[2px]" style={{ backgroundColor: accent }} />
       </div>
       <div className="ue-cb-tile-label flex min-h-[54px] flex-col justify-center px-1.5 py-1">
-        <span className="line-clamp-2 text-[10px] leading-tight text-[color:var(--uekit-foreground)]">{name}</span>
-        <span className="mt-0.5 truncate text-[8px] leading-tight text-[color:var(--uekit-hover2)]">{label}</span>
+        <span className="line-clamp-2 text-[11px] leading-tight text-[color:var(--uekit-foreground)]">{name}</span>
+        <span className="mt-0.5 truncate text-[9px] leading-tight text-[color:var(--uekit-hover2)]">{label}</span>
       </div>
     </Tag>
   );

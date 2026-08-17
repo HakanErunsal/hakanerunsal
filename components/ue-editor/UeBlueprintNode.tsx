@@ -20,6 +20,8 @@ interface UeBlueprintNodeProps {
   subtitle?: string;
   /** Stacked label lines for subsystem-get nodes (e.g. AICombat / Role / Subsystem). */
   titleLines?: string[];
+  /** Ref to a subsystem-get node's own output pin, for a UeBlueprintWire anchored to it. */
+  pinRef?: React.Ref<HTMLSpanElement>;
   /** Semantic Blueprint node type — drives official UE header color */
   kind?: UeBlueprintNodeKind;
   /** Legacy category from flow visualizers — used when kind is not set */
@@ -88,11 +90,13 @@ function SubsystemGetNode({
   active,
   disabled,
   className,
+  pinRef,
 }: {
   lines: string[];
   active?: boolean;
   disabled?: boolean;
   className?: string;
+  pinRef?: React.Ref<HTMLSpanElement>;
 }) {
   return (
     <div
@@ -106,13 +110,14 @@ function SubsystemGetNode({
       <div className="ue-bp-subsystem-node__gloss" aria-hidden />
       <div className="relative z-[1] flex flex-col items-center gap-0.5 text-center">
         {lines.map((line) => (
-          <span key={line} className="text-[15px] font-bold leading-tight text-[color:var(--uekit-bp-pin-label)]">
+          <span key={line} className="text-[17px] font-bold leading-tight text-[color:var(--uekit-bp-pin-label)]">
             {line}
           </span>
         ))}
       </div>
       <span
-        className="ue-bp-data-pin ue-bp-data-pin--connected ue-bp-subsystem-node__pin absolute right-0 top-1/2 translate-x-1/2 -translate-y-1/2"
+        ref={pinRef}
+        className="ue-bp-data-pin ue-bp-data-pin--connected ue-bp-subsystem-node__pin absolute right-2 top-1/2 -translate-y-1/2"
         style={{ "--pin-color": UE_BP_PIN_SRGB.object } as React.CSSProperties}
         aria-hidden
       />
@@ -148,11 +153,11 @@ function VariableGetNode({
       <div className="ue-bp-var-node__spill" aria-hidden />
       <div className="ue-bp-var-node__gloss" aria-hidden />
       {kind === "variable-set" && (
-        <span className="absolute left-2 top-1 text-[10px] font-bold uppercase tracking-wide text-white/70">
+        <span className="absolute left-2 top-1 text-[11px] font-bold uppercase tracking-wide text-white/70">
           SET
         </span>
       )}
-      <span className="relative z-[1] text-[13px] font-normal text-[color:var(--uekit-bp-text)]">{title}</span>
+      <span className="relative z-[1] text-[15px] font-normal text-[color:var(--uekit-bp-text)]">{title}</span>
       <span
         className="ue-bp-data-pin ue-bp-data-pin--connected ue-bp-var-node__pin absolute right-0 top-1/2 translate-x-1/2 -translate-y-1/2"
         style={{ "--pin-color": headerColor } as React.CSSProperties}
@@ -192,7 +197,7 @@ function OperatorNode({
       style={{ "--bp-header": headerColor } as React.CSSProperties}
     >
       <div className="ue-bp-operator__header" aria-hidden />
-      <span className="relative z-[1] font-mono text-[14px] font-bold text-white">{title}</span>
+      <span className="relative z-[1] font-mono text-[16px] font-bold text-white">{title}</span>
       {inputs.length > 0 && (
         <span className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2">
           {inputs.map((p, i) => (
@@ -270,9 +275,9 @@ function GraphNode({
           <div className="relative flex items-start gap-2">
             {icon && <span className="mt-0.5 shrink-0 opacity-95">{icon}</span>}
             <div className="min-w-0 flex-1">
-              <div className="truncate text-[14px] font-semibold leading-tight text-white">{title}</div>
+              <div className="truncate text-[16px] font-semibold leading-tight text-white">{title}</div>
               {subtitle && (
-                <div className="mt-0.5 truncate text-[12px] italic leading-snug text-[color:var(--uekit-bp-subtitle)]">
+                <div className="mt-0.5 truncate text-[13px] italic leading-snug text-[color:var(--uekit-bp-subtitle)]">
                   {subtitle}
                 </div>
               )}
@@ -282,24 +287,28 @@ function GraphNode({
         </div>
 
         {/* Pin area */}
-        <div className="ue-bp-node__pins px-2 pb-1.5 pt-0.5">
+        <div className="ue-bp-node__pins px-2 pb-1.5 pt-2">
           {showExec && <UeBlueprintExecRow />}
 
-          <div className="grid grid-cols-2 gap-x-2">
-            <div className="flex flex-col">
-              {inputs.map((pin, i) => (
-                <UeBlueprintPinRow key={`in-${i}`} pin={pin} />
-              ))}
-            </div>
-            <div className="flex flex-col">
-              {outputs.map((pin, i) => (
-                <UeBlueprintPinRow key={`out-${i}`} pin={pin} />
-              ))}
-            </div>
+          <div className={cn("grid gap-x-2", inputs.length > 0 && outputs.length > 0 ? "grid-cols-2" : "grid-cols-1")}>
+            {inputs.length > 0 && (
+              <div className="flex flex-col gap-1">
+                {inputs.map((pin, i) => (
+                  <UeBlueprintPinRow key={`in-${i}`} pin={pin} />
+                ))}
+              </div>
+            )}
+            {outputs.length > 0 && (
+              <div className="flex flex-col gap-1">
+                {outputs.map((pin, i) => (
+                  <UeBlueprintPinRow key={`out-${i}`} pin={pin} />
+                ))}
+              </div>
+            )}
           </div>
 
           {inputs.length === 0 && outputs.length === 0 && maxRows === 1 && children && (
-            <div className="px-1 py-1 text-[13px] text-[color:var(--uekit-bp-subtitle)]">{children}</div>
+            <div className="px-1 py-1 text-[15px] text-[color:var(--uekit-bp-subtitle)]">{children}</div>
           )}
         </div>
       </div>
@@ -348,13 +357,13 @@ function FlowNode({
           <div className="ue-bp-node__highlight" aria-hidden />
           <div className="relative flex items-center gap-2">
             {icon && <span className="shrink-0 opacity-90">{icon}</span>}
-            <span className="min-w-0 flex-1 truncate text-[13px] font-bold text-white">{title}</span>
+            <span className="min-w-0 flex-1 truncate text-[15px] font-bold text-white">{title}</span>
             {trailing && <span className="shrink-0">{trailing}</span>}
           </div>
         </div>
 
         {(subtitle || children) && (
-          <div className="px-2 py-1.5 text-[13px] leading-snug" style={{ color: UE_BP_NODE.subtitle }}>
+          <div className="px-2 py-1.5 text-[15px] leading-snug" style={{ color: UE_BP_NODE.subtitle }}>
             {subtitle && <div>{subtitle}</div>}
             {children}
           </div>
@@ -368,6 +377,7 @@ export function UeBlueprintNode({
   title,
   subtitle,
   titleLines,
+  pinRef,
   kind,
   category = "default",
   headerColor,
@@ -417,6 +427,7 @@ export function UeBlueprintNode({
         active={active}
         disabled={disabled}
         className={className}
+        pinRef={pinRef}
       />
     );
   }
