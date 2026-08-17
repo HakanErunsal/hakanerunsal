@@ -1,7 +1,7 @@
 ---
 title: "Configuration Reference"
 description: "Every SEC setting and the one place you set it: project settings, the Enemy AI Config, the data assets, the components."
-date: 2026-08-16
+date: 2026-08-17
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Configuration", "Reference"]
 parent: "SoulslikeCombatDocs"
@@ -29,7 +29,7 @@ order: 16
 The dividing line: an Enemy AI Config holds what changes with the combat role, a component holds what does not.
 
 <Callout type="warning">
-No target selector ships turned on. With **Target Selector** empty on the Enemy AI Config and **Default Target Selector** empty in Project Settings, nothing assigns the enemy a target and it stands still with every other field filled in. Set one of the two. [Targeting](/docs/soulslike-combat/targeting-system) covers the choices.
+No target selector ships turned on. With **Target Selector** empty on the Enemy AI Config and **Default Target Selector** empty in Project Settings, an enemy that registers while a target is already in the pool takes the first one it may fight, which hides the gap in a simple level. An enemy possessed or spawned before the player never picks one up and stands still forever. Fill in one of the two. [Targeting](/docs/soulslike-combat/targeting-system) covers the choices.
 </Callout>
 
 ---
@@ -83,6 +83,8 @@ An enemy with no vitals component, or no row for the named tag, reads as full he
 
 One asset per enemy archetype. Create it with right-click in the Content Browser, **SEC**, **Enemy AI Config**, then set it on the enemy pawn's **AI Config**. `EnemyConfig_Default` and `EnemyConfig_Boss` ship with the plugin as working examples.
 
+Two settings outside the asset decide whether it is read at all. The pawn's **AI Controller Class** has to name a controller carrying a **SEC Combat Controller** component, since a pawn falling back to the project's default controller ignores every field below. And the pawn answers the config question ahead of the controller, so a pawn that carries an **AI Config** field and leaves it empty ends up with no config; the controller's **Default AI Config** does not fill that gap.
+
 ### Combat Role
 
 <CombatRoleConfigDetails />
@@ -127,8 +129,10 @@ Fill in the default alongside any per-role list. An enemy holding a role you did
 | Field | Default | Sets |
 |-------|---------|------|
 | **Manage Awareness Automatically** | on | Push the Awareness Config to the enemy's perception when the controller takes its pawn. |
-| **Awareness Config** | none | Sight, hearing, damage sense, and memory. Empty senses nothing. |
+| **Awareness Config** | none | Sight, hearing, damage sense, and memory. Empty senses nothing, which holds every awareness state at Unknown and keeps the brain out of its combat phase. |
 | **Stimulus Filters** | empty | What this enemy can notice before an attack lands. Empty notices everything. |
+
+Fill **Awareness Config** in for any enemy meant to fight. The controller carries a perception component whatever the config says, so an empty asset leaves that component with nothing to sense, and an enemy with every other field correct stands still.
 
 Perception alone does not gate who the enemy fights. Set **Target Selector** above to an **Awareness Filtered Target Selector** as well, or the enemy senses a target and engages everything anyway. See [Awareness](/docs/soulslike-combat/awareness-system).
 
@@ -136,7 +140,7 @@ Perception alone does not gate who the enemy fights. Set **Target Selector** abo
 
 <StateTreeBehaviorConfigDetails />
 
-**Default State Tree** picks the brain. Leave it empty and the enemy runs the plugin's own combat loop with no StateTree at all. `StateTree_SEC_Core` ships with the plugin as a graph to start from. See [StateTree](/docs/soulslike-combat/statetree).
+**Default State Tree** picks the brain. Leave it empty and the **Fallback State Tree** on the StateTree component answers instead; with that empty too, the enemy runs the plugin's own combat loop with no StateTree at all. `StateTree_SEC_Core` ships with the plugin as a graph to start from. See [StateTree](/docs/soulslike-combat/statetree).
 
 | Decision Context field | Default | Sets |
 |------------------------|---------|------|
@@ -172,7 +176,7 @@ Right-click in the Content Browser, **SEC**, then pick one.
 | **Awareness Config** | Sight, hearing, damage sense, and memory | Enemy AI Config |
 | **Damage Config** | Damage numbers and what a landed hit does | A melee trace window, or the trace component |
 | **Defense Rule Set** | Blocks, parries and armour, in the order they answer a hit | SEC Defense component, or a weapon |
-| **Impact Surface Set** | Which impact cue plays per surface struck | The **Surface Set** on a Play Gameplay Cues hit effect |
+| **Impact Surface Set** | Which impact cue plays per surface struck | The **Surface Set** on a **SEC Play Gameplay Cues** hit effect |
 | **Enemy AI Config** | Everything above, tied together per archetype | The enemy pawn |
 
 ### Action Set
@@ -250,10 +254,10 @@ Distance, angle, health, speed and stamina are opt-in. Add an entry to an action
 
 Every built-in scorer shapes its dimension through one **Range**. Below **Min Value** the score is 0, it ramps to 1 across **Optimal Min**, holds through the sweet spot, then falls back to 0 at **Max Value**. **Exponent** (2.0) sharpens the ramp, and **Clamp To Zero** (on) holds the score at zero outside the range instead of letting it go negative.
 
-The presets that fill those four numbers:
+You type the four numbers in. These bands come up often, and the named ones below are where the built-in scorers start:
 
-| Preset | Min, Optimal Min, Optimal Max, Max |
-|--------|------------------------------------|
+| Band | Min, Optimal Min, Optimal Max, Max |
+|------|------------------------------------|
 | Melee distance | 0, 100, 250, 500 cm |
 | Ranged distance | 300, 500, 1000, 1800 cm |
 | Frontal angle | 0, 0, 30, 90 degrees |
@@ -299,6 +303,7 @@ Settings that do not change with the combat role live on components, so they are
 | **Movement Evaluator** | Sampling, avoidance, detour, navmesh and ledge guard, strafe feel, facing while travelling. |
 | **Threat Detection** | How the player's camera builds and decays threat. |
 | **SEC Awareness** | The live perception memory the Awareness Config tunes. |
+| **Bot State Tree AI** | **Fallback State Tree** and **Auto Initialize From Config**. The brain creates it at runtime once a tree is named; add it by hand on a custom controller. |
 
 <CombatControllerDetails />
 
@@ -343,8 +348,6 @@ The controller asks the pawn first. A pawn that answers the config question at a
 An enemy built on the plugin's character base answers, returning its own **AI Config** field. So for that enemy, leaving the field empty gives it no config; **Default AI Config** on the controller does not fill the gap. Fill in the pawn's field.
 
 **Default AI Config** is for a pawn of your own that carries no config field, or a controller class you want to answer for a whole squad.
-
-The pawn also needs its **AI Controller Class** set to a controller carrying a **SEC Combat Controller** component. A pawn falling back to the project's default controller silently ignores every field in the config.
 </Collapsible>
 
 <Collapsible title="Which set a role ends up with" badge="Advanced">
@@ -378,7 +381,7 @@ Two more depend on a component being present: the profile's threat switches need
 - The **AI Config** is resolved once, when the controller possesses the pawn. Swapping the asset at runtime needs **Refresh Brain** on the **SEC Brain** component to pick up a different StateTree.
 - **Awareness Config** is pushed to the perception setup at possession.
 - Action sets, reaction sets and movement profiles resolve at possession and again on every role change.
-- Values inside an Action Set can be tuned during Play In Editor and the running enemy picks them up. Adding, deleting or renaming an action is refused until you restart.
+- Values inside an Action Set can be tuned during Play In Editor and the running enemy picks them up. Adding, deleting or renaming an action goes through, and the editor warns once in the message log that Play In Editor needs a restart before the change is safe to run.
 </Collapsible>
 
 <Collapsible title="Reading and writing config from Blueprint" badge="Alternative">

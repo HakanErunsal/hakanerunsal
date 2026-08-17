@@ -1,7 +1,7 @@
 ---
 title: "Step-by-Step Enemy Creation"
 description: "Build one enemy end to end: pawn, controller, a moveset with a combo, a weapon that lands its hits, and something to fight."
-date: 2026-08-16
+date: 2026-08-17
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Tutorial"]
 parent: "SoulslikeCombatDocs"
@@ -31,7 +31,7 @@ Both arrive carrying every component the AI needs.
 
 <QuickStep title="Create the moveset">
 
-Right-click in the Content Browser, **SEC**, **Action Set**. It opens on its own card canvas.
+Right-click in the Content Browser, **SEC**, **Action Set**, and name it `DA_ActionSet_Grunt`. It opens on its own card canvas.
 
 <UeCreateAssetScene
   create="Action Set"
@@ -45,7 +45,7 @@ Right-click the canvas, choose **Add Action**, and name the **Action ID** `Light
 
 <QuickStep title="Create the AI Config">
 
-Right-click in the Content Browser, **SEC**, **Enemy AI Config**.
+Right-click in the Content Browser, **SEC**, **Enemy AI Config**, and name it `EnemyConfig_Grunt`.
 
 <UeCreateAssetScene
   create="Enemy AI Config"
@@ -53,16 +53,19 @@ Right-click in the Content Browser, **SEC**, **Enemy AI Config**.
   caption="Right-click in the Content Browser, SEC, Enemy AI Config."
 />
 
-Set **Default Action Set** to the moveset, and **Target Selector** to **Closest Target Selector**.
+Set **Default Action Set** to the moveset and **Target Selector** to **Closest Target Selector**.
+
+The enemy also needs senses. Create an **Awareness Config** from the same **SEC** menu, name it `DA_Awareness_Grunt`, leave its defaults alone, and point the AI Config's **Awareness Config** field at it. Those defaults are a working guard: 1500 cm of sight across a 180 degree cone, 1200 cm of hearing, and a damage sense that reveals whoever hits it from behind.
 
 <UeSetPropertiesScene
   title="EnemyConfig_Grunt"
   rows={[
-    { name: "Target Selector", value: "Closest Target Selector", kind: "class" },
+    { name: "Target Selector", value: "Closest Target Selector", from: "None", kind: "class" },
+    { name: "Awareness Config", value: "DA_Awareness_Grunt", from: "None", kind: "asset" },
     { name: "Manage Action Sets Automatically", value: "true", from: "true", kind: "bool" },
     { name: "Default Action Set", value: "DA_ActionSet_Grunt", kind: "asset" }
   ]}
-  caption="Two fields carry the first pass. The rest of the config has working defaults."
+  caption="Target Selector and Awareness Config both ship empty, and an enemy missing either one stands still with nothing in the log. The rest of the config has working defaults."
 />
 
 </QuickStep>
@@ -85,11 +88,11 @@ Open `BP_Grunt`, go to **Class Defaults**, and set **AI Controller Class** to `B
 
 <QuickStep title="Register the player, and play">
 
-On the player pawn's **Event BeginPlay**, add **Get AICombat Role Subsystem** and call **Register Combat Target** with **Target Actor** set to **Self** and **Auto Assign Unassigned** ticked.
+On the player pawn's **Event BeginPlay**, add the **AICombat Role Subsystem** node and call **Register Combat Target** with **Target Actor** set to **Self** and **Auto Assign Unassigned** ticked.
 
 <RegisterCombatTargetBlueprint />
 
-Drop `BP_Grunt` into a level with a built NavMesh and press Play. It closes to about 400 cm, circles you, and swings when you walk into range.
+Drop `BP_Grunt` into a level with a built NavMesh and press Play. Walk into its sight cone: it closes to about 400 cm, circles you, and swings when you come into range.
 
 </QuickStep>
 
@@ -128,7 +131,9 @@ A character that has to inherit from some other C++ class cannot reparent. [API 
 <Collapsible title="Use an AI controller you already have" badge="Alternative">
 Reparent it to **Enemy Controller Base** the same way, and you inherit the evaluators, the behavior-tree helper, the committed-attack rotation lock, smooth focus, and awareness-based facing.
 
-Adding the components to a bare AI Controller is not the same thing. The base holds the pawn's facing during an attack and turns it toward a target's last-known location, and attack abilities read the controller for that lock. A plain controller keeps tracking the player mid-swing and loses that facing work, none of which is exposed to Blueprint.
+Adding the components to a bare AI Controller is not the same thing. The base holds the pawn's facing during an attack and turns it toward a target's last-known location, and attack abilities read the controller for that lock. A plain controller keeps tracking the player mid-swing and carries none of that facing work.
+
+The base puts that on Blueprint nodes: **Lock Rotation By** and **Unlock Rotation By** freeze and release facing around a committed attack, and **Is Rotation Locked** reads the current state. Override **Get Desired Facing Location** to redirect where the pawn looks each frame.
 </Collapsible>
 
 ---
@@ -145,7 +150,7 @@ A new card ships with an empty **Scorers** list, so it scores the same at every 
 
 <WalkthroughLightAttackDetails />
 
-Distance ranges are in centimetres and angle ranges in degrees, so this one peaks between 100 and 250 cm while the enemy is facing you. **Initial Cooldown** keeps it from being the opening move. The **Chain Links** row is what feeds the heavy attack below.
+Distance ranges are in centimetres and angle ranges in degrees. Each one scores 1 between **Optimal Min** and **Optimal Max** and falls to 0 at **Min Value** and **Max Value**, so this attack peaks between 100 and 250 cm, fades out by 500, and wants the enemy facing you. **Initial Cooldown** keeps it from being the opening move. The **Chain Links** row is what feeds the heavy attack below.
 
 ### The heavy attack, as the combo finisher
 
@@ -173,10 +178,11 @@ Its **Distance Scorer** peaks close in, from 0 to 100 cm, so it wins exactly whe
 
 The montages play, but nothing takes damage until a swept trace runs over the strike frames.
 
-1. Build the weapon on **SEC Weapon Base**, place sockets at the hilt and the tip of its mesh, and add one **Trace Sockets** entry spanning them.
-2. Select the pawn's **SEC Equipment Component** and add the weapon class to **Starting Loadout**, with **Use As Weapon** ticked.
-3. Open each attack montage, add a **SEC Melee Trace Window** notify state, and drag it across the frames that connect.
-4. Set the window's **Damage Config**. Six ship under `Core/Damage`, one per damage type.
+1. Build the weapon on **SEC Weapon Base**, and place sockets at the hilt and the tip of its mesh.
+2. Add one **Trace Sockets** entry and set its **Shape** to **Capsule Two Point**, which reveals **End Socket Or Bone Name**. Name the hilt socket in **Socket Or Bone Name** and the tip in **End Socket Or Bone Name**, so the capsule spans the blade. The default **Sphere** sweeps a single point.
+3. Select the pawn's **SEC Equipment Component** and add the weapon class to **Starting Loadout**, with **Use As Weapon** ticked.
+4. Open each attack montage, add a **SEC Melee Trace Window** notify state, and drag it across the frames that connect.
+5. Set the window's **Damage Config**. Six ship under `Core/Damage`, one per damage type.
 
 [Weapons](/docs/soulslike-combat/weapons) covers the weapon Blueprint, and [Melee Trace](/docs/soulslike-combat/melee-trace) covers the sweep shapes, damage and impact effects.
 
@@ -234,6 +240,7 @@ Expect the enemy to close to its range, circle, open with a light attack, someti
 In the order worth checking:
 
 - **No registered combat target.** Nothing selects a target on its own, and this failure is silent. It is the common one.
+- **Awareness Config is empty** on the AI Config. The controller carries an awareness component whatever you set there, so an enemy with that field empty senses nothing, holds each target at Unknown, and never reaches its combat phase. Run `SEC.Debug.Awareness 1` to read the state above its head.
 - **No NavMesh.** Add a **NavMeshBoundsVolume** and build navigation.
 - **Target Selector is empty** on the AI Config and in project settings. An enemy possessed before the player registers never picks a target up.
 - **AI Controller Class** on the pawn still points at the engine default rather than `BP_GruntController`.
@@ -243,7 +250,7 @@ In the order worth checking:
 <Collapsible title="It picks a move, and nothing happens" badge="Advanced">
 - **The ability has no activation graph.** An ability implementing neither **Activate Ability** nor **Activate Ability From Event** starts and never ends, and the enemy locks up behind it. **Ability Timeout** on the execution method cuts a hung ability off and names it in the log.
 - **The Montage Payload has no montage.** Saving the Action Set reports this into the **Asset Check** message log.
-- **The Action ID is empty.** An action added through the Details panel array instead of the canvas has no ID, wins the poll, and is discarded with no log line. Opening the asset on the canvas repairs it.
+- **The Action ID is empty.** An action with no ID cannot be found again, so the execution that follows the poll drops it. Nothing prints unless `SEC.Debug.LogActionExecution 1` is on. Name it on the canvas.
 - **Enabled is unticked**, which also stops the ability being granted.
 - **Manage Action Sets Automatically is unticked** on the AI Config, which applies no set at all.
 </Collapsible>
@@ -278,7 +285,7 @@ Fill in **Default Action Set** alongside them. A role you did not list falls bac
 </Collapsible>
 
 <Collapsible title="Editing while the game runs" badge="Advanced">
-Tuning values on an existing action during Play In Editor is safe, and the running enemy picks the change up on its next decision. Adding, deleting or renaming an action is refused with a toast, because a running enemy holds positions in the list. Restart Play In Editor after those.
+Tuning values on an existing action during Play In Editor is safe, and the running enemy picks the change up on its next decision. Adding, deleting or renaming an action goes through, but a running enemy holds positions in the list and the entries move underneath it. The editor warns you once per session in the message log when you do it. Restart Play In Editor after those.
 </Collapsible>
 
 ---

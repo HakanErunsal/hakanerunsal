@@ -23,20 +23,20 @@ export default function ArchitectureFlowDiagram() {
             title="Architecture"
             breadcrumb={["Content", "Plugins", "SoulslikeEnemyCombat"]}
             assetType="statetree"
-            caption="One brain, chosen from the config. A StateTree adds graph structure; the native loop runs the same combat cycle without one."
+            caption="One brain, chosen from the config. A StateTree adds graph structure; the built-in loop runs the same combat cycle without one."
         >
             <div className="mx-auto flex max-w-[560px] flex-col items-stretch">
                 <div className="mx-auto w-full max-w-[300px]">
                     <UeBlueprintNode
-                        title="SECBrain"
-                        subtitle="reads AIConfig on possession"
+                        title="SEC Brain"
+                        subtitle="reads the AI Config on possession"
                         category="state"
                         icon={<Brain className="h-4 w-4" />}
                         active
                     />
                 </div>
 
-                <Connector label="DefaultStateTree set, or empty" />
+                <Connector label="Default State Tree set, or empty" />
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
                     <UeBlueprintNode
@@ -47,8 +47,8 @@ export default function ArchitectureFlowDiagram() {
                         active
                     />
                     <UeBlueprintNode
-                        title="Native loop"
-                        subtitle="C++, no StateTree"
+                        title="Built-in loop"
+                        subtitle="no StateTree needed"
                         category="component"
                         icon={<Cpu className="h-4 w-4" />}
                         active

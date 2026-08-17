@@ -1,7 +1,7 @@
 ---
 title: "Debugging & Troubleshooting"
 description: "The symptom you are looking at, the one thing that causes it, and the fix."
-date: 2026-08-16
+date: 2026-08-17
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "FAQ"]
 parent: "SoulslikeCombatDocs"
@@ -24,7 +24,7 @@ Most reports of "nothing happens" come down to one thing: the enemy has no comba
 
 ## Debug it
 
-Press Play and turn the overlays on. Each writes a block above the enemy it belongs to.
+Press Play and turn the overlays on. Each writes a block above the pawn it belongs to.
 
 ```
 SEC.Debug.Role 1        // Name and combat role, coloured by role
@@ -62,11 +62,11 @@ The world drawings cover what you need to see in the level rather than read.
 | `SEC.Debug.Threat.Draw` | Threat cone, progress arc, colour grading |
 
 <Callout type="info">
-**Decision**, **Movement**, **Scoring**, **Awareness**, **Territory** and **Tokens** are worked out on the server and draw only there. **Role**, **Actions**, **Reactions**, **Vitals** and **Teams** replicate, so they read on a client too.
+**Decision**, **Movement**, **Scoring**, **Awareness**, **Territory**, **Tokens** and **Approach** are worked out on the server and draw only there. **Role**, **Actions**, **Reactions**, **Vitals** and **Teams** replicate, so they read on a client too.
 </Callout>
 
 <Collapsible title="Debug one enemy from the Details panel" badge="Advanced">
-Every console switch has a matching checkbox on the component it belongs to, and ticking one there affects that enemy alone. The overlay sections have a **Debug Overlay** checkbox each, in the same place.
+Each of the twelve overlay sections has a **Debug Overlay** checkbox on the component it reads from, and ticking one there affects that enemy alone. The movement, action, threat and reaction logs and world drawings sit beside them as checkboxes too. The remaining console switches are global only.
 
 <ActionEvaluationDebugDetails />
 
@@ -92,8 +92,8 @@ Log LogMovementEvaluatorTick off
 No combat target, or the enemy never reached its combat phase. Check these five in order.
 
 1. **AI Controller Class is unset** on the pawn Blueprint. The pawn gets the project's default controller and none of the combat components exist. Set it in Class Defaults.
-2. **Target Selector is empty** on the Enemy AI Config. Set it to **Closest Target Selector**. An enemy that registered before its target appeared gets nothing without one.
-3. **Awareness Config is empty** on the Enemy AI Config. The enemy senses nothing, holds at Unknown, and never enters its combat phase. Point it at an Awareness Config asset and leave that asset's defaults alone.
+2. **Target Selector is empty** on the Enemy AI Config. Set it to **Awareness Filtered Target Selector** and leave its **Inner Selector** empty, so it offers the nearest target this enemy has perceived. An enemy that registered before its target appeared gets nothing without a selector. **Closest Target Selector** gets it moving too, but it engages anything registered whether the enemy sensed it or not.
+3. **Awareness Config is empty** on the Enemy AI Config. The enemy senses nothing, holds at Unknown, and never enters its combat phase. Point it at an Awareness Config asset and leave that asset's defaults alone. This config does the perceiving; the filtered selector in step 2 is what turns perception into aggro, so fill in both.
 4. **The player was never registered as a combat target.** On the player pawn's **Event BeginPlay**, branch on **Has Authority**, then call **Register Combat Target** on the **AICombat Role Subsystem** with **Target Actor** set to **Self**. See [Getting Started](/docs/soulslike-combat/getting-started).
 5. **The AI Config is on neither the pawn nor the controller**, so there is nothing to resolve at possession.
 
@@ -110,7 +110,7 @@ Run `SEC.Debug.Scoring 1`. An action a hard gate refused prints the reason in pl
 | **Enabled** unticked on the action | Tick it. Unticking it also stops the ability being granted. |
 | **Manual Only** ticked | That action waits for a direct **Execute Action** call. Untick it for a scored move. |
 | On cooldown, or **Max Consecutive Uses** spent | Expected. Give the enemy a second action to switch to. |
-| **Recovery** | The gap after any action. Set the three **Recovery** fields on the AI Config to 0 to turn it off. |
+| **Recovery** | The gap after any action. The three **Recovery** fields on the AI Config ship at 0, so this holds nothing back until one of them carries a value. |
 | A gate said no | A **Combat Token Gate** on a full pool, or a **Stamina Gate** under its minimum. |
 | **Requires Tags** or **Block Tags** | The enemy, the target or the world does not hold the right tags. |
 | **Require Line Of Sight** ticked | The view to the target is blocked. |
@@ -129,7 +129,7 @@ The action starts something that does nothing.
 
 Death holds a block on action evaluation, and only a revive releases it.
 
-Call **Handle Revive** on the **SEC Combat Controller** component when the enemy comes back. It releases the block, restarts the brain, and turns threat detection, perception and role registration back on. Re-equip the weapon yourself, since death dropped it.
+Call **Handle Revive** on the **SEC Combat Controller** component when the enemy comes back. It releases the block, restarts the brain, and turns threat detection, perception and role registration back on. Re-equip the weapon yourself, since death released it.
 
 ---
 
@@ -146,7 +146,7 @@ Open the Action Set, and on the card's **Scoring > Scorers** list add a **Distan
 The ability the action started never ends, so the action waits on it.
 
 - Give the ability a path that reaches **End Ability** on completion, on cancel and on interrupt. An ability playing a montage through **Play Montage and Wait** ends when the montage does.
-- Set **Ability Timeout** on the action to bound the wait.
+- Set **Ability Timeout** on the action's execution method, behind the advanced arrow, to bound the wait.
 - For an ability meant to keep running, pick the **Gameplay Ability (Fire And Forget)** execution method so the action finishes in the same frame.
 
 A 30 second safety limit forces completion either way and names the action that hit it.
@@ -171,7 +171,7 @@ The attacks carry no **Combat Token Gate**, so nothing caps how many enemies act
 
 Add a **Combat Token Gate** to each attack, then set the pool size under **Combat Tokens** in Project Settings. Two token tags ship with a **Budget** of 2 each. See [Combat Tokens](/docs/soulslike-combat/combat-tokens).
 
-Two things quietly defeat it. A token tag with no row in Project Settings hands out unlimited slots, and an enemy with no focus target claims nothing and runs uncapped. `SEC.Debug.Tokens 1` prints `unlimited` in place of a count for the first case.
+Two things quietly defeat it. A token tag with no row in Project Settings hands out unlimited slots, and an enemy with no focus target claims nothing and runs uncapped. `SEC.Debug.Tokens 1` writes the pool above the head of the target the slots belong to, rather than above an attacker, and prints `unlimited` in place of a count for the first case.
 
 ### An attack lands but deals no damage
 
@@ -333,7 +333,7 @@ Melee traces and the damage path resolve without an ability system on either act
 
 Call **Handle Death** on the **SEC Combat Controller** component. It stops the brain, cancels the running action and reaction, stops melee tracing, disables threat detection, unregisters the enemy from the role system, clears focus, and fires **On Death**. The pawn is then safe for ragdoll, dissolve or destroy; none of that happens on its own.
 
-**Drop Weapon On Death** is on by default and unequips with physics. Untick it to handle the drop yourself, for example from a death montage notify.
+**Drop Weapon On Death** is on by default and releases everything the pawn holds with **Drop**, which asks each item to drop itself. Untick it to release with **Leave In World** instead, which detaches each item and leaves it standing where it was.
 
 **Auto Handle Death On Health Depleted** is on by default, so an emptied health vital runs the shutdown without a call from you.
 

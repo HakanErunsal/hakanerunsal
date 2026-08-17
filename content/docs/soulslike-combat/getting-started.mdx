@@ -1,7 +1,7 @@
 ---
 title: "Getting Started with SoulslikeCombat"
 description: "Turn the plugin on and get a live enemy that spots the player, closes the distance and holds its range, with no C++."
-date: 2026-08-16
+date: 2026-08-17
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Tutorial"]
 parent: "SoulslikeCombatDocs"
@@ -58,16 +58,18 @@ Right-click in the Content Browser, **SEC**, **Enemy AI Config**. Name it `DA_AI
 
 <QuickStep title="Fill in the two fields that ship empty">
 
-Open the config. Under **Combat Role**, set **Target Selector** to **Closest Target Selector**. Under **Awareness**, set **Awareness Config** to a new asset from the same **SEC** menu, and leave that asset's defaults alone.
+Open the config. Under **Combat Role**, set **Target Selector** to **Awareness Filtered Target Selector**, and leave its **Inner Selector** empty so it picks the nearest candidate. Under **Awareness**, set **Awareness Config** to a new asset from the same **SEC** menu, and leave that asset's defaults alone.
 
 <UeSetPropertiesScene
   title="DA_AIConfig_Grunt"
   rows={[
-    { name: "Target Selector", value: "Closest Target Selector", from: "None", kind: "class" },
+    { name: "Target Selector", value: "Awareness Filtered Target Selector", from: "None", kind: "class" },
     { name: "Awareness Config", value: "DA_Awareness_Guard", from: "None", kind: "asset" }
   ]}
   caption="Both ship empty, and an enemy missing either one stands still with nothing in the log."
 />
+
+The two work as a pair: the awareness config is what does the perceiving, and the filter offers the enemy only targets it has perceived. Fill in the config alone and the enemy senses a target, then engages any hostile in the pool. Set the filter alone and it perceives nothing, so it fights nothing.
 
 The awareness defaults are a working guard: 1500 cm of sight across a 180 degree cone, 1200 cm of hearing, and a damage sense that reveals whoever hits it from behind.
 
@@ -100,9 +102,9 @@ Drag the enemy into a level that has a **NavMesh Bounds Volume**, press Play, an
 
 ## See a finished enemy first
 
-Open `Content/SoulslikeEnemyCombat/Showcase/Maps/LVL_SEC_Showcase` and press Play. It ships with a player, a navmesh, and armed enemies to fight.
+Turn on **Show Plugin Content** in the Content Browser's settings menu, then open `Showcase/Maps/LVL_SEC_Showcase` in plugin content and press Play. It ships with a player, a navmesh, and armed enemies to fight.
 
-Turn on **Show Plugin Content** in the Content Browser's settings menu to see it. The pieces worth reading are under `Showcase/Characters/SECEnemy`:
+The pieces worth reading are under `Showcase/Characters/SECEnemy`:
 
 | Asset | What it is |
 |-------|------------|
@@ -147,7 +149,7 @@ Each **Default** covers every [combat role](/docs/soulslike-combat/combat-roles)
 The pawn's own health lives on its **Vitals** component, which ships one Health row at 100. See [Vitals](/docs/soulslike-combat/vitals).
 
 <Callout type="info">
-Leave **State Tree** empty on the config and the enemy runs the plugin's built-in brain: build context, move, then pick and run the best action on a 0.1 second cadence. Nothing needs authoring for that. Point it at a StateTree to take the sequencing over yourself.
+Leave **Default State Tree** empty on the config and the enemy runs the plugin's built-in brain: build context, move, then pick and run the best action on a 0.1 second cadence. Nothing needs authoring for that. Point it at a StateTree to take the sequencing over yourself.
 </Callout>
 
 ---
@@ -208,7 +210,7 @@ Reparent it rather than rebuilding it.
 
 Reparenting also initialises the ability system for you, which is the part a Blueprint cannot do on its own. An ability whose ability system never got that call refuses to activate and says nothing about why.
 
-A character that has to inherit from a different C++ base can still work: it needs the same components, the ability system initialised in `PostInitializeComponents`, and the AI config interface implemented. The [API Reference](/docs/soulslike-combat/api-reference) lists what to reproduce.
+A character that has to inherit from a different C++ base can still work: it needs the same components, an initialised ability system, and the AI config interface implemented. The [API Reference](/docs/soulslike-combat/api-reference) lists what to reproduce.
 </Collapsible>
 
 <Collapsible title="Use an AI controller you already have" badge="Alternative">
@@ -230,7 +232,7 @@ With awareness doing the work instead, that node is optional: an enemy that reac
 </Collapsible>
 
 <Collapsible title="Run a StateTree instead of the built-in brain" badge="Alternative">
-Set **State Tree** on the AI Config to take over the sequencing: patrol, investigate, engage, retreat, phase transitions. `StateTree_SEC_Core` under `Showcase/AI/StateTree` is a working graph to start from or copy.
+Set **Default State Tree** on the AI Config to take over the sequencing: patrol, investigate, engage, retreat, phase transitions. `StateTree_SEC_Core` under `Showcase/AI/StateTree` is a working graph to start from or copy.
 
 The evaluation components stay the same either way. The graph decides when to poll and when to act; the components still do the scoring and the steering. See [StateTree Integration](/docs/soulslike-combat/statetree).
 </Collapsible>

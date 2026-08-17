@@ -1,7 +1,7 @@
 ---
 title: "Common Patterns & Examples"
 description: "Seven enemy archetypes as recipes: the numbers to type, and the field each one goes in."
-date: 2026-08-16
+date: 2026-08-17
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Patterns"]
 parent: "SoulslikeCombatDocs"
@@ -18,14 +18,16 @@ order: 19
 > Seven enemies you have fought before, each written out as the values to type and the field they go in.
 
 <Callout type="warning">
-Every recipe below starts from an enemy that already works: a pawn, an AI controller, an **Enemy AI Config**, and a registered combat target. Without that target the enemy holds no combat role, scores no action and does not move, whatever you type into the assets. See [Getting Started](/docs/soulslike-combat/getting-started) and [Targeting](/docs/soulslike-combat/targeting-system).
+Every recipe below starts from an enemy that already works: a pawn, an AI controller, a registered combat target, and an **Enemy AI Config** carrying both a **Target Selector** and an **Awareness Config**. Leave **Awareness Config** empty and every awareness state stays Unknown, so the brain never reaches its combat phase and the enemy stands still whatever you type into the assets. The same goes for the target: nothing selects one on its own, and the failure is silent. See [Getting Started](/docs/soulslike-combat/getting-started), [Targeting](/docs/soulslike-combat/targeting-system) and [Awareness](/docs/soulslike-combat/awareness-system).
 </Callout>
 
-Each recipe names two assets: a **Movement Behavior Profile** for how it stands, and an **Action Set** for what it does. Point the enemy's **Enemy AI Config** at both, under **Default Movement Profile** and **Default Action Set**, and leave the two **Manage ... Automatically** boxes ticked.
+Each recipe names two assets: a [Movement Behavior Profile](/docs/soulslike-combat/movement-system) for how it stands, and an [Action Set](/docs/soulslike-combat/action-system) for what it does. Point the enemy's **Enemy AI Config** at both, under **Default Movement Profile** and **Default Action Set**, and leave the two **Manage ... Automatically** boxes ticked.
 
 Every action uses the **Gameplay Ability** execution method with **Ability Class** set to **GA_SEC_MontageAbility** and its own montage in the payload, unless a recipe says otherwise.
 
 Distance and angle bands are written as four numbers, the **Range** on a scorer: **Min Value / Optimal Min / Optimal Max / Max Value**. The action scores 0 outside the first and last, and 1 across the middle pair.
+
+An action ships with no scorers, so every Distance Scorer Range below needs a **Distance Scorer** added to that action's **Scoring > Scorers** list before the four numbers have anywhere to go. See [Action System](/docs/soulslike-combat/action-system).
 
 ## Pick a shape
 
@@ -35,7 +37,7 @@ Distance and angle bands are written as four numbers, the **Range** on a scorer:
 | [Rusher](#the-rusher) | 120 cm | Tight far edge, no strafe rest, one-second cooldowns |
 | [Duellist](#the-duellist) | 350 cm | A parry rule on a Reaction Set, and a recovery gap |
 | [Flanker](#the-flanker) | 300 cm | An Angle Preference Rule at 90 degrees |
-| [Archer](#the-archer) | 700 cm | A ranged scorer band, pinned to back-line roles |
+| [Archer](#the-archer) | 600 cm | A ranged scorer band, pinned to back-line roles |
 | [Guard](#the-guard) | its post | Territory posts, a leash, an awareness config |
 | [Boss](#the-boss) | 300 cm | Elite role, and a second-phase moveset swap |
 
@@ -68,7 +70,7 @@ On `LightAttack`, add a **Chain Link** with **Target Action ID** `HeavyAttack` a
 
 <Protip
   title="Copy the shipped one"
-  description="Content/SoulslikeEnemyCombat/Showcase/AI/Data holds DA_MovementBehavior_Attacker under Movement and DA_ActionSet_Attacker under ActionSets, the pair the showcase enemy fights with. Duplicate them into your own content and retune from there."
+  description="Turn on Show Plugin Content in the Content Browser settings, then open Showcase/AI/Data in plugin content. DA_MovementBehavior_Attacker under Movement and DA_ActionSet_Attacker under ActionSets are the pair the showcase enemy fights with. Duplicate them into your own content and retune from there."
 />
 
 ---
@@ -98,7 +100,7 @@ The tight **Distance Tolerance** keeps it closing until it is on top of you. The
 
 Add a **Chain Link** on `Lunge` naming `Slash` with **Bonus Multiplier** 2.0, so the gap-closer flows into the follow-up.
 
-On the **Enemy AI Config**, set **Preferred Role** to `SEC.Role.Attacker` so the rusher takes a front-line slot ahead of enemies that do not care. Leave the **Recovery** fields at 0; anything above that puts a gap between its moves.
+On the **Enemy AI Config**, under **Combat Role**, set **Preferred Role** to `SEC.Role.Attacker`. The assignment pass scores every enemy for every role, by distance to the target out of the box, and a matching Preferred Role adds a small bonus on top, enough to settle a near-tie rather than reserve the slot. The rusher earns Attacker by closing first. Leave the **Recovery** fields at 0; anything above that puts a gap between its moves.
 
 ---
 
@@ -121,9 +123,9 @@ The low **Crowd Tolerance** makes it give ground sooner than most, so it keeps t
 1. Add a reaction with **Reaction ID** `Parry`, pointing at your parry montage.
 2. Add a trigger rule with **On Stimulus** `SEC.Stimulus.AttackTelegraphed`, **Chance** 0.4, and **Min Interval** 2.
 3. Under the rule's **Conditions**, add an **Incoming Angle Gate** with **Half Angle Degrees** 60, so a blow from behind goes unparried.
-4. Wire the rule to the `Parry` card.
+4. Wire the rule to the reaction: add an entry to the rule's **Reaction Links** with **Reaction ID** `Parry`. In the [Reaction Set editor](/docs/soulslike-combat/reaction-set-editor) the same link is the arrow drawn from the rule card to the `Parry` card.
 5. Put your unblockable tag in the rule's **Block Context Tags** so heavy attacks land.
-6. Point the **Enemy AI Config** at the asset under **Default Reaction Set**.
+6. Point the **Enemy AI Config** at the asset under **Default Reaction Set**. See [Reaction System](/docs/soulslike-combat/reaction-system).
 
 **Action Set**
 
@@ -132,7 +134,7 @@ The low **Crowd Tolerance** makes it give ground sooner than most, so it keeps t
 | `Counter` | 0 / 100 / 250 / 400 | 5 | 1.0 |
 | `Poke` | 0 / 150 / 300 / 450 | 2.5 | 1.0 |
 
-Give `Counter` a **Tag Score Multiplier** of 2.5 on `SEC.State.Staggered`. Multipliers read tags on the enemy, on its target and on the world, so the counter is worth two and a half times as much while the player is reeling.
+Under **Tag Score Multipliers** on `Counter`, add `SEC.State.Staggered` with a value of 2.5. Multipliers read tags on the enemy, on its target and on the world, so the counter is worth two and a half times as much while the player is reeling.
 
 Set **Action Recovery Time** to 0.8 under **Recovery** on the **Enemy AI Config**. The duellist keeps strafing and parrying through that window and starts no new attack, which is what turns a pressure enemy into one you can read.
 
@@ -179,12 +181,12 @@ Holds the back line, shoots, and steps away when you reach it.
 
 | Field | Value |
 |-------|-------|
-| Desired Distance | 700 |
+| Desired Distance | 600 |
 | Distance Tolerance | 0.2 |
 | Crowd Tolerance | 0.45 |
 
 <Callout type="warning">
-Keep **Desired Distance** under 800. At or above that the enemy sits permanently in the pathfinding layer, where it walks toward you and never holds its range.
+Keep **Desired Distance** under 700. The enemy hands over to the pathfinding layer past 800 cm and takes direct input back only inside 700, so a range set between the two walks it in instead of holding it out. **Distance Tolerance** stretches the far side of the comfortable band, 0.2 out to 120 percent of Desired Distance, so leave room for that too.
 </Callout>
 
 **Action Set**
@@ -196,7 +198,7 @@ Keep **Desired Distance** under 800. At or above that the enemy sits permanently
 
 Tick **Require Line Of Sight** on `Shoot` so it holds fire through a pillar. Add a **Combat Token Gate** with **Token Tag** `SEC.Token.Ranged`, which caps how many archers fire at the same target at once, two out of the box. See [Combat Tokens](/docs/soulslike-combat/combat-tokens).
 
-`Kite` is the panic button: it peaks at point blank, carries twice the weight of the shot, and its execution method can be a **Behavior Tree Sequence** running **Make Distance** instead of a montage.
+`Kite` is the panic button: it peaks at point blank and carries twice the weight of the shot. A backstep montage covers it. For a longer retreat, author a behavior tree around the **Make Distance** task and point a **Behavior Tree Sequence** execution method at that asset. Its list holds behavior tree assets, and the showcase ships none built around that task.
 
 **Enemy AI Config**: set **Allowed Roles (empty = any)** to `SEC.Role.Waiter` and `SEC.Role.Supporter`. The assignment pass then never sends the archer to the front, whoever else is on the field.
 
@@ -242,7 +244,7 @@ Elite slots are unlimited out of the box, so the boss keeps its role whatever el
 
 1. Call **Set Runtime Override** on the pawn's **SEC Action Set Component**, passing the phase-two Action Set. That beats every other source, the config and any weapon included.
 2. Call **Add World Tag** with `SEC.World.Boss.Phase2`.
-3. Give the phase-two openers a **Tag Score Multiplier** of 2.0 on that tag. Give a move that should retire a multiplier of 0 on the same tag, which drops it out of the running entirely.
+3. Under **Tag Score Multipliers** on each phase-two opener, add that tag with a value of 2.0. Give a move that should retire an entry of 0 on the same tag, which drops it out of the running entirely.
 
 **Clear Runtime Override** puts the config's set back, so a scripted retreat can hand the boss its opening moveset again.
 
@@ -314,7 +316,7 @@ The same grunt with a bow fights the archer's fight, and drops back to its confi
 
 <Collapsible title="The recipe reads wrong in play" badge="Advanced">
 - **The rusher will not lunge.** A **Combat Token Gate** on the gap-closer holds it behind the pack while the pool is full. Take the gate off the opener and leave it on the swing that follows.
-- **The archer strolls into melee.** **Desired Distance** is at or above 800, which parks it in the pathfinding layer.
+- **The archer strolls into melee.** **Desired Distance** sits past 800, or its tolerance band reaches there, which hands it to the pathfinding layer; the layer gives way again only inside 700.
 - **The flanker stands in front of you.** The Angle Preference Rule reads the target's forward vector, so a target with no meaningful facing gives it nothing to orbit. Check **Weight** is above 0, and that the profile with the rule is the one the enemy's current role resolves to.
 - **The guard patrols but never fights.** **Only Fight Inside Leash** with a tight **Leash Radius** keeps it ignoring you. Widen the radius or untick the box.
 - **The duellist never parries.** No **SEC Attack Telegraph** notify on the incoming montage. `SEC.Debug.Stimulus.Draw 1` shows whether anything is going out at all.
@@ -322,4 +324,4 @@ The same grunt with a bow fights the archer's fight, and drops back to its confi
 - **Nothing in any recipe fires.** No registered combat target. It logs nothing, and from the outside it looks the same as everything else on this list.
 </Collapsible>
 
-<DocNav prev={{ title: "StateTree Tasks", href: "/docs/soulslike-combat/statetree" }} next={{ title: "Troubleshooting", href: "/docs/soulslike-combat/troubleshooting" }} />
+<DocNav prev={{ title: "StateTree Integration", href: "/docs/soulslike-combat/statetree" }} next={{ title: "Troubleshooting", href: "/docs/soulslike-combat/troubleshooting" }} />

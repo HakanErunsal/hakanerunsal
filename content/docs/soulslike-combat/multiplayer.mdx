@@ -1,7 +1,7 @@
 ---
 title: "Multiplayer Support"
 description: "Run SEC in co-op: the server decides, and every client receives the health, action, role and weapon state a HUD draws from."
-date: 2026-08-16
+date: 2026-08-17
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Multiplayer", "Replication"]
 parent: "SoulslikeCombatDocs"
@@ -20,7 +20,7 @@ order: 17
 
 Decisions sit on the AI controller and stay on the server. Output sits on the pawn and replicates.
 
-**Server only.** None of this exists on a client.
+**Server side.** Nothing here decides anything on a client. The controller components exist on the server alone, and the two pawn components ride along on a client and stay inert there.
 
 | Piece | Lives on | Decides |
 |-------|----------|---------|
@@ -47,7 +47,7 @@ Decisions sit on the AI controller and stay on the server. Output sits on the pa
 | The ability system | Enemy pawn | Gameplay cues, replicated tags, montage playback |
 
 <Callout type="warning">
-An AI controller reaches no client. Unreal marks a controller relevant only to its own player, and an AI enemy has no player, so on a client **Get Controller** on that enemy returns nothing and every component in the first table is out of reach. Client UI binds to the pawn components in the second table. Blueprint that reads the controller works in a single-process Play In Editor session and returns null the moment you run a real client.
+An AI controller reaches no client. Unreal marks a controller relevant only to its own player, and an AI enemy has no player, so on a client **Get Controller** on that enemy returns nothing and every controller component in the first table is out of reach. Client UI binds to the pawn components in the second table. Blueprint that reads the controller works in a single-process Play In Editor session and returns null the moment you run a real client.
 </Callout>
 
 ---
@@ -58,10 +58,10 @@ Enemies fight the actors registered as combat targets, and co-op needs one entry
 
 <RegisterCombatTargetBlueprint />
 
-Tick **Auto Assign Unassigned** so idle enemies pick a target on the spot instead of waiting for the reassignment timer. Every call gives each idle enemy another pass over the pool, so a player joining late is picked up with no extra wiring. See [Targeting System](/docs/soulslike-combat/targeting-system).
+Every call gives each idle enemy another pass over the pool, so a player joining late is picked up with no extra wiring. Tick **Auto Assign Unassigned** to evaluate roles straight away instead of waiting for the reassignment timer. See [Targeting System](/docs/soulslike-combat/targeting-system).
 
 <Callout type="warning">
-Register the pawn, not the controller. A player controller replicates only to its own player, so an enemy scoring against it on the server reads one target and nothing for the others.
+Register the pawn, not the controller. Perception and awareness key off the pawn, and team reads go through the pawn's **SEC Team** component, so a registered controller carries neither.
 </Callout>
 
 ---
@@ -90,7 +90,7 @@ The pawn's action and reaction components carry the running move down to clients
 | **On Reaction Execution Started** | SEC Reaction Set Component | A parry, block or dodge starts |
 | **On Combat Role Changed** | SEC Combat Role | The role tag changes, carrying new and previous |
 
-Polling works too: **Get Current Action Id**, **Is Action Executing**, **Get Active Action Set** and **Get Remaining Cooldown** all answer on a client. Cooldowns replicate with the server world time they end at, so a client timer counts down against the same clock the server used.
+Polling works too: **Get Current Action Id**, **Is Action Executing**, **Get Active Action Set** and **Get Remaining Cooldown** all answer on a client. A cooldown replicates with the world time the server ends it at, and the **On Action Cooldown Started** and **Expired** pair marks each edge as it happens.
 
 <MultiplayerActionStateDetails />
 
@@ -107,7 +107,7 @@ Melee sweeps run on the machine holding authority, so one swing lands once. Clie
 - **Defense.** **Resolve Incoming Damage** charges the cost of a parry or a block, so run it on the server. To show a player what a hit would cost without taking it, use **Preview Incoming Damage**, which charges nothing.
 
 <Callout type="warning">
-Calling **Run Hit Effects** by hand from both the server and a predicting client fires the cues twice. Gate the call when you drive damage yourself.
+Call **Run Hit Effects** on the authority. A physics impulse, and any effect you write yourself, runs on the machine that called it, so a server call and a predicting client's call run it twice. Gate the call when you drive damage yourself.
 </Callout>
 
 See [Melee Trace](/docs/soulslike-combat/melee-trace) and [Defense System](/docs/soulslike-combat/defense-system).
@@ -128,7 +128,7 @@ Three things behave differently with no rendering and no local player.
 
 ## Debug it
 
-The overlays read live component state on the machine running them, and the decision components live on the server. Run these on the server or the listen-server host; a client draws nothing for them.
+The overlays read live component state on the machine running them. Role, Actions, Reactions, Vitals and Teams read replicated pawn state, so they draw on a client as well as the server. Decision, Movement, Awareness, Territory, Scoring and Tokens are worked out on the server and draw there alone, so run those on the server or the listen-server host.
 
 ```
 SEC.Debug.All 1                  // Every overlay section at once
@@ -137,7 +137,7 @@ SEC.Debug.LogActionExecution 1   // Action starts, ends and cooldowns
 SEC.Debug.Melee.DrawTracing 1    // Sweep shapes, on the machine that traces
 ```
 
-To reproduce a client-only bug in the editor, open the Play dropdown, set **Net Mode** to **Play As Client** and **Number of Players** to 2 under **Multiplayer Options**. That runs a real server process, which is where a HUD reading the AI controller falls over.
+To reproduce a client-only bug in the editor, open the Play dropdown, set **Net Mode** to **Play As Client** and **Number of Players** to 2 under **Multiplayer Options**. That runs a real server, which is where a HUD reading the AI controller falls over.
 
 ```
 NetEmulation.PktLag 150   // Add 150 ms of latency to every packet

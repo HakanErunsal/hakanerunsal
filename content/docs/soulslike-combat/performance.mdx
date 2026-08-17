@@ -2,7 +2,7 @@
 title: "Performance"
 image: "../../images/docs_performance.png"
 description: "What SEC costs, the three knobs that cut it, and how to read stat SEC on your own hardware."
-date: 2026-08-16
+date: 2026-08-17
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Performance"]
 parent: "SoulslikeCombatDocs"
@@ -19,7 +19,7 @@ order: 21
 
 ## Three knobs, in order
 
-All three sit on the **Movement Evaluator** component, on the AI controller.
+All three sit on the **Movement Evaluator** component, on the AI controller. **Num Samples** heads the section itself; **Enable Avoidance** and **Enable Nav Aware Sampling** head the **Avoidance** and **Nav Sampling** groups nested under it.
 
 | Knob | Default | What changing it buys |
 |------|---------|-----------------------|
@@ -71,7 +71,7 @@ What dominates changes with the crowd, and that decides where tuning pays off.
 | Soulslike duel | 1 to 5 | Nothing worth tuning | Leave the defaults alone. |
 | Action RPG pack | 10 to 20 | Direction sampling, with avoidance climbing as they close on you | Lower **Avoidance Radius** (100 cm) before cutting samples, so fewer neighbours reach the penalty loop. |
 | Horde | 50 to 100 | Direction sampling across the pack | Cut **Num Samples** to 8. This is the largest single lever. |
-| Stress test | 150+ | Direction sampling and nav probes | Cut samples, raise **Nav Stagger Stride** so fewer enemies sweep on the same frame, and raise **Evaluation Cooldown** on enemies out of the fight. |
+| Stress test | 150+ | Direction sampling and nav probes | Cut samples, raise **Nav Stagger Stride** (under **Nav Sampling**, behind the **Advanced** expander) so fewer enemies sweep on the same frame, and raise **Evaluation Cooldown** on enemies out of the fight. |
 
 <PerformanceVisualizer />
 
@@ -147,7 +147,7 @@ Awareness runs its own bookkeeping on a timer, but the sensing underneath it is 
 
 **Sight Radius** (1500 cm) is the biggest lever, because it decides how many stimulus sources the sight sense considers each update. Cut it to what the encounter needs. **Peripheral Vision Half Angle** (90 degrees, a 180 degree cone) narrows what qualifies before a trace happens.
 
-Untick **Enable Sight**, **Enable Hearing** or **Enable Damage Sense** on the **Awareness Config** to drop a sense entirely. An enemy that only ever reacts to being hit needs neither of the first two.
+Untick **Enable Sight**, **Enable Hearing** or **Enable Damage Sense** on the **Awareness Config** to drop a sense from the perception component the config creates. An enemy that reacts only to being hit needs neither of the first two. The three toggles grey out when **Auto Create Perception Component** is off, because a perception component you place yourself keeps its own sense configuration.
 
 <Collapsible title="Trimming awareness memory" badge="Advanced">
 **Evaluation Interval** (0.1 s) is how often the component advances its meters and ages entries. Raise it and detection ramps in coarser steps; the meter maths compensates, so a slower interval changes responsiveness rather than the outcome.
@@ -174,7 +174,7 @@ None of these need setting up. They are the reason the default numbers hold at a
 
 - **Sample cache.** The trigonometry for the direction fan is computed once and rebuilt only when **Num Samples** changes.
 - **Throttled avoidance.** The pawn overlap query runs 10 times a second, not every frame. The scoring in between reads the cache.
-- **Staggered nav sweeps.** **Nav Check Interval** and **Nav Stagger Stride** spread full nav sweeps across frames, so a whole pack does not sweep on the same one.
+- **Staggered nav sweeps.** **Nav Check Interval** and **Nav Stagger Stride** spread full nav sweeps across frames, so a whole pack does not sweep on the same one. Both sit in the **Nav Sampling** group behind its **Advanced** expander.
 - **Timer-based roles.** Role assignment runs off a timer on its interval, outside the frame loop.
 - **Hybrid movement.** Beyond **Hybrid Switch Distance** (800 cm) the enemy pathfinds instead of sampling directions, so distant enemies skip the expensive loop.
 - **Conditional ticks.** Melee tracing, action execution and the approach window each start with their tick disabled and enable it only for the window they need.

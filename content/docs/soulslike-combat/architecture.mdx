@@ -1,7 +1,7 @@
 ---
 title: "Core Architecture"
 description: "The map of the plugin: which piece lives where, what decides, what replicates, and the console switch that shows each part running."
-date: 2026-08-16
+date: 2026-08-17
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Architecture"]
 parent: "SoulslikeCombatDocs"
@@ -68,7 +68,7 @@ None of it starts until an enemy has a combat target. Call **Register Combat Tar
 
 ## The pieces
 
-`EnemyCharacterBase` and `EnemyControllerBase` ship with everything below already on them, so a new enemy starts complete and you delete what it does not need. [Step-by-Step Enemy](/docs/soulslike-combat/step-by-step-enemy) builds one from those two.
+**Enemy Character Base** and **Enemy Controller Base** ship with everything below already on them, so a new enemy starts complete. [Step-by-Step Enemy](/docs/soulslike-combat/step-by-step-enemy) builds one from those two.
 
 ### On the AI controller
 
@@ -81,7 +81,7 @@ Server side. This half decides and replicates nothing.
 | **Action Evaluation** | Scores the [moveset](/docs/soulslike-combat/action-system) and runs the winner. |
 | **Reaction Evaluation** | Picks a [reaction](/docs/soulslike-combat/reaction-system) when something happens to the enemy. |
 | **Movement Evaluator** | Chooses [where to stand and which way to move](/docs/soulslike-combat/movement-system). |
-| **Awareness** | [Sight, hearing and damage memory](/docs/soulslike-combat/awareness-system), and the last-known location behind an investigation. |
+| **SEC Awareness** | [Sight, hearing and damage memory](/docs/soulslike-combat/awareness-system), and the last-known location behind an investigation. Senses nothing until the config names an **Awareness Config**. |
 | **Threat Detection** | How long the [player's camera](/docs/soulslike-combat/threat-detection) has held this enemy, as a 0 to 1 level. Switched off on the shipped controller. |
 
 ### On the pawn
@@ -99,10 +99,10 @@ This half acts, and it is the half a client sees.
 | **SEC Melee Trace** | Swept [hit detection](/docs/soulslike-combat/melee-trace) across an attack window in the montage. |
 | **SEC Equipment Component** | Spawns and holds [weapons](/docs/soulslike-combat/weapons). A held weapon can bring its own moveset. |
 | **SEC Approach** | Turns the pawn toward its target and glides it into range across an [approach window](/docs/soulslike-combat/animation-integration) on the montage. |
-| **SEC Territory** | The ground this enemy owns: [posts, a wander patch, a leash](/docs/soulslike-combat/territory). Inert until a post is named. |
+| **SEC Territory** | The ground this enemy owns: [posts, a wander patch, a leash](/docs/soulslike-combat/territory). Answers nothing until posts are named, the leash is switched on, or **Resting Behavior** is set to **Hold Ground**. |
 | **SEC Team** | Team ID, free-for-all, and target exclusions. |
 
-**SEC Combat Controller** is the one piece a setup cannot go without. The rest are optional: drop **Awareness** for an enemy that fights whatever it is handed, drop **Movement Evaluator** for one that holds its spot.
+**SEC Combat Controller** is the one piece a setup cannot go without. The rest arrive inherited from the two base classes, and a Blueprint child cannot remove an inherited component, so an enemy that needs less leaves the extras unconfigured or switches them off: an empty **Awareness Config** leaves an enemy that fights whatever it is handed, and **Threat Detection** ships switched off already. To carry a shorter list, start from your own controller class, covered under **Run the AI on your own controller** below.
 
 <Collapsible title="Which half runs on a client" badge="Multiplayer">
 Everything on the AI controller is server-only: scoring, movement, perception, role assignment. A client runs none of it and needs none of it.
@@ -143,7 +143,7 @@ The built-in loop reads what the enemy knows and settles into one of four phases
 | **Investigate** | Noticed something it cannot confirm, so it walks over and looks. It does not attack. |
 | **Combat** | Has a confirmed target, so it scores and runs its actions. |
 
-Adding **Awareness** is what unlocks Investigate; adding **SEC Territory** with at least one post is what unlocks Resting. Without either, the enemy sits in Idle until it is handed a target and jumps straight to Combat.
+Setting **Awareness Config** on the Enemy AI Config is what unlocks Investigate, since an enemy that senses nothing never reaches Suspicious. Owning ground unlocks Resting, which comes from a post on **SEC Territory**, or from **Resting Behavior** set to **Hold Ground**, where the enemy takes the spot it starts on. Without either, the enemy sits in Idle until it is handed a target and jumps straight to Combat.
 
 **On Brain Phase Changed** fires on each move between them, which is where an idle, alert or fighting animation set hangs off. A State Tree authors its own states instead, so this reads Idle while one is running.
 
@@ -158,7 +158,9 @@ SEC.Debug.All 1                 // Every section at once; 0 turns them all off
 SEC.Debug.WatchPawn Grunt_2     // Only this pawn draws, and it shows every section
 ```
 
-Run `SEC.Debug.WatchPawn` with no argument to list the pawns the overlay has something to say about. Part of a name is enough, and running it again on a watched pawn stops watching it.
+Run `SEC.Debug.WatchPawn` with no argument to list the pawns the overlay has something to say about. Part of a name is enough, and running it again on a watched pawn stops watching it. `SEC.Debug.WatchClear` stops watching every pawn in the level and puts them all back under the section switches.
+
+Twelve sections are registered:
 
 | Switch | Draws above the pawn |
 |--------|----------------------|
@@ -171,11 +173,14 @@ Run `SEC.Debug.WatchPawn` with no argument to list the pawns the overlay has som
 | `SEC.Debug.Movement` | The movement layer, whether it is strafing and to which side, and its heading. |
 | `SEC.Debug.Territory` | What territory is doing, the post it is heading to, and how far the leash is from breaking. |
 | `SEC.Debug.Tokens` | The permission slots a target hands out, drawn above the target. |
+| `SEC.Debug.Vitals` | Every pool the pawn carries, one line each, as a value against its maximum. |
+| `SEC.Debug.Teams` | The team the pawn fights for: its ID, Free-For-All when it is on, and what its exclusions turn aside. |
+| `SEC.Debug.Approach` | How far the approach window still has to travel and whether it is gliding, plus the steering drawn in the level. |
 
 `SEC.Debug.MaxDistance` (4000 cm) sets how far from the camera a pawn still draws, and `SEC.Debug.TextScale` (1.0) sizes the text.
 
 <Callout type="info">
-Role, Actions and Reactions replicate, so those three read on a client. The rest are worked out on the server and draw only there.
+Role, Actions, Reactions, Vitals and Teams replicate, so those five read on a client. The rest are worked out on the server and draw only there. Approach draws wherever the character is steered, which is the server or a listen-server host for an enemy.
 </Callout>
 
 <Collapsible title="Turn a section on for one enemy, from the Details panel" badge="Advanced">
@@ -185,13 +190,16 @@ Each section has a matching checkbox on the component it reads, so one enemy can
 |---------|----------|
 | Role | **Debug Overlay Role** on the pawn's **SEC Combat Role** |
 | Decision | **Debug Overlay Decision** on the controller's **SEC Combat Controller** |
-| Awareness | **Debug Overlay Awareness** on the controller's **Awareness** |
+| Awareness | **Debug Overlay Awareness** on the controller's **SEC Awareness** |
 | Scoring | **Debug Overlay Scoring** on the controller's **Action Evaluation** |
 | Actions | **Debug Overlay Actions** on the pawn's **SEC Action Set Component** |
 | Reactions | **Debug Overlay Reactions** on the pawn's **SEC Reaction Set Component** |
 | Movement | **Debug Overlay Movement** on the controller's **Movement Evaluator** |
 | Territory | **Debug Overlay Territory** on the pawn's **SEC Territory** |
 | Tokens | **Debug Overlay Tokens** on the target's **SEC Token Budget Component** |
+| Vitals | **Debug Overlay Vitals** on the pawn's **SEC Vitals** |
+| Teams | **Debug Overlay Teams** on the pawn's **SEC Team** |
+| Approach | **Debug Overlay Approach** on the pawn's **SEC Approach** |
 
 A ticked checkbox saves with the Blueprint, so it survives a restart.
 </Collapsible>
@@ -215,7 +223,7 @@ A ticked checkbox saves with the Blueprint, so it survives a restart.
 
 1. Add **SEC Combat Controller** to the AI controller Blueprint.
 2. Set **Default AI Config** on it, or leave it empty and let the pawn hand over its own.
-3. Add the ones that enemy needs: **SEC Brain**, **Movement Evaluator**, **Action Evaluation**, **Reaction Evaluation**, **Awareness**, **Threat Detection**.
+3. Add the ones that enemy needs: **SEC Brain**, **Movement Evaluator**, **Action Evaluation**, **Reaction Evaluation**, **SEC Awareness**, **Threat Detection**.
 
 Everything wires itself on possession. What the wrapper adds on top is smooth focus rotation with a rotation lock, team answers routed to the pawn's **SEC Team**, threat-to-movement wiring, and the combat events forwarded as Blueprint events.
 
@@ -239,7 +247,7 @@ The plugin ships as three runtime modules and one editor module.
 | Module | Holds |
 |--------|-------|
 | **SECCore** | The combat layer that stands on its own: melee trace and its montage window, damage and hit effects, vitals, defense, team, the animation tag and effect windows, and the debug overlay. |
-| **SECMotion** | What moves a character: the approach component, its montage window, and the SEC Skew Warp modifier. The only module that needs the Motion Warping plugin. |
+| **SECMotion** | What moves a character: the approach component, its montage window, and the SEC Skew Warp modifier. The module that carries the approach and warp types. |
 | **SoulslikeEnemyCombat** | The AI on top of both. |
 | **SECEditor** | The Action Set and Reaction Set canvases and the movement profile diagram. Editor only, and left out of a packaged build. |
 

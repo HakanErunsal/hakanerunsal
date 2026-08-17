@@ -858,15 +858,26 @@ export const MOVEMENT_EVAL_DEBUG_DETAILS: UeDetailCategory[] = [
 export const PERFORMANCE_MOVEMENT_TUNING_DETAILS: UeDetailCategory[] = [
   {
     title: "Movement Evaluator",
-    properties: [
-      { label: "Num Samples", value: n(16, 4, 32, 0) },
-      { label: "Enable Avoidance", value: b(true) },
-      { label: "Enable Nav Aware Sampling", value: b(true) },
+    properties: [{ label: "Num Samples", value: n(16, 4, 32, 0) }],
+    children: [
+      {
+        title: "Avoidance",
+        properties: [{ label: "Enable Avoidance", value: b(true) }],
+      },
+      {
+        title: "Nav Sampling",
+        properties: [{ label: "Enable Nav Aware Sampling", value: b(true) }],
+        children: [
+          {
+            title: "Advanced",
+            properties: [
+              { label: "Nav Check Interval", value: n(0.1, 0.05, 0.5) },
+              { label: "Nav Stagger Stride", value: n(4, 1, 16, 0) },
+            ],
+          },
+        ],
+      },
     ],
-  },
-  {
-    title: "Nav Sampling",
-    properties: [{ label: "Nav Check Interval", value: n(0.1, 0.05, 0.5) }],
   },
 ];
 
@@ -936,12 +947,27 @@ export const ENEMY_AI_CONFIG_SETS_DETAILS: UeDetailCategory[] = [
   },
 ];
 
+/**
+ * One scorer array element: the class combo on the element header, then the
+ * FRangeEval fields. Range carries ShowOnlyInnerProperties, so the editor lists
+ * the four bounds as their own rows rather than one struct row.
+ */
+const rangeScorer = (index: number, className: string, bounds: [number, number, number, number]): UeDetailCategory => ({
+  title: `Index [ ${index} ]  ${className}`,
+  properties: [
+    { label: "Min Value", value: n(bounds[0], 0) },
+    { label: "Optimal Min", value: n(bounds[1], 0) },
+    { label: "Optimal Max", value: n(bounds[2], 0) },
+    { label: "Max Value", value: n(bounds[3], 0) },
+  ],
+});
+
 /** The three FActionSpec setups the walkthrough builds, verified against ActionSet.h. */
 export const WALKTHROUGH_LIGHT_ATTACK_DETAILS: UeDetailCategory[] = [
   {
     title: "Identity",
     properties: [
-      { label: "Action Id", value: { kind: "text", value: "LightAttack" } },
+      { label: "Action ID", value: { kind: "text", value: "LightAttack" } },
       { label: "Enabled", value: b(true) },
     ],
   },
@@ -958,9 +984,11 @@ export const WALKTHROUGH_LIGHT_ATTACK_DETAILS: UeDetailCategory[] = [
     properties: [
       { label: "Selection Weight", value: n(1, 0.01) },
       { label: "Scorers", value: { kind: "text", value: "2 Array elements" } },
-      { label: "  Distance Scorer", value: { kind: "text", value: "Range 0 / 100 / 250 / 400" } },
-      { label: "  Angle Scorer", value: { kind: "text", value: "Range 0 / 0 / 30 / 90" } },
       { label: "Gates", value: { kind: "text", value: "0 Array elements" } },
+    ],
+    children: [
+      rangeScorer(0, "Distance Scorer", [0, 100, 250, 500]),
+      rangeScorer(1, "Angle Scorer", [0, 0, 30, 90]),
     ],
   },
   {
@@ -984,7 +1012,7 @@ export const WALKTHROUGH_HEAVY_ATTACK_DETAILS: UeDetailCategory[] = [
   {
     title: "Identity",
     properties: [
-      { label: "Action Id", value: { kind: "text", value: "HeavyAttack" } },
+      { label: "Action ID", value: { kind: "text", value: "HeavyAttack" } },
       { label: "Enabled", value: b(true) },
     ],
   },
@@ -1002,8 +1030,8 @@ export const WALKTHROUGH_HEAVY_ATTACK_DETAILS: UeDetailCategory[] = [
       { label: "Selection Weight", value: n(0.8, 0.01) },
       { label: "Risk Penalty", value: n(1.5, 0.1) },
       { label: "Scorers", value: { kind: "text", value: "1 Array element" } },
-      { label: "  Distance Scorer", value: { kind: "text", value: "Range 0 / 150 / 300 / 450" } },
     ],
+    children: [rangeScorer(0, "Distance Scorer", [0, 150, 300, 450])],
   },
   {
     title: "Cooldown",
@@ -1015,7 +1043,7 @@ export const WALKTHROUGH_RETREAT_DETAILS: UeDetailCategory[] = [
   {
     title: "Identity",
     properties: [
-      { label: "Action Id", value: { kind: "text", value: "QuickRetreat" } },
+      { label: "Action ID", value: { kind: "text", value: "QuickRetreat" } },
       { label: "Enabled", value: b(true) },
     ],
   },
@@ -1032,9 +1060,9 @@ export const WALKTHROUGH_RETREAT_DETAILS: UeDetailCategory[] = [
     properties: [
       { label: "Selection Weight", value: n(1.5, 0.01) },
       { label: "Scorers", value: { kind: "text", value: "1 Array element" } },
-      { label: "  Distance Scorer", value: { kind: "text", value: "Range 0 / 0 / 100 / 200" } },
       { label: "Tag Score Multipliers", value: { kind: "text", value: "State.PlayerAttacking = 2.0" } },
     ],
+    children: [rangeScorer(0, "Distance Scorer", [0, 0, 100, 200])],
   },
   {
     title: "Cooldown",
