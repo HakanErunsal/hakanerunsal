@@ -17,6 +17,22 @@ order: 1
 
 > One pawn Blueprint, one data asset, two fields filled in, and you have an enemy that notices the player and comes for them.
 
+## See a finished enemy first
+
+Turn on **Show Plugin Content** in the Content Browser's settings menu, then open `Showcase/Maps/LVL_SEC_Showcase` in plugin content and press Play. It ships with a player, a navmesh, and armed enemies to fight.
+
+The pieces worth reading are under `Showcase/Characters/SECEnemy`:
+
+| Asset | What it is |
+|-------|------------|
+| `BP_SEC_EnemyCharacter` | The enemy pawn |
+| `BP_SEC_EnemyController` | Its AI controller |
+| `EnemyConfig_Default` | Its AI config: per-role action sets and movement profiles, an awareness config, an awareness-filtered target selector, and `StateTree_SEC_Core` as its brain |
+
+Copy them into your own content and edit from there, or build fresh with the recipe below.
+
+---
+
 <QuickStart time="2 minutes">
 
 <QuickStep title="Turn the plugin on">
@@ -97,22 +113,6 @@ Drag the enemy into a level that has a **NavMesh Bounds Volume**, press Play, an
 <Callout type="warning">
 **Enemy Character Base sets no AI Controller Class of its own.** Leave that field at the project default and the pawn is possessed by a controller carrying none of the combat components, so every field on the AI Config does nothing and the log says nothing about it. Set it in **Class Defaults** on the pawn Blueprint.
 </Callout>
-
----
-
-## See a finished enemy first
-
-Turn on **Show Plugin Content** in the Content Browser's settings menu, then open `Showcase/Maps/LVL_SEC_Showcase` in plugin content and press Play. It ships with a player, a navmesh, and armed enemies to fight.
-
-The pieces worth reading are under `Showcase/Characters/SECEnemy`:
-
-| Asset | What it is |
-|-------|------------|
-| `BP_SEC_EnemyCharacter` | The enemy pawn |
-| `BP_SEC_EnemyController` | Its AI controller |
-| `EnemyConfig_Default` | Its AI config: per-role action sets and movement profiles, an awareness config, an awareness-filtered target selector, and `StateTree_SEC_Core` as its brain |
-
-Copy them into your own content and edit from there, or build fresh with the recipe above.
 
 ---
 
