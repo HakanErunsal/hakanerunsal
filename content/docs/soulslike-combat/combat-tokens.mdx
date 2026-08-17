@@ -241,34 +241,9 @@ Get **SEC Combat Token Subsystem** from the world. Actions carrying a gate claim
 | **Release Tokens** | | Hands back the slots a receipt covers. |
 | **Release All Tokens For Holder** | Integer | Hands back everything one AI holds, across every target, and reports how many claims were freed. |
 
+The receipt a granted claim hands back remembers the target it was taken against, so a release finds the right pool after the AI has moved on to someone else. Releasing the same receipt twice, or one whose target is gone, does nothing. An enemy destroyed while holding a slot frees it the next time the pool is read, so a pool cannot be held shut by an AI that has left the level.
+
 **On Token Availability Changed** fires the moment a pool's free count moves, carrying the target, the tag, the free slots and the budget. Bind it for a HUD readout instead of asking for the count each frame. Two things send nothing: a slot handed back with a reissue delay, which fires once the delay ends and the count rises, and an unlimited tag, whose count never moves.
-
-</Collapsible>
-
-<Collapsible title="C++ surface" badge="C++">
-
-```cpp
-USECCombatTokenSubsystem* Tokens = GetWorld()->GetSubsystem<USECCombatTokenSubsystem>();
-
-FSECTokenLeaseHandle Lease;
-const bool bClaimed = Tokens->TryClaimTokens(
-    Target,
-    Controller,
-    { FSECTokenRequirement(SECGameplayTags::SEC_Token_Attack, 1) },
-    Lease);
-
-if (bClaimed)
-{
-    // Lease.ClaimId identifies the claim; Lease.Target names the pool it came from.
-    Tokens->ReleaseTokens(Lease);
-}
-```
-
-`FSECTokenLeaseHandle` carries the target it was taken against, so a release finds the right pool after the AI has moved on to someone else. Releasing twice, or with a receipt for a target that is gone, does nothing.
-
-`USECTokenGate::CollectRequirements(const FSECCustomScoring&, TArray<FSECTokenRequirement>&)` gathers what a spec's gates need, merging duplicate tags and skipping inverted gates. `UActionEvaluationComponent` calls it at the start of every action and claims against the controller's focus actor, the same actor the gate scored against.
-
-A holder destroyed without releasing frees its slot the next time the pool is read, so a pool cannot be held shut by an AI that has gone.
 
 </Collapsible>
 
@@ -290,3 +265,4 @@ Clients see the result through the ability and animation replication that alread
 | [Combat Roles](/docs/soulslike-combat/combat-roles) | The other half of crowd control, deciding who is in the fight |
 | [Reaction System](/docs/soulslike-combat/reaction-system) | Defense, which tokens leave alone |
 | [Configuration](/docs/soulslike-combat/configuration) | Every Project Settings value in one place |
+| [API Reference](/docs/soulslike-combat/api-reference#useccombattokensubsystem) | The claim and release surface in C++ |

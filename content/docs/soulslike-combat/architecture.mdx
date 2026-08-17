@@ -1,7 +1,7 @@
 ---
 title: "Core Architecture"
-description: "The mental model: how the plugin separates strategy from execution, and how a decision flows from perception to movement."
-date: 2026-07-29
+description: "The map of the plugin: which piece lives where, what decides, what replicates, and the console switch that shows each part running."
+date: 2026-08-16
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Architecture"]
 parent: "SoulslikeCombatDocs"
@@ -15,118 +15,244 @@ order: 2
     { label: "Architecture" }
 ]} />
 
-## Two layers: strategy and execution
+> An enemy is three things: a config asset, an AI controller that decides, and a pawn that acts. Everything else in the plugin plugs into one of the three.
 
-The plugin splits the AI into a layer that decides and a layer that acts. The decision layer picks what to do; the execution layer carries it out. The two talk through components, never directly, so you can change either side without touching the other.
+## Config, controller, pawn
 
 <ArchitectureDiagram
   layers={[
     {
-      label: "StateTree: Strategic Layer",
-      icon: "brain",
-      color: "blue",
+      label: "Enemy AI Config: what this enemy is",
+      icon: "target",
+      color: "orange",
       items: [
-        "Evaluates combat context",
-        "Scores available actions",
-        "Manages state transitions",
-        "Controls movement strategy",
-        "Handles target acquisition"
+        "Which action set, reaction set and movement profile it uses",
+        "Which combat roles it will take, and how it picks a target",
+        "Which State Tree runs it, when one does",
+        "What it can sense, and how long it waits between attacks"
       ]
     },
     {
-      label: "Action Execution: Tactical Layer",
+      label: "AI Controller: it decides",
+      icon: "brain",
+      color: "blue",
+      items: [
+        "Reads the config the moment it possesses the pawn",
+        "Scores the moveset and picks the move",
+        "Picks where to stand and which way to travel",
+        "Runs on the server, and nothing here replicates"
+      ]
+    },
+    {
+      label: "Pawn: it acts",
       icon: "zap",
       color: "green",
       items: [
-        "Option A: Gameplay Ability (simple: play montage, apply damage)",
-        "Option B: Behavior Tree Sequence (complex: multi-step, branching)"
+        "Plays the ability the chosen action names",
+        "Traces the swing, and answers an incoming hit",
+        "Carries health, stamina and any other pool",
+        "Replicates what a client needs for UI"
       ]
     }
   ]}
-  caption="The strategic layer drives decisions. Actions run through Gameplay Abilities or Behavior Tree sequences."
+  caption="The controller resolves the config when it possesses the pawn, then decides for it. Clients see the pawn."
 />
 
-<Callout type="info">
-**Two ways to run an action.** A **Gameplay Ability** suits a self-contained move: play a montage, apply damage. A **Behavior Tree Sequence** suits a multi-step move with branches: close the gap, check stamina, commit to a heavy or light finisher. You pick per action in the ActionSet.
+Swap the config and the enemy changes without either Blueprint being touched.
+
+<Callout type="warning">
+None of it starts until an enemy has a combat target. Call **Register Combat Target** with your player pawn once, on the server, and the loop runs. An enemy with its own perception reads from that same pool, so skipping the call leaves a fully configured enemy standing still with nothing in the log. See [Targeting](/docs/soulslike-combat/targeting-system).
 </Callout>
 
 ---
 
 ## The pieces
 
-An enemy is a pawn and an AI controller, each carrying components. `EnemyCharacterBase` and `EnemyControllerBase` create them for you. [Getting Started](/docs/soulslike-combat/getting-started) covers setup, including how to reparent your own classes.
+`EnemyCharacterBase` and `EnemyControllerBase` ship with everything below already on them, so a new enemy starts complete and you delete what it does not need. [Step-by-Step Enemy](/docs/soulslike-combat/step-by-step-enemy) builds one from those two.
 
-**On the pawn:**
+### On the AI controller
 
-| Component | Job |
-|-----------|-----|
-| `AbilitySystemComponent` | Runs the gameplay abilities that actions trigger |
-| `SECMeleeTraceComponent` | [Melee hit detection](/docs/soulslike-combat/melee-trace) |
-| `SECActionSetComponent` | Holds and replicates the [action set](/docs/soulslike-combat/action-system) |
-| `SECReactionSetComponent` | Holds and replicates the [reaction set](/docs/soulslike-combat/reaction-system) |
-| `SECCombatRoleComponent` | Replicates the assigned [combat role](/docs/soulslike-combat/combat-roles) |
-| `SECVitalsComponent` | Replicated resource pools ([health, stamina, stance](/docs/soulslike-combat/vitals)); an empty health pool is what triggers death |
+Server side. This half decides and replicates nothing.
 
-**On the controller:**
+| Component | What it does |
+|-----------|--------------|
+| **SEC Combat Controller** | The hub. Resolves the config at possession, registers for a combat role, syncs the sets when the role changes, and runs the death shutdown. |
+| **SEC Brain** | Runs the enemy: a State Tree when the config names one, the built-in loop when it does not. |
+| **Action Evaluation** | Scores the [moveset](/docs/soulslike-combat/action-system) and runs the winner. |
+| **Reaction Evaluation** | Picks a [reaction](/docs/soulslike-combat/reaction-system) when something happens to the enemy. |
+| **Movement Evaluator** | Chooses [where to stand and which way to move](/docs/soulslike-combat/movement-system). |
+| **Awareness** | [Sight, hearing and damage memory](/docs/soulslike-combat/awareness-system), and the last-known location behind an investigation. |
+| **Threat Detection** | How long the [player's camera](/docs/soulslike-combat/threat-detection) has held this enemy, as a 0 to 1 level. Switched off on the shipped controller. |
 
-| Component | Job |
-|-----------|-----|
-| `SECCombatControllerComponent` | The hub: config resolution, role registration, death teardown |
-| `SECBrainComponent` | Runs a StateTree or the native combat loop (see below) |
-| `ActionEvaluationComponent` | Scores and runs [actions](/docs/soulslike-combat/action-system) |
-| `ReactionEvaluationComponent` | Runs event-driven [reactions](/docs/soulslike-combat/reaction-system) |
-| `MovementEvaluatorComponent` | [Tactical positioning](/docs/soulslike-combat/movement-system) |
-| `ThreatDetectionComponent` | [Player attention tracking](/docs/soulslike-combat/threat-detection), disabled by default |
-| `SECAwarenessComponent` | [Perception memory](/docs/soulslike-combat/awareness-system): sight, hearing, damage |
+### On the pawn
 
-`SECCombatControllerComponent` is the one piece every setup needs. Add it to any `AAIController` and the combat system works; the other controller components are opt-in. Its full API lives in the [API Reference](/docs/soulslike-combat/api-reference).
+This half acts, and it is the half a client sees.
 
-**Three runtime modules.** `SECCore` carries the combat layer that stands on its own: the melee trace and its montage window, the damage layer and its hit effects, vitals, the team helpers, and the animation tag window. `SECMotion` carries what moves a character, the approach window and the skew warp modifier, and is the module that needs the Motion Warping plugin. `SoulslikeEnemyCombat` carries the AI on top of both. Include paths and Blueprint names are the same either way; the split matters when you add a module dependency in C++.
+| Component | What it does |
+|-----------|--------------|
+| **Ability System Component** | Runs the abilities that actions and reactions start. |
+| **SEC Action Set Component** | Holds the moveset and replicates which action is running. |
+| **SEC Reaction Set Component** | The same for [reactions](/docs/soulslike-combat/reaction-system). |
+| **SEC Combat Role** | Replicates the assigned [combat role](/docs/soulslike-combat/combat-roles), so a client can tint or badge the enemy. |
+| **SEC Vitals** | [Health, stamina and any other pool](/docs/soulslike-combat/vitals). An emptied health pool is what triggers death. |
+| **SEC Defense** | How an incoming hit is [answered](/docs/soulslike-combat/defense-system): parry, block, invulnerability, resistances. Ships with no responses. |
+| **SEC Melee Trace** | Swept [hit detection](/docs/soulslike-combat/melee-trace) across an attack window in the montage. |
+| **SEC Equipment Component** | Spawns and holds [weapons](/docs/soulslike-combat/weapons). A held weapon can bring its own moveset. |
+| **SEC Approach** | Turns the pawn toward its target and glides it into range across an [approach window](/docs/soulslike-combat/animation-integration) on the montage. |
+| **SEC Territory** | The ground this enemy owns: [posts, a wander patch, a leash](/docs/soulslike-combat/territory). Inert until a post is named. |
+| **SEC Team** | Team ID, free-for-all, and target exclusions. |
+
+**SEC Combat Controller** is the one piece a setup cannot go without. The rest are optional: drop **Awareness** for an enemy that fights whatever it is handed, drop **Movement Evaluator** for one that holds its spot.
+
+<Collapsible title="Which half runs on a client" badge="Multiplayer">
+Everything on the AI controller is server-only: scoring, movement, perception, role assignment. A client runs none of it and needs none of it.
+
+Four pawn components replicate what a client needs to draw UI and effects:
+
+| Component | Replicates |
+|-----------|-----------|
+| **SEC Action Set Component** | The action set in force, the running action's ID, and whether an action is executing. |
+| **SEC Reaction Set Component** | The same three for reactions. |
+| **SEC Combat Role** | The assigned role tag. |
+| **SEC Vitals** | Each authored pool's current value. |
+
+Bind the delegates on those four rather than polling the controller, which a client cannot reach. [Multiplayer](/docs/soulslike-combat/multiplayer) covers the setup, including the dedicated-server animation fix that keeps melee sockets in the right place.
+</Collapsible>
 
 ---
 
-## How a decision flows
+## What runs the enemy
 
-Every evaluation runs the same loop:
+**SEC Brain** reads the config when the controller takes its pawn, and picks one of two paths.
 
-1. **Perceive.** Awareness and Threat Detection update what the AI knows about its target.
-2. **Decide.** The brain builds a decision context (distance, angle, health, stamina, tags), and `ActionEvaluationComponent` scores every action in the set against it.
-3. **Act.** The highest-scoring valid action runs, as a Gameplay Ability or a Behavior Tree sequence.
-4. **Move.** `MovementEvaluatorComponent` scores directions in parallel and strafes, approaches, or retreats.
+- **Default State Tree** filled in: the brain builds that State Tree and runs it. Reach for this when the enemy needs graph-authored structure, such as boss phases. See [StateTree Tasks](/docs/soulslike-combat/statetree).
+- **Default State Tree** empty: the brain runs its built-in loop. Each pass gathers the fight (distance, angle, health, threat), moves the enemy, then scores the moveset and runs the winner.
+
+Scoring, movement and reactions are the same components on both paths, so a State Tree adds structure on top rather than replacing anything.
 
 <ArchitectureFlowDiagram />
 
+### Between fights, on the built-in loop
+
+The built-in loop reads what the enemy knows and settles into one of four phases.
+
+| Phase | The enemy |
+|-------|-----------|
+| **Idle** | Knows of nobody and owns no ground, so it stays where it is. |
+| **Resting** | Knows of nobody and owns ground, so it walks its posts or holds its one spot. |
+| **Investigate** | Noticed something it cannot confirm, so it walks over and looks. It does not attack. |
+| **Combat** | Has a confirmed target, so it scores and runs its actions. |
+
+Adding **Awareness** is what unlocks Investigate; adding **SEC Territory** with at least one post is what unlocks Resting. Without either, the enemy sits in Idle until it is handed a target and jumps straight to Combat.
+
+**On Brain Phase Changed** fires on each move between them, which is where an idle, alert or fighting animation set hangs off. A State Tree authors its own states instead, so this reads Idle while one is running.
+
 ---
 
-## The brain: StateTree or native loop
+## Debug it
 
-`SECBrainComponent` reads the AI config on possession and picks how the AI runs:
+One overlay covers the whole map, with a section per system. Turn the lot on, then narrow it to one enemy:
 
-- **A StateTree is set** (`StateTree`): the brain creates a StateTree at runtime and runs it. Use this for graph-authored structure such as patrol, investigate, or boss phases.
-- **No StateTree**: the brain runs a native C++ loop: build the decision context, move, then score and run an action each tick. This covers combat on its own.
+```
+SEC.Debug.All 1                 // Every section at once; 0 turns them all off
+SEC.Debug.WatchPawn Grunt_2     // Only this pawn draws, and it shows every section
+```
 
-The scoring and movement components do the same work in both modes. See [StateTree Tasks](/docs/soulslike-combat/statetree) for the graph nodes, and the [API Reference](/docs/soulslike-combat/api-reference) for the brain's properties.
+Run `SEC.Debug.WatchPawn` with no argument to list the pawns the overlay has something to say about. Part of a name is enough, and running it again on a watched pawn stops watching it.
+
+| Switch | Draws above the pawn |
+|--------|----------------------|
+| `SEC.Debug.Role` | Name and combat role, coloured by role. Reads on a client as well. |
+| `SEC.Debug.Decision` | Distance and angle to the target, whether it can see it, its speed, and the threat on it. |
+| `SEC.Debug.Awareness` | Awareness state, how far the meter has filled toward Detected, how old the last-known location is. |
+| `SEC.Debug.Scoring` | What the last poll scored, highest first, with the reason a refused action gives instead of a score. |
+| `SEC.Debug.Actions` | The action list with cooldowns: green ready, grey counting down, yellow running. |
+| `SEC.Debug.Reactions` | The reaction list with priorities and cooldowns, coloured the same way. |
+| `SEC.Debug.Movement` | The movement layer, whether it is strafing and to which side, and its heading. |
+| `SEC.Debug.Territory` | What territory is doing, the post it is heading to, and how far the leash is from breaking. |
+| `SEC.Debug.Tokens` | The permission slots a target hands out, drawn above the target. |
+
+`SEC.Debug.MaxDistance` (4000 cm) sets how far from the camera a pawn still draws, and `SEC.Debug.TextScale` (1.0) sizes the text.
+
+<Callout type="info">
+Role, Actions and Reactions replicate, so those three read on a client. The rest are worked out on the server and draw only there.
+</Callout>
+
+<Collapsible title="Turn a section on for one enemy, from the Details panel" badge="Advanced">
+Each section has a matching checkbox on the component it reads, so one enemy can draw without the console and without a restart:
+
+| Section | Checkbox |
+|---------|----------|
+| Role | **Debug Overlay Role** on the pawn's **SEC Combat Role** |
+| Decision | **Debug Overlay Decision** on the controller's **SEC Combat Controller** |
+| Awareness | **Debug Overlay Awareness** on the controller's **Awareness** |
+| Scoring | **Debug Overlay Scoring** on the controller's **Action Evaluation** |
+| Actions | **Debug Overlay Actions** on the pawn's **SEC Action Set Component** |
+| Reactions | **Debug Overlay Reactions** on the pawn's **SEC Reaction Set Component** |
+| Movement | **Debug Overlay Movement** on the controller's **Movement Evaluator** |
+| Territory | **Debug Overlay Territory** on the pawn's **SEC Territory** |
+| Tokens | **Debug Overlay Tokens** on the target's **SEC Token Budget Component** |
+
+A ticked checkbox saves with the Blueprint, so it survives a restart.
+</Collapsible>
 
 ---
 
-## Scope
+## Going further
 
-**The plugin provides:**
-- Enemy AI decision-making and tactical movement
-- Melee hit detection, usable on player characters too
-- Action scoring and execution
-- Event-driven reaction evaluation and execution
-- Replicated pawn-side state (`SECActionSetComponent`, `SECReactionSetComponent`, `SECCombatRoleComponent`, `SECVitalsComponent`)
-- Multi-enemy coordination through combat roles
-- Multiplayer support on listen and dedicated servers
-- A modular component set you mix per enemy type
-- Data-driven configuration with full Blueprint access
-- A showcase enemy to study and extend
+<Collapsible title="When an enemy dies" badge="Advanced">
+**Handle Death** on **SEC Combat Controller** runs the whole shutdown in order: blocks new actions, cancels the action and reaction in flight, stops the brain, stops the melee trace, releases equipment, switches threat detection and perception off, clears the movement state, and gives up the combat role slot so a living enemy can take it. **On Death** fires last, at which point the pawn is safe to ragdoll.
 
-**You still build:**
-- UI and HUD: health bars, lock-on indicators, damage numbers
-- Level design and encounter placement
-- Progression and difficulty balancing
+**Auto Handle Death On Health Depleted** is ticked on the component, so an emptied health vital runs all of that on its own. Untick it when the project owns death and calls **Handle Death** itself. Which vital counts as health is set in **Project Settings** under **Soulslike Enemy Combat**.
+
+**Drop Weapon On Death** is ticked too, which drops the held weapon with a ten-second physics lifespan.
+
+**Handle Revive** puts a dead enemy back under AI control: it releases the action block, restarts the brain, and switches threat detection, perception and role registration back on. It does not re-arm the enemy, so call **Equip Starting Loadout** on the pawn's **SEC Equipment Component** as well. Use it for a resurrect, or when a pooled enemy is reused.
+</Collapsible>
+
+<Collapsible title="Run the AI on your own controller" badge="Alternative">
+`EnemyControllerBase` is a convenience wrapper. To keep your own AI controller class instead:
+
+1. Add **SEC Combat Controller** to the AI controller Blueprint.
+2. Set **Default AI Config** on it, or leave it empty and let the pawn hand over its own.
+3. Add the ones that enemy needs: **SEC Brain**, **Movement Evaluator**, **Action Evaluation**, **Reaction Evaluation**, **Awareness**, **Threat Detection**.
+
+Everything wires itself on possession. What the wrapper adds on top is smooth focus rotation with a rotation lock, team answers routed to the pawn's **SEC Team**, threat-to-movement wiring, and the combat events forwarded as Blueprint events.
+
+The pawn side has the same escape hatch: reparent your character to `EnemyCharacterBase`, or add the components you want to your own character. [Getting Started](/docs/soulslike-combat/getting-started) covers both.
+</Collapsible>
+
+<Collapsible title="Use the combat parts without the AI" badge="Alternative">
+The pawn-side combat layer stands on its own, so a player character can take the same components with no AI attached:
+
+- **SEC Melee Trace** for swept hit detection off a montage window.
+- **SEC Vitals** for health, stamina and stance pools.
+- **SEC Defense** for parries, blocks, invulnerability windows and resistances.
+- **SEC Team** so friendly fire and target exclusions answer the same way on both sides.
+
+`BP_SEC_PlayerCharacter` in the showcase carries the first three and takes its hits through them, with no AI controller, config asset or combat role anywhere near it.
+</Collapsible>
+
+<Collapsible title="Three runtime modules" badge="Advanced">
+The plugin ships as three runtime modules and one editor module.
+
+| Module | Holds |
+|--------|-------|
+| **SECCore** | The combat layer that stands on its own: melee trace and its montage window, damage and hit effects, vitals, defense, team, the animation tag and effect windows, and the debug overlay. |
+| **SECMotion** | What moves a character: the approach component, its montage window, and the SEC Skew Warp modifier. The only module that needs the Motion Warping plugin. |
+| **SoulslikeEnemyCombat** | The AI on top of both. |
+| **SECEditor** | The Action Set and Reaction Set canvases and the movement profile diagram. Editor only, and left out of a packaged build. |
+
+Blueprint names and node paths do not change with the split. It matters when a C++ module of your own declares a dependency, since it needs the module holding the type it uses.
+</Collapsible>
+
+<Collapsible title="What you still build" badge="Advanced">
+The plugin covers the enemy and the fight. Three things stay yours:
+
+- **UI and HUD.** Health bars, lock-on markers, damage numbers. The replicated pawn components carry the data; the widgets are your call.
+- **Level design and encounter placement.** Where enemies stand, what triggers a fight, how an arena is shaped.
+- **Progression and balance.** Difficulty curves, loot, stat growth.
+</Collapsible>
 
 
 <DocNav prev={{ title: "Getting Started", href: "/docs/soulslike-combat/getting-started" }} next={{ title: "Step-by-Step Enemy", href: "/docs/soulslike-combat/step-by-step-enemy" }} />

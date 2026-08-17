@@ -949,7 +949,8 @@ export const WALKTHROUGH_LIGHT_ATTACK_DETAILS: UeDetailCategory[] = [
     title: "Execution",
     properties: [
       { label: "Execution Method", value: { kind: "enum", value: "Gameplay Ability" } },
-      { label: "  Ability Class", value: { kind: "asset", value: "GA_LightAttack" } },
+      { label: "  Ability Class", value: { kind: "asset", value: "GA_SEC_MontageAbility" } },
+      { label: "  Montage", value: { kind: "asset", value: "AM_Attack_Light" } },
     ],
   },
   {
@@ -965,8 +966,9 @@ export const WALKTHROUGH_LIGHT_ATTACK_DETAILS: UeDetailCategory[] = [
   {
     title: "Chaining",
     properties: [
-      { label: "Preferred Follow-Up Action", value: { kind: "text", value: "HeavyAttack" } },
-      { label: "Chain Bonus Multiplier", value: n(1.5, 1) },
+      { label: "Chain Links", value: { kind: "text", value: "1 Array element" } },
+      { label: "  Target Action ID", value: { kind: "text", value: "HeavyAttack" } },
+      { label: "  Bonus Multiplier", value: n(1.5, 1) },
     ],
   },
   {
@@ -990,7 +992,8 @@ export const WALKTHROUGH_HEAVY_ATTACK_DETAILS: UeDetailCategory[] = [
     title: "Execution",
     properties: [
       { label: "Execution Method", value: { kind: "enum", value: "Gameplay Ability" } },
-      { label: "  Ability Class", value: { kind: "asset", value: "GA_HeavyAttack" } },
+      { label: "  Ability Class", value: { kind: "asset", value: "GA_SEC_MontageAbility" } },
+      { label: "  Montage", value: { kind: "asset", value: "AM_Attack_Heavy" } },
     ],
   },
   {

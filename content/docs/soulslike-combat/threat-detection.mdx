@@ -159,22 +159,17 @@ Unticking it leaves that switch-on undone and never turns a running component of
 The delegates bind whether or not evaluation is enabled, so a handler stays connected across an off and on cycle.
 </Collapsible>
 
-<Collapsible title="Letting a stare bias which move an enemy picks" badge="C++">
-No shipped scorer reads this component. To let threat shape action scoring, subclass the scorer base and read the level off the controller:
+<Collapsible title="Letting a stare bias which move an enemy picks" badge="Advanced">
+No shipped scorer reads this component, so an action favours nothing on its own while the player stares. Write one of your own:
 
-```cpp
-float ScoreMultiplier_Implementation(const FSECScoringContext& Context) const override
-{
-    const UThreatDetectionComponent* Threat =
-        Context.Controller->FindComponentByClass<UThreatDetectionComponent>();
-    const float Level = Threat ? Threat->GetCurrentThreatLevel() : 0.f;
-    return 1.f + Level * 0.5f;
-}
-```
+1. Make a Blueprint child of **SEC Scorer**.
+2. Override **Score Multiplier**. Take **Controller** off the context, get the **Threat Detection** component from it, and read **Get Current Threat Level**.
+3. Turn that 0 to 1 reading into the multiplier you want. 1 leaves the action where it was, above 1 favours it, below 1 pushes it down.
+4. Add the scorer to the action's **Scoring > Scorers** list, the same as a shipped one. See [Action System](/docs/soulslike-combat/action-system).
 
-Add it to an action's **Scorers** list like any other. You author the curve. See [Action System](/docs/soulslike-combat/action-system).
+The figure the overlay prints alongside distance and angle is a different one: it lives on the decision context that feeds the brain and never reaches a scorer. Read the component for camera attention.
 
-The scoring snapshot carries no threat figure. The one the debug overlay prints lives on the decision context that feeds the brain, blended from distance and angle to the target, and never reaches a scorer. Read the component when you want camera attention.
+The same scorer in C++ is in the [API Reference](/docs/soulslike-combat/api-reference#usecscorer-and-usecgate).
 </Collapsible>
 
 <Collapsible title="Wiring it without the SEC Combat Controller" badge="Alternative">

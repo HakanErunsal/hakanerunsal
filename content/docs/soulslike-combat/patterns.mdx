@@ -1,7 +1,7 @@
 ---
 title: "Common Patterns & Examples"
-description: "Ready-to-use patterns for melee, defensive, and aggressive enemy types."
-date: 2026-08-04
+description: "Seven enemy archetypes as recipes: the numbers to type, and the field each one goes in."
+date: 2026-08-16
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Patterns"]
 parent: "SoulslikeCombatDocs"
@@ -15,67 +15,311 @@ order: 19
     { label: "Patterns" }
 ]} />
 
-<Callout type="info">
-The distance bands below (for example 100-250cm) describe the `Range` of a **Distance Scorer**. Distance is opt-in: an action only reacts to range once you add a Distance Scorer to its **Scoring** list and tune that scorer's `Range`. Movement values map to `UMovementBehaviorProfile` fields (`DesiredDistance`, `DistanceTolerance`, `CrowdTolerance`, and the strafe-rest / threat-response toggles).
+> Seven enemies you have fought before, each written out as the values to type and the field they go in.
+
+<Callout type="warning">
+Every recipe below starts from an enemy that already works: a pawn, an AI controller, an **Enemy AI Config**, and a registered combat target. Without that target the enemy holds no combat role, scores no action and does not move, whatever you type into the assets. See [Getting Started](/docs/soulslike-combat/getting-started) and [Targeting](/docs/soulslike-combat/targeting-system).
 </Callout>
 
-## Pattern 1: Basic Melee Enemy
+Each recipe names two assets: a **Movement Behavior Profile** for how it stands, and an **Action Set** for what it does. Point the enemy's **Enemy AI Config** at both, under **Default Movement Profile** and **Default Action Set**, and leave the two **Manage ... Automatically** boxes ticked.
 
-**ActionSet:**
-- 2-3 melee attacks at close range (100-300cm)
-- Quick retreat when too close (under 100cm)
+Every action uses the **Gameplay Ability** execution method with **Ability Class** set to **GA_SEC_MontageAbility** and its own montage in the payload, unless a recipe says otherwise.
 
-**Movement:**
-- DesiredDistance: 200
-- DistanceTolerance: 0.2, CrowdTolerance: 0.45 (circles anywhere in roughly 110-240cm)
-- bEnableStrafeRest: true
+Distance and angle bands are written as four numbers, the **Range** on a scorer: **Min Value / Optimal Min / Optimal Max / Max Value**. The action scores 0 outside the first and last, and 1 across the middle pair.
 
-**Actions:**
-```
-LightAttack:  100-250cm, 2s cooldown, weight 1.0
-HeavyAttack:  150-300cm, 4s cooldown, weight 0.8, chains from LightAttack
-QuickRetreat: 0-100cm,   3s cooldown, weight 1.5 (defensive)
-```
+## Pick a shape
 
----
-
-## Pattern 2: Defensive Enemy
-
-**ActionSet:**
-- Defensive actions score higher
-- Longer cooldowns, stays at distance
-
-**Movement:**
-- DesiredDistance: 350
-- DistanceTolerance: 0.2, CrowdTolerance: 0.3 (circles in roughly 245-420cm, gives ground sooner than most)
-- bAdjustDistanceByThreat: true, ThreatDistanceScale: 1.0 (backs off further as threat rises)
-
-**Actions:**
-```
-CounterAttack: 150-250cm, only when Player.Attacking tag (2x multiplier)
-Block:         100-300cm, BehaviorTree sequence with shield raise
-Retreat:       0-200cm,   high weight, moves away
-```
+| Archetype | Fights at | What makes it that |
+|-----------|-----------|--------------------|
+| [Grunt](#the-grunt) | 250 cm | Two swings and a chain link between them |
+| [Rusher](#the-rusher) | 120 cm | Tight far edge, no strafe rest, one-second cooldowns |
+| [Duellist](#the-duellist) | 350 cm | A parry rule on a Reaction Set, and a recovery gap |
+| [Flanker](#the-flanker) | 300 cm | An Angle Preference Rule at 90 degrees |
+| [Archer](#the-archer) | 700 cm | A ranged scorer band, pinned to back-line roles |
+| [Guard](#the-guard) | its post | Territory posts, a leash, an awareness config |
+| [Boss](#the-boss) | 300 cm | Elite role, and a second-phase moveset swap |
 
 ---
 
-## Pattern 3: Aggressive Rusher
+## The grunt
 
-**ActionSet:**
-- Close-range focused
-- Short cooldowns
+Circles at mid range, opens with a light swing, follows it with a heavy, and gives ground when you walk into it.
 
-**Movement:**
-- DesiredDistance: 100
-- DistanceTolerance: 0.1 (tight far edge, closes in fast), CrowdTolerance: 0.8 (refuses to be pushed off your face)
-- bEnableStrafeRest: false (no forced breaks, relentless pressure)
+**Movement Behavior Profile**
 
-**Actions:**
+| Field | Value |
+|-------|-------|
+| Desired Distance | 250 |
+| Distance Tolerance | 0.2 |
+| Crowd Tolerance | 0.45 |
+| Enable Strafe Rest | on |
+
+**Action Set**, three actions:
+
+| Action ID | Distance Scorer Range | Cooldown Duration | Selection Weight |
+|-----------|----------------------|-------------------|------------------|
+| `LightAttack` | 0 / 100 / 250 / 400 | 2 | 1.0 |
+| `HeavyAttack` | 0 / 150 / 300 / 450 | 4 | 0.8 |
+| `Backstep` | 0 / 0 / 100 / 180 | 3 | 1.5 |
+
+On `LightAttack`, add a **Chain Link** with **Target Action ID** `HeavyAttack` and **Bonus Multiplier** 1.5. The heavy scores half again as high for a moment after the light finishes, so the two read as a combo without being scripted. Roll out of range in between and the heavy's Distance Scorer drops it, and the enemy picks something else instead of swinging at air.
+
+`Backstep` peaks at point blank and scores 0 past 180 cm, which is how the grunt answers being crowded rather than eating a hit.
+
+<Protip
+  title="Copy the shipped one"
+  description="Content/SoulslikeEnemyCombat/Showcase/AI/Data holds DA_MovementBehavior_Attacker under Movement and DA_ActionSet_Attacker under ActionSets, the pair the showcase enemy fights with. Duplicate them into your own content and retune from there."
+/>
+
+---
+
+## The rusher
+
+Closes fast, refuses to be pushed off you, and never stops to breathe.
+
+**Movement Behavior Profile**
+
+| Field | Value |
+|-------|-------|
+| Desired Distance | 120 |
+| Distance Tolerance | 0.1 |
+| Crowd Tolerance | 0.8 |
+| Enable Strafe Rest | off |
+
+The tight **Distance Tolerance** keeps it closing until it is on top of you. The high **Crowd Tolerance** stops it giving ground when you walk in. **Enable Strafe Rest** off removes the pause a circling enemy otherwise takes every 10 seconds.
+
+**Action Set**
+
+| Action ID | Distance Scorer Range | Cooldown Duration | Selection Weight |
+|-----------|----------------------|-------------------|------------------|
+| `Lunge` | 250 / 350 / 550 / 800 | 1 | 1.5 |
+| `Slash` | 0 / 60 / 160 / 260 | 1.5 | 1.0 |
+| `Grab` | 0 / 0 / 90 / 140 | 6 | 1.0 |
+
+Add a **Chain Link** on `Lunge` naming `Slash` with **Bonus Multiplier** 2.0, so the gap-closer flows into the follow-up.
+
+On the **Enemy AI Config**, set **Preferred Role** to `SEC.Role.Attacker` so the rusher takes a front-line slot ahead of enemies that do not care. Leave the **Recovery** fields at 0; anything above that puts a gap between its moves.
+
+---
+
+## The duellist
+
+Holds a longer range, answers a telegraphed swing with a parry, and leaves a beat between its own attacks.
+
+**Movement Behavior Profile**
+
+| Field | Value |
+|-------|-------|
+| Desired Distance | 350 |
+| Distance Tolerance | 0.2 |
+| Crowd Tolerance | 0.3 |
+
+The low **Crowd Tolerance** makes it give ground sooner than most, so it keeps the space its parry needs.
+
+**Reaction Set**
+
+1. Add a reaction with **Reaction ID** `Parry`, pointing at your parry montage.
+2. Add a trigger rule with **On Stimulus** `SEC.Stimulus.AttackTelegraphed`, **Chance** 0.4, and **Min Interval** 2.
+3. Under the rule's **Conditions**, add an **Incoming Angle Gate** with **Half Angle Degrees** 60, so a blow from behind goes unparried.
+4. Wire the rule to the `Parry` card.
+5. Put your unblockable tag in the rule's **Block Context Tags** so heavy attacks land.
+6. Point the **Enemy AI Config** at the asset under **Default Reaction Set**.
+
+**Action Set**
+
+| Action ID | Distance Scorer Range | Cooldown Duration | Selection Weight |
+|-----------|----------------------|-------------------|------------------|
+| `Counter` | 0 / 100 / 250 / 400 | 5 | 1.0 |
+| `Poke` | 0 / 150 / 300 / 450 | 2.5 | 1.0 |
+
+Give `Counter` a **Tag Score Multiplier** of 2.5 on `SEC.State.Staggered`. Multipliers read tags on the enemy, on its target and on the world, so the counter is worth two and a half times as much while the player is reeling.
+
+Set **Action Recovery Time** to 0.8 under **Recovery** on the **Enemy AI Config**. The duellist keeps strafing and parrying through that window and starts no new attack, which is what turns a pressure enemy into one you can read.
+
+<Callout type="warning">
+A parry needs something to parry. Add the **SEC Attack Telegraph** notify to the player's attack montage where the wind-up starts, or nothing reaches the enemy and the rule never runs. See [Attack Telegraphs](/docs/soulslike-combat/attack-telegraphs).
+</Callout>
+
+---
+
+## The flanker
+
+Circles for your side instead of standing in front of you, and works as the second enemy in a pack.
+
+**Movement Behavior Profile**
+
+| Field | Value |
+|-------|-------|
+| Desired Distance | 300 |
+| Distance Tolerance | 0.2 |
+| Crowd Tolerance | 0.45 |
+
+Under **Positioning Rules**, add an **Angle Preference Rule**:
+
+| Field | Value |
+|-------|-------|
+| Preferred Angle | 90 |
+| Angle Tolerance | 30 |
+| Direction Commitment | 45 |
+| Weight | 1.0 |
+
+The angle is measured from the target's facing, and it is unsigned, so 90 means either flank and the enemy settles on whichever it reaches first. Use 180 for one that wants your back, 0 for one that insists on your face. **Direction Commitment** stops it flip-flopping between the two ways round while it is roughly equidistant.
+
+**Action Set**: the grunt's three actions work as they are. What makes this a flanker is where it stands.
+
+**Enemy AI Config**: add an entry to **Role Movement Profiles** naming `SEC.Role.Flanker` and this profile, and leave **Default Movement Profile** pointing at the grunt's. One enemy then circles while it holds the Flanker role and fights straight when the pass moves it to Attacker. Two Flanker slots ship per target. See [Combat Roles](/docs/soulslike-combat/combat-roles).
+
+---
+
+## The archer
+
+Holds the back line, shoots, and steps away when you reach it.
+
+**Movement Behavior Profile**
+
+| Field | Value |
+|-------|-------|
+| Desired Distance | 700 |
+| Distance Tolerance | 0.2 |
+| Crowd Tolerance | 0.45 |
+
+<Callout type="warning">
+Keep **Desired Distance** under 800. At or above that the enemy sits permanently in the pathfinding layer, where it walks toward you and never holds its range.
+</Callout>
+
+**Action Set**
+
+| Action ID | Distance Scorer Range | Cooldown Duration | Selection Weight |
+|-----------|----------------------|-------------------|------------------|
+| `Shoot` | 300 / 500 / 1000 / 1800 | 3 | 1.0 |
+| `Kite` | 0 / 0 / 250 / 400 | 4 | 2.0 |
+
+Tick **Require Line Of Sight** on `Shoot` so it holds fire through a pillar. Add a **Combat Token Gate** with **Token Tag** `SEC.Token.Ranged`, which caps how many archers fire at the same target at once, two out of the box. See [Combat Tokens](/docs/soulslike-combat/combat-tokens).
+
+`Kite` is the panic button: it peaks at point blank, carries twice the weight of the shot, and its execution method can be a **Behavior Tree Sequence** running **Make Distance** instead of a montage.
+
+**Enemy AI Config**: set **Allowed Roles (empty = any)** to `SEC.Role.Waiter` and `SEC.Role.Supporter`. The assignment pass then never sends the archer to the front, whoever else is on the field.
+
+---
+
+## The guard
+
+Walks a route, notices you on its own, fights inside its ground, and goes home when you run.
+
+1. Drag a **SEC Territory Post** into the level for each stop on the route. One post is a guard station; three are a patrol.
+2. Select the placed enemy. On its **SEC Territory** component, add the posts to **Posts** in walking order, set **Resting Behavior** to **Patrol Posts** and **Post Order** to **Sequential Loop**.
+3. Tick **Leash Enabled**, set **Leash Radius** to 2000, and leave **Leash Anchor** on **Self**.
+4. On the **Enemy AI Config**, fill in **Awareness Config** and set **Target Selector** to **Awareness Filtered Target Selector**. Both are needed: the filter offers only what this enemy has perceived, and the config is what does the perceiving.
+5. Leave **Default State Tree** empty so the built-in brain runs the patrol, or point it at a StateTree carrying the territory tasks.
+
+Any movement profile and action set work here. The grunt's numbers are a fine fight to come home from.
+
+<Callout type="info">
+**Only Fight Inside Leash** ships on, so the guard ignores a target standing beyond its ring and engages the moment one steps inside. Turn it off for a guard that charges anything it notices and gets dragged home by the leash instead. See [Territory & Patrols](/docs/soulslike-combat/territory) and [Awareness](/docs/soulslike-combat/awareness-system).
+</Callout>
+
+---
+
+## The boss
+
+One enemy the rest of the pack works around, with a second moveset for the back half of the fight.
+
+**Movement Behavior Profile**: the grunt's numbers with **Desired Distance** at 300, which keeps a large pawn at the reach of its own weapon rather than inside your camera.
+
+**Enemy AI Config**, under **Combat Role**:
+
+| Field | Value |
+|-------|-------|
+| Allowed Roles (empty = any) | `SEC.Role.Elite` |
+| Priority | 200 |
+| Ignore Target Redistribution | on |
+
+Elite slots are unlimited out of the box, so the boss keeps its role whatever else joins. **Priority** 200 gives it first pick, and **Ignore Target Redistribution** pins it to the player it started on while the adds shuffle around.
+
+**Phase one Action Set**: whatever the fight opens with, plus one action with **Manual Only** ticked, `PhaseSlam` for instance. A manual-only action never wins a poll and waits for a Blueprint to call **Execute Action** with its **Action ID**, so a scripted beat lands on your cue rather than the scorer's.
+
+**The phase swap**, in the boss Blueprint at the health threshold you pick:
+
+1. Call **Set Runtime Override** on the pawn's **SEC Action Set Component**, passing the phase-two Action Set. That beats every other source, the config and any weapon included.
+2. Call **Add World Tag** with `SEC.World.Boss.Phase2`.
+3. Give the phase-two openers a **Tag Score Multiplier** of 2.0 on that tag. Give a move that should retire a multiplier of 0 on the same tag, which drops it out of the running entirely.
+
+**Clear Runtime Override** puts the config's set back, so a scripted retreat can hand the boss its opening moveset again.
+
+---
+
+## Turn one number into a different enemy
+
+| What you see | What to change |
+|--------------|----------------|
+| It closes all the way in | Raise **Distance Tolerance** on the profile |
+| It backs off the moment you step toward it | Raise **Crowd Tolerance** |
+| It circles without a break | Tick **Enable Strafe Rest**, and lower **Strafe Rest Time Limit** |
+| It swings from across the room | Add a **Distance Scorer** to that action |
+| It spams one move | Set **Max Consecutive Uses** to 2 |
+| The pack attacks in lockstep | Raise **Randomization (%)** on each cooldown, and set **Spawn Cooldown Chance** |
+| Three of them swing at once | Add a **Combat Token Gate** to every attack |
+| It presses with no gap to punish | Set **Action Recovery Time** on the **Enemy AI Config** |
+| Staring at it changes nothing | Tick **Adjust Distance By Threat**, with a Threat Detection component on the controller |
+| It opens with its heaviest hit | Set **Initial Cooldown** on that action |
+
+---
+
+## Debug it
+
 ```
-LungeAttack:   200-400cm, 1s cooldown, high weight (initiator)
-RapidSlash:    50-150cm,  1.5s cooldown, chains from LungeAttack
-Grapple:       0-100cm,   3s cooldown, BehaviorTree with special animation
+SEC.Debug.All 1                  // Every overlay at once
+SEC.Debug.Scoring 1              // What each action scored, highest first
+SEC.Debug.Actions 1              // Cooldowns above each enemy
+SEC.Debug.Movement 1             // Layer, strafe side and heading
+SEC.Debug.Territory 1            // Posts, leash ring and route
+SEC.Debug.Reactions 1            // Reaction list with priorities and cooldowns
+SEC.Debug.LogActionDecisions 1   // Why each action scored what it did
+SEC.Debug.LogReactions 1         // Which rule answered, and with what
 ```
 
+`SEC.Debug.WatchPawn <name>` narrows every overlay to one enemy, which is what you want the moment two of these archetypes share a room. Run it with no argument to list the pawns it can watch.
+
+<Collapsible title="One pawn that plays several of these" badge="Alternative">
+Rather than a Blueprint per archetype, give one enemy a different profile and moveset per [combat role](/docs/soulslike-combat/combat-roles) and let the assignment pass decide which it is at any moment.
+
+On the **Enemy AI Config**, add entries to **Role Movement Profiles**, **Role Action Sets** and **Role Reaction Sets**:
+
+| Role | Profile | Action Set |
+|------|---------|-----------|
+| `SEC.Role.Attacker` | the grunt's | the grunt's |
+| `SEC.Role.Flanker` | the flanker's | the grunt's |
+| `SEC.Role.Waiter` | the archer's | the archer's |
+
+Fill in **Default Movement Profile** and **Default Action Set** as well. An enemy holding a role you did not list, or holding none yet, takes the default; leave it empty and it gets nothing.
+
+Three enemies on one Blueprint then read as three enemy types, and the pack rotates between them as the fight moves.
+</Collapsible>
+
+<Collapsible title="Stop a pack swinging all at once" badge="Advanced">
+Two caps stack, and they answer different questions.
+
+**Role Limits**, in **Project Settings**, **Plugins**, **Soulslike Enemy Combat**, cap how many enemies *hold* a role per target. Attacker ships at 3, Flanker and Supporter at 2. Lower Attacker to 1 and only one enemy at a time takes the front-line profile and moveset.
+
+A **Combat Token Gate** on each attack caps how many *swing* at the same moment, whatever role they hold. Add one with **Token Tag** `SEC.Token.Attack` to every offensive action in every set, and set **Cost** to 2 on a heavy so it occupies two slots and fewer enemies come in alongside it.
+
+Roles change slowly and read as positioning. Tokens are claimed and released per swing and read as timing. Most fights want both. See [Combat Roles](/docs/soulslike-combat/combat-roles) and [Combat Tokens](/docs/soulslike-combat/combat-tokens).
+</Collapsible>
+
+<Collapsible title="Give an archetype its own weapon instead" badge="Alternative">
+A weapon carries its own moveset, so arming an enemy changes what it is without touching its config. Set **Weapon Action Set** and **Weapon Reaction Set** on the weapon Blueprint, and while the enemy holds it those beat the config's role entries and defaults alike.
+
+The same grunt with a bow fights the archer's fight, and drops back to its config's moveset when the bow leaves its hand. See [Weapons](/docs/soulslike-combat/weapons).
+</Collapsible>
+
+<Collapsible title="The recipe reads wrong in play" badge="Advanced">
+- **The rusher will not lunge.** A **Combat Token Gate** on the gap-closer holds it behind the pack while the pool is full. Take the gate off the opener and leave it on the swing that follows.
+- **The archer strolls into melee.** **Desired Distance** is at or above 800, which parks it in the pathfinding layer.
+- **The flanker stands in front of you.** The Angle Preference Rule reads the target's forward vector, so a target with no meaningful facing gives it nothing to orbit. Check **Weight** is above 0, and that the profile with the rule is the one the enemy's current role resolves to.
+- **The guard patrols but never fights.** **Only Fight Inside Leash** with a tight **Leash Radius** keeps it ignoring you. Widen the radius or untick the box.
+- **The duellist never parries.** No **SEC Attack Telegraph** notify on the incoming montage. `SEC.Debug.Stimulus.Draw 1` shows whether anything is going out at all.
+- **The boss keeps its phase-one moves.** **Set Runtime Override** belongs on the pawn's **SEC Action Set Component**. Check the node's target pin holds that component rather than the controller.
+- **Nothing in any recipe fires.** No registered combat target. It logs nothing, and from the outside it looks the same as everything else on this list.
+</Collapsible>
 
 <DocNav prev={{ title: "StateTree Tasks", href: "/docs/soulslike-combat/statetree" }} next={{ title: "Troubleshooting", href: "/docs/soulslike-combat/troubleshooting" }} />

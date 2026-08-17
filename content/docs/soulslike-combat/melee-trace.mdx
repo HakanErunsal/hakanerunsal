@@ -270,6 +270,22 @@ Tick **Use Authored Hit Direction** on the damage config to send a fixed directi
 Sockets take the component's **Trace Filter** by default. Tick **Override Trace Filter** on one entry and fill in **Trace Filter Override** to give that contact point its own rule, for a pickaxe head that also breaks rocks while the haft keeps the ordinary filter.
 </Collapsible>
 
+<Collapsible title="Changing one phase of the pipeline" badge="Advanced">
+Make a Blueprint child of the **SEC Melee Trace** component, put that child on the character in place of the base, and override the event for the phase you want to change. Every other phase carries on as it is.
+
+| Event | Controls |
+|-------|----------|
+| **Build Damage Info** | The damage before it is sent, for crit scaling or an elemental pass. It receives the socket that struck, so damage can vary by contact point. |
+| **Handle Damage Result** | Whether the hit is recorded. The default records everything except a result matching **Skip Record Tags**. An override replaces that rule outright, so call **Record Hit** for the hits you mean to keep. |
+| **Classify Hit** | The Damageable, Inert or Scenery sorting. |
+| **Classify Contact** | Whether a contact is a body to damage, a sensor to report, or something to drop. The default drops a target holding one of **Pass Through Tags**, reports a component carrying one of **Sense Component Tags**, and damages everything else. Call **Is Pass Through Target** from an override to keep the pass-through half of that rule. |
+| **Should Detect Hits** | Which machine sweeps. Answers the authority. |
+
+Three nodes support those overrides. **Can Hit Actor** answers whether the swing may still land on a target, **Record Hit** spends the swing on one, and **Get Targets Hit This Window** counts what it has already struck, which is what damage falloff across a cleave reads.
+
+**Build Damage Info** hands the target the damage config the attack was authored on. Make a child of **SEC Damage Config** to carry whatever else an attack needs, poise damage or a stagger tier, and cast it in the target's **Handle Incoming Damage**.
+</Collapsible>
+
 <Collapsible title="Fists, claws and anything without a weapon" badge="Alternative">
 A pawn with no weapon registers its own sockets from Blueprint, usually on Begin Play. Three nodes on the trace component cover it:
 
@@ -307,6 +323,18 @@ On **None**, bind **On Melee Hit** and do the whole thing yourself. The event ca
 The first two apply damage on the server and report an empty result anywhere else.
 </Collapsible>
 
+<Collapsible title="Opening a trace window without a montage notify" badge="Alternative">
+Three nodes on the trace component drive a window by hand, for an attack whose timing comes from somewhere other than a montage.
+
+| Node | Does |
+|------|------|
+| **Start Tracing** | Opens a window on the socket IDs given, or on every registered socket when the list is empty. Takes the damage config for that window, and a debug draw override for it alone. |
+| **Start Tracing Simple** | The same, taking a loose damage figure in place of a config. A figure below zero falls back to **Base Damage** on the component. With no config the window runs no hit effects and sends the component's **Damage Type Class**. |
+| **Stop Tracing** | Closes the window and clears its hit records. |
+
+**Get Registered Socket IDs** lists what is there to name, and **Is Tracing** answers whether a window is open.
+</Collapsible>
+
 <Collapsible title="Traces in multiplayer" badge="Multiplayer">
 The authority sweeps for hits and every other machine stays out of it, which is what keeps one swing from landing twice. **On Melee Hit**, **On Melee Hit Response** and **On Melee Sensed** therefore fire on the server alone.
 
@@ -315,42 +343,6 @@ A cue effect fired there multicasts through the ability system and reaches every
 Two things bite a project that moves detection to the owning client. A team id held on a controller reads as no team on a client, since a controller replicates only to its own player, so put the id on the pawn or its PlayerState. And a cue fired off the authority outside a prediction window plays nothing, so a client-detected hit needs its cues driven locally.
 
 See [Multiplayer](/docs/soulslike-combat/multiplayer).
-</Collapsible>
-
-<Collapsible title="Extending the pipeline" badge="C++">
-Subclass `USECMeleeTraceComponent` in Blueprint or C++ and override the phase you need.
-
-| Override | Controls |
-|----------|----------|
-| `BuildDamageInfo` | The damage before it is sent, for crit scaling or an elemental pass. It receives the socket that struck, so damage can vary by contact point. |
-| `HandleDamageResult` | Whether the hit is recorded. The default records everything except a result matching `SkipRecordTags`. An override replaces that rule outright, so call `RecordHit` for the hits you mean to keep. |
-| `ClassifyHit` | The Damageable, Inert or Scenery sorting. |
-| `ClassifyContact` | Whether a contact is a body to damage, a sensor to report, or something to drop. The default drops a target holding one of `PassThroughTags`, reports a component carrying one of `SenseComponentTags`, and damages everything else. Call `IsPassThroughTarget` from an override to keep the pass-through half of that rule. |
-| `ShouldDetectHits` | Which machine sweeps. Defaults to the authority. |
-
-`CanHitActor`, `RecordHit` and `GetTargetsHitThisWindow` are Blueprint-callable, the last one for damage falloff across a cleave.
-
-Manual control, for a project not driving traces from a montage:
-
-```cpp
-void StartTracing(const TArray<FName>& SocketIDs, USECDamageConfig* DamageConfig = nullptr, bool bDebugOverride = false);
-void StartTracingSimple(const TArray<FName>& SocketIDs, float DamageOverride);
-void StopTracing();
-
-bool RegisterTraceSocket_Struct(const FSECTraceSocket& TraceSocket);
-void UnregisterTraceSocket(FName ID);
-void UnregisterAllSockets();
-
-TArray<FName> GetRegisteredSocketIDs() const;
-void AddTraceIgnoredActor(AActor* Actor);
-void RemoveTraceIgnoredActor(AActor* Actor);
-```
-
-`StartTracingSimple` takes a numeric override instead of a config; a value below zero falls back to `BaseDamage`.
-
-`OnMeleeHit` carries `FSECMeleeHitData` (`HitResult`, `FromSocketID`, `DamageConfig`, `Classification`). `OnMeleeHitResponse` adds the `FSECDamageResult` the target reported: `DamageApplied`, `bWasFatal`, `ResultTags`. A target reached through point damage reports what its `TakeDamage` returned, with no fatal flag and no result tags.
-
-`FSECDamageInfo` carries `Instigator`, `DamageCauser` (the weapon when the socket sits on one, the wielder otherwise), `HitResult`, `HitDirection`, `DamageDefinition`, `DamageTags` and `DamageConfig`. Subclass `USECDamageConfig` to carry your own per-attack data and cast it inside `HandleIncomingDamage`.
 </Collapsible>
 
 ---
@@ -364,6 +356,7 @@ void RemoveTraceIgnoredActor(AActor* Actor);
 | [Defense System](/docs/soulslike-combat/defense-system) | What the target does with the hit, and the result tags it reports back. |
 | [Attack Telegraphs](/docs/soulslike-combat/attack-telegraphs) | Warning a target before the window opens. |
 | [Multiplayer](/docs/soulslike-combat/multiplayer) | Which machine sweeps and what reaches the others. |
+| [API Reference](/docs/soulslike-combat/api-reference#usecmeleetracecomponent) | The override points and the hit payloads in C++. |
 
 <DocNav
   prev={{ title: "Territory & Patrols", href: "/docs/soulslike-combat/territory" }}

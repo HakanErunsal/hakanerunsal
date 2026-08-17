@@ -1,7 +1,7 @@
 ---
 title: "API Reference"
-description: "Controller-side C++ and Blueprint API: SECCombatControllerComponent, EnemyControllerBase, SECBrainComponent, and BotStateTreeAIComponent."
-date: 2026-08-10
+description: "The C++ and Blueprint surface: the controller components, the combat token subsystem, the melee trace pipeline, territory lookups, and the scorer and gate bases."
+date: 2026-08-17
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Reference"]
 parent: "SoulslikeCombatDocs"
@@ -15,7 +15,7 @@ order: 22
     { label: "API Reference" }
 ]} />
 
-The controller-side classes and their public members. For building an enemy, start with [Getting Started](/docs/soulslike-combat/getting-started); this page is the reference you reach for when extending the system in Blueprint or C++.
+The classes and their public members. For building an enemy, start with [Getting Started](/docs/soulslike-combat/getting-started); this page is the reference you reach for when extending the system in C++. Each system's own page covers the same ground for Blueprint.
 
 ---
 
@@ -152,5 +152,128 @@ Extends Unreal's `UStateTreeAIComponent`. `SECBrainComponent` creates it at runt
 | `bAutoInitializeFromConfig` | true | Initialize from the config automatically on possession. Disable for manual control |
 | `FallbackStateTree` | null | Used when no config is found or the config names no StateTree |
 
+---
+
+## USECCombatTokenSubsystem
+
+The world subsystem holding the permission slots each target hands out. Server only: every function that changes the ledger returns without effect on a client, and the queries there report no block. See [Combat Tokens](/docs/soulslike-combat/combat-tokens).
+
+**Claiming**
+
+```cpp
+bool  TryClaimTokens(AActor* Target, AController* Holder, const TArray<FSECTokenRequirement>& Requirements, FSECTokenLeaseHandle& OutLease);
+void  ReleaseTokens(const FSECTokenLeaseHandle& Lease);
+int32 ReleaseAllTokensForHolder(AController* Holder);
+bool  CanClaimToken(AActor* Target, AController* Holder, FGameplayTag TokenTag, int32 Cost = 1) const;
+bool  HoldsToken(AActor* Target, AController* Holder, FGameplayTag TokenTag) const;
+```
+
+`TryClaimTokens` takes every listed slot or takes none. `ReleaseTokens` hands back what one receipt covers and starts the reissue delay; running it twice, or with a receipt for a target that is gone, does nothing. `ReleaseAllTokensForHolder` reports how many claims it freed. `CanClaimToken` reserves nothing and reads true while the holder already holds a slot for the tag.
+
+**Budget and query**: `SetTokenBudget`, `ClearTokenBudget`, `ClearTarget`, `GetTokenBudget`, `GetAvailableTokens`, `GetTokenHolders`, `IsTokenTarget`, `GetTokenPoolStatus`. `OnTokenAvailabilityChanged(Target, TokenTag, AvailableTokens, Budget)` fires when a pool's free count moves.
+
+| Struct | Members |
+|--------|---------|
+| `FSECTokenRequirement` | `TokenTag`, `Cost` (1). Two entries naming one tag keep the larger cost |
+| `FSECTokenLeaseHandle` | `ClaimId` (0 means nothing is held), `Target`. The target rides on the receipt so a release finds the right pool after the AI has moved on |
+| `FSECTokenPoolStatus` | `TokenTag`, `Budget`, `AvailableTokens`, `HeldTokens`, `CoolingTokens`, `SecondsUntilNextReissue`, `Holders` |
+
+A holder destroyed without releasing frees its slot the next time the pool is read, so an AI that has gone cannot hold a pool shut.
+
+**USECTokenGate**
+
+```cpp
+static void CollectRequirements(const FSECCustomScoring& Scoring, TArray<FSECTokenRequirement>& OutRequirements);
+```
+
+Gathers what a spec's token gates need, merging duplicate tags and skipping inverted gates. `UActionEvaluationComponent` calls it as an action starts and claims against the controller's focus actor, the same actor the gate scored against.
+
+---
+
+## USECScorer and USECGate
+
+The two bases an action or reaction extends its scoring with, both `Blueprintable` and `EditInlineNew`. Instances live in `FSECCustomScoring`: `Scorers` for soft multipliers, `Gates` for hard vetoes. See [Action System](/docs/soulslike-combat/action-system).
+
+```cpp
+virtual float ScoreMultiplier_Implementation(const FSECScoringContext& Context) const;  // USECScorer, 1.0 = no effect
+virtual bool  PassesGate_Implementation(const FSECScoringContext& Context) const;       // USECGate, false vetoes
+virtual FString GetDisplayName_Implementation() const;                                  // row title, logs, breakdown
+```
+
+Subclasses must be stateless: one instance is shared across every AI using the asset. Derive randomness from `SeededRandom(Context)` rather than raw RNG.
+
+`FSECScoringContext` carries `Controller`, `Target`, `ASC`, `SpecId`, `EventTag`, `bIsReaction`, `Seed`, `WindowId`, the snapshot fields `Distance`, `AngleDegAbs`, `Speed`, `HealthPercentage`, `Stamina`, the `Vitals` component, and the `Stimulus` that set a reaction off. It carries no threat figure, so a scorer wanting camera attention reads `UThreatDetectionComponent::GetCurrentThreatLevel()` off `Context.Controller`.
+
+`SupportedSurfaces` names the lists a class belongs in (`Actions`, `Reactions`, `TriggerRules`), and asset validation reports one authored where it does not belong.
+
+---
+
+## USECMeleeTraceComponent
+
+The swept-trace component on the pawn. Five phases of its pipeline are `BlueprintNativeEvent`, so a Blueprint subclass overrides the event and a C++ subclass overrides `_Implementation`. See [Melee Trace](/docs/soulslike-combat/melee-trace).
+
+```cpp
+FSECDamageInfo         BuildDamageInfo(AActor* HitActor, const FHitResult& Hit, const FVector& Direction, const FSECTraceSocket& Socket) const;
+void                   HandleDamageResult(AActor* HitActor, const FSECMeleeHitData& MeleeHitData, const FSECDamageResult& Result);
+ESECHitClassification  ClassifyHit(AActor* HitActor, const FHitResult& Hit) const;
+ESECContactRole        ClassifyContact(AActor* HitActor, const FHitResult& Hit) const;
+bool                   ShouldDetectHits() const;
+```
+
+`ShouldDetectHits` answers the authority. `HandleDamageResult` replaces the recording rule outright, so call `RecordHit` for the hits an override means to keep. `CanHitActor`, `RecordHit` and `IsPassThroughTarget` are protected, so an override reaches them from the subclass. `GetTargetsHitThisWindow` is public, for damage falloff across a cleave. `BuildSweepQueryParams(FCollisionQueryParams&)` is C++ only, for a sweep that asks the world something else, such as complex collision to read the struck face's material.
+
+Manual control, for a project not driving traces from a montage:
+
+```cpp
+virtual void StartTracing(const TArray<FName>& SocketIDs, USECDamageConfig* DamageConfig = nullptr, bool bDebugOverride = false);
+virtual void StartTracingSimple(const TArray<FName>& SocketIDs, float DamageOverride);
+virtual void StopTracing();
+
+bool RegisterTraceSocket_Struct(const FSECTraceSocket& TraceSocket);
+void UnregisterTraceSocket(FName ID);
+bool UnregisterTraceSocketFrom(FName ID, const USceneComponent* ExpectedSource);
+void UnregisterAllSockets();
+
+TArray<FName>   GetRegisteredSocketIDs() const;
+void            AddTraceIgnoredActor(AActor* Actor);
+void            RemoveTraceIgnoredActor(AActor* Actor);
+TArray<AActor*> GetTraceIgnoredActors() const;
+```
+
+`StartTracingSimple` takes a numeric override instead of a config; a value below zero falls back to `BaseDamage`. `RegisterTraceSocket_Struct` is the only entry point reading `SourceComponentTag` and a socket's own filter override, and returns false when the socket named no source, another component holds its ID, or this machine does not detect hits.
+
+**Payloads**
+
+| Struct | Members |
+|--------|---------|
+| `FSECMeleeHitData` | `HitResult`, `FromSocketID`, `DamageConfig`, `Classification`. Carried by `OnMeleeHit` and `OnMeleeSensed` |
+| `FSECDamageResult` | `DamageApplied`, `AdditionalVitalDamageApplied`, `bWasFatal`, `ResultTags`. Added by `OnMeleeHitResponse` |
+| `FSECDamageInfo` | `Instigator`, `DamageCauser` (the weapon when the socket sits on one, the wielder otherwise), `HitResult`, `HitDirection`, `DamageDefinition`, `DamageConfig`, `DamageTags`, `CustomPayload` |
+
+A target reached through point damage reports what its `TakeDamage` returned, with no fatal flag and no result tags. Subclass `USECDamageConfig` to carry per-attack data of your own and cast it inside the target's `HandleIncomingDamage`.
+
+---
+
+## USECTerritoryComponent
+
+Pawn-side, server only. The route, ground and leash functions are Blueprint exposed and covered on [Territory & Patrols](/docs/soulslike-combat/territory). The lookups, and the two members C++ alone reaches:
+
+| Function | Purpose |
+|----------|---------|
+| `static USECTerritoryComponent* FindTerritoryComponent(const AController* Controller)` | The component on a controller or its possessed pawn |
+| `static FVector GetPostLocationFor(AActor* Post)` | Where a post stands, for any actor, post component or not |
+| `static float GetWanderExtentFor(AActor* Post)` | How far an enemy may drift from a post, 0 for an actor with no post component |
+| `static int32 StepPostIndex(ESECPostOrder Order, int32 PostCount, int32 CurrentIndex, int32& InOutPingPongStep)` | The next index an order policy names, with no reference to where the pawn is. C++ only; `AdvanceRoute` is the Blueprint-reachable form |
+| `float GetLeashSlack() const` | `LeashRadius` as a usable number: never negative, and 0 when it is not a real number |
+
+**USECTerritoryPostComponent**
+
+`static USECTerritoryPostComponent* FindPostComponent(const AActor* PostActor)` resolves the post component from any actor, and reads null for one carrying none.
+
+```cpp
+virtual bool PickPointInArea_Implementation(const AActor* Querier, FVector& OutPoint) const;
+```
+
+Override it for a post that works its destination out at runtime. `Querier` is the pawn being sent there, which sizes the navmesh query to its agent; returning false stands the enemy on the post itself. The base gathers reachable spots inside the area, up to `PointSampleAttempts` tries, and picks among them under `WanderSelection`.
 
 <DocNav prev={{ title: "Performance", href: "/docs/soulslike-combat/performance" }} />
