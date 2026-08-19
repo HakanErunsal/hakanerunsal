@@ -1,11 +1,11 @@
 ---
 title: "Configuration Reference"
 description: "Every SEC setting and the one place you set it: project settings, the Enemy AI Config, the data assets, the components."
-date: 2026-08-17
+date: 2026-08-19
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Configuration", "Reference"]
 parent: "SoulslikeCombatDocs"
-order: 20
+order: 21
 ---
 
 
@@ -29,7 +29,7 @@ order: 20
 The dividing line: an Enemy AI Config holds what changes with the combat role, a component holds what does not.
 
 <Callout type="warning">
-No target selector ships turned on. With **Target Selector** empty on the Enemy AI Config and **Default Target Selector** empty in Project Settings, an enemy that registers while a target is already in the pool takes the first one it may fight, which hides the gap in a simple level. An enemy possessed or spawned before the player never picks one up and stands still forever. Fill in one of the two. [Targeting](/docs/soulslike-combat/targeting-system) covers the choices.
+No target selector ships turned on. With **Target Selector** empty on the Enemy AI Config and **Default Target Selector** empty in Project Settings, an enemy takes the first target it may fight, whether that target was already in the pool or registered long after the enemy started running, as long as **Register Combat Target** is called with **Auto Assign Unassigned** ticked. Fill one of the two in once several enemies share a fight or several players are registered. [Targeting](/docs/soulslike-combat/targeting-system) covers the choices.
 </Callout>
 
 ---

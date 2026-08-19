@@ -1,11 +1,11 @@
 ---
 title: "Targeting System"
 description: "Give every enemy something to fight: register the player once, pick how each AI chooses, and the pack engages."
-date: 2026-08-17
+date: 2026-08-19
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Targeting", "Multi-Player"]
 parent: "SoulslikeCombatDocs"
-order: 11
+order: 12
 ---
 
 <Breadcrumb items={[
@@ -40,7 +40,7 @@ Open the enemy's **Enemy AI Config** and set **Target Selector** to **Closest Ta
     { name: "Target Filter", value: "None", from: "None", kind: "class" },
     { name: "Ignore Target Redistribution", value: "false", from: "false", kind: "bool" }
   ]}
-  caption="Target Selector is the one field to fill. The other two have working defaults."
+  caption="All three have working defaults. Target Selector is the one worth filling in once a fight holds more than one enemy."
 />
 
 </QuickStep>
@@ -54,7 +54,7 @@ Press Play and run `SEC.Debug.Role 1`. Every enemy draws its name and combat rol
 </QuickStart>
 
 <Callout type="warning">
-**Target Selector** ships empty on the AI Config, and **Default Target Selector** ships empty in project settings. An enemy that registers while a target is already in the pool takes the first one it may fight, which hides the gap in a simple level. An enemy possessed or spawned before the player never picks one up and stands still forever. Fill in one of the two.
+**Target Selector** ships empty on the AI Config, and **Default Target Selector** ships empty in project settings. With neither filled in, an enemy takes the first target it may fight, whether that target was already in the pool or registered long after the enemy started running, as long as **Register Combat Target** is called with **Auto Assign Unassigned** ticked. That carries a single enemy and a single player. Fill one of the two in once several enemies share a fight or several players are registered, because then which target each enemy takes is a decision worth making.
 </Callout>
 
 ---

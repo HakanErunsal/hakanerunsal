@@ -1,11 +1,11 @@
 ---
 title: "Debugging & Troubleshooting"
 description: "The symptom you are looking at, the one thing that causes it, and the fix."
-date: 2026-08-17
+date: 2026-08-19
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "FAQ"]
 parent: "SoulslikeCombatDocs"
-order: 25
+order: 26
 ---
 
 <Breadcrumb items={[
@@ -92,7 +92,7 @@ Log LogMovementEvaluatorTick off
 No combat target, or the enemy never reached its combat phase. Check these five in order.
 
 1. **AI Controller Class is unset** on the pawn Blueprint. The pawn gets the project's default controller and none of the combat components exist. Set it in Class Defaults.
-2. **Target Selector is empty** on the Enemy AI Config. Set it to **Awareness Filtered Target Selector** and leave its **Inner Selector** empty, so it offers the nearest target this enemy has perceived. An enemy that registered before its target appeared gets nothing without a selector. **Closest Target Selector** gets it moving too, but it engages anything registered whether the enemy sensed it or not.
+2. **Target Selector is empty** on the Enemy AI Config. An empty one still takes the first target the enemy may fight, so this rarely leaves a single enemy idle, but it gives you no say in which target it takes. Set it to **Awareness Filtered Target Selector** and leave its **Inner Selector** empty, so it offers the nearest target this enemy has perceived. **Closest Target Selector** works too, though it engages anything registered whether the enemy sensed it or not.
 3. **Awareness Config is empty** on the Enemy AI Config. The enemy senses nothing, holds at Unknown, and never enters its combat phase. Point it at an Awareness Config asset and leave that asset's defaults alone. This config does the perceiving; the filtered selector in step 2 is what turns perception into aggro, so fill in both.
 4. **The player was never registered as a combat target.** On the player pawn's **Event BeginPlay**, branch on **Has Authority**, then call **Register Combat Target** on the **AICombat Role Subsystem** with **Target Actor** set to **Self**. See [Getting Started](/docs/soulslike-combat/getting-started).
 5. **The AI Config is on neither the pawn nor the controller**, so there is nothing to resolve at possession.

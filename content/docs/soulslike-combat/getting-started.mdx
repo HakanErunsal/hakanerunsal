@@ -1,7 +1,7 @@
 ---
 title: "Getting Started with SoulslikeCombat"
 description: "Turn the plugin on and get a live enemy that spots the player, closes the distance and holds its range, with no C++."
-date: 2026-08-17
+date: 2026-08-19
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Tutorial"]
 parent: "SoulslikeCombatDocs"
@@ -191,7 +191,7 @@ SEC.Debug.Scoring 1      // What each action scored, highest first
 In the order worth checking:
 
 - **AI Controller Class is unset** on the pawn Blueprint, so the pawn got the project's default controller and none of the combat components exist.
-- **Target Selector is empty** on the AI Config, and the project's **Default Target Selector** ships empty too. Nothing assigns a target, so no focus actor is ever set and nothing downstream runs.
+- **Target Selector is empty** on the AI Config, and the project's **Default Target Selector** ships empty too. The fallback still hands the enemy the first target it may fight, so check this when the enemy engages the wrong one rather than when it engages nothing.
 - **Awareness Config is empty**, so the enemy senses nothing, stays at Unknown, and never enters its combat phase.
 - **No navmesh.** Past 800 cm the enemy asks for a path, and the request fails every tick. Add a **NavMesh Bounds Volume**, build navigation, and press **P** to check it covers the floor.
 - **The AI Config is on neither the pawn nor the controller**, so there is nothing to resolve at possession.

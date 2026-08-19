@@ -102,6 +102,7 @@ import { QuickStart, QuickStep } from '@/components/QuickStart';
 import UeCreateAssetScene from '@/components/ue-editor/UeCreateAssetScene';
 import UeSetPropertiesScene from '@/components/ue-editor/UeSetPropertiesScene';
 import UeDoubleClickHint from '@/components/ue-editor/UeDoubleClickHint';
+import { UeComponentsPanel } from '@/components/ue-editor/UeComponentsPanel';
 import ReactionSetGraphScene from '@/components/ReactionSetGraphScene';
 import ActionSetGraphScene from '@/components/ActionSetGraphScene';
 import ComboWireScene from '@/components/ComboWireScene';
@@ -124,6 +125,7 @@ const components = {
   UeCreateAssetScene,
   UeSetPropertiesScene,
   UeDoubleClickHint,
+  UeComponentsPanel,
   ReactionSetGraphScene,
   ActionSetGraphScene,
   ComboWireScene,

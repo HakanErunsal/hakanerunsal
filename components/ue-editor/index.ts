@@ -109,6 +109,7 @@ export {
   type UeFormulaGraphProps,
 } from "./UeFormulaGraph";
 export { UeComponentRow } from "./UeComponentRow";
+export { UeComponentsPanel, type UeComponentsPanelProps, type UeComponentsPanelEntry } from "./UeComponentsPanel";
 export { UeComponentDetailsPanel, type UeComponentDetailsPanelProps, type UeDetailsSourceKind } from "./UeComponentDetailsPanel";
 export { UeSceneFrame } from "./UeSceneFrame";
 export { useSceneClock } from "./useSceneClock";

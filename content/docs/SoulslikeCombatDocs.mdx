@@ -9,7 +9,7 @@ tags: ["Documentation", "Unreal Engine", "AI", "Tutorial"]
 
 Enemy combat AI for Unreal Engine 5.6 and newer: tactical movement, scored attacks, reactions, and coordination across a group. Each system stands on its own, so you can take the movement evaluator without the action scoring, or the melee traces without either. Runs on single player, listen server and dedicated server.
 
-New here? Start with [Getting Started](/docs/soulslike-combat/getting-started) for a working enemy, then [Step-by-Step Enemy](/docs/soulslike-combat/step-by-step-enemy) to build one properly.
+New here? Start with [Getting Started](/docs/soulslike-combat/getting-started) for a working enemy, then [Step-by-Step Enemy](/docs/soulslike-combat/step-by-step-enemy) to build one properly. Already have a Character and an AI Controller you cannot reparent? [Minimal Enemy](/docs/soulslike-combat/minimal-enemy) is the six components that make one fight, with nothing inherited.
 
 ## How the pieces connect
 
@@ -21,7 +21,7 @@ Config drives the controller, the controller decides, the pawn holds the moveset
 
 ## Start here
 
-<div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8 p-6 not-prose">
+<div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-8 p-6 not-prose">
 
 <a href="/docs/soulslike-combat/getting-started" className="doc-card rounded-lg border border-border hover:border-primary/50 transition-all duration-300 bg-card block overflow-hidden">
   <div style={{height: "144px", position: "relative", overflow: "hidden", display: "flex", alignItems: "center"}}>
@@ -42,6 +42,17 @@ Config drives the controller, the controller decides, the pawn holds the moveset
   <div className="p-6">
     <h3 className="text-lg font-semibold mb-3">Step-by-Step Enemy</h3>
     <p className="text-sm text-muted-foreground">Comprehensive guide to creating a complete enemy from scratch.</p>
+  </div>
+</a>
+
+<a href="/docs/soulslike-combat/minimal-enemy" className="doc-card rounded-lg border border-border hover:border-primary/50 transition-all duration-300 bg-card block overflow-hidden">
+  <div style={{height: "144px", position: "relative", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(135deg, #1b1b1b 0%, #2f2f2f 55%, #0f4c81 100%)"}}>
+    <span style={{fontSize: "2.5rem"}}>🧱</span>
+    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+  </div>
+  <div className="p-6">
+    <h3 className="text-lg font-semibold mb-3">Minimal Enemy</h3>
+    <p className="text-sm text-muted-foreground">The six components that make an enemy fight, on a pawn and controller of your own.</p>
   </div>
 </a>
 
