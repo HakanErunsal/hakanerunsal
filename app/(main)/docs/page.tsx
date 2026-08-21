@@ -1,12 +1,24 @@
 // Importing necessary modules and components
+import { Metadata } from "next";
 import { sortDocs } from "@/lib/utils";
 import { docs } from "#site/content";
 import MediaCard from "@/components/media-card";
+import { brandConfig } from "@/config/site";
+import { listedDocs, docHref, docHost, isOffsiteDoc } from "@/lib/docs-ownership";
+
+export const metadata: Metadata = {
+    title: "Documentation",
+    alternates: {
+        canonical: `${brandConfig.url}/docs`,
+    },
+};
 
 // Docs functional component
 export default function DocsPage() {
     // Sorting and selecting published docs (excluding sub-pages with parent field)
-    const publishedDocs = sortDocs(docs.filter(d => d.published && !d.parent)).slice(0, 20);
+    const publishedDocs = sortDocs(
+        listedDocs(docs).filter(d => d.published && !d.parent)
+    ).slice(0, 20);
 
     return (
         <div className="max-w-5xl mx-auto px-6">
@@ -28,6 +40,12 @@ export default function DocsPage() {
                     <div key={doc.slug}>
                         <MediaCard
                             slug={doc.slug}
+                            href={docHref(doc.slug, doc.slugAsParams)}
+                            offsiteLabel={
+                                isOffsiteDoc(doc.slugAsParams)
+                                    ? new URL(docHost(doc.slugAsParams)).host
+                                    : undefined
+                            }
                             image={doc.image?.src || ''}
                             title={doc.title}
                         />

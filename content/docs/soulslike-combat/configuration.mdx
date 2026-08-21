@@ -1,11 +1,11 @@
 ---
 title: "Configuration Reference"
-description: "Complete reference for all data assets: AICombatConfig, ActionSets, Movement Profiles, and Damage Config."
-date: 2026-08-04
+description: "Every SEC setting and the one place you set it: project settings, the Enemy AI Config, the data assets, the components."
+date: 2026-08-21
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Configuration", "Reference"]
 parent: "SoulslikeCombatDocs"
-order: 16
+order: 21
 ---
 
 
@@ -15,349 +15,389 @@ order: 16
     { label: "Configuration Reference" }
 ]} />
 
-> All data assets in one place. Link here from system pages for specific configuration details.
+> Every setting SEC reads, grouped by where you set it. Look the value up here, follow the link for what it does.
+
+## Where a setting lives
+
+| Where | What it covers | Reaches |
+|-------|----------------|---------|
+| **Project Settings, Plugins, Soulslike Enemy Combat** | Role slot limits, token budgets, target selection fallbacks, which vital counts as health | The whole project |
+| **Enemy AI Config** | One enemy archetype: role registration, target selection, the sets it swaps per role, perception, recovery | Every enemy pointed at that asset |
+| **The assets that config names** | Movesets, reactions, movement bands, perception ranges, damage | Wherever an asset is named |
+| **Components on the controller and the pawn** | What stays the same whatever role the enemy plays | One Blueprint, or one placed actor |
+
+The dividing line: an Enemy AI Config holds what changes with the combat role, a component holds what does not.
+
+<Callout type="warning">
+No target selector ships turned on. With **Target Selector** empty on the Enemy AI Config and **Default Target Selector** empty in Project Settings, an enemy takes the first target it may fight, whether that target was already in the pool or registered long after the enemy started running, as long as **Register Combat Target** is called with **Auto Assign Unassigned** ticked. Fill one of the two in once several enemies share a fight or several players are registered. [Targeting](/docs/soulslike-combat/targeting-system) covers the choices.
+</Callout>
 
 ---
 
-<h2 id="combat-config">EnemyAIConfig</h2>
+## Project Settings
 
-**Used by:** [Combat Roles System](/docs/soulslike-combat/combat-roles), [SECCombatControllerComponent](/docs/soulslike-combat/architecture#the-pieces)
+**Edit**, **Project Settings**, **Plugins**, **Soulslike Enemy Combat**. What you set here covers every enemy in the project.
 
-Defines combat role selection, behavior logic, and action set binding for an AI.
+### Combat Roles
 
-**Config Resolution Order:**
-1. Pawn implementing `IEnemyAIConfigProvider`
-2. `SECCombatControllerComponent`'s `DefaultAIConfig`, when the pawn supplies none
+| Setting | Default | Sets |
+|---------|---------|------|
+| **Additional Roles** | empty | Custom role tags evaluated alongside Attacker, Waiter, Flanker, Supporter and Elite. |
+| **Role Limits** | Attacker 3, Flanker 2, Supporter 2 | How many enemies hold each role against one target at a time. A role with no row is unlimited. |
+| **Fallback Role** | `SEC.Role.Waiter` | The role handed out when every preferred slot is full. Keep it out of Role Limits so it can absorb the overflow. |
 
-Set the config on the pawn for per-enemy customization, or on the `SECCombatControllerComponent`'s `DefaultAIConfig` when all units sharing a controller should use the same config.
+<CombatRoleTimingDetails />
 
-### SECCombatControllerComponent Properties
+| Setting | Default | Sets |
+|---------|---------|------|
+| **Role Reassignment Interval** | 8 s | Seconds between role re-evaluations. |
+| **Min Time In Role** | 8 s | How long an enemy holds a role before it can be reassigned, which stops role thrashing. |
+| **Reevaluate Targets On Reassignment** | off | Re-run each enemy's target selection on every cycle. Fights with one player see no difference. |
 
-<CombatControllerDetails />
+See [Combat Roles](/docs/soulslike-combat/combat-roles).
 
-| Property | Purpose |
-|----------|----------|
-| **Default AI Config** | Fallback AI Config when the pawn provides none |
-| **Auto Register For Combat Roles** | Register with the role subsystem on possession |
-| **Enable Threat Detection** | Turn on `ThreatDetectionComponent` at BeginPlay |
-| **Drop Weapon On Death** | Drop the equipped weapon with physics on death. Untick to handle the drop yourself, from an AnimNotify or `K2_OnDeath`. |
-| **Auto Handle Death On Health Depleted** | Run `HandleDeath()` when the health vital empties |
+### Combat Tokens
 
-### SECCombatControllerComponent Delegates
+<CombatTokenSettingsDetails />
 
-| Delegate | Purpose |
-|----------|----------|
-| `OnCombatRoleChanged` | Broadcast when combat role changes (new role, old role) |
-| `OnCombatTargetLost` | Broadcast when assigned combat target is destroyed/unregistered |
-| `OnCombatRoleSystemReady` | Broadcast after successful registration with the role subsystem. Safe to call `ForceAssignRole` here. |
-| `OnDeath` | Broadcast at the end of `HandleDeath()`, after all combat systems are shut down. Safe to enable ragdoll, play death VFX, or destroy the actor here. |
+**Budget** caps how many enemies run one class of action against the same target at once. **Reissue Delay** holds a freed slot out of circulation for that many seconds, which paces how fast one attack follows another. A tag with no row is unlimited, and an action opts in by carrying a **Combat Token Gate**. See [Combat Tokens](/docs/soulslike-combat/combat-tokens).
 
-### MovementBehaviorProfile Threat Response
+### Target Selection
 
-These settings live on the `MovementBehaviorProfile` data asset, so they automatically change when the AI switches combat roles:
+<ProjectTargetingDetails />
 
-<ThreatResponseProfileDetails />
+**Default Target Selector** answers for any enemy whose config names none. **Default Target Filter** decides which actors an enemy is willing to fight at all; left empty, the built-in answer applies (never itself, never a declared ally, never an actor its team excludes, and anything with no team is fair game).
 
-**Threat Distance Scale** feeds `DistMultiplier = 1.0 + ThreatLevel * Scale`, and stays greyed out until **Adjust Distance By Threat** is on.
+### Vitals
 
-### The asset in the editor
+| Setting | Default | Drives |
+|---------|---------|--------|
+| **Health Vital Tag** | `SEC.Vital.Health` | Death, the Health Scorer, and the health fraction actions score against. |
+| **Stamina Vital Tag** | `SEC.Vital.Stamina` | The Stamina Gate and the stamina value actions score against. |
 
-An `EnemyAIConfig` opens as four groups. Role registration and target selection:
+An enemy with no vitals component, or no row for the named tag, reads as full health and 100 stamina. See [Vitals](/docs/soulslike-combat/vitals).
+
+---
+
+## Enemy AI Config
+
+One asset per enemy archetype. Create it with right-click in the Content Browser, **SEC**, **Enemy AI Config**, then set it on the enemy pawn's **AI Config**. `EnemyConfig_Default` and `EnemyConfig_Boss` ship with the plugin as working examples.
+
+Two settings outside the asset decide whether it is read at all. The pawn's **AI Controller Class** has to name a controller carrying a **SEC Combat Controller** component, since a pawn falling back to the project's default controller ignores every field below. And the pawn answers the config question ahead of the controller, so a pawn that carries an **AI Config** field and leaves it empty ends up with no config; the controller's **Default AI Config** does not fill that gap.
+
+### Combat Role
 
 <CombatRoleConfigDetails />
 
-Which brain runs, and what the decision context feeds it:
+| Field | Default | Sets |
+|-------|---------|------|
+| **Auto-Register for Combat Roles** | on | Join multi-enemy coordination at possession. Untick for ambient wildlife or a scripted boss. |
+| **Allowed Roles (empty = any)** | empty | Restrict this enemy to the roles listed. An archer can allow Waiter and Supporter alone. |
+| **Priority** | 0 | First pick of a limited slot. 0 standard, 50 elite, 100 mini-boss, 200 boss. |
+| **Preferred Role** | none | Tried first when it is free. Must sit inside Allowed Roles, or Allowed Roles must be empty. |
+| **Fitness Evaluators** | empty | Objects scoring how well this enemy fits each role. Empty scores by distance, closer being higher. |
+| **Target Selector** | none | How this enemy picks among several targets. Empty falls back to the project setting, which also ships empty. |
+| **Target Filter** | none | Which actors it is willing to fight at all. Empty uses the built-in answer. |
+| **Ignore Target Redistribution** | off | Opt out of the periodic target reshuffle, for a boss with a scripted target. |
 
-<StateTreeBehaviorConfigDetails />
-
-The sets it swaps per role. Each **Role ... Sets** array pairs a role tag with an asset, so an Attacker and a Flanker can run different moves off the same enemy:
+### The sets it swaps per role
 
 <EnemyAIConfigSetsDetails />
 
-Perception memory, off until you assign a config:
+Each of the three groups works the same way: a master switch, a default asset, and a per-role list.
+
+| Field | Default | Sets |
+|-------|---------|------|
+| **Manage Action Sets Automatically** | on | Resolve the moveset by role and grant its abilities. Untick to drive abilities yourself. |
+| **Default Action Set** | none | The moveset for any role with no entry of its own. |
+| **Role Action Sets** | empty | One row per role: the role tag, a **Managed** tick, and the asset. |
+| **Manage Reaction Sets Automatically** | on | Same switch for reactions. |
+| **Default Reaction Set** | none | The reactions for any role with no entry of its own. |
+| **Role Reaction Sets** | empty | One row per role, same shape as above. |
+| **Manage Movement Profiles Automatically** | on | Same switch for movement. |
+| **Default Movement Profile** | none | The movement band for any role with no entry of its own. |
+| **Role Movement Profiles** | empty | One row per role: the role tag and the profile. |
+
+<Callout type="warning">
+Fill in the default alongside any per-role list. An enemy holding a role you did not list, or holding no role yet, takes the default; with the default empty it gets nothing.
+</Callout>
+
+### Awareness
 
 <AwarenessEnemyAIConfigDetails />
 
-<Collapsible title="The asset in C++" badge="C++">
+| Field | Default | Sets |
+|-------|---------|------|
+| **Manage Awareness Automatically** | on | Push the Awareness Config to the enemy's perception when the controller takes its pawn. |
+| **Awareness Config** | none | Sight, hearing, damage sense, and memory. Empty senses nothing, which holds every awareness state at Unknown and keeps the brain out of its combat phase. |
+| **Stimulus Filters** | empty | What this enemy can notice before an attack lands. Empty notices everything. |
 
-```cpp
-// Role Registration
-bool bAutoRegisterForCombatRoles;     // Auto-register with role subsystem
-FAIRoleRegistrationParams RoleRegistrationParams;
-    TArray<FGameplayTag> AllowedRoles;          // Roles this AI can take; empty means any
-    int32 Priority;                             // Tiebreaker on equal fitness
-    FGameplayTag PreferredRole;                 // Small bonus toward this role
-    TArray<URoleEvaluator*> FitnessEvaluators;  // Scoring objects for role assignment
+Fill **Awareness Config** in for any enemy meant to fight. The controller carries a perception component whatever the config says, so an empty asset leaves that component with nothing to sense, and an enemy with every other field correct stands still.
 
-// Target Selection
-UTargetSelector* TargetSelector;      // Per-AI target selector (instanced)
-bool bIgnoreTargetRedistribution;     // Opt out of periodic target reshuffling
+Perception alone does not gate who the enemy fights. Set **Target Selector** above to an **Awareness Filtered Target Selector** as well, or the enemy senses a target and engages everything anyway. See [Awareness](/docs/soulslike-combat/awareness-system).
 
-// Behavior
-UStateTree* StateTree;                // Optional StateTree; empty = native C++ combat loop
-FSECDecisionContextParams DecisionContextParams; // Tunables for the decision context
+### Behavior
 
-// Action Set Management
-bool bManageActionSetsAutomatically;  // Swap ActionSets based on role
-UActionSet* DefaultActionSet;         // Fallback ActionSet
-TArray<FRoleActionSetConfig> RoleActionSets;   // Per-role ActionSets
+<StateTreeBehaviorConfigDetails />
 
-// Reaction Set Management
-bool bManageReactionSetsAutomatically; // Swap ReactionSets based on role
-UReactionSet* DefaultReactionSet;     // Fallback ReactionSet
-TArray<FRoleReactionSetConfig> RoleReactionSets; // Per-role ReactionSets
+**Default State Tree** picks the brain. Leave it empty and the **Fallback State Tree** on the StateTree component answers instead; with that empty too, the enemy runs the plugin's own combat loop with no StateTree at all. `StateTree_SEC_Core` ships with the plugin as a graph to start from. See [StateTree](/docs/soulslike-combat/statetree).
 
-// Movement Profile Management
-bool bManageMovementProfilesAutomatically; // Swap Movement Profiles based on role
-UMovementBehaviorProfile* DefaultMovementProfile; // Fallback Profile
-TArray<FRoleMovementProfileConfig> RoleMovementProfiles; // Per-role Profiles
-
-// Awareness
-bool bManageAwarenessAutomatically;   // Apply AwarenessConfig on possession (default true)
-USECAwarenessConfig* AwarenessConfig; // Perception memory tuning; unset leaves awareness off
-```
-
-</Collapsible>
-
-### Decision Context Params
-
-`DecisionContextParams` (a `FSECDecisionContextParams`, under **Behavior**) tunes how the decision context is built each tick. `STTask_BuildDecisionContext` resolves these from the config on EnterState, so they travel with the config rather than living on the StateTree node.
-
-| Property (editor label) | Default | Purpose |
-|-------------------------|---------|----------|
-| `AggressionLevel` | `1.0` | Baseline aggression written into the decision context. 0 = defensive, 1 = balanced, 2 = aggressive. Clamped 0-2. |
-| `WindowIdIntervalSeconds` | `1.0` | Seconds between window increments that reseed score variation. 0 = never advance. |
-| `LineOfSightTraceChannel` ("LOS Trace Channel") | `Visibility` | Collision channel for the line-of-sight trace. Point it at a dedicated visibility channel if the project has one. |
-| `bLineOfSightTraceComplex` ("LOS Trace Complex") | `false` | Trace against complex (per-poly) collision. Off uses simple collision (faster). |
-
-> Decision-context health and stamina come from the pawn's [vitals](/docs/soulslike-combat/vitals) (health else 1.0, stamina else 100, when the pawn carries no vitals component or no row for the configured tag). `FSECDecisionContextParams` holds no GAS attribute fields. For attribute-backed health or stamina scoring, use an Attribute Scorer or Attribute Gate on the action instead.
+| Decision Context field | Default | Sets |
+|------------------------|---------|------|
+| **Aggression Level** | 1.0 | Baseline aggression handed to scoring. 0 defensive, 1 balanced, 2 aggressive. |
+| **Window Id Interval Seconds** | 1.0 | Seconds between reseeds of the score variation. 0 never advances. |
+| **LOS Trace Channel** | Visibility | The channel the line-of-sight check traces on. |
+| **LOS Trace Complex** | off | Trace per-poly collision instead of simple shapes. |
 
 ### Recovery
 
-`Recovery` group on `UEnemyAIConfig`. After an enemy commits an action, these suspend its offensive action selection while movement and reactions keep running. Every field defaults to `0`, so recovery is off and existing configs are unchanged until you set one. See [Recovery Time](/docs/soulslike-combat/action-system#recovery-time) for the full behavior.
+Every field defaults to 0, which leaves recovery off.
 
-```cpp
-// Recovery
-float ActionRecoveryTime;               // Seconds suspended after an action completes or times out (0 = off)
-float InterruptRecoveryTime;            // Seconds suspended after an interrupt or cancel; keep below ActionRecoveryTime
-float ActionRecoveryTimeRandomization;  // ± jitter on completion recovery, so a pack does not act in lockstep
-TObjectPtr<USECActionHook> GlobalHook;  // Optional instanced lifecycle hook run for every action this enemy commits
-```
+| Field | Default | Sets |
+|-------|---------|------|
+| **Action Recovery Time** | 0 s | Seconds every offensive action is held back after one completes or times out. Movement and reactions keep running. |
+| **Interrupt Recovery Time** | 0 s | The same window after an interrupt or a cancel. Keep it shorter, so a parry does not double-stun. |
+| **Action Recovery Time Randomization** | 0 s | Plus or minus jitter on the completion window, so a pack does not act in lockstep. |
+| **Global Hook** | none | A lifecycle hook run around every action this enemy commits, ahead of any per-action hook. |
 
-> A single action can replace the global window. On its `FActionSpec` **Recovery** group, set `bOverrideRecoveryTime` and `RecoveryTime` (absolute, not additive). Completion uses the override if set; interrupt or cancel always uses `InterruptRecoveryTime`; a timeout always uses the global `ActionRecoveryTime`.
-
----
-
-<h2 id="action-sets">ActionSet</h2>
-
-**Used by:** [Action System](/docs/soulslike-combat/action-system)
-
-Contains an array of `FActionSpec`, which are all available actions for an AI.
-
-### Creating an ActionSet
-
-1. Right-click → Miscellaneous → Data Asset → **ActionSet**
-2. Add actions to the Actions array
-3. Configure each action's properties
-
-### FActionSpec Structure
-
-```cpp
-struct FActionSpec
-{
-    // Identity
-    FName ActionId;                    // Unique identifier within the set
-
-    // Execution: instanced method that owns how the action runs
-    TObjectPtr<USECExecutionMethod> ExecutionMethod; // Gameplay Ability, Behavior Tree Sequence, or your own subclass
-
-    // Scoring
-    float SelectionWeight;             // Base priority multiplier
-    float RiskPenalty;                 // Divides the final score (1.0 = no penalty)
-    TMap<FGameplayTag, float> TagScoreMultipliers; // Situational tag multipliers
-    FSECCustomScoring CustomScoring;   // Scoring list: Scorers (multiply) + Gates (veto)
-
-    // Cooldowns
-    FActionCooldown Cooldown;
-        float Duration;                // Time before reuse
-        float InitialCooldown;         // Cooldown applied on spawn
-        float Randomization;           // Cooldown randomness, 0.2 means ±20% (default 0.2)
-        float InterruptRefund;         // Share of the remaining cooldown handed back on interrupt (default 0)
-        float SpawnCooldownChance;     // Chance to start on cooldown at spawn, desyncing a group (default 0)
-        int32 MaxConsecutiveUses;      // Consecutive uses before another action must run; -1 is unlimited
-
-    // Chaining
-    TArray<FActionChainLink> ChainLinks; // Follow-ups this action prefers
-        FName TargetActionId;            // Action ID of the follow-up
-        float BonusMultiplier;           // Score multiplier it receives (default 1.5)
-
-    // Preconditions (Hard Gates)
-    FGameplayTagContainer RequiresTags;// Must have these to use
-    FGameplayTagContainer BlockTags;   // Cannot use if these exist
-    bool bRequireLineOfSight;          // Only fire with a clear LOS to target
-    FGameplayTagContainer AddTags;     // Added while action active
-};
-```
-
-> Distance, angle, health, speed, and stamina are not fields on `FActionSpec`. They are opt-in entries in the `CustomScoring` list. Add a built-in **Distance Scorer**, **Angle Scorer**, **Health Scorer**, **Speed Scorer**, **Stamina Gate**, **Vital Scorer**, or **Vital Gate** to score or gate on those dimensions. See [Built-in Scorers & Gates](#built-in-scorers--gates) below. An action with no Distance Scorer is distance-agnostic.
-
-### FRangeEval Explained
-
-The sweet-spot curve used as the `Range` on the Distance, Angle, Health, and Speed Scorers, and as the `ValueEval` on the Attribute Scorer:
-
-<RangeEvalDetails />
-
-The ramp between an edge and the sweet spot is a curve, not a step: the distance from the edge is raised to **Exponent**. **Clamp To Zero** holds the score at zero outside the range instead of letting it go negative.
-
-<Collapsible title="The struct in C++" badge="C++">
-
-```cpp
-struct FRangeEval
-{
-    float MinValue;      // Score = 0 below this (invalid)
-    float OptimalMin;    // Score = 1.0 starts here
-    float OptimalMax;    // Score = 1.0 ends here
-    float MaxValue;      // Score = 0 above this (invalid)
-    float Exponent;      // Falloff sharpness outside the sweet spot (default 2.0)
-    bool bClampToZero;   // Hold the score at zero outside the range (default true)
-};
-```
-
-</Collapsible>
-
-**Example:** A Distance Scorer valid 0-400cm, optimal 100-250cm:
-```cpp
-Range.MinValue = 0;
-Range.OptimalMin = 100;
-Range.OptimalMax = 250;
-Range.MaxValue = 400;
-```
-
-### Built-in Scorers & Gates
-
-Distance, angle, health, speed, and stamina are opt-in. Add an entry to an action's **Scoring** list (`CustomScoring`), pick one of the built-in classes, and tune its single property. Omit the entry and that dimension does not influence the score. Scorers fold a multiplier into the score (1.0 = no effect); Gates veto the action when they fail. For deeper coverage and the `GetDisplayName()` labeling hook, see [Scorers & Gates](/docs/soulslike-combat/action-system#scorers--gates).
-
-| Class (editor name) | Property | Default | Reads | Notes |
-|---------------------|----------|---------|-------|-------|
-| **Distance Scorer** | `Range` (FRangeEval) | `MakeMeleeRange()` | AI-to-target distance (cm), 0 with no target | `Range` OptimalMin/Max also feed the positioning query (`GetIdealDistanceForAction`) |
-| **Angle Scorer** | `Range` (FRangeEval) | `MakeFrontalAngle()` | Absolute angle to target (deg), 0 facing it, 0 with no target | |
-| **Health Scorer** | `Range` (FRangeEval) | `MakeAlwaysOne()` | AI health 0-1, sourced from the pawn's health vital | For any other pool use Vital Scorer; for a GAS health attribute use an Attribute Scorer |
-| **Speed Scorer** | `Range` (FRangeEval) | `MakeAlwaysOne()` | AI horizontal speed (cm/s) | |
-| **Vital Scorer** | `VitalTag`, `bUseFraction`, `Range` (FRangeEval) | `true` / `MakeAlwaysOne()` | Any named vital, as a fraction or raw value | The general form behind Health Scorer; no effect on a pawn without the vital |
-| **Stamina Gate** | `MinStamina` | `0` | Decision-context Stamina, sourced from the pawn's stamina vital (100 by default) | Vetoes unless Stamina >= `MinStamina`; for any other pool use Vital Gate, for a GAS stamina attribute use an Attribute Gate |
-| **Vital Gate** | `VitalTag`, `MinValue`, `bUseFraction` | `0` / `false` | Any named vital, as a fraction or raw value | The general form behind Stamina Gate; no effect on a pawn without the vital |
-| **Attribute Scorer** | `Attribute`, `NormalizeBy`, `ValueEval` (FRangeEval) | n/a | A `GameplayAttribute` on the owning ASC | Optionally divide by `NormalizeBy` (e.g. Mana / MaxMana) before scoring |
-| **Attribute Gate** | `Attribute`, `MinValue`, `MaxValue` | `0` / `0` | A `GameplayAttribute` on the owning ASC | Pass when the attribute is in `[MinValue, MaxValue]`; `MaxValue <= 0` disables the upper bound |
-
-> The decision context never reads GAS health or stamina attributes. Health and stamina come from the pawn's [vitals](/docs/soulslike-combat/vitals) (health else 1.0, stamina else 100). For GameplayAttribute-backed health, stamina, mana, or any other pool, use an **Attribute Scorer** or **Attribute Gate** on the action; for any other authored vital, use a **Vital Scorer** or **Vital Gate**.
-
-> **Auto-migration:** existing ActionSets migrate once on load. Each action's old `DistanceEval` becomes a Distance Scorer and `AngleEval` an Angle Scorer; a non-default Health or Speed range becomes a Health or Speed Scorer; a `StaminaCost` above 0 becomes a Stamina Gate. Scoring is unchanged. Re-save the asset to persist. New actions ship with an empty Scoring list (distance-agnostic until you add a Distance Scorer).
+A single action can replace the window: tick **Override Recovery Time** on that action and set its **Recovery Time**. See [Recovery](/docs/soulslike-combat/action-system#recovery-a-gap-between-any-two-moves).
 
 ---
 
-<h2 id="movement-profiles">MovementBehaviorProfile</h2>
+## The data assets
 
-**Used by:** [Movement System](/docs/soulslike-combat/movement-system)
+Right-click in the Content Browser, **SEC**, then pick one.
 
-The role-swappable data asset. It holds only the fields a combat role changes. The rest of the movement tuning (avoidance, hybrid switching, detour, navmesh sampling, strafe feel) lives on the `MovementEvaluatorComponent` itself, the same for every role. See the [Movement System](/docs/soulslike-combat/movement-system#tuning-the-component) for that surface.
+| Asset | Holds | Set on |
+|-------|-------|--------|
+| **Action Set** | A moveset: one card per action, with its scoring, cooldown and combo links | Enemy AI Config, or a weapon |
+| **Reaction Set** | Reactions plus the trigger rules that fire them | Enemy AI Config, or a weapon |
+| **Movement Behavior Profile** | The distance band and rest behavior for one role | Enemy AI Config |
+| **Awareness Config** | Sight, hearing, damage sense, and memory | Enemy AI Config |
+| **Damage Config** | Damage numbers and what a landed hit does | A melee trace window, or the trace component |
+| **Defense Rule Set** | Blocks, parries and armour, in the order they answer a hit | SEC Defense component, or a weapon |
+| **Impact Surface Set** | Which impact cue plays per surface struck | The **Surface Set** on a **SEC Play Gameplay Cues** hit effect |
+| **Enemy AI Config** | Everything above, tied together per archetype | The enemy pawn |
 
-### Full Structure
+### Action Set
 
-```cpp
-// Distance
-float DesiredDistance;            // Ideal distance to hold (cm), default 400
-float DistanceTolerance;          // Far half of the comfort band as a fraction of desired (0.05-0.5), default 0.2
-float CrowdTolerance;             // Near half, how far a target may press in before the AI gives ground (0.05-0.9), default 0.45
+The asset holds an **Actions** array. Each action carries these numbers; see the [Action System](/docs/soulslike-combat/action-system) for what to do with them.
 
-// Strafe Rest (fatigue)
-bool  bEnableStrafeRest;          // Rest after continuous strafing, default true
-float StrafeRestTimeLimit;        // Seconds of strafing before a rest (3-60), default 10
-float StrafeRestDuration;         // Rest length in seconds (0.5-10), default 1.5
+| Field | Default | Sets |
+|-------|---------|------|
+| **Enabled** | on | Unticking also stops the action's ability being granted. |
+| **Manual Only** | off | Keep it out of automatic selection, so only a direct call by Action ID runs it. |
+| **Chain Only** | off | Let automatic selection reach it only as a combo follow-up, while an action that chains into it has just finished. |
+| **Action ID** | empty | The name chain links and logs use. Required. |
+| **Execution Method** | Gameplay Ability | How the action runs. An action added on the canvas arrives with this one already on it. |
+| **Selection Weight** | 1.0 | Multiplies the score. 2.0 doubles this action against a weight 1 action. |
+| **Risk Penalty** | 1.0 | Divides the final score. 2.0 halves it, 0.5 doubles it. |
+| **Tag Score Multipliers** | empty | Per-tag multipliers, so a stunned target can favour a heavy attack. |
+| **Scoring** | empty | The Scorers and Gates below. A new action has none, so it fires at any range. |
+| **Requires Tags** / **Block Tags** | empty | Tags that must be present, and tags that block. |
+| **Require Line Of Sight** | off | Fire only with a clear view of the target. |
+| **Add Tags** | `SEC.State.IsMovementBlocked` | Held on the enemy while the action runs. Remove the default entry to let it move mid-swing. |
+| **Cooldown Duration** | 0 s | The wait before this action runs again. 0 lets it repeat back to back. |
+| **Initial Cooldown** | 0 s | A wait charged at spawn, so an enemy cannot open with its heaviest hit. |
+| **Randomization (%)** | 0 | Plus or minus jitter on the cooldown. 0.2 turns a 5 s wait into 4 to 6 s. |
+| **Interrupt Refund (%)** | 0 | Share of the remaining cooldown handed back when the action is cut short. |
+| **Spawn Cooldown Chance** | 0 | Chance the action starts on cooldown at spawn, desyncing a group. |
+| **Max Consecutive Uses** | -1 | Uses in a row before another action must run. -1 is unlimited. |
+| **Override Recovery Time** | off | Give this action its own recovery window instead of the config's. |
+| **Hook** | none | A lifecycle hook run around this action alone. |
+| **Chain Links** | empty | Follow-ups this action prefers, each with a **Bonus Multiplier** (1.5 by default). |
 
-// Threat Response
-bool  bSwapStrafeOnHighThreat;    // Swap strafe side under high threat, default false
-bool  bAdjustDistanceByThreat;    // Back off as threat rises, default false
-float ThreatDistanceScale;        // How strongly threat pushes distance out (0-5), default 1.0
+### Movement Behavior Profile
 
-// Custom Rules
-TArray<UPositioningRule*> PositioningRules;  // Instanced direction modifiers, empty by default
-```
+| Field | Default | Sets |
+|-------|---------|------|
+| **Desired Distance** | 400 cm | The range this enemy fights at. |
+| **Distance Tolerance** | 0.2 | The far half of the comfort band, as a share of Desired Distance. |
+| **Crowd Tolerance** | 0.45 | The near half, how far a target may press in before the enemy gives ground. |
+| **Enable Strafe Rest** | on | Pause after continuous circling. |
+| **Strafe Rest Time Limit** | 10 s | Seconds of circling before a rest. |
+| **Strafe Rest Duration** | 1.5 s | How long that rest lasts. |
+| **Swap Strafe On High Threat** | off | Change circling side once threat runs long. |
+| **Adjust Distance By Threat** | off | Back off as threat rises. |
+| **Threat Distance Scale** | 1.0 | How hard threat pushes the distance out. Greyed out until the line above is ticked. |
+| **Positioning Rules** | empty | Direction preferences that stack on top of the band, such as flanking or backstabbing. |
 
-### Example Profile
+<ThreatResponseProfileDetails />
 
-```cpp /DA_AggressiveMelee/
-Name: DA_AggressiveMelee
+The two threat switches need a **Threat Detection** component on the controller; without one they sit inert. Everything else about movement lives on the **Movement Evaluator** component, the same for every role. See [Movement](/docs/soulslike-combat/movement-system).
 
-DesiredDistance: 300
-DistanceTolerance: 0.15
-CrowdTolerance: 0.6
-
-bEnableStrafeRest: true
-StrafeRestTimeLimit: 15.0
-StrafeRestDuration: 0.5
-
-bSwapStrafeOnHighThreat: false
-bAdjustDistanceByThreat: false
-ThreatDistanceScale: 1.0
-
-PositioningRules: []
-```
-
-### Built-in Presets
-
-`FMovementBehaviorConfig` factory methods fill the profile-level fields for common archetypes (applied in C++ via `ApplyBehaviorConfig`):
-
-```cpp
-FMovementBehaviorConfig::MakeDefault();     // Balanced (400 cm)
-FMovementBehaviorConfig::MakeAttacker();    // Close, aggressive, minimal rest (300 cm)
-FMovementBehaviorConfig::MakeWaiter();      // Far, patient, frequent rest (600 cm)
-FMovementBehaviorConfig::MakeFlanker();     // Medium, quick repositioning (400 cm)
-FMovementBehaviorConfig::MakeSupporter();   // Medium-far, moderate rest (500 cm)
-FMovementBehaviorConfig::MakeElite();       // Relentless pressure, very short rest (350 cm)
-```
-
-> **Positioning Rules** are instanced UObjects. Inherit from `UPositioningRule` and override `EvaluateDirection()` for custom direction scoring. The built-in `UAnglePreferenceRule` covers flanking, backstab, and frontal positioning.
-
----
-
-<h2 id="damage-config">DamageConfig</h2>
-
-**Used by:** [Melee Trace System](/docs/soulslike-combat/melee-trace)
-
-Contains damage values and type for melee attacks.
-
-### Full Structure
-
-```cpp
-float Damage;                              // Base amount, before anything the target does to it (default 10)
-FGameplayTag DamageType;                   // Kind of damage, for a target that resists or reacts by type
-TSubclassOf<UDamageType> DamageTypeClass;  // Carried on the point damage fallback; unset sends the engine default
-FGameplayTagContainer DamageTags;          // Extra tags describing hits from this attack, for example a backstab
-
-bool bUseAuthoredHitDirection;             // Send a fixed blow direction instead of the attacker-to-target one
-FVector AuthoredHitDirectionLocal;         // That direction in attacker space; (0,0,1) launches upward
-
-TArray<TObjectPtr<USECHitEffect>> HitEffects;  // What the hit does beyond the number
-```
-
-Blocking, parrying and critical hits are the target's business, not the config's. A target reports them back through **`ResultTags`** on **`FSECDamageResult`**, which is what lets one attack read as parried by one enemy and armoured by another.
-
-### Hit Effects
+### Damage Config
 
 <SECDamageConfigDetails />
 
-Each entry runs itself when the hit lands. Two ship with the plugin:
+| Field | Default | Sets |
+|-------|---------|------|
+| **Damage** | 10 | Base health damage, before anything the target does to it. |
+| **Additional Vital Damage** | empty | Extra pools this attack drains, one row per vital. A target with no matching row ignores that row. |
+| **Damage Type** | none | A tag naming the kind of damage, for a target that resists or reacts by type. |
+| **Damage Type Class** | none | Carried on the point damage fallback. Unset sends the engine default. |
+| **Damage Tags** | empty | Extra tags describing hits from this attack, a backstab or a critical. |
+| **Multi Hit Interval** | -1 | Seconds before this attack can hit the same target again. -1 uses the trace component's Hit Reset Interval. |
+| **Max Targets Per Swing Override** | -1 | How many targets one swing cuts through. -1 uses the trace component's own limit, 0 is unlimited. |
+| **Use Authored Hit Direction** | off | Send a fixed blow direction instead of the attacker-to-target one. |
+| **Authored Hit Direction Local** | (1, 0, 0) | That direction in attacker space. (0, 0, 1) launches the target upward. |
+| **Hit Effects** | empty | What the hit does beyond the number: cues, impulses, anything you subclass. |
 
-| Effect | Does |
-|--------|------|
-| **SEC Play Gameplay Cues** | Fires **Attacker Cues** on the attacker's ability system and **Target Cues** on the struck actor's. |
-| **SEC Apply Physics Impulse** | Shoves the struck body: **Hit Bone Force** at the contact point, **Hit Overall Force** on the whole body, **Hit Rotational Force** to set it tumbling. Tick **Velocity Change** to make mass stop mattering. |
+The target decides whether a hit reads as blocked, parried or critical, and reports that back with the result. See [Melee Trace](/docs/soulslike-combat/melee-trace) and [Defense](/docs/soulslike-combat/defense-system).
 
-Subclass **SEC Hit Effect** in Blueprint for anything else. Every effect carries **Suppress On Result Tags** and **Require Damage Applied**, so a blocked hit can skip the screen shake while the blood still plays.
+---
 
-### Usage
+## Scorers, gates and the curve they share
 
-Assign per attack window on the **SEC Melee Trace Window** notify's **Damage Config**, or as the component's **Default Damage Config** for windows that name none. **Run Hit Effects** on **SEC Damage Statics** runs the same effect list when your own code applies the damage.
+Distance, angle, health, speed and stamina are opt-in. Add an entry to an action's **Scoring** list, pick a class, tune its one property. Leave it out and that dimension has no say.
+
+<RangeEvalDetails />
+
+Every built-in scorer shapes its dimension through one **Range**. Below **Min Value** the score is 0, it ramps to 1 across **Optimal Min**, holds through the sweet spot, then falls back to 0 at **Max Value**. **Exponent** (2.0) sharpens the ramp, and **Clamp To Zero** (on) holds the score at zero outside the range instead of letting it go negative.
+
+You type the four numbers in. These bands come up often, and the named ones below are where the built-in scorers start:
+
+| Band | Min, Optimal Min, Optimal Max, Max |
+|------|------------------------------------|
+| Melee distance | 0, 100, 250, 500 cm |
+| Ranged distance | 300, 500, 1000, 1800 cm |
+| Frontal angle | 0, 0, 30, 90 degrees |
+| Low health | 0, 0, 0.25, 0.5 fraction |
+| No preference | Scores 1 at any value, which drops the factor |
+
+| Scorer | Reads | Range default |
+|--------|-------|---------------|
+| **Distance Scorer** | Distance to the target in cm, 0 with no target | Melee distance |
+| **Angle Scorer** | Angle to the target in degrees, 0 facing it | Frontal angle |
+| **Health Scorer** | The enemy's own health as a 0 to 1 fraction | No preference |
+| **Speed Scorer** | The enemy's horizontal speed in cm/s | No preference |
+| **Vital Scorer** | Any named vital, as a fraction (**Use Fraction** on) or a raw value | No preference |
+| **Attribute Scorer** | A gameplay attribute, optionally divided by a second one | 0, 200, 600, 1200 |
+
+| Gate | Blocks unless | Default |
+|------|---------------|---------|
+| **Stamina Gate** | Stamina is at least **Min Stamina** | 0 |
+| **Vital Gate** | A named vital holds at least **Min Value** | 0, read as a raw value |
+| **Attribute Gate** | An attribute sits between **Min Value** and **Max Value** | 0 and 0, where a Max of 0 drops the upper bound |
+| **Combat Token Gate** | The target has a free slot in the pool named by **Token Tag** | empty tag, **Cost** 1 |
+
+Four more gates read the stimulus that set a reaction off, so they belong on a reaction or a trigger rule rather than an action: **Incoming Angle Gate** (60 degrees either side), **Time To Impact Gate**, **Stimulus Magnitude Gate**, and **Source Distance Gate**. Every gate carries an **Invert** tick.
+
+<Callout type="info">
+A Vital Scorer or Vital Gate pointed at a pool the pawn does not carry has no effect and passes. One shared Action Set can serve a boss with a stance bar and a grunt without one.
+</Callout>
+
+---
+
+## Components
+
+Settings that do not change with the combat role live on components, so they are edited per Blueprint or per placed actor.
+
+### On the AI controller
+
+| Component | Holds |
+|-----------|-------|
+| **SEC Combat Controller** | **Default AI Config**, role registration, the threat detection switch, **Drop Weapon On Death**, **Auto Handle Death On Health Depleted**. |
+| **SEC Brain** | The plugin's own decision loop: **Evaluation Cooldown** (0.1 s), **Min Phase Duration** (0.5 s), and what the enemy does while it walks home. |
+| **Action Evaluation** | **Chain Followup Window Seconds** (0.6 s) and the action debug switches. |
+| **Reaction Evaluation** | **Fallback Stimulus Filters** and the reaction debug switch. |
+| **Movement Evaluator** | Sampling, avoidance, detour, navmesh and ledge guard, strafe feel, facing while travelling. |
+| **Threat Detection** | How the player's camera builds and decays threat. |
+| **SEC Awareness** | The live perception memory the Awareness Config tunes. |
+| **Bot State Tree AI** | **Fallback State Tree** and **Auto Initialize From Config**. The brain creates it at runtime once a tree is named; add it by hand on a custom controller. |
+
+<CombatControllerDetails />
+
+### On the pawn
+
+| Component | Holds |
+|-----------|-------|
+| **SEC Action Set Component** | The resolved moveset and any runtime override; carries action state to clients. |
+| **SEC Reaction Set Component** | The same for reactions. |
+| **SEC Combat Role** | Carries the assigned role to clients. |
+| **SEC Vitals** | The pools: health, stamina, stance, or any tag you author. See [Vitals](/docs/soulslike-combat/vitals). |
+| **SEC Melee Trace** | Trace channel, **Default Damage Config**, hit reset interval, targets per swing. See [Melee Trace](/docs/soulslike-combat/melee-trace). |
+| **SEC Defense** | How the pawn answers a hit. See [Defense](/docs/soulslike-combat/defense-system). |
+| **SEC Equipment Component** | The starting loadout and the sets a held weapon brings. See [Weapons](/docs/soulslike-combat/weapons). |
+| **SEC Team** | Team id, free-for-all, target exclusions. |
+| **SEC Territory** | Patrol posts, wander area, leash anchor and radius. See [Territory](/docs/soulslike-combat/territory). |
+| **SEC Approach** | The approach window that steers an attack in. |
+| **SEC Speed Modifier** | Movement speed multipliers, driven by a watched tag or added by id. |
+| **SEC Token Budget Component** | Token budgets for one target, overriding the project numbers. Goes on the actor being attacked. |
+
+---
+
+## Debug it
+
+Run these in the console during Play to see what an enemy resolved:
+
+```
+SEC.Debug.Role 1                 // Name and combat role above each enemy
+SEC.Debug.Decision 1             // Distance, angle, sight, speed and threat it scores against
+SEC.Debug.Scoring 1              // What each action scored and which one won
+SEC.Debug.Awareness 1            // Awareness state, meter fill, age of the last-known location
+SEC.Debug.LogRoleAssignments 1   // Role registration and every reassignment
+```
+
+`SEC.Debug.All 1` turns every overlay section on at once, and `SEC.Debug.WatchPawn <name>` narrows them to one enemy. Each section also has a matching checkbox on the component that feeds it, so one enemy can draw without the console.
+
+Saving an Action Set runs validation and reports into the **Asset Check** message log listing, naming any action with nothing to run.
+
+<Collapsible title="Which AI Config an enemy ends up with" badge="Advanced">
+The controller asks the pawn first. A pawn that answers the config question at all wins, even when its answer is empty, and the controller's **Default AI Config** is read only for a pawn that does not answer.
+
+An enemy built on the plugin's character base answers, returning its own **AI Config** field. So for that enemy, leaving the field empty gives it no config; **Default AI Config** on the controller does not fill the gap. Fill in the pawn's field.
+
+**Default AI Config** is for a pawn of your own that carries no config field, or a controller class you want to answer for a whole squad.
+</Collapsible>
+
+<Collapsible title="Which set a role ends up with" badge="Advanced">
+Action sets and reaction sets resolve in order, and the first answer wins:
+
+1. A runtime override set from Blueprint.
+2. The set an equipped weapon supplies for that role.
+3. The role's entry in **Role Action Sets** or **Role Reaction Sets**.
+4. **Default Action Set** or **Default Reaction Set** on the config.
+5. The component's own **Default Action Set** or **Default Reaction Set**, which answers only when the controller found no AI Config at all.
+6. Nothing, which leaves the enemy moving but not attacking.
+
+Movement profiles skip the weapon step: the role's entry in **Role Movement Profiles**, then **Default Movement Profile**.
+
+Untick **Managed** on a role's row and that role is left alone, so an enemy playing it keeps whatever the previous role gave it. That is the switch for a role you drive from Blueprint. A row that stays managed with an empty asset applies nothing, which reads the same way in play and is almost always a mistake.
+</Collapsible>
+
+<Collapsible title="Settings that apply nothing" badge="Advanced">
+Four switches leave a filled-in field inert:
+
+- **Manage Action Sets Automatically** off ignores the default and every role row.
+- **Manage Reaction Sets Automatically** off does the same for reactions.
+- **Manage Movement Profiles Automatically** off does the same for movement profiles.
+- **Manage Awareness Automatically** off leaves the Awareness Config unread, so the perception set on the component stands.
+
+Two more depend on a component being present: the profile's threat switches need **Threat Detection** on the controller, and a role row needs that role assigned before its assets are applied.
+</Collapsible>
+
+<Collapsible title="When each setting is read" badge="Advanced">
+- **Project Settings** are read as the subsystem needs them, so a role limit or a token budget takes effect on the next evaluation.
+- The **AI Config** is resolved once, when the controller possesses the pawn. Swapping the asset at runtime needs **Refresh Brain** on the **SEC Brain** component to pick up a different StateTree.
+- **Awareness Config** is pushed to the perception setup at possession.
+- Action sets, reaction sets and movement profiles resolve at possession and again on every role change.
+- Values inside an Action Set can be tuned during Play In Editor and the running enemy picks them up. Adding, deleting or renaming an action goes through, and the editor warns once in the message log that Play In Editor needs a restart before the change is safe to run.
+</Collapsible>
+
+<Collapsible title="Reading and writing config from Blueprint" badge="Alternative">
+The config is a data asset, so a Blueprint can read any field off it. Three helpers on the **SEC Combat Controller** component answer the questions worth asking at runtime:
+
+| Node | Answers |
+|------|---------|
+| **Resolve AI Config** | The config this controller ended up with. |
+| **Resolve Combat Role** | The role tag it is playing. |
+| **Get Cached AI Config** | The same config, off an instance you already have. |
+
+The config asset itself exposes **Get Action Set Config For Role**, **Get Reaction Set Config For Role** and **Get Movement Profile For Role**, each running the same resolution the plugin runs, so a debug panel reports the asset the enemy ends up with rather than guessing at it.
+
+To change a set without touching the config, use the runtime override on the pawn's **SEC Action Set Component**. It sits above every other source and clears back to the config when you clear it.
+</Collapsible>
 
 ---
 

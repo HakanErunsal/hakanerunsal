@@ -1,7 +1,7 @@
 ---
 title: "Reaction System"
-description: "Event-driven AI reactions: parry, dodge, counter. They respond to game events in real time."
-date: 2026-08-09
+description: "Give an enemy an answer to what happens to it: author a reaction, point a trigger rule at the event, and it parries, dodges or flinches on its own."
+date: 2026-08-16
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Reactions"]
 parent: "SoulslikeCombatDocs"
@@ -14,375 +14,336 @@ order: 7
     { label: "Reaction System" }
 ]} />
 
-> Actions poll on a timer. Reactions answer an event.
+> An enemy that answers your swing instead of eating it. One asset holds the answers and the rules that pick between them.
 
-## When to Use This
+<QuickStart time="60 seconds">
 
-- AI that parries incoming attacks
-- Dodge rolls triggered by projectile detection
-- Counter-attacks after blocking
-- Any respond-to-this-stimulus behavior
+<QuickStep title="Create a Reaction Set">
 
-> Two routes reach a reaction. Author trigger rules on the Reaction Set and the enemy answers events for itself, or call `ExecuteReaction` with a known `ReactionId` from your own graph. Both end in the same execution path.
+Right-click in the Content Browser, **SEC**, **Reaction Set**. It opens on its own card canvas.
 
----
-
-## Actions vs Reactions
-
-| | Actions | Reactions |
-|---|---------|-----------|
-| **Trigger** | Polled on a timer by the brain | Event-driven: a trigger rule on the Reaction Set, or a call from your Blueprint or C++ |
-| **Selection** | Score-based (distance, angle, context) | **By ID**, or priority + weighted random inside a reaction category |
-| **Component** | `ActionEvaluationComponent` | `ReactionEvaluationComponent` |
-| **Data asset** | `ActionSet` | `ReactionSet` |
-| **When to use** | "What should I do next?" | "Something happened: how do I respond?" |
-
----
-
-## ReactionSet (Data Asset)
-
-Create via **Right-click → Miscellaneous → Data Asset → ReactionSet**.
-
-The asset holds two arrays: **Reactions**, what the AI can do, and **[Trigger Rules](#trigger-rules-on-the-reaction-set)**, which event gets which kind of answer.
-
-Each entry in the **Reactions** array is an `FReactionSpec`. Defaults from the plugin header:
-
-<ReactionSpecDetails />
-
-Assign **Ability Class** and the reaction is set up. SEC grants the ability and sends it the reaction's payload (the attacker, the direction, the magnitude) as a gameplay event, so an **Activate Ability From Event** graph receives it.
-
-**Reaction Category**, **Priority**, and **Selection Weight** on the spec matter only when you use [`EvaluateBestReaction`](#choosing-a-reaction-optional). For direct `ExecuteReaction("Parry", …)` calls, the ID alone selects the reaction.
-
-<Callout type="warning">
-  Reaction abilities **must** inherit from `UGameplayAbilityBase`. It handles the end-event handshake that tells the system when the ability finishes. Without it, the AI waits until timeout.
-</Callout>
-
-### Preconditions you author
-
-These ReactionSet fields feed `PassesReactionGates` (the same check runs at selection and again at execute):
-
-<ReactionPreconditionDetails />
-
-Unlike actions, **Requires Tags** and **Block Tags** read **only the AI's ASC**, not target or world tags. **Add Tags** is not a gate: it is applied while the reaction runs (see [Triggering Reactions](#triggering-reactions)).
-
-<Protip
-  title="Block actions via tags"
-  description="Add SEC.Action.BlockActions to Add Tags to freeze offensive action selection while the reaction runs. Actions check that tag in PassesHardGates()."
+<UeCreateAssetScene
+  create="Reaction Set"
+  assetName="DA_ReactionSet_Grunt"
+  caption="Right-click in the Content Browser, SEC, Reaction Set."
 />
 
----
+</QuickStep>
 
-## Assigning the ReactionSet
+<QuickStep title="Add the reaction">
 
-`SECReactionSetComponent` on the pawn resolves which `ReactionSet` an enemy uses. `EnemyCharacterBase` creates it automatically; `EnemyControllerBase` already has `ReactionEvaluationComponent`.
+Right-click the canvas and choose **Add Reaction**. A card appears carrying a **Reaction ID** and a **Gameplay Ability** execution method already on it. Name the Reaction ID `Parry`.
 
-1. **Assign the asset:** Set `DefaultReactionSet` on `EnemyAIConfig`, or add role entries to `RoleReactionSets` (see [Combat Roles](/docs/soulslike-combat/combat-roles)). Or set `DefaultReactionSet` on the pawn component for zero-config testing.
-2. **Custom pawns:** Add `SECReactionSetComponent` manually if not using `EnemyCharacterBase`.
+Set **Ability Class** to **GA_SEC_MontageAbility**, which ships with the plugin. A **Montage Payload** appears underneath it; set its **Montage** to your parry animation.
 
-`SECCombatControllerComponent::SyncStateForCombatRole` calls `SECReactionSetComponent::SyncForCombatRole`, which resolves the chain below and pushes the result to `ReactionEvaluationComponent::SetReactionSet`. That happens when the controller possesses the pawn, and again on every **[combat role assignment or change](/docs/soulslike-combat/combat-roles)**. SEC grants each reaction's **Ability Class** to the character as the set arrives, so an enemy standing idle can answer a stimulus before it has ever picked a combat role.
+<UeSetPropertiesScene
+  title="DA_ReactionSet_Grunt"
+  section="Execution"
+  rows={[
+    { name: "Ability Class", value: "GA_SEC_MontageAbility", kind: "class" },
+    { name: "Montage", value: "AM_Parry", kind: "asset", thumb: "montage", accent: "#6464FF" }
+  ]}
+  caption="The shipped ability plays whatever montage the reaction names."
+/>
 
-### Quick path
+</QuickStep>
 
-Minimum to get one parry working after assign:
+<QuickStep title="Say which event it answers">
 
-```cpp
-// On controller, after pawn is possessed and reaction set is synced:
-FSECExecutionContext Context;
-Context.Target = Attacker;
-ReactionComp->ExecuteReaction("Parry", Context);
-```
+Right-click the canvas again and choose **Add Trigger**. Set its **On Stimulus** to `SEC.Stimulus.AttackTelegraphed`, then drag from the pin on the right of the trigger card to the pin on the left of the Parry card.
 
-In Blueprint: get `Reaction Evaluation Component` on the AI controller, call **Execute Reaction** with the `ReactionId` from your ReactionSet and a filled **Context** struct.
+That arrow reads: when an attack winds up nearby, parry it.
 
-The resolver walks this chain and returns the **first match**:
+</QuickStep>
 
-| Priority | Source | Use |
-|----------|--------|-----|
-| 1 (highest) | **Runtime Override** | `SetRuntimeOverride(ReactionSet)`. Boss phase transitions. |
-| 2 | **Provided Set** | A set pushed onto the pawn, which is how an equipped weapon's reactions arrive. |
-| 3 | **Config Role** | Role-specific ReactionSet from `EnemyAIConfig → RoleReactionSets`. |
-| 4 | **Config Default** | Fallback from `EnemyAIConfig → DefaultReactionSet`. |
-| 5 | **Component Default** | `SECReactionSetComponent → DefaultReactionSet` on the pawn. |
-| 6 | **None** | No ReactionSet. The AI cannot react. |
+<QuickStep title="Point the AI Config at it">
 
-Provided set and override changes take effect on the next sync. Fill in **`Weapon Reaction Set`** on a weapon Blueprint to give the enemy reactions that come with what it is holding, such as a parry it can only do while carrying a sword. See [Weapons](/docs/soulslike-combat/weapons).
+Open the enemy's **Enemy AI Config** and set **Default Reaction Set** to the asset. Leave **Manage Reaction Sets Automatically** ticked.
 
-> `SECActionSetComponent` uses the same resolution chain for action sets.
+<UeSetPropertiesScene
+  title="EnemyConfig_Grunt"
+  section="Reaction Sets"
+  rows={[
+    { name: "Manage Reaction Sets Automatically", value: "true", from: "true", kind: "bool" },
+    { name: "Default Reaction Set", value: "DA_ReactionSet_Grunt", kind: "asset" }
+  ]}
+  caption="Default Reaction Set covers every role, so one entry is enough to start."
+/>
 
-### Swap Modes
+</QuickStep>
 
-When a reaction set swap runs while a reaction is already executing:
+<QuickStep title="Make the attack announce itself, and play">
 
-| Mode | Behavior |
-|------|----------|
-| `ESECReactionSetSwapMode::Immediate` | Cancel the current reaction and swap now (default). |
-| `ESECReactionSetSwapMode::WaitForCompletion` | Queue the swap; it applies when the current reaction completes. |
+Open the player's attack montage and add the **SEC Attack Telegraph** notify where the wind-up starts. That notify is what tells nearby enemies a blow is coming.
 
-Pass the mode to `SetRuntimeOverride`, `ClearRuntimeOverride`, or `SyncForCombatRole`. There is no persistent `SwapMode` property on the component.
+Press Play, swing at the enemy, and run `SEC.Debug.LogReactions 1` to read which rule answered and which reaction won.
 
-<Collapsible title="Per-role reactions and replicated state" badge="Advanced">
-`Weapon Reaction Set` answers the same set for every role. To vary it, override **`Get Weapon Reaction Set For Role`** on the weapon and branch on the incoming role tag. A weapon deriving from something other than **`SEC Weapon Base`** adds the **`SEC Weapon Reaction Set Provider`** interface in Class Settings.
+</QuickStep>
 
-Anything can drive the slot directly, which is what the equipment component does for a weapon:
+</QuickStart>
 
-```cpp
-Pawn->ReactionSetComponent->SetProvidedReactionSet(ReactionSet);
-Pawn->ReactionSetComponent->SetProvidedReactionSet(nullptr);  // fall back to config resolution
-```
+<Callout type="warning">
+Nothing reaches an enemy until an attack announces itself. A montage without a **SEC Attack Telegraph** notify sends no warning, so the trigger rules never run and the enemy stands there taking hits. Turn on `SEC.Debug.Stimulus.Draw 1` to see whether anything is going out at all. See [Attack Telegraphs](/docs/soulslike-combat/attack-telegraphs).
+</Callout>
 
-**Replicated state** on `SECReactionSetComponent` (client UI, VFX, debug): `CurrentReactionId`, `bReactionExecuting`, `ActiveReactionSet`, `OnReactionExecutionStarted` / `OnReactionExecutionCompleted`, `OnReactionSetChanged`, cooldown delegates, and `GetRemainingCooldown` / `IsReactionOnCooldown` / `GetAllActiveCooldowns`.
-</Collapsible>
+An enemy answers a stimulus whether or not it has a combat target, so a patrolling enemy can parry the first swing of an ambush.
 
 ---
 
-## Triggering Reactions
+## Say what answers each event
 
-A reaction starts one of two ways. Hand the enemy a stimulus and let the trigger rules on its Reaction Set work out the answer, or call the component yourself when your game already knows which reaction fits.
-
-### Trigger rules on the Reaction Set
-
-Something reports what happened to the enemy's `ReactionEvaluationComponent` through **Receive Stimulus**: an attack winding up, a hit that landed, a spell going off. [Attack Telegraphs](/docs/soulslike-combat/attack-telegraphs) covers where one comes from and how far it carries.
-
-**Trigger Rules** on the Reaction Set turn that into an answer. The component asks them in **Rule Priority** order, highest first, and the first rule that fits and yields a reaction wins, so a specific rule takes a higher priority than a general one:
+**Trigger Rules** on the Reaction Set turn an event into an answer. The enemy asks them in **Rule Priority** order, highest first, and takes the first rule that fits and yields a reaction, so specific rules sit above general ones.
 
 <ReactionTriggerRuleDetails />
 
-A rule says which reactions answer it in one of two ways. **Reaction Links** names them one at a time, each with a **Weight Multiplier** saying how much this rule favours that answer over the others it names. **Reaction Category** names a group instead and lets the [priority and scoring](#choosing-a-reaction-optional) on each reaction pick inside it.
+| Field | Sets |
+|-------|------|
+| **Rule ID** | Short name, shown in the row title and in the log when the rule fires or is skipped: `ParryFrontal`, `DodgeUnblockable`. |
+| **On Stimulus** | Which event this rule answers. A rule on a parent tag catches everything beneath it, so one on `SEC.Stimulus.AttackTelegraphed` also answers your own `SEC.Stimulus.AttackTelegraphed.Heavy`. |
+| **Require Context Tags** | The event must carry all of these, which is how a rule answers heavy attacks alone. Empty requires nothing. |
+| **Block Context Tags** | The rule steps aside when the event carries any of these, so a parry rule refuses `SEC.Attack.Unblockable` and the dodge rule below it answers. |
+| **Conditions** | Gates that all have to pass before the rule answers. A refused rule hands the event to the rule below it. |
+| **Chance** | How often the rule fires when everything else fits, 0 to 1. Drop it to 0.3 and the enemy parries roughly a third of the swings. |
+| **Min Interval** | Shortest gap in seconds between two firings, so an enemy cannot parry every swing of a fast combo. 0 sets no limit. |
 
-One rule covers a parry and a dodge either way: name both, or give both the same category, then put an **Incoming Angle Gate** and the higher **Priority** on the parry. The parry answers a blow arriving from the front, and the gate refuses it from the side, which leaves the dodge to take those.
+Two shipped stimulus names cover the common cases: `SEC.Stimulus.AttackTelegraphed` for a swing winding up, and `SEC.Stimulus.DamageTaken` for a blow that already landed. Author child tags of either for an attack that needs its own answer.
 
-A rule filling in both answers only with a reaction that appears in its links **and** carries that category. That narrows what a rule can do and never widens it, so a link pointing outside the category answers nothing. The [Reaction Set canvas](/docs/soulslike-combat/reaction-set-editor) flags that case on the card.
+### Which reactions a rule can answer with
 
-**On Stimulus** matches down the tag tree, so a rule on `SEC.Stimulus.AttackTelegraphed` also answers `SEC.Stimulus.AttackTelegraphed.Heavy`. **Require Context Tags** and **Block Context Tags** narrow it further: a parry rule that blocks on `SEC.Attack.Unblockable` steps aside and lets the dodge rule below it answer. **Chance** and **Min Interval** stop an enemy parrying every swing of a fast combo, and **Conditions** holds gates that all have to pass for the rule to answer, for what the tags cannot express. A rule refused by one of its conditions hands the stimulus to the rule below it, which is how a blow arriving from behind reaches a stagger rule instead of a guard that cannot cover it.
+Draw an arrow to each reaction the rule may pick, or name a group instead with **Reaction Category** and let every reaction carrying that category compete. Fill in both and the rule answers only with a reaction that is wired **and** carries the category, which narrows the field.
 
-A rule ends in the same **Execute Reaction** call as the direct route below, so the execute-time blocks and the [execution order](#execution-order) hold either way. A set with no rules answers nothing by itself, which leaves the direct call as the only way in.
+Each arrow carries a **Weight Multiplier**: 1 leaves the reaction's own weight alone, 2 makes this rule lean twice as hard on that answer.
+
+<Protip
+  title="One rule, two answers"
+  description="Wire a rule to both Parry and Dodge, then put an Incoming Angle Gate and the higher Priority on Parry. A frontal blow gets parried, and a blow from the side falls to the dodge with no second rule."
+/>
+
+Laying this out as cards and watching a live enemy answer is what the [Reaction Set Editor](/docs/soulslike-combat/reaction-set-editor) is for.
+
+---
+
+## Author the reaction
+
+A reaction card carries what runs, what it holds while it runs, and how often it may run.
+
+<ReactionSpecDetails />
+
+**Execution Method** is how the reaction runs, the same picker actions use. **Gameplay Ability** covers almost everything: name an ability class, fill in its payload, and the reaction is set up. **Gameplay Ability By Tag** starts an ability something else already granted. **Gameplay Ability (Fire And Forget)** starts one and finishes in the same frame, for a shout the enemy should not stand still for.
+
+**Add Tags** sit on the enemy while the reaction runs and come off when it ends. Put `SEC.Action.BlockActions` there to freeze the moveset for the duration.
+
+**Cancel Current Action** is on by default, so a reaction cuts the swing the enemy was mid-way through. Untick it for a flinch that should play over the top.
+
+**Cooldown Duration** is the wait before the same reaction can run again, 0 by default. **Randomization (%)** jitters it so a pack does not parry in lockstep, and **Max Consecutive Uses** forces a different answer after a set number of repeats.
 
 <Callout type="info">
-Rules live on the Reaction Set, so an enemy that swaps to an Elite set gets that set's triggers with it. **Receive Stimulus** runs on the server.
+Nothing has to report back. SEC watches the ability system for the ability it started, so any ability that reaches **End Ability** on completion, cancel and interrupt works with no extra wiring. An ability still running after 30 seconds is cut off; set **Ability Timeout** to cap it sooner.
 </Callout>
 
-**Noticing it first.** An enemy answers only what it notices, and perception filters decide that: **Stimulus Filters** on the [`EnemyAIConfig`](/docs/soulslike-combat/configuration), or **Fallback Stimulus Filters** on `ReactionEvaluationComponent` for a pawn running without a config. A config listing any filter replaces the fallback list outright. With neither, the enemy notices everything that reaches it, including a blow from behind. See [Attack Telegraphs](/docs/soulslike-combat/attack-telegraphs).
+<Callout type="warning">
+One reaction runs at a time. A second one asked for while the first is going is refused outright, so a reaction that never ends mutes the enemy until the safety limit expires.
+</Callout>
 
-**Answering by hand instead.** **On Stimulus Received** fires for everything the pawn notices, before the rules look at it. Call **Execute Reaction** from that binding and the rules stay out of it, because a rule fires only when nothing already answered. That is the opt-out for a project that routes events its own way.
+<Collapsible title="Reading the hit direction to pick a montage section" badge="Advanced">
+`GA_SEC_Reaction` ships as the directional variant. It plays one montage and picks the section by the direction the blow arrived from, which is how a single hit reaction covers front, back and both sides.
 
-<Collapsible title="Replacing the perception or the routing step" badge="Advanced">
-Two `BlueprintNativeEvent` hooks each take over one step, in a Blueprint or C++ subclass of `ReactionEvaluationComponent`:
-
-- **`CanSenseStimulus`** replaces the perception step. The default runs every filter in force and requires all of them to pass, skipping any the event bypasses by tag.
-- **`SelectReactionCategory`** replaces the rule walk. The default returns the category of the first rule that fits, which is empty for a rule naming its reactions one at a time. Either way the walk has already chosen a reaction, so an empty tag from the default does not mean nothing answered. Return an empty tag from an override for no answer.
-
-**`EvaluateBestReactionForStimulus(CategoryTag, Stimulus, TargetOverride)`** is the selection the rules run: the same choice `EvaluateBestReaction` makes, with the stimulus carried down so gates and scorers can read which way the blow is arriving.
-
-**`EvaluateBestReactionAmongLinks(Links, CategoryTag, Stimulus, TargetOverride)`** is that same selection narrowed to a named few, with each link's **Weight Multiplier** applied. Pass a category as well to require both.
+It carries the montage as a class default rather than a payload, so make a Blueprint subclass per hit reaction and set **Reaction Montage** on it.
 </Collapsible>
 
-### Firing a reaction yourself
-
-Your game logic detects the event and calls the controller's `ReactionEvaluationComponent`. The usual path is a **direct ID call**: you already know which reaction fits (parry on block input, dodge on projectile warn, etc.).
-
-```cpp
-FSECExecutionContext Context;
-Context.Target = DamageInstigator;
-Context.Magnitude = DamageAmount;
-Context.EventTag = YourGame.Stimulus.MeleeHit;
-Context.TargetData = USECTargetDataLibrary::MakeTargetDataFromDirection(HitDirection);
-
-if (ReactionComp->CanReact("Parry", DamageInstigator))
-{
-    ReactionComp->ExecuteReaction("Parry", Context);
-}
-```
-
-- **`CanReact(ReactionId, TargetOverride)`** runs `PassesReactionGates` without executing. Pass the attacker as `TargetOverride` so **Gates** in the Scoring array (distance, attributes, etc.) evaluate against it. Scorers do not run here; they only affect optional selection.
-- **`ExecuteReaction(ReactionId, Context)`** runs the same gates again, then starts the ability, manages tags and cooldowns, and fires delegates.
-
-**Extra blocks at execute time (not ReactionSet fields):**
-
-| Check | Blocks when |
-|-------|-------------|
-| **`SEC.Reaction.BlockReactions`** | The tag is on the AI's ASC ([Gameplay Tags](#gameplay-tags)). Global stun or cutscene. |
-| **Another reaction executing** | A reaction is already active on this controller. |
-
-Only one reaction runs at a time. If a reaction is already executing, `ExecuteReaction` returns false.
-
-### Execution order
-
-Inside `ExecuteReaction` (same gates as above, re-checked against `Context.GetTarget()`):
-
-1. `PassesReactionGates`.
-2. Cancel the current action if **Cancel Current Action** is enabled on the spec.
-3. Apply **Add Tags** to the ASC.
-4. Pack `FSECExecutionContext` into the gameplay event payload.
-5. Activate the ability (**By Event** or **By Tag**).
-6. On success: commit cooldown, watch for the ability to end, fire `OnReactionStarted`.
-7. When the ability ends, or the timeout is reached: remove **Add Tags**, fire `OnReactionCompleted`.
-
-A failed activation tears down immediately: tags removed, no cooldown committed. Cooldown commits only **after** activation succeeds; a [`CanActivateAbility`](/docs/soulslike-combat/action-system#contextual-execution) refusal leaves the reaction off cooldown.
-
-### Reaction-to-reaction blocking
-
-While a reaction runs, its **Add Tags** sit on the ASC. Put the same tag in another reaction's **Block Tags** to prevent overlap. Both reactions below use `SEC.State.ReactionActive`:
+<Collapsible title="Stop two reactions overlapping" badge="Advanced">
+Put the same tag in one reaction's **Add Tags** and another's **Block Tags**. `SEC.State.ReactionActive` ships for this, and nothing adds it on your behalf.
 
 <ReactionBlockingTagsDetails />
 
-When Parry is running, the ASC holds `SEC.State.ReactionActive`, so Dodge fails `PassesReactionGates` until Parry ends and removes the tag.
-
-### Context payload
-
-Both actions and reactions share `FSECExecutionContext`. Fill what you know before `ExecuteReaction`; the ability reads it through `GetActionContext()` on `UGameplayAbilityBase`.
-
-<Collapsible title="FSECExecutionContext fields and TargetData helpers" badge="Advanced">
-| Field | You set | System fills |
-|-------|---------|--------------|
-| `Target` | Stimulus source (attacker, projectile owner) | n/a |
-| `OptionalObject` | Weapon, projectile, item | n/a |
-| `Magnitude` | Damage, charge level, intensity | n/a |
-| `EventTag` | Stimulus category | n/a |
-| `ContextTags` | Situational tags ("Backstab", "Airborne") | n/a |
-| `TargetData` | Spatial payload via `USECTargetDataLibrary` | n/a |
-| `DistanceToTarget`, `DirectionToTarget` | n/a | Hydrated by `UGameplayAbilityBase` on activation |
-| `InstigatorTags`, `TargetTags` | n/a | Queried from ASCs at activation |
-
-```cpp
-Context.TargetData = USECTargetDataLibrary::MakeTargetDataFromDirection(HitDirection);
-```
-
-See [Gate Before Activation](/docs/soulslike-combat/action-system#contextual-execution) for payload gating in `CanActivateAbility`.
+While Parry runs it holds the tag, so Dodge is refused until Parry ends and the tag comes off.
 </Collapsible>
 
 ---
 
-## Choosing a Reaction (Optional)
+## Pick between several answers
 
-When several reactions could fit the same moment (multiple parry variants, dodge left vs right), call **`EvaluateBestReaction`** instead of picking the ID yourself. The system filters by category, runs gates, scales weights with scorers, picks the highest **Priority** band, then weighted-random among survivors.
+When a rule can answer with several reactions, they compete. Gates run first and drop the reactions that cannot help, scorers scale each survivor's weight, the highest **Priority** band takes the field, and a weighted random picks inside that band.
 
 <ReactionFlowVisualizer />
 
-```cpp
-FChosenReaction Chosen = ReactionComp->EvaluateBestReaction(
-    YourGame.Reaction.Defensive,
-    DamageInstigator);
-if (Chosen.IsValid())
-{
-    ReactionComp->ExecuteReaction(Chosen.ReactionId, Context);
-}
-```
-
-Leave the category tag empty to consider every reaction in the set.
-
-### Selection pipeline
-
-Uses the same `PassesReactionGates` as execute, then adds selection-only steps:
-
-1. **Filter by category** (optional).
-2. **Hard gates** per reaction (identical to [preconditions you author](#preconditions-you-author)).
-3. **Scorers scale weight**: each survivor's **Selection Weight** is multiplied by its Scorers. Weight zero or below is a hard veto, even at high priority.
-4. **Highest priority band** only.
-5. **Weighted random** among survivors in that band.
-
-Returns `FChosenReaction`. Check `IsValid()` before executing.
-
-### Priority and weight
-
-These fields apply only on this path, not on direct `ExecuteReaction` by ID:
-
 <ReactionScoringDetails />
 
-Add **Gates** under the Scoring array to hard-veto. Add **Scorers** to scale **Selection Weight** by distance, attributes, and more.
+| Field | Does |
+|-------|------|
+| **Priority** | The band. A reaction in a higher band beats every reaction below it, whatever the weights say. |
+| **Selection Weight** | The odds inside a band. Weight 2 is twice as likely as weight 1. |
+| **Scoring** | Gates that veto the reaction, and scorers that scale its weight. |
+
+A scorer that drives a weight to zero vetoes the reaction outright, even at a high priority.
 
 ### Scorers on reactions
 
-Built-in Distance, Angle, Health, Speed, and Vital Scorers read **live** values from the AI pawn and `TargetOverride` (or focus actor). Pass the attacker to `EvaluateBestReaction(CategoryTag, Attacker)`.
-
-Distance Scorer **Range** at the melee-preset default:
+Reactions take the same scorers and gates as [actions](/docs/soulslike-combat/action-system#decide-when-the-enemy-picks-a-move), reading live distance, angle, speed and the pawn's [vitals](/docs/soulslike-combat/vitals) at the moment the blow arrives. Each built-in scorer shapes its dimension through one **Range** curve:
 
 <RangeEvalDetails />
 
-Stamina Gate reads the pawn's stamina [vital](/docs/soulslike-combat/vitals) live, falling back to the same `100` default as actions when the pawn carries no vitals component or no row for the tag. Vital Scorer and Vital Gate read any named vital the same way. Attribute Scorers and Gates read live GameplayAttributes. Same classes as actions: see [Scorers & Gates](/docs/soulslike-combat/action-system#scorers--gates). Custom scorers stay **stateless**; `SeededRandom` is fixed on the reaction path (`Seed` stays `0`).
+Four gates read the event rather than the pawn, so each one works either on a reaction's **Scoring** or in a rule's **Conditions**:
 
-Four gates read the stimulus that set the reaction off rather than the pawn, so each one also works in a trigger rule's **Conditions**. An action carries no stimulus, so one added to an action has nothing to judge and passes.
+| Gate | Blocks unless | Defaults |
+|------|---------------|----------|
+| **Incoming Angle Gate** | The blow arrives inside an arc in front of the pawn. | **Half Angle Degrees** 60, so anything up to 60 degrees off the front passes; 180 turns it off. **Pass Without Direction** on. |
+| **Time To Impact Gate** | There is still time to answer before the blow lands. | **Min Seconds** 0, **Max Seconds** 0 (no bound). Set Min Seconds to the parry's own start-up. |
+| **Stimulus Magnitude Gate** | The blow is worth answering, in whatever the producer measured. | **Min Magnitude** 0, **Max Magnitude** 0 (no bound). A ceiling on one and a floor on the next splits a flinch from a stagger. |
+| **Source Distance Gate** | The source is within reach, in centimetres. | **Min Distance** 0, **Max Distance** 0 (no bound). **Pass Without Source** on. |
 
-**Incoming Angle Gate** blocks the reaction unless the blow arrives inside an arc in front of the pawn, which keeps a parry from answering a swing coming from behind. **Half Angle Degrees** is half the arc's width, `60` by default, so anything up to 60 degrees off the front passes and `180` turns the gate off. **Pass Without Direction** is on by default, letting a reaction fired by hand through when there is no direction to measure; untick it to refuse anything the gate cannot judge. The direction comes from whatever set the reaction off.
+The two placements read differently. A gate on a rule's **Conditions** decides whether this kind of answer is considered at all, and a refusal sends the event to the next rule down. A gate on a reaction's **Scoring** decides whether this reaction is the right one among the others that matched.
 
-**Time To Impact Gate** blocks the reaction unless there is time left to answer before the blow lands. **Min Seconds** set to the reaction's own start-up stops a parry answering a swing already too close to beat. A hit that already landed reports no time left, so any **Min Seconds** above `0` refuses one, which is what keeps a parry rule off a damage report. **Max Seconds** holds a rule back until the swing is close, and `0` sets no upper bound.
+An action carries no event, so one of these four added to an action has nothing to judge and passes.
 
-**Stimulus Magnitude Gate** blocks the reaction unless the blow is worth answering, measured in whatever the producer used: incoming damage for a hit that landed, a 0 to 1 charge level for a wind-up. **Min Magnitude** and **Max Magnitude** bound it, and `0` on either sets no bound. A ceiling on one rule and a floor on the next splits a flinch from a stagger.
+<Collapsible title="Writing a gate or scorer of your own" badge="Advanced">
+Subclass **SEC Scorer** or **SEC Gate** in Blueprint or C++ and override its one function. The context hands you the controller, the target, the ability system component, and a snapshot carrying distance, angle, speed, health, stamina and the event that set the reaction off.
 
-**Source Distance Gate** blocks the reaction unless whatever caused the stimulus is within reach, so a counter does not swing at an archer across the room. **Min Distance** and **Max Distance** bound it in centimetres, and `0` on either sets no bound. It measures to the source actor, or to the stimulus origin when nothing named a source. **Pass Without Source** is on by default, letting through what it cannot measure.
-
----
-
-## Debug Tools
-
-```cpp
-ReactionEvalComp->bDebugLogReactions = true;
-```
-
-Console variable `SEC.Debug.LogReactions 1` enables the same logging globally.
-
----
-
-## Integration Points
-
-| System | How It Connects |
-|--------|-----------------|
-| [Action System](/docs/soulslike-combat/action-system) | Reactions cancel actions (`bCancelCurrentAction`) and can block new ones via `SEC.Action.BlockActions` in `AddTags`. Same resolution chain pattern. |
-| [Vitals](/docs/soulslike-combat/vitals) | Health, Stamina, Vital Scorer, and Vital Gate all read the pawn's vitals live. |
-| [Combat Roles](/docs/soulslike-combat/combat-roles) | Role changes sync ReactionSets via `SECReactionSetComponent::SyncForCombatRole`. |
-| [Attack Telegraphs](/docs/soulslike-combat/attack-telegraphs) | Where a stimulus comes from, how far it carries, and which pawns notice it. |
-| [Melee Trace](/docs/soulslike-combat/melee-trace) | `OnMeleeHitResponse` on `SECMeleeTraceComponent` is a typical hook to fire or evaluate reactions after a hit. |
-| [Multiplayer](/docs/soulslike-combat/multiplayer) | Reaction execution state and cooldowns replicate through `SECReactionSetComponent`. |
-
-<Callout type="info">
-  **Custom character classes:** `ReactionEvaluationComponent` resolves the ability system from the possessed pawn, through `IAbilitySystemInterface` when the pawn implements it and by component search otherwise, same as actions. A pawn whose ability system never had its actor info initialised fails reaction abilities silently; `EnemyCharacterBase` handles that for you.
-</Callout>
-
----
-
-## Key API
-
-<Collapsible title="Component and delegate reference" badge="Advanced">
-| Component | Location | Role |
-|-----------|----------|------|
-| `ReactionEvaluationComponent` | Controller | Execution, optional selection, cooldowns |
-| `SECReactionSetComponent` | Pawn | Resolution, replication, overrides |
-
-**ReactionEvaluationComponent (Controller)**
-- `ExecuteReaction(ReactionId, Context)`: Fire a reaction (primary path).
-- `ReceiveStimulus(Stimulus)`: Hand the AI something that happened and let its perception filters, trigger rules and scoring answer it. Server only.
-- `CanReact(ReactionId, TargetOverride)`: Gate check without executing.
-- `EvaluateBestReaction(CategoryTag, TargetOverride)`: Optional selection when multiple reactions compete.
-- `EvaluateBestReactionForStimulus(CategoryTag, Stimulus, TargetOverride)`: The same selection with the stimulus carried down to gates and scorers.
-- `CanSenseStimulus(Stimulus)` / `SelectReactionCategory(Stimulus)`: Override points for the perception step and the rule walk.
-- `OnStimulusReceived`: Everything the pawn notices, before the trigger rules see it.
-- `StopCurrentReaction(bSuccess, Reason)`: Manually end the running reaction. Reason defaults to Cancelled and is what `OnReactionCompletedWithReason` reports.
-- `IsReactionExecuting()` / `GetCurrentReactionId()`: Runtime state.
-- `OnReactionStarted` / `OnReactionCompleted`: Controller-local delegates (with full context).
-- `OnReactionCompletedWithReason`: same completion, plus why it ended. `Completed` for a reaction that ran to the end, `Interrupted` for one something cancelled, `TimedOut` for one whose ability never ended. Bind this when a timeout has to be told apart from a clean finish.
-
-**SECReactionSetComponent (Pawn)**
-- `SetRuntimeOverride(ReactionSet, SwapMode)` / `ClearRuntimeOverride(SwapMode)`: Boss phase override.
-- `SyncForCombatRole(RoleTag, SwapMode)`: Apply resolved set for a combat role.
-- `GetReactionSetForRole(RoleTag)`: Query the resolution chain without applying.
-- Replicated execution and cooldown delegates; see [Assigning the ReactionSet](#assigning-the-reactionset).
+Keep subclasses stateless. Every enemy using the asset shares one instance, so a stored field aliases across the whole pack. The seeded random helper is fixed on the reaction path, so use the world's random for per-enemy variation.
 </Collapsible>
 
 ---
 
-## Gameplay Tags
+## Which Reaction Set an enemy uses
 
-| Tag | Purpose |
-|-----|---------|
-| `SEC.Reaction.BlockReactions` | Blocks all reactions when on the ASC |
-| `SEC.Action.BlockActions` | Blocks all actions when on the ASC |
-| `SEC.State.ReactionActive` | Convenience tag for reaction-to-reaction blocking |
-| `SEC.State.Invulnerable` | Starting tag for i-frames, held by a [montage window](/docs/soulslike-combat/animation-integration); your **Handle Incoming Damage** reads it |
+Fill in **Default Reaction Set** on the AI Config and every combat role uses it. Beyond that, four things can answer instead, and the first match wins:
 
-`ReactionCategory` tags are project-defined. Filter with them in `EvaluateBestReaction` only when using optional selection.
+| Source | Use it for |
+|--------|-----------|
+| **Runtime Override** | Boss phase transitions. Set it in Blueprint, clear it to fall back. |
+| **An equipped weapon** | Reactions that come with what the enemy is holding, such as a parry it can only do with a sword. |
+| **Role Reaction Sets** | A different set per [combat role](/docs/soulslike-combat/combat-roles), so a Waiter guards more than an Attacker. |
+| **Default Reaction Set** | Everything else. |
+
+A weapon carries its set in **Weapon Reaction Set** on the weapon Blueprint. While the enemy holds it, that set wins; drop the weapon and the enemy falls back to its config. See [Weapons](/docs/soulslike-combat/weapons).
+
+The set is resolved when the controller possesses the pawn and again on every role change, and each reaction's ability is granted as the set arrives. An enemy standing idle can answer a stimulus before it has picked a combat role.
+
+<Callout type="warning">
+Author **Role Reaction Sets** without a **Default Reaction Set** and an enemy that has not been assigned a role gets nothing. Fill in the default as well.
+</Callout>
+
+<Collapsible title="Swapping a set while a reaction is running" badge="Advanced">
+A swap takes a mode. **Immediate** cancels the running reaction and swaps now, which is the default. **Wait For Completion** queues the swap and applies it when the reaction finishes, so a boss phase change does not cut a parry in half. Both **Set Runtime Override** and **Clear Runtime Override** take it.
+
+**Set Provided Reaction Set** drives the weapon slot directly for a pawn running its own equipment, and passing nothing falls back to the config. Override **Get Weapon Reaction Set For Role** on the weapon to vary it per role; a weapon deriving from something other than **SEC Weapon Base** adds the **SEC Weapon Reaction Set Provider** interface in Class Settings.
+</Collapsible>
+
+<Collapsible title="Per-enemy setup without the base classes" badge="Advanced">
+Two components carry reactions. **Reaction Evaluation** sits on the AI controller and does the choosing and the running. **SEC Reaction Set** sits on the pawn, resolves which set applies, and replicates the state a HUD reads.
+
+**Enemy Controller Base** and **Enemy Character Base** ship with them. A custom controller and pawn need them added by hand.
+
+For a pawn with no AI Config at all, **Default Reaction Set** on the pawn's SEC Reaction Set component is the last link in the chain and enough for a test.
+</Collapsible>
 
 ---
 
-<DocNav 
-  prev={{ title: "Action Set Editor", href: "/docs/soulslike-combat/action-set-editor" }} 
-  next={{ title: "Reaction Set Editor", href: "/docs/soulslike-combat/reaction-set-editor" }} 
+## Debug it
+
+```
+SEC.Debug.LogReactions 1        // Which rule answered, which declined and why, which reaction won
+SEC.Debug.Reactions 1           // Reaction list above each enemy, with priorities and cooldowns
+SEC.Debug.Stimulus.Draw 1       // The announced shape, and every pawn it reached
+```
+
+`SEC.Debug.All 1` turns every overlay on at once, and `SEC.Debug.WatchPawn <name>` narrows them to one enemy.
+
+Two of them have a per-enemy equivalent that needs no console: **Debug Log Reactions** on the Reaction Evaluation component, and **Debug Overlay Reactions** on the pawn's SEC Reaction Set component.
+
+Saving the asset runs validation, which reports into the **Asset Check** message log and names any reaction with nothing to run.
+
+<Collapsible title="The attack lands and the enemy does nothing" badge="Advanced">
+Read `SEC.Debug.LogReactions 1` first; it names the stage that refused. In the order worth checking:
+
+- **Nothing was announced.** The attacker's montage has no telegraph notify, so no event ever arrived. `SEC.Debug.Stimulus.Draw 1` shows whether anything goes out.
+- **The enemy did not notice.** **Stimulus Filters** on the AI Config decide that, and a facing cone or a line of sight filter refuses a blow the enemy could not see. See [Attack Telegraphs](/docs/soulslike-combat/attack-telegraphs).
+- **No rule matched.** The rule's **On Stimulus** tag has to match the tag the announcement carries, and a context tag can block it.
+- **The rule matched and found no answer.** Every reaction it names was on cooldown, disabled, or refused by a gate. The canvas flags a rule wired outside its own category, which answers nothing at all.
+- **A reaction is already running.** One runs at a time, and a second request is refused.
+- **`SEC.Reaction.BlockReactions` sits on the enemy.** That mutes reactions outright.
+</Collapsible>
+
+<Collapsible title="What silently drops a reaction before it is picked" badge="Advanced">
+<ReactionPreconditionDetails />
+
+| Cause | Drops the reaction when |
+|-------|------------------------|
+| **Enabled** | It is toggled off. |
+| **No execution method** | Nothing is set, or the method is missing data it needs. |
+| **Behavior Tree Sequence** | A reaction interrupts what the AI is doing rather than replacing its brain, so that method is refused. |
+| **Cooldown or repeat limit** | It is still cooling down, or **Max Consecutive Uses** is spent. |
+| **`SEC.Reaction.BlockReactions`** | The tag sits on the enemy's ability system component. |
+| **Requires Tags / Block Tags** | The enemy's own tags do not line up. Reactions read the enemy's tags alone, not the target's or the world's. |
+| **A gate** | Any gate in **Scoring** answered no. |
+
+The same checks run at selection and again when the reaction starts, so one that stops qualifying in between is dropped rather than started.
+</Collapsible>
+
+---
+
+<Collapsible title="Firing a reaction from your own Blueprint" badge="Alternative">
+When your game already knows which answer fits, call the controller's **Reaction Evaluation** component directly and leave the trigger rules out of it.
+
+**Execute Reaction** takes the **Reaction ID** and a context struct. Fill in **Target** with the attacker, **Magnitude** with the damage, and **Event Tag** with your own category; the ability reads all of it back through **Get Action Context**.
+
+**Can React** runs the same checks without executing, for a check ahead of time. Pass the attacker as the target override so distance and angle gates measure against it.
+
+**On Stimulus Received** fires for everything the enemy notices, before the rules look at it. Call **Execute Reaction** from that binding and the rules sit the event out, since a rule fires only when nothing already answered. That is the opt-out for a project routing events its own way.
+
+A Reaction Set with no rules authored answers nothing by itself, which leaves this as the only way in.
+</Collapsible>
+
+<Collapsible title="Replacing the perception or the routing step" badge="Advanced">
+Two overridable events on a Blueprint or C++ subclass of the Reaction Evaluation component each take over one stage.
+
+| Override | Replaces |
+|----------|----------|
+| **Can Sense Stimulus** | The whole perception step. The default runs every filter in force and requires all of them to pass. |
+| **Select Reaction Category** | The whole rule walk. Return a category tag to route an event your own way without authoring rules. |
+
+**Evaluate Best Reaction For Stimulus** is the selection the rules run, with the event carried down so gates and scorers can read which way the blow is arriving. **Evaluate Best Reaction Among Links** narrows that same selection to a named few and applies each link's weight multiplier.
+
+**Fallback Stimulus Filters** on the component covers a pawn running without an AI Config. A config listing any filters replaces that list outright rather than adding to it.
+</Collapsible>
+
+<Collapsible title="What a reaction hands its ability" badge="Advanced">
+Both actions and reactions pass the same context struct through to the ability, which reads it with **Get Action Context**.
+
+| Field | Carries |
+|-------|---------|
+| **Target** | Who caused it. Filled in from the event's source for a reaction the rules fired. |
+| **Optional Object** | The weapon, the projectile, the item. |
+| **Magnitude** | Damage, charge level, intensity, in the producer's own units. |
+| **Event Tag** | Which category set this off. |
+| **Context Tags** | Situational tags such as an unblockable marker. |
+| **Target Data** | Spatial payload, packed with the target data helpers. |
+| **Stimulus** | What set this off, filled in for a reaction the rules fired and empty for one started by hand. |
+
+Distance and direction to the target are filled in when the ability activates, along with both sides' gameplay tags.
+
+Override **Can Activate Ability** on the ability, read the context, and return false to refuse. A refusal costs nothing: no cooldown is charged and no running reaction is interrupted.
+</Collapsible>
+
+<Collapsible title="Multiplayer" badge="Multiplayer">
+Reactions are chosen and run on the authority. **Receive Stimulus** is server side, and the telegraph notify returns early on any machine that is not the server, so a montage playing on a client announces nothing.
+
+The pawn's SEC Reaction Set component replicates what a client needs: the running reaction, the active set, the cooldowns, and delegates for reaction started, completed, set changed, and cooldown started and expired. Bind those for a HUD or client-side effects. See [Multiplayer](/docs/soulslike-combat/multiplayer).
+</Collapsible>
+
+---
+
+## Related
+
+| Page | Why |
+|------|-----|
+| [Attack Telegraphs](/docs/soulslike-combat/attack-telegraphs) | Where the events come from, how far they carry, and which enemies notice. |
+| [Reaction Set Editor](/docs/soulslike-combat/reaction-set-editor) | The canvas the rules and reactions are wired on. |
+| [Action System](/docs/soulslike-combat/action-system) | The poll-driven side, and the scorers and gates both share. |
+| [Defense System](/docs/soulslike-combat/defense-system) | What the raised guard is worth once the blow arrives. |
+| [Vitals](/docs/soulslike-combat/vitals) | The health and stamina the scorers and gates read live. |
+
+<DocNav
+  prev={{ title: "Action Set Editor", href: "/docs/soulslike-combat/action-set-editor" }}
+  next={{ title: "Reaction Set Editor", href: "/docs/soulslike-combat/reaction-set-editor" }}
 />

@@ -1,7 +1,7 @@
 ---
 title: "Action System"
-description: "Action selection that scores available moves and picks the highest for the current context."
-date: 2026-07-31
+description: "Give an enemy a moveset: create an Action Set, point an action at a montage, and let scoring pick the right move."
+date: 2026-08-21
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Actions"]
 parent: "SoulslikeCombatDocs"
@@ -14,693 +14,363 @@ order: 5
     { label: "Action System" }
 ]} />
 
-> Scores every action against live battlefield data: context tags, plus distance, angle, and health when you add scorers for those dimensions.
+> An enemy's moveset lives in one asset. Each move scores itself against the live fight, and the highest score wins.
 
-<ActionFlowVisualizer />
+<QuickStart time="60 seconds">
 
-## When to Use This
+<QuickStep title="Create an Action Set">
 
-- Any AI that needs to choose between multiple attacks or behaviors
-- Enemies with distance-dependent movesets (melee vs ranged)
-- Boss fights with phase-based action sets
-- Group AI where different roles use different attack patterns
+Right-click in the Content Browser, **SEC**, **Action Set**. It opens on its own card canvas.
 
-> This system runs on its own. You can use it without the other plugin systems.
-
----
-
-## How Scoring Works
-
-On every evaluation, all valid actions compete. The highest score above zero wins.
-
-<ActionScoreFormula />
-
-**Runtime modifiers** scale every action's score: `SetGlobalMultiplier` buffs or nerfs the whole moveset (`0` blocks all selection), and `SetActionOverride(ActionId, Multiplier)` targets one action. They multiply together in the formula.
-
-A small **jitter** factor (deterministic ±5% from the decision context seed) breaks ties so two enemies with the same data do not pick identically every tick.
-
-Two base numbers sit on every action:
-
-- **Selection Weight** biases the action up or down. Weight `2.0` doubles its score against a weight `1.0` action.
-- **Risk Penalty** divides the final score to hold risky moves back. `1.0` is no penalty, `2.0` halves the score (a high-risk heavy attack), `0.5` doubles it (a safe move).
-
-**Scorers** fold in as multipliers, one per dimension you opt into. Leave a dimension off and it does not affect the score: an action with no Distance Scorer scores the same at any range. A scorer that returns **0** zeroes the whole product for that action. The full set of built-ins is in [Scorers & Gates](#scorers--gates).
-
-### Range Curves
-
-Every built-in scorer shapes its dimension through one `Range` property, an `FRangeEval` curve. Below **Min Value** the score is 0; it ramps up to 1.0 across **Optimal Min**, holds at 1.0 through the **Optimal Min → Optimal Max** sweet spot, then ramps back down to 0 at **Max Value**. `Exponent` shapes the falloff. So an attack can be valid from 0-500cm while its score peaks at 150-250cm.
-
-Distance Scorer `Range` at the melee-preset default:
-
-<RangeEvalDetails />
-
-**Presets** to assign to a scorer's `Range`:
-- `MakeMeleeRange()`: Close-range distance band (0-100-250-500)
-- `MakeRangedRange()`: Long-range distance band (300-500-1000-1800)
-- `MakeFrontalAngle()`: Forward-facing cone (0-0-30-90, Angle Scorer)
-- `MakeLowHealthRange()`: Peaks at low health (0-0-0.25-0.5, Health Scorer, for desperate moves)
-- `MakeAlwaysOne()`: Always returns 1.0 (no preference)
-
-A scorer left at `MakeAlwaysOne()` has no effect, which is the default for the Health and Speed Scorers. Shape the Health Scorer's `Range` to favor low or high health, and use the Speed Scorer for pace-dependent moves such as a running attack that should score only while sprinting.
-
-### Cooldowns & Variance
-
-An action's **Cooldown** group controls reuse. `Cooldown Duration` is the base delay. `Initial Cooldown` blocks the move at spawn so enemies cannot open with a heavy hit. `Randomization (%)` adds ±variance (`0.2` = ±20%). `Spawn Cooldown Chance` rolls a starting cooldown so a pack does not attack in lockstep. `Max Consecutive Uses` (`-1` = unlimited, `2` = must switch after two uses) stops spam. Defaults:
-
-<ActionCooldownDetails />
-
-An action commits its cooldown only **after** `BeginExecute` succeeds and [PreExecute](#lifecycle-hooks) hooks do not veto. If activation fails or a hook sets `bVetoExecution`, no cooldown is stamped and the action can retry next tick. A [`CanActivateAbility`](#contextual-execution) refusal during ability activation follows the same rule: off cooldown, free to retry.
-
-**Interrupt Refund (%)** covers the case where an action starts, commits its cooldown, and is then cut short: an attack stopped in its windup would otherwise pay the same price as one that landed. `0.5` hands back half the time that was left. A clean finish and a timeout pay in full. It defaults to `0`, so nothing changes until you set it.
-
-### Recovery Time
-
-Recovery time suspends offensive action selection for a set number of seconds after an enemy commits a move. The enemy still strafes, repositions, and reacts (parry, dodge, counter). It does not start a new attack. Use it when a relentless attacker needs gaps between swings.
-
-Cooldown gates re-use of one move. Recovery gates **all** offensive actions after one ends. Tune the global windows on `UEnemyAIConfig` under **Recovery**. Every field defaults to `0`, so recovery stays off until you set a value.
-
-| Field | Sets |
-|-------|------|
-| `ActionRecoveryTime` | Seconds suspended after an action completes or times out. |
-| `InterruptRecoveryTime` | Seconds suspended after an action is interrupted or cancelled. Keep it shorter than `ActionRecoveryTime` so a parry or stagger does not double-stun. |
-| `ActionRecoveryTimeRandomization` | Plus or minus jitter on the completion recovery, so a pack does not act in lockstep. |
-
-**Per-action override.** On the action's **Recovery** group, enable `bOverrideRecoveryTime` and set `RecoveryTime`. The value replaces the global for that action; it does not add to it. With config `ActionRecoveryTime = 3`, a jab that sets `RecoveryTime = 1` recovers in one second while other moves recover in three.
-
-To watch the gate at runtime, set `SEC.Debug.LogActionDecisions 1`. While an enemy is held off, the decision log prints `Recovering (X.Xs remaining)`. For a HUD, `BlueprintPure` `IsActionRecovering(float& OutRemaining)` returns whether the enemy is recovering and the seconds left.
-
-<Collapsible title="Recovery window by exit path, and combo follow-ups" badge="Advanced">
-**By exit path:**
-
-- **Completed** uses the action's effective recovery (the override if set, otherwise the global `ActionRecoveryTime`).
-- **Interrupted or cancelled** uses `InterruptRecoveryTime`.
-- **Timed out** uses the global `ActionRecoveryTime`, never the per-action override.
-- **Failed** stamps no recovery window.
-
-**Combos flow through recovery.** An action's chain-link targets can still be selected while the enemy recovers, for `ChainFollowupWindowSeconds` after the action ends. Set that window on the evaluation component (default `0.6`). `0` makes the follow-up wait out recovery like any other action. Only the actions its chain links name bypass the gate. A non-completion end (interrupt or cancel) clears it, so a parried enemy cannot combo through its own recovery.
-
-**Stacked or conditional recovery.** For recovery that depends on state (extra recovery at low health), call `RequestRecoveryTime` from a [Lifecycle Hook](#lifecycle-hooks) `PostExecute`. The contribution folds into the window.
-</Collapsible>
-
-### Novelty & Chains
-- **Novelty:** Recently used actions take a score penalty, so the AI mixes moves without hard randomization.
-- **Chains:** Add an entry to an action's **Chain Links**, naming the follow-up it prefers and the **Bonus Multiplier** that follow-up receives (default `1.5`). After a Light Attack completes, Heavy Finisher scores higher for a short window. One action can prefer several follow-ups, each with its own bonus.
-
-Wiring these on a canvas, and watching a chain fire, is what the [Action Set Editor](/docs/soulslike-combat/action-set-editor#building-a-combo) is for.
-
-<Protip 
-  title="Organic Combos" 
-  description="Raise Smash's score after Hit. If the player rolls out of range, the AI drops the combo. It does not swing at air." 
+<UeCreateAssetScene
+  create="Action Set"
+  assetName="DA_ActionSet_Grunt"
+  caption="Right-click in the Content Browser, SEC, Action Set."
 />
 
-### Preconditions (Hard Gates)
+</QuickStep>
 
-Before scoring, every action runs hard gates. Fail one and the action drops out for that tick.
+<QuickStep title="Add an action">
 
-| Gate | Blocks the action when |
-|------|------------------------|
-| **Enabled** (`bEnabled`) | The action is toggled off in the ActionSet. |
-| **`SEC.Action.BlockActions`** | The tag sits on the AI's ability system component (add it via a reaction's `AddTags` to freeze offense). |
-| **Valid execution method** | The action has no configured method, or `HasValidData` returns false. |
-| **Cooldown / repeat limit** | The action is still cooling down, or `Max Consecutive Uses` is exhausted. |
-| **Recovery** | The AI is in a post-action recovery window (chain follow-ups excepted). |
-| `RequiresTags` | The combined Self/Target/World tags don't hold all of them. |
-| `BlockTags` | Any of them sits on Self, Target, or World. |
-| **Require Line Of Sight** | The box is ticked and the AI has no clear view of its target. |
-| **Gates** | Any `USECGate` in the action's **CustomScoring → Gates** array returns false. See [Scorers & Gates](#scorers--gates). |
+Right-click the empty canvas and choose **Add Action**. A card appears carrying an **Action ID** and a **Gameplay Ability** execution method already on it. Rename the Action ID to something you will recognise in a log, such as `LightAttack`.
 
-Stamina only blocks when you add a **Stamina Gate** (`MinStamina`) to the Scoring list, a [Vital Gate](/docs/soulslike-combat/vitals#costing-and-scoring-actions) for any named pool, or an **Attribute Gate** for a GAS stamina pool. Decision-context Stamina reads the AI's stamina vital when one is authored, else it defaults to 100, so an action with no Stamina Gate ignores stamina.
+</QuickStep>
 
-**Require Line Of Sight** reads `FDecisionContext::bHasLOS`. The [Build Decision Context](/docs/soulslike-combat/statetree#combat-and-decision) task traces from the AI's eyes to the target each tick. Tick the box for ranged shots and gap-closers. Leave it off for moves that land blind (radial slam, taunt).
+<QuickStep title="Point it at a montage">
+
+Set **Ability Class** to **GA_SEC_MontageAbility**, which ships with the plugin. A **Montage Payload** appears underneath it. Set its **Montage** to your attack animation.
+
+That is the whole attack. The ability plays the montage, and the action ends when the montage does.
+
+<UeSetPropertiesScene
+  title="DA_ActionSet_Grunt"
+  section="Execution"
+  rows={[
+    { name: "Ability Class", value: "GA_SEC_MontageAbility", kind: "class" },
+    { name: "Montage", value: "AM_Attack_Light", kind: "asset", thumb: "montage", accent: "#6464FF" }
+  ]}
+  caption="Pick the shipped ability, then pick the montage it plays."
+/>
+
+</QuickStep>
+
+<QuickStep title="Tell it what range it works at">
+
+On the card's **Scoring > Scorers** list, add a **Distance Scorer**. Its **Range** defaults to a melee band that peaks between 100 and 250 cm.
+
+Skip this and the action has no opinion about distance, so the enemy swings from across the room.
+
+</QuickStep>
+
+<QuickStep title="Point the AI Config at it, and play">
+
+Open the enemy's **Enemy AI Config** and set **Default Action Set** to the asset. Leave **Manage Action Sets Automatically** ticked.
+
+<UeSetPropertiesScene
+  title="EnemyConfig_Grunt"
+  section="Action Sets"
+  rows={[
+    { name: "Manage Action Sets Automatically", value: "true", from: "true", kind: "bool" },
+    { name: "Default Action Set", value: "DA_ActionSet_Grunt", kind: "asset" }
+  ]}
+  caption="Default Action Set covers every role, so one entry is enough to start."
+/>
+
+Press Play and run `SEC.Debug.Scoring 1` to see what each action scored and which one won.
+
+</QuickStep>
+
+</QuickStart>
 
 <Callout type="info">
-  While an action runs it applies its `AddTags` to the AI's ability system component. `SEC.State.IsMovementBlocked` ships in that list by default and holds the enemy still mid-swing. Remove it from `AddTags` to let the AI move during that action.
+**Want the enemy to walk in before it swings?** Change the action's **Execution Method** to **Behavior Tree Sequence**, set **Ability To Grant** to `GA_SEC_MontageAbility`, add **BT_SEC_AbilityAction** to the **Behavior Tree Sequence** list, and set the **Montage** on its payload. That shipped tree walks to 150 cm, runs the ability, backs off to 300 cm, then waits a second. No wiring beyond those three fields.
 </Callout>
+
+<Callout type="warning">
+An enemy needs a registered combat target before it runs any action at all. If the moveset looks right and nothing happens, that is what is missing. See [Getting Started](/docs/soulslike-combat/getting-started).
+</Callout>
+
+For the attack to deal damage, the montage also needs a melee trace window. See [Melee Trace](/docs/soulslike-combat/melee-trace).
 
 ---
 
-## Execution Methods
+## Ways to run an action
 
-Each action runs through an **Execution Method**: an instanced object under **Execution** that owns how the action runs. Two built-ins ship. You can write your own.
+**Execution Method** is how the action runs. Pick one per action; its fields appear underneath it.
 
-| Method | Runs |
-|--------|------|
-| **Gameplay Ability** | A single Gameplay Ability, activated by tag or event. |
-| **Behavior Tree Sequence** | One or more Behavior Trees, one after another. |
-
-Pick a method once per action. Its fields appear inline under it: ability actions show ability fields, behavior-tree actions show the tree list.
-
-### Gameplay Ability
-
-Pick an ability class. That is the setup. SEC grants the ability to the character, works out how to start it from the ability's own class defaults, and finishes the action when the ability ends.
+| Method | Pick it for |
+|--------|-------------|
+| **Gameplay Ability** | Almost every attack. Set **Ability Class** and the action is set up. |
+| **Behavior Tree Sequence** | A move with stages: approach, attack, back off. Set the tree list, and **Ability To Grant** if a tree starts an ability. |
+| **Gameplay Ability By Tag** | An ability something else already granted. Takes an **Activation Tag** instead of a class. |
+| **Gameplay Ability (Fire And Forget)** | A buff or a shout the enemy should not stand still for. Starts the ability and finishes the action in the same frame. |
 
 <ExecutionMethodExplorer initialMethod="Gameplay Ability" />
 
-The **Execution Method** combo above is live. Pick another method to see the properties that class exposes.
-
-**Ability Class** is the ability this action runs. **Ability Timeout** sits under Advanced and caps one run in seconds; 0 leaves the ability's own end as the only limit, backed by a 30 second safety.
-
-Two siblings cover the cases a class does not:
-
-| Method | Use it for |
-|--------|-----------|
-| **Gameplay Ability By Tag** | An ability granted somewhere else. Takes an Activation Tag instead of a class. Every granted ability carrying the tag starts, and the action finishes when the first of them ends. |
-| **Gameplay Ability (Fire And Forget)** | A buff, a shout, or anything the AI should not stand still for. Starts the ability and finishes the action in the same frame without cancelling it. Use the action's Recovery Time to hold off the next action. |
+The combo above is live. Pick another method to see what that one exposes.
 
 <Callout type="info">
-  Nothing has to report back. SEC watches the ability system for the ability it started, so an ability that reaches **End Ability** on completion, cancel, and interrupt works with no extra wiring.
+Nothing has to report back. SEC watches the ability system for the ability it started, so any ability that reaches **End Ability** on completion, cancel and interrupt works with no extra wiring. An ability that never ends is cut off after 30 seconds; set **Ability Timeout** to cap it sooner.
 </Callout>
 
-`UGameplayAbilityBase` provides rotation lock (`bLockAIRotation`: the AI commits to the attack direction with no mid-swing tracking), a ledge guard so a root-motion attack does not walk the enemy off an edge, motion warping toward the target, and the action context (target, distance, direction, magnitude, tags) on activation.
+<Collapsible title="What GA_SEC_MontageAbility gives you" badge="Advanced">
+It is a Blueprint ability that plays whatever montage the action's payload names, and you can point at it directly without subclassing. Its payload carries three fields:
 
-#### Motion Warping
+| Field | Does |
+|-------|------|
+| **Montage** | The animation to play. |
+| **Start Section** | Which section to start at. Leave it empty to play from the top. |
+| **Play Rate** | Speed multiplier, 1 for the authored speed. |
 
-Steer an attack toward its target. `UGameplayAbilityBase` registers a warp target from the resolved action context. The montage's Motion Warp notify performs the warp.
+Because it derives from `UGameplayAbilityBase` it also brings rotation lock, the ledge guard, motion warping toward the target, and the action context.
 
-<Collapsible title="Motion warping setup and tuning" badge="Advanced">
-`UGameplayAbilityBase` steers an attack toward its target with Unreal's [Motion Warping](https://dev.epicgames.com/documentation/en-us/unreal-engine/motion-warping-in-unreal-engine). On activation the ability registers a warp target from the resolved [action context](#activation-modes): the event payload's target for event-driven activations, or `AIController::GetFocusActor()` when tag or direct activations carry no payload target. The plugin registers the target. The montage's Motion Warp anim notify performs the warp.
-
-The pawn must carry a `UMotionWarpingComponent`. `AEnemyCharacterBase` does not add one, so warping no-ops on pawns without it.
-
-| Property | Default | Effect |
-| --- | --- | --- |
-| `MotionWarpingTargetName` | `Target` | Warp target key. Must match the Warp Target Name on the montage's Motion Warp notify. Set to None to disable warp setup for the ability. |
-| `MotionWarpingOffset` | `100.0` | Warp point offset in cm, placed in front of the target toward the AI. Doubles as a switch-off distance: once the AI is closer than this, root-motion warping pauses so the attack does not overshoot. The ability sets up that pause only while the offset is above 0. |
-| `MaxWarpDistance` | `0.0` | Skip gate. If the AI is closer than this when the ability activates, no warp target is set up. The default of 0 leaves the gate off (any distance warps). |
-| `bLockAIRotation` | `true` | Stops the controller from yawing the pawn toward focus during the ability. Warping runs on a separate path and still rotates the pawn during the notify window. |
-| `bPreventLedgeFallDuringAbility` | `true` | Keeps the character on the ledge while the ability runs, so an attack or backward dodge with root motion slides along the edge instead of dropping over it. The character's own **Can Walk Off Ledges** setting comes back when the ability ends, including on cancel and interrupt. |
-
-<Collapsible title="What the ledge guard does not cover" badge="Advanced">
-Ground movement only. Montage root motion keeps the character in walking mode, which is where the engine's ledge check runs, so attacks and dodges are covered. An ability that calls **Launch Character**, or one using a root motion source with vertical velocity, leaves the ground on purpose and still drops.
-
-To stop an enemy dropping at any time, untick **Can Walk Off Ledges** on its Character Movement component instead. That holds for the pawn's whole life, which also means it can never take a drop-down nav link, and is why the plugin does this per ability.
-
-Several things can hold the guard at once. Two overlapping abilities release independently, and the authored value returns only when nothing is asking for it. Hold the same window from an anim notify through the **SEC Movement Guard** subsystem's **Acquire Ledge Guard** and **Release Ledge Guard**.
-
-In multiplayer the guard applies wherever the ability runs. SEC's AI abilities run on both sides, so enemies are covered. A player ability derived from this base needs a net execution policy that also runs on the owning client, otherwise the client predicts the drop and gets corrected.
+Subclass it when you want per-attack graph work, such as spawning an effect on a montage notify. Subclasses can also fill **Montages to Pick From**, an array the ability draws from at random when the action carries no payload.
 </Collapsible>
 
-Setup:
+<Collapsible title="What the shipped behavior tree does" badge="Advanced">
+`BT_SEC_AbilityAction` is a four-step sequence:
 
-1. Add a `UMotionWarpingComponent` to your character, in the Blueprint through **Add Component** or in a C++ subclass through `CreateDefaultSubobject`.
-2. Place a **Motion Warp** notify window over the attack's windup in the montage.
-3. Set the ability's `MotionWarpingTargetName` to the notify's Warp Target Name.
+1. **Move Until Distance** to 150 cm, giving up after 5 seconds or past a 400 cm chase limit.
+2. **Activate Action Ability**, which starts the running action's **Ability To Grant** and waits for it to end.
+3. **Make Distance** back out to 300 cm.
+4. **Wait** one second.
 
-Where the AI tracks versus commits depends on the notify window: rotation warps toward the target across the window, then the swing commits past it. `bLockAIRotation` and warping run on separate paths, so a committed attack can still track during the warp window while controller facing stays locked.
+It reads the target from the `SEC_TargetActor` blackboard key, which the execution method writes before the tree starts, along with `SEC_Distance`, `SEC_ActionId` and the payload.
 
-`AM_SEC_TwoHanded_TripleAttack_Montage` in the showcase content has a working Motion Warp setup. Copy its notify and warp values as a starting point.
+Copy the asset into your own content to change the distances. Build your own tree on `BB_SEC_Basic`, or on a blackboard declaring the same keys.
 </Collapsible>
 
-#### Activation Modes
+<Collapsible title="Writing your own execution method" badge="Advanced">
+For a latent task, a spawned projectile, a timeline, or a third-party system, subclass `USECExecutionMethod` in Blueprint or C++. Your method carries its own fields and appears in the **Execution Method** picker beside the built-ins.
 
-Most abilities activate by tag (the default). Switch to event activation when the ability needs its payload on the first frame.
+The action holds your method as a definition and never mutates it. On execution the component duplicates it, so the running instance can hold per-execution state as ordinary properties.
 
-<Collapsible title="ByTag vs ByEvent activation" badge="Advanced">
-SEC picks the route from the ability. An ability whose only Blueprint graph is **Activate Ability From Event** starts through a gameplay event so that graph receives the payload; anything else starts directly on its granted ability. An action fired through `ExecuteActionWithContext` takes the event route, since that is how its payload reaches the ability.
+Override the phases you need: **Begin Execute** to start the work (return false to fail the start, which charges no cooldown), **Tick Execute** for per-frame work, and **Abort Execute** to tear down on interrupt or cancel. Call **Finish Execution** when the work ends.
 
-The behavior tree Activate Ability node states its route directly:
-
-| Mode | How It Works |
-|------|-------------|
-| **ByTag** (default) | Calls `TryActivateAbilitiesByTag` using `AbilityTag`. The ability must have matching `AbilityTags` in its class defaults. |
-| **ByEvent** | Sends a Gameplay Event using `AbilityTag` as the event tag. The ability must have a matching **Trigger** entry (Gameplay Event) in its class defaults, or use `WaitGameplayEvent`. |
-
-ByEvent mode sends a payload with the instigator and current target actor. Your ability can read them on the first frame.
-
-```cpp
-// Standard tag-based activation (default)
-ActivationMode = EAbilityActivationMode::ByTag;
-AbilityTag = "SEC.Action.Attack.Light";
-
-// Event-based activation
-ActivationMode = EAbilityActivationMode::ByEvent;
-AbilityTag = "SEC.Action.Attack.SweepEvent";  // Used as the event tag
-```
-
-**ByEvent abilities do not need AbilityTags in their class defaults.** Instead, add a **Trigger** entry with the matching tag and set its source to **Gameplay Event**. The `AbilityTag` field serves double duty: tag activation in ByTag mode, event tag in ByEvent mode.
-</Collapsible>
-
-### Behavior Tree Sequence
-
-Runs one or more Behavior Trees in order. Use it for multi-stage behaviors: circling, investigating, boss sequences. Set these on the method:
-
-<ExecutionMethodExplorer initialMethod="Behavior Tree Sequence" />
-
-**Behavior Tree Sequence** lists the trees to run, in order. **Behavior Tree Timeout** caps each tree in seconds; 0 waits for each one to finish, backed by a 30 second safety on the action.
-
-**Payload** is the data the action hands to its trees. Leave it None for a sequence that needs nothing. Pick **Ability Payload** to name a gameplay ability, which SEC grants so an Activate Blackboard Ability node can start it. Setting a payload reveals **Payload Key Name** under Advanced, the blackboard key the payload is written to, `SEC_Payload` by default.
-
-<Collapsible title="Carrying your own data into a tree" badge="Advanced">
-Subclass **Behavior Tree Payload** in Blueprint to carry fields of your own: a montage, a damage multiplier, a socket name. Assign your subclass on the action, and read it inside any tree in the sequence with **Get Action Payload**, whose output pin resolves to your subclass with no cast node.
-
-**Get Action Payload For Pawn** reads the same payload from a pawn, for use inside an ability the tree started or in an animation notify.
-</Collapsible>
-
-<Collapsible title="Blackboard keys and the ability-activation BT tasks" badge="Advanced">
-Before the first tree starts, the method writes these blackboard keys:
-
-| Blackboard Key | Type | Value |
-|----------------|------|-------|
-| `SEC_ActionId` | Name | The action's `ActionId` |
-| `SEC_Payload` | Object | The action's payload. Set the key's Base Class to `SECBehaviorTreePayload` so tree nodes offer it. |
-| `SEC_TargetActor` | Object | The current target (focus) actor |
-| `SEC_SelfActor` | Object | The AI pawn |
-| `SEC_Distance` | Float | Distance to target |
-
-<Callout type="warning">
-  These keys must exist in your **Blackboard Data Asset** with the exact types above, or the writes are dropped by the engine. A missing payload key is reported in the log once per blackboard, naming the key to add.
-</Callout>
-
-The plugin provides two Behavior Tree tasks for activating abilities inside a BT:
-
-**Activate Blackboard Ability** reads the payload key, starts the ability that payload names, and waits for it to end. Point its **Payload Key** at `SEC_Payload`. **Fallback Activation Tag** covers a tree running outside the action system, and **Fail When No Ability** decides whether a branch with nothing to start fails or succeeds.
-
-**Activate Ability** is a standalone task where you set the ability class directly. Its **Activation Mode** is By Tag or By Event, and an **Activation Tag** field appears on the By Event route. Use it to start a specific ability from a tree without going through the action system.
-
-Both nodes wait for the ability to end, and both fail the branch when something cancels it. Untick **Wait For Ability End** for a node that should start an ability and move on.
-</Collapsible>
-
-### Custom Execution Methods
-
-The two built-ins cover abilities and behavior trees. For a latent task, spawned projectile, timeline, or third-party system, write your own method. `USECExecutionMethod` is `Blueprintable` (Blueprint or C++).
-
-<Collapsible title="Writing a custom execution method" badge="Advanced">
-Subclass `USECExecutionMethod` in Blueprint or C++. Your method carries its own payload fields and slots into the action's **Execution Method** picker next to the built-ins.
-
-The action holds your method as a definition and never mutates it. On execution the component duplicates the definition. The running instance can hold per-execution state (spawned actor, montage handle, elapsed counter) as ordinary properties.
-
-Override the phases you need:
-
-| Function | When it runs | What to do |
-|----------|--------------|------------|
-| `PreloadAssets` | The AI takes on the action set, before any action runs | Start loading soft references in your payload so the first execution does not stall on them. |
-| `BeginExecute` | The action starts | Start your work. Return `false` to fail the start; the action charges no cooldown and can retry. |
-| `TickExecute` | Each frame while running | Poll or advance. A method that implements it receives the per-frame call. |
-| `AbortExecute` | The action is interrupted or cancelled | Tear down: cancel timers, destroy spawned actors, unbind callbacks, restore state. |
-
-Call `FinishExecution(bSuccess, Reason)` when your work ends. The component completes the action on the next tick, so completion never re-enters your `BeginExecute`. The ability method calls it from the ability's end-tag event; the behavior-tree method calls it when the last tree finishes.
-
-The component owns everything around the method: cooldowns, [recovery](#recovery-time), [lifecycle hooks](#lifecycle-hooks), the timeout, and the started and completed delegates. Your method owns only the mechanism.
-
-Four definition-side queries shape how the component treats the method. Keep them as pure reads:
-
-| Query | Returns |
-|-------|---------|
-| `HasValidData` | Whether the method is configured. An action whose method returns `false` is skipped, the same as an action with no execution data. |
-| `GetAbilityToGrant` | An ability class to auto-grant to the character's ASC, or none for a method that grants nothing. |
-| `GetExecutionTimeout` | Seconds before the component force-ends the method. Return `0` to wait on `FinishExecution` alone. |
-| `GetDisplayName` | The label shown on the action's Execution Method slot and in the logs. |
-
-<Callout type="warning">
-  Report completion by calling `FinishExecution`. A method that never calls it and returns `0` from `GetExecutionTimeout` ends only when the 30-second hard safety fires.
-</Callout>
-
-<Callout type="info">
-  A method instance is stateful and private to one execution, unlike a [Scorer or Gate](#scorers--gates), which stays stateless and shared across every AI using the asset. Hold per-execution state on the method; the component discards the instance when the action ends.
-</Callout>
+Four pure reads shape how the component treats it: **Has Valid Data** (an unconfigured method is skipped), **Get Ability To Grant**, **Get Execution Timeout**, and **Get Display Name**.
 </Collapsible>
 
 ---
 
-## Choosing the Action Set
+## Decide when the enemy picks a move
 
-The plugin resolves which ActionSet an enemy uses through a priority chain. Combat role changes trigger `SECCombatControllerComponent` to sync.
+Every action scores itself each time the enemy chooses, and the highest score above zero wins.
 
-The resolver walks this chain and returns the **first match**:
+<ActionScoreFormula />
 
-| Priority | Source | Use |
-|----------|--------|-----|
-| 1 (highest) | **Runtime Override** | `SetRuntimeOverride(ActionSet)`. For boss phase transitions. |
-| 2 | **Provided Set** | A set pushed onto the pawn, which is how an equipped weapon's moveset arrives. |
-| 3 | **Config Role** | Role-specific ActionSet from `EnemyAIConfig` (Attacker vs Flanker). |
-| 4 | **Config Default** | Fallback ActionSet from `EnemyAIConfig`. |
-| 5 | **Component Default** | `SECActionSetComponent → DefaultActionSet` on the pawn. |
-| 6 | **None** | No ActionSet found. The AI moves but never attacks. |
+Two numbers sit on every action. **Selection Weight** biases it up or down, so weight 2 doubles its score against a weight 1 action. **Risk Penalty** divides the final score to hold a risky move back, where 2 halves it and 0.5 doubles it.
 
-Weapon and override changes take effect **immediately**. No role change required.
-
-> `SECReactionSetComponent` uses the same resolution chain for reaction sets.
-
-<Protip 
-  title="Weapon-Driven AI" 
-  description="A weapon's own set outranks Config. Give a skeleton a Bow and it becomes a sniper. Take the bow away and it falls back to its Config set as a brawler." 
-/>
-
-### Giving a weapon its own moveset
-
-Fill in **`Weapon Action Set`** on the weapon Blueprint. While the enemy holds that weapon it fights from that set, and releasing the weapon hands the enemy back to its AI Config. See [Weapons](/docs/soulslike-combat/weapons) for how the weapon reaches the enemy.
-
-Leave the field empty and the enemy keeps whatever its Config gives it.
-
-<Collapsible title="Answering with a different set per combat role" badge="Advanced">
-`Weapon Action Set` answers the same set for every role. To vary it, override **`Get Weapon Action Set For Role`** on the weapon and branch on the incoming role tag. Return nothing for a role to leave that role on its Config set.
-
-The equipment component asks again whenever the pawn's combat role changes, so a per-role answer stays current.
-
-A weapon that derives from something other than **`SEC Weapon Base`** adds the **`SEC Weapon Action Set Provider`** interface in Class Settings and overrides the same event.
-</Collapsible>
-
-<Collapsible title="Pushing a set without a weapon" badge="C++">
-The slot is not weapon-specific. Anything can drive it.
-
-```cpp
-Pawn->ActionSetComponent->SetProvidedActionSet(ActionSet);
-Pawn->ActionSetComponent->SetProvidedActionSet(nullptr);  // fall back to Config resolution
-```
-
-`USECEquipmentComponent` is what pushes it for an equipped weapon, so a pawn using the component leaves this alone.
-</Collapsible>
-
-### Dynamic Actions
-
-<Collapsible title="Granting and revoking actions at runtime" badge="Advanced">
-Grant and revoke individual actions without swapping the whole set. These are `BlueprintCallable` (Blueprint or C++).
-
-```cpp
-Pawn->ActionSetComponent->GrantAction(ThrowGrenadeSpec);
-Pawn->ActionSetComponent->RevokeAction("ThrowGrenade");
-```
-
-Granted actions **persist across role changes and action set swaps**. They participate in evaluation alongside the base ActionSet: same scoring, same cooldowns.
-
-For bulk operations:
-```cpp
-Pawn->ActionSetComponent->GrantActionsFromSet(BonusActionSet);  // Add all from set
-Pawn->ActionSetComponent->RevokeActionsFromSet(BonusActionSet); // Remove all from set
-Pawn->ActionSetComponent->ClearGrantedActions();                // Remove all granted
-```
-</Collapsible>
-
----
-
-## Scorers & Gates
-
-Every scoring dimension past Selection Weight, Risk Penalty, tags, novelty, and chains is a **Scorer** or **Gate** on the action. Distance, angle, health, and speed each have a built-in scorer. Tags stay built into the pipeline. For mana, ally count, terrain, or faction state, attach your own. Each `FActionSpec` has a **Scoring** group with two arrays:
+Everything else is opt-in. Add a **Scorer** for each dimension the action should care about, and leave the rest off.
 
 <ScorerStackVisualizer />
 
-| Type | Base Class | Returns | Effect |
-|------|-----------|---------|--------|
-| **Scorer** | `USECScorer` | A multiplier (`1.0` = no effect) | Folds into the action score. Above 1 favors, below 1 disfavors. |
-| **Gate** | `USECGate` | `true` / `false` | A `false` drops the action from selection, like a built-in precondition. |
+| Scorer | Scores on |
+|--------|-----------|
+| **Distance Scorer** | Distance to the target in cm. Add this to any melee attack. |
+| **Angle Scorer** | Angle to the target, 0 facing it and 180 away. |
+| **Health Scorer** | The enemy's own health, as a 0 to 1 fraction. Shape it low for desperate moves. |
+| **Speed Scorer** | The enemy's own speed in cm/s, for a running attack. |
+| **Vital Scorer** | Any named vital, the general form behind Health Scorer. |
+| **Attribute Scorer** | Any GAS attribute, optionally divided by a second one such as Mana over MaxMana. |
 
-Add an entry, pick a built-in class or your own Blueprint/C++ subclass, and set its parameters inline. Same authoring pattern as [Role Evaluators](/docs/soulslike-combat/combat-roles) and [Positioning Rules](/docs/soulslike-combat/movement-system).
+A **Gate** is the same idea with a yes or no answer. A gate that says no drops the action for that decision.
 
-An action with an empty Scoring list scores on `SelectionWeight` alone. No scorer or gate can veto it. Built-in [hard gates](#preconditions-hard-gates) still apply (cooldown, block tags, ability activation). Adding a scorer opts the action into that dimension. Omitting it leaves the action indifferent to it.
+| Gate | Blocks unless |
+|------|---------------|
+| **Combat Token Gate** | The target has a free attack slot. This is what stops five enemies swinging at once. See [Combat Tokens](/docs/soulslike-combat/combat-tokens). |
+| **Stamina Gate** | The enemy's stamina is at least **Min Stamina**. |
+| **Vital Gate** | A named vital holds at least **Min Value**. This is how an action declares a resource cost. |
+| **Attribute Gate** | A GAS attribute sits between a min and a max. |
 
-### Built-in Classes
+Every gate has an **Invert** tick, which turns "pass when X" into "block when X".
 
-| Class | Kind | Property | Use |
-|-------|------|----------|-----|
-| **Distance Scorer** | Scorer | `Range` (default `MakeMeleeRange()`) | Score by AI-to-target distance in cm (0 with no target). The `Range` OptimalMin/OptimalMax also feed the positioning query. |
-| **Angle Scorer** | Scorer | `Range` (default `MakeFrontalAngle()`) | Score by angle to the target in degrees, 0 facing it, 180 away (0 with no target). |
-| **Health Scorer** | Scorer | `Range` (default `MakeAlwaysOne()`) | Score by AI health, a 0-1 fraction sourced from the pawn's health vital. For any other pool, use Vital Scorer; for a GAS health attribute, use Attribute Scorer. |
-| **Speed Scorer** | Scorer | `Range` (default `MakeAlwaysOne()`) | Score by AI horizontal speed in cm/s. |
-| **Vital Scorer** | Scorer | `VitalTag`, `bUseFraction` (default `true`), `Range` (default `MakeAlwaysOne()`) | Score by any named vital, the general form behind Health Scorer. No effect on a pawn with no vitals component or no row for the tag. |
-| **Stamina Gate** | Gate | `MinStamina` (default `0`) | Veto unless decision-context Stamina is at least `MinStamina`, sourced from the pawn's stamina vital when authored (else the 100 default). For any other pool, use Vital Gate; for a GAS stamina attribute, use Attribute Gate. |
-| **Vital Gate** | Gate | `VitalTag`, `MinValue` (default `0`), `bUseFraction` (default `false`) | Veto unless a named vital holds at least `MinValue`, the general form behind Stamina Gate. No effect on a pawn with no vitals component or no row for the tag. |
-| **Attribute Scorer** | Scorer | `Attribute`, `NormalizeBy`, `ValueEval` | Scale by a GameplayAttribute through an `FRangeEval` curve. Optional normalize-by attribute (e.g. Mana / MaxMana). |
-| **Attribute Gate** | Gate | `Attribute`, `MinValue`, `MaxValue` | Allow only while an attribute sits between a min and a max. |
-| **Combat Token Gate** | Gate | `TokenTag`, `Cost` (default `1`) | Veto unless the target has a free permission slot, then hold that slot until the action ends. Caps how many enemies run the action against one target at once. See [Combat Tokens](/docs/soulslike-combat/combat-tokens). |
+### Shaping a range
 
-<Callout type="info">
-  The decision context does not read GAS attributes. Health Scorer and Stamina Gate read the snapshot sourced from the pawn's vitals, defaulting to full health and 100 stamina when the pawn carries no vitals component or no row for the configured tag. For an attribute, reach for **Attribute Scorer** or **Attribute Gate**; for a specific pool, a [Vital Scorer or Vital Gate](/docs/soulslike-combat/vitals#costing-and-scoring-actions).
-</Callout>
+Each built-in scorer shapes its dimension through one **Range** curve. Below **Min Value** the score is 0. It ramps up to 1 across **Optimal Min**, holds at 1 through the sweet spot, then ramps back to 0 at **Max Value**.
 
-### Examples
+<RangeEvalDetails />
 
-**Cast a spell only above a mana threshold.** Add an **Attribute Gate**, set `Attribute = Mana`, `MinValue = 30`. The spell drops out whenever mana is below 30.
-
-**Favor a heavy attack as rage builds.** Add an **Attribute Scorer**, set `Attribute = Rage`, `NormalizeBy = MaxRage`, and shape the curve to peak near full. The attack scores higher as rage fills.
-
-**Let one enemy swing at a time.** Add a **Combat Token Gate** to every melee attack, set `TokenTag = SEC.Token.Attack`, and drop that pool to 1 in Project Settings. The rest circle until the slot frees. See [Combat Tokens](/docs/soulslike-combat/combat-tokens).
-
-The same Scorers and Gates work on reactions. On the reaction path the component builds a live spatial snapshot (distance, angle, speed, health) from the pawn and `TargetOverride` instead of the action decision context. See [Reaction System](/docs/soulslike-combat/reaction-system#scorers-on-reactions).
-
-### Custom Scorers & Gates
-
-For anything the built-ins miss, write your own. `USECScorer` and `USECGate` are both `Blueprintable` (Blueprint or C++).
-
-<Collapsible title="Writing a custom scorer or gate" badge="Advanced">
-Subclass `USECScorer` or `USECGate` and override its one function (`ScoreMultiplier` or `PassesGate`). `FSECScoringContext` carries the controller, target, owning ASC, the seed that `SeededRandom` uses, and a decision-context snapshot (below).
+So an attack can be legal from 0 to 500 cm while scoring best between 100 and 250. Presets fill the four numbers for you: `MakeMeleeRange`, `MakeRangedRange`, `MakeFrontalAngle`, `MakeLowHealthRange`, and `MakeAlwaysOne` for no preference.
 
 <Callout type="warning">
-  Keep scorer and gate subclasses **stateless**. Every AI using the asset shares one instance, so mutable fields alias across enemies. For randomness, use the `SeededRandom` helper.
+A brand new action has no scorers at all, so it fires at any distance and any angle. That is the design: add a scorer to opt the action into a dimension. An attack that swings from across the room is missing its Distance Scorer.
 </Callout>
 
-<Callout type="info">
-  `SeededRandom` draws from the per-action seed in `FSECScoringContext`. On the reaction path that seed is 0, so `SeededRandom` returns a fixed value. Vary reaction randomness through a built-in factor or your own context read.
-</Callout>
+<Collapsible title="Writing your own scorer or gate" badge="Advanced">
+Subclass `USECScorer` or `USECGate` in Blueprint or C++ and override its one function. The context hands you the controller, the target, the owning ability system component, a random seed, and a snapshot carrying distance, angle, speed, health, stamina and the pawn's vitals component.
 
-**The scoring context snapshot.** `FSECScoringContext` copies a decision-context snapshot once per evaluation. Built-in Distance/Angle/Health/Speed Scorers and the Stamina Gate read from it; Vital Scorer and Vital Gate read the pawn's vitals component directly through the `Vitals` field instead:
+Keep subclasses stateless. Every enemy using the asset shares one instance, so a mutable field aliases across the whole pack. For randomness, use the **Seeded Random** helper rather than a member.
 
-| Field | Meaning |
-|-------|---------|
-| `Distance` | Distance to the focus target in cm (0 with no target). |
-| `AngleDegAbs` | Absolute angle to the target in degrees, 0 facing it (0 with no target). |
-| `Speed` | AI horizontal movement speed in cm/s. |
-| `HealthPercentage` | AI health as a 0-1 fraction. |
-| `Stamina` | AI stamina (default scale 0-100). |
-| `Vitals` | The pawn's [vitals component](/docs/soulslike-combat/vitals), or null when the pawn carries none. |
+Override **Get Display Name** to label the row in the editor and in the decision log.
 
-These fields fill from the **action decision context** on the action path. On the **reaction path**, `ReactionEvaluationComponent` builds a separate live snapshot (distance, angle, speed, health, and stamina from the pawn and `TargetOverride`). Pass `TargetOverride` when evaluating reactions so spatial scorers measure against the attacker.
+The same scorers and gates work on reactions. Four more gates ship for reactions and trigger rules only: **Incoming Angle**, **Time To Impact**, **Stimulus Magnitude**, and **Source Distance**.
+</Collapsible>
 
-**Labeling.** Each scorer and gate reports a display name through overridable `GetDisplayName()` (`BlueprintNativeEvent`). It defaults to the class display name and drives the decision log, the score breakdown, and the editor array row title on UE 5.7+. Override it for a custom or dynamic label (fold the configured range into the name).
+<Collapsible title="Rules that apply to every action" badge="Advanced">
+For logic that covers a whole enemy rather than one move, `ActionEvaluationComponent` exposes two overridable events. **Can Execute Action** vetoes an action after the built-in gates pass. **Modify Action Score** adjusts a score after the pipeline computes it. Override them in a Blueprint subclass of the component.
+
+**World Tags** carry global game state (boss phase, weather, arena state) into scoring. Push them through the **World Tag** library and they reach every action's **Requires Tags**, **Block Tags** and tag multipliers. Three ship as examples: `SEC.World.Combat.Active`, `SEC.World.Boss.Active`, and `SEC.World.Boss.Casting`.
+
+A **Lifecycle Hook** runs your logic around an action on every exit path: **Pre Execute** (which can veto), **Tick Execute**, and **Post Execute** (which receives the end reason). Attach one per action on **Hook**, or to the whole enemy on the AI Config's **Global Hook**. When both are set they compose, global first.
 </Collapsible>
 
 ---
 
-## Project-Wide Hooks
+## Pace the moveset
 
-Built-in scorers and gates cover per-action rules. For logic that applies to **every** action, use the two override hooks or a lifecycle hook.
+**Cooldown Duration** is the wait before the same action can run again. It defaults to 0, so a lone action with nothing else set repeats back to back.
 
-### Custom Scoring Hooks
+<ActionCooldownDetails />
 
-<Collapsible title="CanExecuteAction and ModifyActionScore" badge="Advanced">
-`ActionEvaluationComponent` exposes two `BlueprintNativeEvent` hooks (Blueprint or C++). Prefer [Scorers & Gates](#scorers--gates) for per-action rules.
+**Randomization** adds jitter so a pack does not attack in lockstep, and **Spawn Cooldown Chance** rolls a starting cooldown for the same reason. **Max Consecutive Uses** stops one move being spammed, where `-1` is unlimited and `2` forces a switch after two. **Initial Cooldown** blocks a move at spawn, so an enemy cannot open with its heaviest hit.
 
-**CanExecuteAction**: Veto an action after all built-in gates pass.
+An action pays its cooldown only once it starts. A failed activation charges nothing and can retry on the next tick.
 
-```cpp
-bool CanExecuteAction(FName ActionId, const FDecisionContext& Context);
-// Return false to block the action.
-```
+### Recovery: a gap between any two moves
 
-**ModifyActionScore**: Adjust the score after the pipeline computes it.
+Cooldown gates one move. **Recovery** gates every offensive action after any one of them ends. The enemy still strafes, repositions and reacts; it does not start a new attack.
 
-```cpp
-float ModifyActionScore(FName ActionId, float BaseScore, const FDecisionContext& Context);
-// Return a modified score. Return BaseScore for no change.
-```
+Set it on the **Enemy AI Config** under **Recovery**. Every field defaults to 0, so recovery stays off until you set one.
 
-Override these in a Blueprint or C++ subclass of `UActionEvaluationComponent`.
-</Collapsible>
+| Field | Sets |
+|-------|------|
+| **Action Recovery Time** | Seconds held off after an action completes. |
+| **Interrupt Recovery Time** | Seconds held off after an action is interrupted or cancelled. Keep it shorter, so a parry does not double-stun. |
+| **Action Recovery Time Randomization** | Jitter on the completion window. |
 
-### Lifecycle Hooks
+To override it for one move, tick **Override Recovery Time** on that action and set **Recovery Time**. It replaces the global value rather than adding to it.
 
-A lifecycle hook runs your logic around an action as it executes, on every exit path. Use it for a telegraph before a heavy swing, analytics, or a veto scorers cannot express. `USECActionHook` is `Blueprintable` (Blueprint or C++).
+`SEC.Debug.LogActionDecisions 1` prints `Recovering (X.Xs remaining)` while the gate holds.
 
-<Collapsible title="Authoring and attaching a lifecycle hook" badge="Advanced">
-Subclass `USECActionHook` (Instanced, abstract) and override the phases you need.
+---
 
-<ZoomableImage
-  src="../images/sec_actionhook_overrides.png"
-  alt="USECActionHook override functions in the Blueprint editor: PreExecute, TickExecute, and PostExecute under the SEC category, plus GetDisplayName"
+## Build a combo
+
+An action's **Chain Links** name the follow-ups it prefers. After it completes, each named follow-up scores higher for **Chain Followup Window Seconds** (0.6 by default, on the Action Evaluation component). An interrupt or a cancel clears the window, so a parried enemy cannot combo through its own recovery.
+
+| Setting | Lives on | Does |
+|---------|----------|------|
+| **Bonus Multiplier** | the link | Multiplies the follow-up's score while the window is open. 1.5 by default. |
+| **Pacing** | the link | **Score Only** gives the bonus and nothing else, so the follow-up waits out the recovery breather. **Immediate** starts it as soon as the first action ends. |
+| **Chain Only** | the follow-up | Makes the link a requirement rather than a preference: automatic selection reaches that action only inside the window. Good for a finisher that should never open a fight. |
+
+A follow-up answers to its cooldown, its **Max Consecutive Uses**, a cooldown its ability applies to itself, its gates and its scorers whichever Pacing carries it, and a direct **Execute Action** call reaches a Chain Only action at any time.
+
+<Protip
+  title="Combos that read as decisions"
+  description="Raise Smash's score after Hit. If the player rolls out of range, the Distance Scorer drops Smash and the enemy picks something else. It does not swing at air."
 />
 
-A hook has three phases:
-
-| Phase | When it runs | Gives you |
-|-------|--------------|-----------|
-| **PreExecute** | After `BeginExecute` succeeds, before cooldown commit, `AddTags`, and started delegates | A chance to abort: set `bVetoExecution` to tear down the start without stamping cooldown. |
-| **TickExecute** | Each tick while the action executes | Per-frame work. A Blueprint method that implements this event receives the call; nothing to opt into. |
-| **PostExecute** | When the action ends, on every exit path | The end reason (Completed, Interrupted, Cancelled, TimedOut, or Failed). |
-
-Attach a hook in two places. Per action: `FActionSpec.Hook`. For the whole enemy: `UEnemyAIConfig.GlobalHook` (under **Recovery**), which runs for every action it commits.
-
-When both are set they compose, global first then per-action, in each phase:
-
-- **Veto is OR.** If either hook sets `bVetoExecution` in `PreExecute`, the action aborts.
-- **Recovery accumulates.** `RequestRecoveryTime` contributions from both hooks add up.
-
-For stacked or conditional [recovery time](#recovery-time), call `RequestRecoveryTime` on the context in `PostExecute`. Example: add extra recovery when the enemy ends the action below a health threshold.
-</Collapsible>
+Drawing these as wires, with each link's setting on the wire that carries it, is what the [Action Set Editor](/docs/soulslike-combat/action-set-editor#building-a-combo) is for.
 
 ---
 
-## World State Tags
+## Which moveset an enemy uses
 
-`WorldTags` carry global game state (boss phases, weather, arena state) into AI scoring. Push them through `USECWorldTagSubsystem` (or the one-node `USECWorldTagLibrary` helper). The build task copies them into `FDecisionContext::WorldTags` each tick, where they feed `RequiresTags`, `BlockTags`, and `TagScoreMultipliers`.
+Fill in **Default Action Set** on the AI Config and every role uses it. Beyond that, four things can answer instead, and the first match wins:
 
-The plugin ships three example world tags: `SEC.World.Combat.Active`, `SEC.World.Boss.Active`, and `SEC.World.Boss.Casting`. Use them as starters or define your own.
+| Source | Use it for |
+|--------|-----------|
+| **Runtime Override** | Boss phase transitions. Set it in Blueprint, clear it to fall back. |
+| **An equipped weapon** | A weapon's own moveset. Give a skeleton a bow and it fights like an archer. |
+| **Role Action Sets** | A different moveset per [combat role](/docs/soulslike-combat/combat-roles), so a Flanker opens differently from an Attacker. |
+| **Default Action Set** | Everything else. |
 
-<Collapsible title="World tag API: mutators and client reads" badge="Advanced">
-```cpp
-// Server BP, anywhere
-USECWorldTagLibrary::AddWorldTag(this, SEC.World.Combat.Active);
-USECWorldTagLibrary::AddWorldTagForDuration(this, SEC.World.Boss.Casting, 3.0f);
-USECWorldTagLibrary::AddWorldTagUntil(this, SEC.World.Boss.Active, {YourGame.Boss.Defeated});
-```
+A weapon carries its moveset in **Weapon Action Set** on the weapon Blueprint. While the enemy holds it, that set wins; drop the weapon and the enemy falls back to its config. See [Weapons](/docs/soulslike-combat/weapons).
 
-| Variant | Behavior |
-|---|---|
-| `AddWorldTag` | Permanent until `RemoveWorldTag`. |
-| `AddWorldTagForDuration` | Removes after N seconds. Re-adding refreshes the timer. |
-| `AddWorldTagUntil` | Removes when any sentinel tag is added. |
-
-Mutators run on the server only (`BlueprintAuthorityOnly`); client calls no-op silently.
-
-**Client-side reads** (UI, audio): drop `USECWorldTagComponent` on `GameState`. The component replicates the subsystem's tags and broadcasts `OnTagsChanged` on clients. Without the component, `USECWorldTagLibrary::GetWorldTags` returns empty on clients and warns once.
-</Collapsible>
-
----
-
-## Contextual Execution
-
-Sometimes an action needs a specific target, item, or magnitude. Creating a new ActionId per variation does not scale. Pass **Context**.
-
-<Collapsible title="Executing with context and gating on the payload" badge="Advanced">
-
-### 1. Execute with Context
-
-Call this from Blueprint or C++ to pass dynamic data:
-
-```cpp
-FSECExecutionContext Context;
-Context.Target = CustomTargetActor;
-Context.OptionalObject = SomeItem;
-Context.Magnitude = 0.5f;
-Context.ContextTags.AddTag(Tag_QuickVariant);
-
-ActionEvaluationComponent->ExecuteActionWithContext("SpecialAttack", Context);
-```
-
-### 2. Receive in Ability
-
-Your ability (inheriting from `UGameplayAbilityBase`) captures this data.
-
-- **Event:** `On Action Context Received` (Blueprint)
-- **Accessor:** `GetActionContext()` (Blueprint Pure)
-
-Context mapping:
-
-| Context Field | Maps To |
-|---------------|---------|
-| `Target` | `ActionContext.Target` |
-| `OptionalObject` | `ActionContext.OptionalObject` |
-| `Magnitude` | `ActionContext.Magnitude` |
-| `ContextTags` | `ActionContext.ContextTags` |
-
-<Callout type="info">
-  If `Target` is not provided in context, the system falls back to the AI's current **Focus Actor**.
+<Callout type="warning">
+Author **Role Action Sets** without a **Default Action Set** and an enemy that has not been assigned a role gets nothing. Fill in the default as well.
 </Callout>
 
-### 3. Gate Before Activation
+<Collapsible title="Granting single actions at runtime" badge="Advanced">
+**Grant Action** and **Revoke Action** on the pawn's **SEC Action Set Component** add and remove one action without swapping the whole set. Granted actions survive role changes and set swaps, and they score alongside the base set with the same cooldowns.
 
-SEC hydrates the context **before** the ability activates. Override `CanActivateAbility` (Blueprint or C++) on your `UGameplayAbilityBase`, read `GetActionContext()`, and return false to block.
+**Grant Actions From Set**, **Revoke Actions From Set** and **Clear Granted Actions** do the same in bulk.
+</Collapsible>
 
-- Event-triggered activations (ByEvent, Execute With Context, reactions) fill the context from the payload.
-- Tag and direct activations fill it from the AI's focus target.
+<Collapsible title="Handing an action data at the moment it runs" badge="Advanced">
+When one action needs to serve several cases (a different target, item, or strength), pass context instead of authoring a new action per case. **Execute Action With Context** takes a target, an optional object, a magnitude and a tag container.
 
-```cpp
-// Inside your ability's CanActivateAbility override:
-const FSECExecutionContext& Ctx = GetActionContext();
-if (!Ctx.GetTarget() || Ctx.Magnitude < RequiredCharge)
-{
-    return false; // refuse before the ability runs
-}
-```
+An ability deriving from `UGameplayAbilityBase` reads it through **Get Action Context**, or reacts to the **On Action Context Received** event. When no target is passed, the context falls back to the enemy's focus actor.
 
-A refusal costs nothing: SEC commits no cooldown and interrupts no running action. Use it when your rule needs the payload. Use [`CanExecuteAction`](#custom-scoring-hooks) for self or world gates that do not.
+Override **Can Activate Ability** on the ability, read the context, and return false to refuse. A refusal costs nothing: no cooldown is charged and no running action is interrupted.
 </Collapsible>
 
 ---
 
-## Quick Setup
+## Motion warping: steering an attack toward the target
 
-1.  **Create Asset:** Right-click → **Miscellaneous** → **Data Asset** → **ActionSet**.
-2.  **Define Actions:** Each entry needs an `ActionId`, `SelectionWeight`, an Execution Method, and (for range behavior) a Distance Scorer in its Scoring list. Toggle `bEnabled` off to disable an action without deleting it.
-3.  **Assign:** Drop the ActionSet into your `EnemyAIConfig`, or set it for testing:
+Every action's ability can steer an attack toward its target with motion warping, so a swing lands even when the montage was authored at a slightly different range.
 
-```cpp
-ActionEvaluationComponent->ActiveActionSet = MyActionSet;
-```
+1. Add a **Motion Warping** component to the character.
+2. Place a **Motion Warp** notify window over the attack's windup in the montage.
+3. Set the ability's **Motion Warping Target Name** to match the notify's Warp Target Name.
 
-See [Configuration Reference](/docs/soulslike-combat/configuration) for the full `EnemyAIConfig` structure.
+`AM_SEC_TwoHanded_TripleAttack_Montage` in the showcase content has a working setup to copy.
 
----
+<Collapsible title="Motion warping and rotation lock settings" badge="Advanced">
+| Property | Default | Effect |
+|----------|---------|--------|
+| **Motion Warping Target Name** | `Target` | Must match the Warp Target Name on the montage notify. Set it to None to skip warp setup for this ability. |
+| **Motion Warping Offset** | 100 cm | How far short of the target the warp point sits, which is where the AI comes to rest. Keeps the AI facing the target when the montage uses the SEC Skew Warp modifier; on the stock Skew Warp modifier the AI passes this point and turns around. 50 to 150 cm depending on the attack's range. |
+| **Max Warp Distance** | 0 | Skip warping when the enemy is closer than this. 0 leaves the gate off. |
+| **Lock AI Rotation** | on | Stops the controller yawing the pawn toward its focus during the ability, so the attack commits to a direction. Warping runs separately and still rotates the pawn inside the notify window. |
+| **Prevent Ledge Fall During Ability** | on | Keeps the character on the ledge while the ability runs, so a root-motion attack slides along the edge instead of dropping over it. The pawn's own setting returns when the ability ends, including on cancel. |
 
-## Debug Tools
-
-To watch an enemy score these actions while the game runs, open its Action Set and press Play: the [Action Set Editor](/docs/soulslike-combat/action-set-editor#watching-the-ai-decide) lights each action up with its live score, its cooldown, and the gate that refused it.
-
-For a record you can scroll back through, the component logs the same reasoning:
-
-```cpp
-// On ActionEvaluationComponent:
-ActionEvalComp->bDebugLogDecisions = true;  // Log scoring breakdown
-ActionEvalComp->bDebugLogExecution = true;  // Log execution flow
-```
-
-The `SEC.Debug.LogActionDecisions 1` console variable does the same globally without touching the component.
-
----
-
-## Integration Points
-
-| System | How It Connects |
-|--------|-----------------|
-| [Movement System](/docs/soulslike-combat/movement-system) | Provides distance/angle for scoring context |
-| [Combat Roles](/docs/soulslike-combat/combat-roles) | Role changes trigger automatic ActionSet swaps |
-| [Threat Detection](/docs/soulslike-combat/threat-detection) | Threat level feeds into `FDecisionContext` |
-| [Vitals](/docs/soulslike-combat/vitals) | Health and stamina in the scoring context come from the pawn's vitals; Vital Scorer and Vital Gate cost or favor actions by any pool |
-| [Multiplayer](/docs/soulslike-combat/multiplayer) | Action state replicates to clients via `SECActionSetComponent` |
-
-<Callout type="info">
-  **Custom character classes:** `ActionEvaluationComponent` resolves the `AbilitySystemComponent` from the possessed pawn via `IAbilitySystemInterface` on possession. Pawns that do not implement this interface cause ability-based actions to silently fail. See [Getting Started](/docs/soulslike-combat/getting-started) for setup details.
-</Callout>
-
----
-
-## Key API
-
-<Collapsible title="Component and delegate reference" badge="Advanced">
-| Component | Location | Role |
-|-----------|----------|------|
-| `ActionEvaluationComponent` | Controller | Scoring, evaluation, execution |
-| `SECActionSetComponent` | Pawn | Resolution, replication, weapon/override management |
-| `SECCombatControllerComponent` | Controller | Orchestrates sync on role changes |
-
-**ActionEvaluationComponent (Controller)**
-- `EvaluateBestAction(Context, Time, OutChosen)`: Run the scoring pipeline.
-- `ExecuteAction(ActionId)`: Force-execute a specific action.
-- `ExecuteActionWithContext(Id, Context)`: Execute with custom data (Target, etc.).
-- `SetGlobalMultiplier(Multiplier)`: Runtime buff/nerf for every action (`0` blocks all selection).
-- `SetActionOverride(ActionId, Multiplier)`: Per-action multiplier, folded with the global value.
-- `CanExecuteAction()` / `ModifyActionScore()`: Override hooks (see above).
-
-**SECActionSetComponent (Pawn)**
-- `SetProvidedActionSet(ActionSet)`: Set pushed in above Config, cleared with null.
-- `SetRuntimeOverride(ActionSet)` / `ClearRuntimeOverride()`: Boss phase override.
-- `GrantAction()` / `RevokeAction()`: Runtime action management.
-- `OnActionExecutionStarted` / `OnActionExecutionCompleted`: Replicated delegates for client UI/FX.
-- `OnActionSetChanged`: Fires when the active ActionSet changes (replicated).
-- `OnActionCooldownStarted(ActionId, Duration)` / `OnActionCooldownExpired(ActionId)`: Cooldown lifecycle delegates (replicated).
-- `GetRemainingCooldown(ActionId)` / `IsActionOnCooldown(ActionId)` / `GetAllActiveCooldowns()`: Query current cooldown state.
-</Collapsible>
-
-<Collapsible title="Upgrading from an older version" badge="Advanced">
-ActionSet assets migrate once on load; behavior is unchanged, and re-saving the asset persists the migration.
-
-- **Execution methods.** Each action's execution mode becomes an Execution Method carrying the same ability or trees and the same timeout. An ability action lands on **Gameplay Ability**, on **Gameplay Ability By Tag** when it named a tag and no class, or on **Gameplay Ability (Fire And Forget)** when it was set not to wait. A Behavior Tree action becomes **Behavior Tree Sequence**, and the ability fields it carried become an **Ability Payload** on that method.
-- **Ability end tags.** SEC watches the ability system for the ability it started, so the end tag fields are removed along with the `SEC_AbilityEndTag` blackboard key. An ability that reaches End Ability needs no other wiring. One that never ends is caught by Ability Timeout, or by a 30 second safety when that is 0.
-- **Scorers and gates (from v1.6).** Each action's old distance and angle evaluations become a Distance Scorer and Angle Scorer, a non-default health or speed range becomes a Health or Speed Scorer, and a stamina cost above 0 becomes a Stamina Gate. New actions you author ship with no scorers, so they are distance-agnostic until you add a Distance Scorer.
-- **Display names.** `GetDisplayName()` replaces the old `ScorerName` / `GateName` text fields, which are removed. Any label typed into them on a pre-existing asset is lost on load; re-label through a `GetDisplayName()` override.
+The ledge guard covers ground movement only. An ability that calls **Launch Character**, or one using a root motion source with vertical velocity, leaves the ground on purpose and still drops. To stop a pawn dropping at any time, untick **Can Walk Off Ledges** on its Character Movement component instead, which also stops it taking drop-down nav links.
 </Collapsible>
 
 ---
 
-<DocNav 
-  prev={{ title: "Movement System", href: "/docs/soulslike-combat/movement-system" }} 
-  next={{ title: "Action Set Editor", href: "/docs/soulslike-combat/action-set-editor" }} 
+## Debug it
+
+Open the Action Set and press Play. The [Action Set Editor](/docs/soulslike-combat/action-set-editor#watching-the-ai-decide) lights each card up with its live score, its cooldown, and the gate that refused it.
+
+For a record you can scroll back through:
+
+```
+SEC.Debug.Scoring 1              // Score list above each enemy, highest first
+SEC.Debug.Actions 1              // Cooldown list above each enemy
+SEC.Debug.LogActionDecisions 1   // Why each action scored what it did
+SEC.Debug.LogActionExecution 1   // Starts, ends and cooldowns
+```
+
+`SEC.Debug.ScoringRows` sets how many rows the score list keeps, 5 by default and 0 for all of them. Each switch has a matching checkbox on the **Action Evaluation** component, for isolating one enemy.
+
+Saving the asset also runs validation, which reports into the **Asset Check** message log listing and names any action that has nothing to run.
+
+<Collapsible title="It scores and wins, but nothing happens" badge="Advanced">
+- **The ability has no activation graph.** An ability implementing neither **Activate Ability** nor **Activate Ability From Event** starts and never ends. It is the classic first attempt.
+- **The Montage Payload has no montage.** Asset validation says so on save.
+- **The Action ID is empty.** An action added through the Details panel array instead of the canvas has no ID, wins the poll, and is then discarded with no log line. Opening the asset on the canvas repairs it.
+- **Enabled is unticked.** That also stops the ability being granted, so a later manual call has nothing to start. For a scripted boss move use **Manual Only** instead.
+- **Manage Action Sets Automatically is unticked** on the AI Config, which applies nothing at all.
+</Collapsible>
+
+<Collapsible title="What silently drops an action before scoring" badge="Advanced">
+| Cause | Drops the action when |
+|-------|----------------------|
+| **Enabled** | It is toggled off in the set. |
+| **Manual Only** | It is reserved for a direct Execute Action call. |
+| **Chain Only** | Nothing that chains into it has just finished, so the window is shut. |
+| **`SEC.Action.BlockActions`** | That tag sits on the enemy's ability system component. |
+| **No usable execution method** | The method is missing something it needs to run. |
+| **Cooldown or repeat limit** | It is still cooling down, or **Max Consecutive Uses** is spent. |
+| **Recovery** | The enemy is in a recovery window, and no Immediate chain link is carrying this action through it. |
+| **Requires Tags / Block Tags** | The enemy, the target or the world does not hold the right tags. |
+| **Require Line Of Sight** | The box is ticked and the view to the target is blocked. |
+| **A gate** | Any gate on the action answered no. |
+
+While an action runs it applies its **Add Tags** to the enemy. `SEC.State.IsMovementBlocked` ships in that list and holds the enemy still mid-swing. Remove it to let the enemy move during that action.
+</Collapsible>
+
+<Collapsible title="Editing an Action Set during Play In Editor" badge="Advanced">
+Tuning values on an existing action while the game runs is safe, and the running enemy picks the change up. Adding, deleting or renaming an action is refused with a toast, because a running enemy holds indexes into the list. Restart Play In Editor after those.
+</Collapsible>
+
+---
+
+<DocNav
+  prev={{ title: "Movement System", href: "/docs/soulslike-combat/movement-system" }}
+  next={{ title: "Action Set Editor", href: "/docs/soulslike-combat/action-set-editor" }}
 />

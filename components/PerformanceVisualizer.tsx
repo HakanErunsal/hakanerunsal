@@ -57,7 +57,7 @@ export default function PerformanceVisualizer() {
 
             <div className={ueConsole()}>
                 <div className="mb-2 border-b border-[#3e3e42] pb-2 text-[#888888]">
-                    Illustrative scaling — run <span className="font-mono text-[#cccccc]">stat SEC</span> in your level for real numbers
+                    Illustrative scaling. Run <span className="font-mono text-[#cccccc]">stat SEC</span> in your level for real numbers
                 </div>
 
                 <div className="grid grid-cols-[1fr_auto] gap-x-8 gap-y-1">

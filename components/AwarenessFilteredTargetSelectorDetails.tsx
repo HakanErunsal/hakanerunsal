@@ -7,8 +7,8 @@ export default function AwarenessFilteredTargetSelectorDetails() {
       displayName="Awareness Filtered Target Selector"
       sourceClass="AwarenessFilteredTargetSelector"
       sourceKind="instanced"
-      attachTo="UEnemyAIConfig → Target Selection"
-      note="Instanced selector on EnemyAIConfig. Requires USECAwarenessComponent on the AI controller."
+      attachTo="Enemy AI Config → Combat Role"
+      note="Instanced selector on the Enemy AI Config. Needs a SEC Awareness component on the AI controller."
       categories={AWARENESS_FILTERED_TARGET_SELECTOR_DETAILS}
     />
   );

@@ -1,7 +1,7 @@
 ---
 title: "Movement System"
-description: "Tactical AI positioning: direction sampling, distance keeping, strafing, navmesh awareness, and corner detours."
-date: 2026-08-04
+description: "Give an enemy tactical positioning: create a movement profile, set the range it holds, point the AI Config at it."
+date: 2026-08-17
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Movement"]
 parent: "SoulslikeCombatDocs"
@@ -15,316 +15,288 @@ order: 4
     { label: "Movement System" }
 ]} />
 
-> Tactical positioning that weighs distance, angle, other enemies, and the navmesh every tick, then moves the AI to its best spot.
+> An enemy that circles you, holds its range, backs off when crowded, and paths around corners. You author it as one data asset.
 
-The `MovementEvaluatorComponent` samples directions around the AI, scores each one, and steers toward the winner. You tune the behavior with a profile per combat role, and the component handles the rest: strafing, keeping range, avoiding the pack, staying off ledges, and pathing around corners.
+<QuickStart time="30 seconds">
 
-> It runs on its own. None of this needs the other plugin systems.
+<QuickStep title="Create a Movement Behavior Profile">
+
+Right-click in the Content Browser, **SEC**, **Movement Behavior Profile**.
+
+<UeCreateAssetScene
+  create="Movement Behavior Profile"
+  assetName="DA_Move_Attacker"
+  caption="Right-click in the Content Browser, SEC, Movement Behavior Profile."
+/>
+
+</QuickStep>
+
+<QuickStep title="Set the range it holds">
+
+Double-click the asset. Set **Desired Distance** to the range this enemy fights at, in centimetres. That one number is the whole first pass.
+
+<UeSetPropertiesScene
+  title="DA_Move_Attacker"
+  section="Distance"
+  rows={[
+    { name: "Desired Distance", value: "250.0", from: "400.0" },
+    { name: "Distance Tolerance", value: "0.2", from: "0.2" },
+    { name: "Crowd Tolerance", value: "0.45", from: "0.45" }
+  ]}
+  caption="Desired Distance is the range. The two tolerances widen the band around it."
+/>
+
+</QuickStep>
+
+<QuickStep title="Point the AI Config at it">
+
+Open the enemy's **Enemy AI Config**, and under **Movement Profiles** set **Default Movement Profile** to the asset. Leave **Manage Movement Profiles Automatically** ticked.
+
+<UeSetPropertiesScene
+  title="EnemyConfig_Grunt"
+  section="Movement Profiles"
+  rows={[
+    { name: "Manage Movement Profiles Automatically", value: "true", from: "true", kind: "bool" },
+    { name: "Default Movement Profile", value: "DA_Move_Attacker", kind: "asset" }
+  ]}
+  caption="Default Movement Profile covers every role, so one entry is enough to start."
+/>
+
+</QuickStep>
+
+<QuickStep title="Play, and watch it work">
+
+Press Play and run `SEC.Debug.Movement 1` in the console. Each enemy gets a line above its head showing its movement layer, whether it is strafing and which way, and its heading.
+
+</QuickStep>
+
+</QuickStart>
+
+<Callout type="warning">
+An enemy only moves once it has something to fight. Movement reads the controller's focus actor, and nothing sets that until a combat target is registered. If the enemy stands still with everything above filled in, that is what is missing. See [Getting Started](/docs/soulslike-combat/getting-started) and [Targeting](/docs/soulslike-combat/targeting-system).
+</Callout>
 
 ---
 
-## How it works
+## Tune the range
 
-### Direction sampling
-
-Each tick the component samples `NumSamples` directions (16 by default) around the AI and scores each one.
-
-<MovementVisualizer />
-
-A direction's score comes from how well it serves the target distance, whether it faces the target, whether another enemy sits in the way, whether it stays on walkable navmesh, and any positioning rules you added. The best direction wins, and the top few blend for a smooth result.
-
-### Distance and the comfort zone
-
-The AI holds a band around its `Desired Distance` instead of a single exact range, and the band is wider on the crowded side than the far side. `Crowd Tolerance` (0.45) sets how far inside the ideal range the AI puts up with a target pressing in, and `Distance Tolerance` (0.2) sets how far past it still counts as close enough. At a desired 400 cm that band runs 220 to 480 cm. Inside it the AI circles, closer than 220 it gives ground, past 480 it closes in.
+An enemy holds a band around **Desired Distance** rather than one exact range, and the band is wider on the crowded side than the far side.
 
 <DistanceBandVisualizer desiredDistance={400} tolerance={0.2} crowdTolerance={0.45} />
 
-Widen `Crowd Tolerance` for an enemy that stands its ground when you walk into it, and narrow it for one that insists on its space. Set the two equal for a band the same width on both sides.
+| Field | Default | What to do with it |
+|-------|---------|--------------------|
+| **Desired Distance** | 400 cm | The range this enemy fights at. 250 for a brawler, 600 for something that hangs back. |
+| **Distance Tolerance** | 0.2 | The far half of the band, as a share of Desired Distance. Raise it and the enemy stops closing sooner. |
+| **Crowd Tolerance** | 0.45 | The near half. Raise it for an enemy that stands its ground when you walk into it, lower it for one that insists on its space. |
 
-### Giving ground
-
-An enemy pushed inside its near edge backs away at a fraction of its walk speed, set by `Retreat Speed Scale` (0.45). A player closing at a run gains ground the whole way, so the gap shuts instead of holding while the enemy walks backward.
-
-How hard crowding pushes the enemy toward giving ground instead of circling comes from `Close Range Retreat Bias` (0.5). Raise it toward 1 for a harder push out, drop it to 0 to leave the enemy circling at any range.
-
-It also stops backing away from a target it cannot outrun. With `Yield Retreat To Closing Target` on, an enemy whose target closes faster than it can retreat holds its footing and circles instead. The check weighs the target's own speed against this enemy's retreat speed, so it needs no per-enemy tuning. A target with no movement of its own leaves it inert.
-
-<Collapsible title="Retreat tuning knobs" badge="Advanced">
-- **Retreat Speed Scale** (0.45) is a share of the pawn's normal walk speed, and 1 removes the cap. Backing away and running sideways do not stack their speed costs; the larger of the two applies, so a diagonal retreat is slowed once.
-- **Retreat Yield Strength** (1) is how completely a closing target cancels the retreat. 1 hands the frame to circling, 0.5 halves the effect, 0 keeps the enemy backing away regardless.
-- **Closing Speed Smoothness** (4) is how fast the enemy notices its target's speed changing. At 4 it settles in about a quarter of a second, enough to catch a committed run while one frame of a landing or a dodge barely moves it.
-- **Close Range Retreat Bias** (0.5) is how hard being crowded past the near edge favors giving ground over circling. It leaves tolerated crowding inside that edge alone.
-- Giving way ramps in. It starts once the target closes at half the enemy's retreat speed and completes once the two match.
-
-A `Min Analog Walk Speed` set on the pawn's Character Movement component floors the speed cap, so leave that at 0 for `Retreat Speed Scale` to hold.
-</Collapsible>
-
-### Strafing
-
-The AI circles the target while holding distance. It swaps sides automatically when the other side scores better (`bAutoStrafeSwap`), and it rests after strafing too long so the motion stays natural (`bEnableStrafeRest`, which fires `OnStrafeResting`). Under sustained player attention it can swap sides on threat, configured per profile (needs [Threat Detection](/docs/soulslike-combat/threat-detection)).
-
-### Sideways speed penalty
-
-Strafe animations read wrong at full run speed, so the pawn slows as its heading turns away from the direction it faces. `StrafeSpeedPenalty` (0.75) sets the cost, `StrafeFreeAngle` (15 degrees) is the band around straight ahead that costs nothing, and `StrafeFullPenaltyAngle` (40 degrees) is where the cost tops out. At the defaults a heading keeps all its speed out to 15 degrees, 82% at 22.5, and 44% at 40 or wider. It applies on the Tactical layer only; pathfinding, detour, and attack approach move the pawn along a path and never reach it.
-
-Raise `StrafeFreeAngle` if an enemy closing distance looks like it is jogging. Direction scoring angles the approach a few degrees while the AI holds a strafe side or steps around another enemy, and those degrees cost speed. Set it to 0 to charge the penalty at any angle off forward.
-
-### Two movement layers
-
-The component switches strategy by distance:
-
-| Layer | When | How |
-|-------|------|-----|
-| **Tactical** | Target within `HybridSwitchDistance` (800) | Direct input for responsive strafing and positioning. Still reads the navmesh per direction. |
-| **Strategic** | Target far or path-blocked | Navmesh pathfinding to route around obstacles. |
-
-### Rounding corners: detour escalation
-
-When a target ducks behind a corner it sits close in a straight line but far along the navmesh, so plain strafing grinds into the wall. Detour escalation hands off to pathfinding to round the corner, then resumes strafing the instant the AI regains the angle. On by default, it only acts inside `HybridSwitchDistance`, stays inert with no navmesh, and leaves the AI tactical when the target has no real route (walled off) rather than walking it into a dead end.
-
-<Collapsible title="Detour tuning knobs" badge="Advanced">
-Detour escalates two ways:
-
-- **Far detour (predictive):** engages when `route / straight-line` exceeds `DetourEnterRatio` (1.6) **and** `route - straight-line` exceeds `DetourMinExcess` (200 cm). The second gate lets the AI strafe past a thin pillar instead of pathfinding around it.
-- **Tight corner (reactive):** when the AI wants to close on a target it can't see but isn't gaining ground (closing slower than `DetourStallSpeed`, 60 cm/s), it escalates. A pillar never trips this, because the AI keeps closing past it.
-
-Detour **releases** on route geometry: it holds while the route still runs long and lets go once the walk straightens out. Release uses `DetourReleaseRatio` (1.35) and `DetourReleaseMinExcess` (100 cm), both under the enter thresholds so the AI does not flip between pathfinding and strafing every recheck. Because straight-line distance never enters the test, a Waiter or Flanker keeps routing around a pit while the player stands close on the far side.
-
-Each recheck runs at most once per `DetourRecheckInterval` (0.5 s) and is staggered across the pack. **`bDetourUseLineOfSightPreGate`** (on) skips the route query when the AI both sees the target and has walkable ground straight to it, checked with a navmesh raycast along that line. A pit, gap, or railing breaks the raycast, so the route still gets measured and the AI routes around it. The pre-gate cannot change the decision, only how often the query runs, so leave it on and turn it off only to measure every interval regardless.
-
-Tuning: raise `DetourEnterRatio` or `DetourMinExcess` if minor bumps trigger pathfinding. Raise `DetourStallSpeed` if a slow corner grind does not register. **`SEC.Debug.Movement.LogMovement 1`** logs each recheck (`ENGAGE`, `HOLD`, `release`).
-
-Automation tests live under **`SoulslikeEnemyCombat.Movement.Detour.*`** in the Session Frontend.
-</Collapsible>
-
-### Which way the pawn looks while it travels
-
-By default an enemy keeps looking at its target however it is moving, which reads well up close and looks wrong on a long walk or around a blind corner. Each pathfinding layer can face its direction of travel instead.
-
-| Setting | Applies while |
-|---------|---------------|
-| **Strategic Facing Mode** | Pathfinding at long range, with no detour running |
-| **Strategic Turn Rate** | The same, in degrees per second; `0` keeps the controller's own turn speed |
-| **Detour Facing Mode** | Pathfinding around close cover, taking over from the strategic mode whenever a detour is the reason |
-| **Detour Turn Rate** | The same, in degrees per second; `0` keeps the controller's own turn speed |
-
-**Use Default Facing** keeps the controller's normal focus tracking. **Face Movement Direction** turns the pawn to look where it is walking.
+Inside the band the enemy circles. Closer than the near edge it gives ground. Past the far edge it closes in. Set the two tolerances equal for a band the same width on both sides.
 
 <Callout type="warning">
-Turning the pawn away from its target changes what every angle-based system sees, because they all read the pawn's real facing: reaction angle gates, action angle scoring, and the awareness sight cone. An enemy rounding cover with **Face Movement Direction** can lose sight of the player mid-detour. That is usually the point, and it is worth knowing before you set it.
+Keep **Desired Distance** under 800 cm. Above that the enemy sits permanently in the pathfinding layer, where it walks toward the target and never circles.
 </Callout>
 
-A custom controller reads the current intent through **`GetDesiredFacingIntent()`**; `EnemyControllerBase` consumes it for you.
+### Watch a live enemy while you tune
 
-### Staying on the navmesh
-
-In the tactical layer each sampled direction gets a soft walkability score, so enemies stop strafing off ledges and into walls mid-fight. It is a preference, not a veto, so a boxed-in AI still picks its safest direction instead of freezing, and a forward probe eases speed down at a rim. On by default, inert with no navmesh. It caches per navmesh poly, refreshes at 10 Hz, and staggers across enemies to stay in budget.
-
-**Hazard areas** let enemies avoid a patch they can still walk on (lava, spikes):
-
-1. Create a Blueprint subclass of `NavArea` (e.g. `NavArea_Lava`) with a distinct draw color.
-2. Drop a **Nav Modifier Volume** over the patch, set its **Area Class** to your hazard area, and rebuild navigation (press **P** to verify it tints).
-3. On the component, add the area to **Hazard Area Avoidance** with a strength from 0 to 1: `0` ignores it, `1` treats it like a wall, `~0.75` routes around it but crosses when cornered.
-
-Raise the area's **Default Cost** too, so the long-range pathfinder also avoids it. A patch authored as `NavArea_Null` carves a hole in the navmesh, so the AI treats it as an impassable wall with no entry needed.
-
-<Collapsible title="Cover-break hook: detecting a walled-off target" badge="Advanced">
-The detour recheck already computes whether the AI can see its target and whether a full route exists. These server-only, Blueprint-pure getters on `MovementEvaluatorComponent` expose it, so you can react when a target hides behind something solid:
-
-| Getter | Meaning |
-|--------|---------|
-| `IsApproachBlocked()` | Sight blocked **and** no full route: the target is walled off. The cover-break gate. |
-| `HasLineOfSightToTarget()` | Clear view at the last detour recheck. Reports true when out of range or not rechecking. |
-| `IsTargetReachable()` | A full navmesh route exists at the last route measurement. Refresh runs when detour measures the route, not only when sight is blocked. Read it through `IsApproachBlocked`, not alone. |
-| `IsApproachStalled()` | Tactical steering is grinding cover without gaining ground. Transient, tactical-range only. |
-
-Delegates:
-
-| Event | Fires |
-|-------|-------|
-| `OnTargetLineOfSightChanged` | Sight flips, clear to blocked or back. Carries the new value. |
-| `OnApproachBlocked` | Rising edge only: once when the target becomes walled off. |
-
-The signal refreshes on the detour cadence (`DetourRecheckInterval`, 0.5 s), inside `HybridSwitchDistance`, while `bEnableDetourEscalation` is on.
-
-**Cover-break pattern:** bind `OnTargetLineOfSightChanged` and start a timer when it reports `false`. On expiry, gate on `IsApproachBlocked()`; if still true, line-trace from the pawn to the player on your cover channel, and the first blocking hit is the obstacle to attack. Clear the timer when sight returns. `ResetApproachBlockedState()` clears the signal by hand; it also runs on target loss, detour disable, and owner death.
-</Collapsible>
-
-<Collapsible title="Root-motion output (evaluate-only mode)" badge="Alternative">
-To drive locomotion with root motion instead of direct movement input, turn off **Apply Movement Input**. The component keeps scoring and publishing a direction each tick without driving the pawn. You forward that direction into your Anim Blueprint, which blends the locomotion animations, and their root motion moves the character. No C++ required.
-
-Each tick, read one of these Blueprint-callable getters and feed it to your locomotion blendspace:
-
-- **Get Current Direction Angle**: signed yaw in degrees (0 ahead, +90 right, -90 left, +/-180 behind). Good for a 1D turn/strafe blendspace.
-- **Get Current Direction Local**: a 2D vector (X = forward, Y = right) for a standard 2D locomotion blendspace.
-- **Get Current Direction**: the world-space direction, if you need it raw.
-
-In this mode the component stays tactical-only and issues no path-following moves. It still scores directions against the navmesh when nav-aware sampling is on.
-</Collapsible>
+The profile editor has a **Watching** picker. Start Play In Editor, pick a running enemy, and the diagram draws that enemy's real distance and heading against the band you are editing. Change a value and the enemy answers on the next tick.
 
 ---
 
-## Setup
-
-### Role-based (recommended)
-
-The automated path: the combat role picks the profile.
-
-1. In your **EnemyAIConfig**, assign a `MovementBehaviorProfile` to each combat role (e.g. Attacker gets an aggressive profile, Waiter gets a patient one).
-2. `SECCombatControllerComponent::SyncStateForCombatRole` calls `MovementEvaluatorComponent::SyncForCombatRole` when the role changes, applying the matching profile.
-
-No wiring needed on `EnemyControllerBase`. See [Combat Roles](/docs/soulslike-combat/combat-roles).
-
-### Data asset profile
-
-Create a `MovementBehaviorProfile` (Right-click → Miscellaneous → Data Asset → **MovementBehaviorProfile**). A profile holds only the role-swappable fields:
+## The rest of the profile
 
 <MovementProfileDetails />
 
-`Desired Distance` is the ideal range in cm, `Distance Tolerance` and `Crowd Tolerance` are the far and near halves of the comfort band as fractions of it, the Rest Behavior fields govern strafe fatigue, and the Threat Response fields feed off [Threat Detection](/docs/soulslike-combat/threat-detection). `Positioning Rules` are covered below. Everything else lives on the component and is the same for every role (next section).
+**Rest Behavior** stops an enemy circling forever: after **Strafe Rest Time Limit** seconds of continuous strafing it pauses for **Strafe Rest Duration**. Both are jittered per enemy so a pack does not rest in lockstep.
 
-**Adjust at runtime.** These are Blueprint-callable nodes on the component: **Apply Behavior Profile** swaps the whole profile, **Set Desired Distance** changes range, **Set Strafe Side** and **Swap Strafe Side** force a direction, and **Set Distance Multiplier** scales range (threat detection drives this one).
+**Threat Response** needs a [Threat Detection](/docs/soulslike-combat/threat-detection) component on the controller. Without one, both switches sit inert.
 
-<Collapsible title="Preset configs" badge="C++">
-`FMovementBehaviorConfig` factory methods fill the profile-level fields for common archetypes, applied with `ApplyBehaviorConfig`:
+Untick **Enable Strafing** and this role stops circling entirely: the enemy still approaches, retreats, and steps around other enemies, every other **Strafe** and **Strafe Time Limits** field goes inert, and the side it was circling on is remembered for whenever strafing comes back on. With it ticked, **Strafe Preference Weight** balances circling against closing or opening distance: 1.0 is balanced, below 1.0 favors approach and retreat, above 1.0 favors circling. Tick **Auto Strafe Swap** and the enemy switches sides on its own once the far side scores enough better, by the ratio in **Strafe Swap Threshold**, no sooner than **Strafe Swap Cooldown** allows.
 
-```cpp
-MovementEvaluator->ApplyBehaviorConfig(FMovementBehaviorConfig::MakeAttacker());
-```
+**Strafe Time Limits** forces a side swap after too long on one side, separately from any score-driven swap. With **Enable Strafe Time Limit** ticked, a swap fires after roughly **Strafe Time Limit** seconds, varied by **Strafe Time Limit Fluctuation** so a pack does not swap in lockstep. Tick **Rest After Strafe Swap** to pause briefly right after one of these forced swaps, for **Strafe Swap Rest Time** seconds, varied by **Strafe Swap Rest Fluctuation**.
 
-- `MakeDefault()`: balanced (400 cm).
-- `MakeAttacker()`: close, aggressive, minimal rest (300 cm).
-- `MakeWaiter()`: far, patient, frequent rest (600 cm).
-- `MakeFlanker()`: medium, quick repositioning pauses (400 cm).
-- `MakeSupporter()`: medium-far, moderate rest (500 cm).
-- `MakeElite()`: relentless pressure, very short rest (350 cm).
+**Positioning Rules** shape where the enemy wants to stand. Add an **Angle Preference Rule** and set **Preferred Angle** to 0 for frontal, 90 for flanking, 180 for behind the target. Tick **Avoid Instead** to invert it. Rules stack, each with its own **Weight**.
 
-The `Make*` helpers are C++ only. In Blueprint, use a `MovementBehaviorProfile` data asset instead, or build a `MovementBehaviorConfig` struct by hand and pass it to **Apply Behavior Config**.
-</Collapsible>
+<Callout type="info">
+A profile carries the fields above and nothing else. Sample count, avoidance, navmesh sampling, strafe speed, detour, and stuck detection all live on the **Movement Evaluator** component, so they are the same for every role on that controller.
+</Callout>
+
+### One profile per combat role
+
+Add entries to **Role Movement Profiles** to give each [combat role](/docs/soulslike-combat/combat-roles) its own profile: an aggressive one for Attacker, a patient one for Waiter. Any role you do not list falls back to **Default Movement Profile**, and the swap happens on its own when the role changes.
+
+<Callout type="warning">
+Leave no entry with an empty **Movement Profile**. An entry that names a role but no asset applies nothing, so the enemy keeps whatever the previous role gave it.
+</Callout>
 
 ---
 
-## Tuning the component
+## Tune the component
 
-Beyond the profile, the component exposes the full tuning surface: strafe feel, avoidance, navmesh sampling, hybrid switching, blending, and stuck detection. Set these on the component defaults; they apply to every role.
+Everything that is the same for every role sits on the **Movement Evaluator** component, on the AI controller.
 
 <MovementEvaluatorDetails />
 
-See the [Configuration Reference](/docs/soulslike-combat/configuration#movement-profiles) for the profile data asset.
-
 ---
 
-## Positioning rules
-
-Positioning rules nudge direction scores to shape where the AI wants to be. Add them to a profile's **Positioning Rules** array; each has a `Weight` (0 to 1) and they stack additively.
-
-The built-in `UAnglePreferenceRule` pushes the AI toward or away from an angle relative to the target's facing:
-
-- `PreferredAngle = 0`: frontal.
-- `PreferredAngle = 90`: flanking.
-- `PreferredAngle = 180`: behind the target.
-- `bAvoidInstead = true`: invert it to avoid that angle.
-- `AngleTolerance` (30) is the green zone where the rule stops nudging; `DirectionCommitment` (45) stops the AI flip-flopping between orbit directions.
-
-<Collapsible title="Write a custom rule" badge="Advanced">
-`UPositioningRule` is `Blueprintable`, so you can author a rule in Blueprint or C++.
-
-**Blueprint:** create a Blueprint class deriving from `PositioningRule`, override **Evaluate Direction**, and return -1 (discourage) to +1 (encourage). The context gives you the sample direction, the controller, and the desired distance; use the controller's **Get Pawn** for the AI and **Get Focus Actor** for the target and its facing. Add an instance to the profile's Positioning Rules array.
-
-**C++:** subclass and override `EvaluateDirection_Implementation`:
-
-```cpp
-UCLASS(Blueprintable)
-class UMyFlankingRule : public UPositioningRule
-{
-    GENERATED_BODY()
-
-    virtual float EvaluateDirection_Implementation(
-        const FDirectionEvaluationContext& Context) const override
-    {
-        // Context.SampleDirection, Context.Controller, Context.DesiredDistance
-        // Return -1.0 to +1.0
-    }
-};
-```
-</Collapsible>
-
----
-
-## Behavior Tree tasks
-
-For movement outside the main evaluation loop:
-
-| Task | Purpose |
-|------|---------|
-| **Move Until Distance** | Pathfind toward a blackboard target until within a set distance. Supports timeout, max chase distance, and debug draw. |
-| **Make Distance** | Retreat from a target with direct input until reaching a distance. Includes stuck detection and timeout. |
-| **Debug SEC Values** | Logs the `SEC_` blackboard values (target, distance, action ID) to log and screen. |
-
----
-
-## Debug
-
-Console commands toggle drawing and logging at runtime:
+## Debug it
 
 ```
-SEC.Debug.Movement.DrawScoring 1      // Direction scores
-SEC.Debug.Movement.DrawAvoidance 1    // Avoidance radii
+SEC.Debug.Movement 1                  // Layer, strafe side and heading above each enemy
+SEC.Debug.Movement.DrawScoring 1      // The 16 sampled directions, red low to green high
+SEC.Debug.Movement.DrawAvoidance 1    // Avoidance radii and the pawns being avoided
 SEC.Debug.Movement.DrawNav 1          // Navmesh validity and the ledge guard
-SEC.Debug.Movement.LogMovement 1      // Discrete events (layer, suspend, pathfinding, stuck, detour)
-SEC.Debug.Movement.LogTick 1          // Per-tick state dump (distance, error, speed)
-SEC.Debug.Movement.LogScoring 1       // Direction scoring detail
-SEC.Debug.Movement.LogAvoidance 1     // Avoidance detail
-SEC.Debug.Movement.LogStrafeSwap 1    // Strafe swap decisions
-SEC.Debug.Movement.LogStrafeState 1   // Strafe state changes
+SEC.Debug.Movement.LogMovement 1      // Layer switches, suspends, pathfinding, stuck, detour
 ```
 
-`LogTick` is separate on purpose: it fires every tick for every enemy, so it buries the discrete events. Turn on `LogMovement` to follow events, and add `LogTick` only when you need the raw stream. The tick stream writes to its own log category, so you can mute it while one enemy floods the console:
+`SEC.Debug.All 1` turns every overlay on at once, and `SEC.Debug.WatchPawn <name>` narrows them to one enemy.
+
+Five more log switches exist for narrower work: `LogTick`, `LogScoring`, `LogAvoidance`, `LogStrafeSwap`, and `LogStrafeState`. `LogTick` fires every tick for every enemy and buries the rest, so turn it on last.
+
+<Collapsible title="Debug one enemy from the Details panel" badge="Advanced">
+Every console switch above has a matching checkbox on that enemy's **Movement Evaluator** component, under **Movement Evaluator > Debug > Draw** and **Movement Evaluator > Debug > Log**. Ticking one there affects that enemy alone. They are readable and writable from Blueprint, so a debug menu can drive them at runtime.
+
+The per-tick stream writes to its own log category, so you can mute it while one enemy floods the console:
 
 ```
 Log LogMovementEvaluatorTick off
 ```
-
-<Collapsible title="Debug one enemy from the Details panel" badge="Advanced">
-The console commands are global. To isolate a single enemy, each one carries a matching checkbox on its `MovementEvaluatorComponent`, under **Movement Evaluator → Debug** in the Details panel: `bDebugDrawScoring`, `bDebugDrawAvoidance`, `bDebugDrawNav`, `bDebugLogMovement`, `bDebugLogTick`, `bDebugLogScoring`, `bDebugLogAvoidance`, `bDebugLogStrafeSwap`, and `bDebugLogStrafeState`. They are Blueprint-readable and writable too, for toggling at runtime.
 </Collapsible>
 
-<Collapsible title="All movement events" badge="Advanced">
-The component broadcasts these delegates, bindable in Blueprint or C++:
+<Collapsible title="It moves, but it never circles" badge="Advanced">
+Four causes, in the order worth checking:
 
-| Event | When |
-|-------|------|
-| `OnStrafeStarted` | Strafing begins (carries the side) |
+- **Desired Distance is 800 or higher.** Circling only exists in the tactical layer, and 800 cm is where the component hands over to pathfinding.
+- **It is resting.** Strafe rest is on by default: roughly 10 seconds of circling, then a pause of about 1.5 seconds.
+- **It is crowded.** Being pushed inside the near edge of the band favours giving ground over circling, scaled by **Close Range Retreat Bias** on the component.
+- **It is still travelling.** While the distance error is large the enemy runs in or backs off, and circling only takes over once it reaches the band.
+
+An enemy that stands still inside the band is doing that on purpose. With no neighbours to avoid, no positioning rules, and nothing to gain from moving, it holds its spot.
+</Collapsible>
+
+<Collapsible title="It does not move at all" badge="Advanced">
+- **No focus actor.** Nothing registered a combat target, so there is nothing to move relative to. This is the common one and it logs nothing.
+- **The Movement Evaluator is on the pawn.** It belongs on the AI controller. On a pawn it warns once at BeginPlay and then does nothing.
+- **A plain AAIController.** It needs a **SEC Combat Controller** component to resolve the config at possession, and a **SEC Brain** component to tick movement. `AEnemyControllerBase` ships with both.
+- **No navmesh.** Past 800 cm the enemy asks for a path, the request fails every tick, and it never closes the gap.
+- **A leftover `SEC.State.IsMovementBlocked` tag** on the pawn's ability system component freezes it outright.
+- **Apply Movement Input is off** on the component, which is evaluate-only mode.
+</Collapsible>
+
+---
+
+## How it steers
+
+<Collapsible title="Direction sampling" badge="Advanced">
+Each tick the component samples **Num Samples** directions (16 by default) around the enemy and scores each one.
+
+<MovementVisualizer />
+
+A direction's score comes from how well it serves the target distance, whether it faces the target, whether another enemy sits in the way, whether it stays on walkable navmesh, and any positioning rules on the profile. The best direction wins, and the top few blend for a smooth result.
+</Collapsible>
+
+<Collapsible title="Two layers, and rounding corners" badge="Advanced">
+The component switches strategy by distance. Inside **Hybrid Switch Distance** (800 cm) it drives the pawn directly, which is what makes strafing responsive. Beyond it, or when a path is blocked, it hands over to navmesh pathfinding.
+
+When a target ducks behind a corner it sits close in a straight line but far along the navmesh, so plain strafing grinds into the wall. Detour escalation notices and hands off to pathfinding to round the corner, then resumes strafing the instant the enemy regains the angle. It is on by default, acts only inside 800 cm, and stays inert with no navmesh.
+
+Detour engages when the walking route runs much longer than the straight line, or when the enemy wants to close on a target it cannot see and is not gaining ground. It releases once the walk straightens out. A target walled off with no route at all leaves the enemy tactical rather than walking it into a dead end.
+
+Tuning lives on the component under **Detour**. Raise **Detour Enter Ratio** or **Detour Min Excess** if minor bumps trigger pathfinding, and raise **Detour Stall Speed** if a slow corner grind does not register. `SEC.Debug.Movement.LogMovement 1` prints each recheck.
+</Collapsible>
+
+<Collapsible title="Giving ground under pressure" badge="Advanced">
+An enemy pushed inside its near edge backs away at a fraction of its walk speed, set by **Retreat Speed Scale** (0.45) on the component.
+
+With **Yield Retreat To Closing Target** on, an enemy whose target closes faster than it can retreat holds its footing and circles instead, so a player charging at a run does not walk it backward into a wall. The check weighs the target's speed against this enemy's retreat speed, so it needs no per-enemy tuning.
+
+**Close Range Retreat Bias** (0.5) is how hard crowding favours giving ground over circling. Raise it toward 1 for a harder push out, drop it to 0 to leave the enemy circling at any range.
+</Collapsible>
+
+<Collapsible title="Staying off ledges, and avoiding hazards" badge="Advanced">
+Each sampled direction gets a walkability score, so enemies stop strafing off ledges and into walls mid-fight. It is a preference rather than a veto, so a boxed-in enemy still picks its safest direction instead of freezing. On by default, inert with no navmesh.
+
+To make enemies avoid a patch they can still walk on (lava, spikes):
+
+1. Create a Blueprint subclass of `NavArea` with a distinct draw color.
+2. Drop a **Nav Modifier Volume** over the patch, set its **Area Class** to that area, and rebuild navigation. Press **P** to check it tints.
+3. On the Movement Evaluator, add the area to **Hazard Area Avoidance** with a strength from 0 to 1. `0` ignores it, `1` treats it like a wall, `0.75` routes around it but crosses when cornered.
+
+Raise the area's **Default Cost** as well, so long-range pathfinding avoids it too. A patch authored as `NavArea_Null` carves a hole in the navmesh, which the enemy treats as a wall with no setup at all.
+</Collapsible>
+
+<Collapsible title="Which way the pawn looks while it travels" badge="Advanced">
+By default an enemy keeps looking at its target however it moves, which reads well up close and looks wrong on a long walk or around a blind corner. Each pathfinding layer can face its direction of travel instead, through **Strategic Facing Mode** and **Detour Facing Mode** on the component. **Strategic Turn Rate** and **Detour Turn Rate** set how fast it turns, in degrees per second, and 0 keeps the controller's own turn speed.
+
+Turning the pawn away from its target changes what every angle-based system sees, because they all read the pawn's real facing: reaction angle gates, action angle scoring, and the awareness sight cone. An enemy rounding cover with **Face Movement Direction** can lose sight of the player mid-detour, which is usually the point.
+</Collapsible>
+
+<Collapsible title="Strafe animations at full speed" badge="Advanced">
+Strafe animations read wrong at a full run, so the pawn slows as its heading turns away from the direction it faces. **Strafe Speed Penalty** (0.75) sets the cost, **Strafe Free Angle** (15 degrees) is the band around straight ahead that costs nothing, and **Strafe Full Penalty Angle** (40 degrees) is where the cost tops out.
+
+Raise **Strafe Free Angle** if an enemy closing distance looks like it is jogging, since direction scoring angles the approach a few degrees while holding a strafe side. Set it to 0 to charge the penalty at any angle off forward. It applies to the tactical layer only.
+</Collapsible>
+
+<Collapsible title="Driving locomotion with root motion instead" badge="Alternative">
+To move the character with root motion rather than movement input, untick **Apply Movement Input**. The component keeps scoring and publishing a direction every tick without driving the pawn. Feed that direction into your Anim Blueprint, and the locomotion animations move the character.
+
+Read one of these each tick and feed your blendspace:
+
+- **Get Current Direction Angle**: signed yaw in degrees, 0 ahead, +90 right, -90 left. Good for a 1D turn or strafe blendspace.
+- **Get Current Direction Local**: a 2D vector, X forward and Y right, for a standard 2D locomotion blendspace.
+- **Get Current Direction**: the world-space direction, raw.
+
+In this mode the component stays tactical-only and issues no path moves.
+</Collapsible>
+
+<Collapsible title="Reacting when a target hides behind something solid" badge="Advanced">
+The detour recheck already works out whether the enemy can see its target and whether a route exists, so a cover-break behaviour can read it off the Movement Evaluator:
+
+| Getter | Answers |
+|--------|---------|
+| **Is Approach Blocked** | Sight blocked and no route: the target is walled off. This is the cover-break trigger. |
+| **Has Line Of Sight To Target** | Clear view at the last recheck. |
+| **Is Target Reachable** | A full navmesh route existed at the last route measurement. Read it through **Is Approach Blocked** rather than alone. |
+| **Is Approach Stalled** | Tactical steering is grinding cover without gaining ground. |
+
+**On Target Line Of Sight Changed** fires whenever sight flips, and **On Approach Blocked** fires once when the target becomes walled off.
+
+The pattern: bind **On Target Line Of Sight Changed**, start a timer when it reports false, and on expiry check **Is Approach Blocked**. If it still holds, line-trace from the pawn to the player and the first blocking hit is the obstacle to attack. Clear the timer when sight returns.
+</Collapsible>
+
+<Collapsible title="Every movement event" badge="Advanced">
+| Event | Fires when |
+|-------|------------|
+| `OnStrafeStarted` | Strafing begins, carrying the side |
 | `OnStrafeEnded` | Strafing stops |
-| `OnStrafeSwapped` | Direction changes (carries the new side) |
+| `OnStrafeSwapped` | Direction changes, carrying the new side |
 | `OnStrafeResting` | Strafe fatigue rest begins |
-| `OnMovementSuspended` | Movement suspended (carries duration) |
+| `OnMovementSuspended` | Movement suspended, carrying the duration |
 | `OnMovementResumed` | Suspension ends |
-| `OnArrivedAtDesiredDistance` | AI enters the comfort zone |
-| `OnDepartedDesiredDistance` | AI leaves the comfort zone |
-| `OnMovementLayerChanged` | Layer switches (carries new and previous) |
-| `OnSwitchToPathfinding` | Switched to Strategic |
-| `OnSwitchToDirectInput` | Switched to Tactical |
+| `OnArrivedAtDesiredDistance` | The enemy reaches its band |
+| `OnDepartedDesiredDistance` | The enemy leaves its band |
+| `OnMovementLayerChanged` | The layer switches, carrying new and previous |
+| `OnSwitchToPathfinding` | Switched to pathfinding |
+| `OnSwitchToDirectInput` | Switched to direct steering |
 | `OnPathfindingFailed` | Pathfinding blocked or unreachable |
-| `OnAttackApproachComplete` | Attack approach reached its distance |
-| `OnAttackApproachFailed` | Attack approach failed |
-| `OnTargetLineOfSightChanged` | Detour-recheck sight flips (carries the new value) |
-| `OnApproachBlocked` | Target becomes walled off (rising edge) |
+| `OnAttackApproachComplete` | An attack approach reached its distance |
+| `OnAttackApproachFailed` | An attack approach failed |
+| `OnTargetLineOfSightChanged` | Sight to the target flips |
+| `OnApproachBlocked` | The target becomes walled off |
+</Collapsible>
+
+<Collapsible title="Moving a pawn outside the loop" badge="Alternative">
+Three Behavior Tree tasks move the pawn without the evaluation loop, for use inside an action's tree:
+
+| Task | Does |
+|------|------|
+| **Move Until Distance** | Paths toward the blackboard target until within a set distance. Takes a timeout and a max chase distance. |
+| **Make Distance** | Backs away from a target until it reaches a distance. Includes stuck detection and a timeout. |
+| **Debug SEC Values** | Logs the `SEC_` blackboard values to the log and the screen. |
 </Collapsible>
 
 ---
 
-## Integration
-
-| System | How movement uses it |
-|--------|----------------------|
-| [Threat Detection](/docs/soulslike-combat/threat-detection) | `SECCombatControllerComponent` auto-wires it. Threat response (`bSwapStrafeOnHighThreat`, `bAdjustDistanceByThreat`) is set per profile and switches with role. |
-| [Combat Roles](/docs/soulslike-combat/combat-roles) | Each role applies a different `MovementBehaviorProfile`. |
-| [Action System](/docs/soulslike-combat/action-system) | Actions can request an attack approach to close distance before executing. |
-
----
-
-<DocNav 
-  prev={{ title: "Step-by-Step Enemy", href: "/docs/soulslike-combat/step-by-step-enemy" }} 
-  next={{ title: "Action System", href: "/docs/soulslike-combat/action-system" }} 
+<DocNav
+  prev={{ title: "Step-by-Step Enemy", href: "/docs/soulslike-combat/step-by-step-enemy" }}
+  next={{ title: "Action System", href: "/docs/soulslike-combat/action-system" }}
 />

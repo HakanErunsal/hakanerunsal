@@ -6,8 +6,8 @@ export default function ThreatResponseWiringDetails() {
     <UeComponentDetailsPanel
       displayName="SEC Combat Controller Component"
       sourceClass="SECCombatControllerComponent"
-      attachTo="AEnemyControllerBase"
-      note="Binds threat delegates on BeginPlay when ThreatDetectionComponent exists. Enable Threat Detection only controls SetThreatDetectionEnabled(true) on BeginPlay."
+      attachTo="Enemy Controller Base"
+      note="Binds the threat events at BeginPlay whenever a Threat Detection component sits on the same controller. Enable Threat Detection turns evaluation on there and never turns it off."
       categories={THREAT_RESPONSE_WIRING_DETAILS}
     />
   );

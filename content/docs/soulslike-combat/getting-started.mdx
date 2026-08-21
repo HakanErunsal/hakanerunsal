@@ -1,7 +1,7 @@
 ---
 title: "Getting Started with SoulslikeCombat"
-description: "Install the plugin and build a working enemy from scratch: pawn, controller, ability, ActionSet, and config."
-date: 2026-08-04
+description: "Turn the plugin on and get a live enemy that spots the player, closes the distance and holds its range, with no C++."
+date: 2026-08-19
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Tutorial"]
 parent: "SoulslikeCombatDocs"
@@ -15,235 +15,232 @@ order: 1
     { label: "Getting Started" }
 ]} />
 
-## What this plugin is
+> One pawn Blueprint, one data asset, two fields filled in, and you have an enemy that notices the player and comes for them.
 
-SoulslikeCombat gives Unreal Engine enemies tactical souls-like behavior through a set of drop-in components. The AI maintains distance, strafes, scores its attacks, reacts to hits, and coordinates with other enemies so they take turns instead of swarming.
+## See a finished enemy first
 
-You build enemies from data assets and Blueprints. Shipping a working enemy takes no C++. Three kinds of collapsed drawers appear throughout this guide, all closed by default so the main path stays clean:
+Turn on **Show Plugin Content** in the Content Browser's settings menu, then open `Showcase/Maps/LVL_SEC_Showcase` in plugin content and press Play. It ships with a player, a navmesh, and armed enemies to fight.
 
-- **Alternative** drawers show a different way to reach the same result, no code required.
-- **Advanced** drawers cover deeper options and tuning.
-- **C++** drawers hold code internals for programmers extending the plugin.
+The pieces worth reading are under `Showcase/Characters/SECEnemy`:
 
-<Callout type="info">
-Runs on Unreal Engine **5.6, 5.7, and 5.8**. Works in single-player and multiplayer (listen and dedicated server). Current plugin version: **3.0.0**.
-</Callout>
+| Asset | What it is |
+|-------|------------|
+| `BP_SEC_EnemyCharacter` | The enemy pawn |
+| `BP_SEC_EnemyController` | Its AI controller |
+| `EnemyConfig_Default` | Its AI config: per-role action sets and movement profiles, an awareness config, an awareness-filtered target selector, and `StateTree_SEC_Core` as its brain |
 
----
-
-## Install
-
-### 1. Install to your engine version
-
-Get **SoulslikeCombat** on [Fab](https://www.fab.com/), open the Epic Games Launcher, and click **Install to Engine**. Pick the Unreal Engine version you want to use it with (5.6, 5.7, or 5.8). The plugin installs into that engine with prebuilt binaries.
-
-### 2. Enable it in your project
-
-Open your project, go to **Plugins**, search "SoulslikeCombat", and tick it on. Restart the editor when prompted.
-
-### 3. Confirm the dependencies
-
-The plugin depends on five engine plugins and turns them on for you: **GameplayAbilities**, **StateTree**, **GameplayStateTree**, **MotionWarping**, and **EnhancedInput**. Check **Edit → Plugins** to confirm they are enabled. MotionWarping drives the built-in attack warping, and EnhancedInput is used only by the showcase's demo player.
-
-### 4. Try the showcase
-
-Open `Content/SoulslikeEnemyCombat/Showcase/Maps/LVL_SEC_Showcase` and press Play. You get a working enemy to study before building your own.
+Copy them into your own content and edit from there, or build fresh with the recipe below.
 
 ---
 
-## Build your first enemy
+<QuickStart time="2 minutes">
 
-You need two Blueprints and two data assets:
+<QuickStep title="Turn the plugin on">
 
-| Piece | Made from | Role |
-|-------|-----------|------|
-| Enemy pawn | `EnemyCharacterBase` | The body: mesh, collision, combat components |
-| AI controller | `EnemyControllerBase` | The brain: movement, action selection, reactions |
-| Attack ability | `GA_SEC_Attack` | One attack (plays a montage) |
-| ActionSet | Data Asset | The movelist the AI scores and picks from |
+Get **Soulslike Enemy Combat** on [Fab](https://www.fab.com/listings/7087cec0-6975-4de5-82e0-0de0b9b3e9a7), open the Epic Games Launcher, and click **Install to Engine** for 5.6, 5.7 or 5.8.
 
-The steps below go in order, so nothing references something you have not made yet.
+In your project, open **Edit > Plugins**, search `Soulslike Enemy Combat`, tick it, and restart when prompted. It switches on what it needs alongside it: Gameplay Abilities, State Tree, Gameplay State Tree, Motion Warping, Animation Warping and Enhanced Input.
 
-### Step 1: Create the enemy pawn
+</QuickStep>
 
-Right-click in the Content Browser → **Blueprint Class** → search `EnemyCharacterBase`. Name it `BP_MyEnemy`.
+<QuickStep title="Make the enemy Blueprint">
 
-Set it up like any character:
-- Assign your skeletal mesh
-- Size the capsule collision
-- Set a movement speed (400 is a good start)
+Right-click in the Content Browser, **Blueprint Class**, and search for **Enemy Character Base**. Name it `BP_MyEnemy`.
 
-`EnemyCharacterBase` already ships these components:
+Open it, assign your skeletal mesh and its Anim Class, then open **Class Defaults** and set **AI Controller Class** to **Enemy Controller Base**.
 
-| Component | Class |
-|-----------|-------|
-| Ability System Component | `UAbilitySystemComponent` |
-| Melee Trace Component | `USECMeleeTraceComponent` |
-| Action Set Component | `USECActionSetComponent` |
-| Reaction Set Component | `USECReactionSetComponent` |
-| Combat Role Component | `USECCombatRoleComponent` |
-| Vitals Component | `USECVitalsComponent`, authored with one Health row |
+<UeSetPropertiesScene
+  title="BP_MyEnemy"
+  section="Pawn"
+  rows={[
+    { name: "AI Controller Class", value: "Enemy Controller Base", from: "AIController", kind: "class" }
+  ]}
+  caption="The pawn is the body. That controller is the brain, and it ships carrying every component the AI needs."
+/>
 
-<Collapsible title="Use your own character, no C++" badge="Alternative">
-Already have a character Blueprint? Reparent it to `EnemyCharacterBase` instead of rebuilding it. No code required.
+</QuickStep>
 
-1. Open your character Blueprint.
-2. **File → Reparent Blueprint**, then pick `EnemyCharacterBase`.
-3. Your existing components, variables, and graphs stay. You inherit the ability system component, the five SEC components (melee trace, action set, reaction set, combat role, vitals), the three combat interfaces, and the dedicated-server socket fix.
-4. If your Blueprint already added its own `AbilitySystemComponent` or any SEC component, delete the duplicates so only the inherited ones remain.
-5. Set **AIConfig** on the Blueprint (Step 5 covers this), then assign the mesh and controller as usual.
+<QuickStep title="Create an Enemy AI Config">
 
-Reparenting hands you the whole set in one step, so reach for it whenever your character can inherit from `EnemyCharacterBase`. It also initialises the ability system for you, which is the part a Blueprint cannot do on its own: `InitAbilityActorInfo` is C++ only, and an ability whose ability system never received it refuses to activate without saying why.
-</Collapsible>
+Right-click in the Content Browser, **SEC**, **Enemy AI Config**. Name it `DA_AIConfig_Grunt`.
 
-<Collapsible title="Replicate EnemyCharacterBase in C++">
-Reparenting fails when your character must inherit from a different C++ class. Subclass `ACharacter` (or your own base) in C++ and reproduce these five things:
+<UeCreateAssetScene
+  create="Enemy AI Config"
+  assetName="DA_AIConfig_Grunt"
+  caption="Right-click in the Content Browser, SEC, Enemy AI Config."
+/>
 
-1. **Implement the interfaces you need:** `IEnemyAIConfigProvider` and `ISECDamageable`. `IAbilitySystemInterface` is optional; the plugin finds an ability system through it when present and by component search otherwise.
-2. **Create the components as default subobjects** in the constructor:
-    - `UAbilitySystemComponent`
-    - `USECMeleeTraceComponent`
-    - `USECActionSetComponent`
-    - `USECCombatRoleComponent`
-    - `USECReactionSetComponent`
-    - `USECVitalsComponent`, with at least a Health row so `bAutoHandleDeathOnHealthDepleted` has a vital to watch
-3. **Initialise the ability system** in `PostInitializeComponents`, calling `InitAbilityActorInfo(this, this)`. Mark it replicated in the constructor with `SetIsReplicated(true)` and a `Minimal` replication mode so its cues and tags reach clients. Skip this and every ability refuses to activate.
-4. **Return the config** from `GetAIConfig_Implementation()`. Expose an `EditAnywhere TObjectPtr<UEnemyAIConfig>` property and return it, so the controller reads a per-pawn config on possession. Return `nullptr` to fall back to the controller's config.
-5. **Keep dedicated-server sockets correct** in `BeginPlay`: when `GetNetMode() == NM_DedicatedServer`, set the mesh's `VisibilityBasedAnimTickOption` to `AlwaysTickPoseAndRefreshBones`. A dedicated server never renders, so without this the mesh holds its bind pose and socket-based melee traces fire from the wrong location.
+</QuickStep>
 
-The base also disables actor tick (`PrimaryActorTick.bCanEverTick = false`); the combat components run their own updates, so the pawn needs no tick. `ISECDamageable::HandleIncomingDamage` receives structured hits from the melee trace pipeline; override it to apply damage the way your game needs. Skip the interface and the actor still takes damage through Unreal's `ApplyPointDamage` fallback.
-</Collapsible>
+<QuickStep title="Fill in the two fields that ship empty">
 
-### Step 2: Create the AI controller
+Open the config. Under **Combat Role**, set **Target Selector** to **Awareness Filtered Target Selector**, and leave its **Inner Selector** empty so it picks the nearest candidate. Under **Awareness**, set **Awareness Config** to a new asset from the same **SEC** menu, and leave that asset's defaults alone.
 
-Right-click → **Blueprint Class** → search `EnemyControllerBase`. Name it `BP_MyEnemyController`.
+<UeSetPropertiesScene
+  title="DA_AIConfig_Grunt"
+  rows={[
+    { name: "Target Selector", value: "Awareness Filtered Target Selector", from: "None", kind: "class" },
+    { name: "Awareness Config", value: "DA_Awareness_Guard", from: "None", kind: "asset" }
+  ]}
+  caption="Both ship empty, and an enemy missing either one stands still with nothing in the log."
+/>
 
-It comes pre-wired with every component the AI needs:
+The two work as a pair: the awareness config is what does the perceiving, and the filter offers the enemy only targets it has perceived. Fill in the config alone and the enemy senses a target, then engages any hostile in the pool. Set the filter alone and it perceives nothing, so it fights nothing.
 
-| Component | Purpose |
-|-----------|---------|
-| `SECCombatControllerComponent` | Core plumbing: config, roles, subsystem registration |
-| `MovementEvaluatorComponent` | Tactical positioning and strafing |
-| `ActionEvaluationComponent` | Scores and runs actions |
-| `ReactionEvaluationComponent` | Runs event-driven reactions (parry, flinch) |
-| `ThreatDetectionComponent` | Tracks when the player looks at the AI (disabled by default) |
-| `AwarenessComponent` | Per-AI perception memory (sight, hearing, damage) |
-| `SECBrainComponent` | Runs your StateTree, or a native combat loop if none is set |
-| `HelperBTComponent` | Runs short behavior-tree sequences for Do Action (not the brain) |
+The awareness defaults are a working guard: 1500 cm of sight across a 180 degree cone, 1200 cm of hearing, and a damage sense that reveals whoever hits it from behind.
 
-<Collapsible title="Use your own AI controller, no C++" badge="Alternative">
-Already have an AI controller Blueprint? Reparent it to `EnemyControllerBase`. No code required.
+</QuickStep>
 
-1. Open your controller Blueprint.
-2. **File → Reparent Blueprint**, then pick `EnemyControllerBase`.
-3. You inherit the combat evaluators, **`HelperBTComponent`** (Do Action BT helper), the committed-attack rotation lock, smooth focus, and awareness-based facing.
+<QuickStep title="Point the pawn at the config, and play">
 
-Adding the SEC components to a bare `AAIController` is not equivalent. `EnemyControllerBase` overrides `UpdateControlRotation` to hold the AI's facing during an attack and to face a target's last-known location, and the attack abilities lock rotation by casting the controller to `AEnemyControllerBase`. A plain controller keeps tracking the target mid-swing and loses that facing logic, since none of it is exposed to Blueprint. Reparent to `EnemyControllerBase`, or subclass it in C++ if you need a different base.
-</Collapsible>
+Back in `BP_MyEnemy`, under **Class Defaults > AI**, set **AI Config** to `DA_AIConfig_Grunt`.
 
-### Step 3: Create the attack ability
+<UeSetPropertiesScene
+  title="BP_MyEnemy"
+  section="AI"
+  rows={[
+    { name: "AI Config", value: "DA_AIConfig_Grunt", from: "None", kind: "asset" }
+  ]}
+  caption="The controller reads this the moment it possesses the pawn, so one controller class serves every enemy type."
+/>
 
-Right-click → **Blueprint Class** → search `GA_SEC_Attack`. Name it `GA_LightAttack`. `GA_SEC_Attack` is a ready-made attack ability: it plays a montage, forwards the montage's notify events, and ends the ability when the montage finishes.
+Drag the enemy into a level that has a **NavMesh Bounds Volume**, press Play, and run `SEC.Debug.Awareness 1` in the console. Walk into its cone. The line above its head climbs to `Detected`, and the enemy closes to 400 cm and starts circling.
 
-Set it up:
-- Assign your attack montage. Assign several montages and the ability plays a random one each activation.
-- Wire **On Notify Begin** and **On Notify End** on the montage task (`USECAbilityTask_PlayMontage` in `GA_SEC_Attack`) to run logic at notify windows: enable the melee trace, spawn VFX, apply effects.
+</QuickStep>
 
-That covers a basic attack. `GA_SEC_Attack` inherits from `GameplayAbilityBase`, so the action system detects when the attack starts and ends.
-
-<Collapsible title="Start from GameplayAbilityBase instead" badge="Alternative">
-For an attack that does not fit the montage flow, build one straight from `GameplayAbilityBase`. Create a Blueprint from `GameplayAbilityBase`, then in the graph:
-
-1. `ActivateAbility`
-2. `Play Montage and Wait` with your attack montage
-3. `End Ability`
-
-The action finishes when the ability does, so `End Ability` is the only signal the action system needs. `GA_SEC_Attack` is this same wiring plus montage randomization and the notify events, so reach for the base class only when you need something the ready-made ability does not do.
-</Collapsible>
-
-<Collapsible title="What GameplayAbilityBase does for you">
-Inherit from `GameplayAbilityBase` (not the raw `UGameplayAbility`) so the action system integrates automatically. It provides:
-
-- **Rotation lock.** `bLockAIRotation` freezes facing during the swing, so the AI commits instead of tracking the player mid-attack.
-- **Motion warping.** Sets a warp target from the AI's focus actor (`MotionWarpingTargetName`, `MotionWarpingOffset`), so attacks land at range.
-- **Action context.** `GetActionContext()` returns the target, distance, direction, and magnitude, valid from `CanActivateAbility` through activation.
-</Collapsible>
-
-### Step 4: Create the ActionSet
-
-Right-click → **Miscellaneous → Data Asset** → `ActionSet`. Name it `DA_MyEnemyActions`. Add one entry to **Actions** and fill it in:
-
-| Field | Value |
-|-------|-------|
-| **Action ID** | `LightAttack` |
-| **Execution Method** | `Gameplay Ability` → set **Ability Class** to `GA_LightAttack` |
-| **Cooldown → Cooldown Duration** | `2.0` |
-| **Selection Weight** | `1.0` |
-
-Then add a scorer so the AI only picks this attack at the right distance. In the action's **Scoring → Scorers** list, add a **Distance Scorer**. Its `Range` defaults to a melee band (`0 / 100 / 250 / 500`), meaning full score between 100 and 250 cm, fading to zero by 500. Add an **Angle Scorer** too if you want the AI to attack only when facing the target; its range defaults to a frontal `0 / 0 / 30 / 90`.
-
-<Callout type="info">
-Choosing the ability class is the whole setup. SEC grants the ability, works out how to start it from the ability's own class defaults, and finishes the action when the ability ends.
-</Callout>
-
-<Collapsible title="How an action is scored" badge="Advanced">
-Each action produces a score, and the highest valid one wins:
-
-`FinalScore = SelectionWeight × CtxMult × Novelty × Chain × (1 / RiskPenalty) × RuntimeMod × CustomMod × Jitter`
-
-**CustomMod** folds every scorer you add (distance, angle, health, speed, custom). Distance, angle, health, and speed are not automatic: each needs its own scorer in the **Scoring → Scorers** list.
-
-Other factors:
-
-- **Attribute Scorer / Attribute Gate** for GAS-backed rules; **Stamina Gate**, **Vital Scorer**, or **Vital Gate** for a pawn's [vitals](/docs/soulslike-combat/vitals).
-- **RuntimeMod** from `SetGlobalMultiplier` and per-action overrides on `ActionEvaluationComponent`.
-- **Jitter** is a deterministic ±5% tie-breaker from the decision context seed.
-
-Actions scoring zero or failing a gate are skipped. Chaining (`Preferred Follow-Up Action` on the source action plus **Chain Bonus Multiplier** on the follow-up) boosts a combo once the current action **completes**.
-</Collapsible>
-
-### Step 5: Create the AI config
-
-Right-click → **Miscellaneous → Data Asset** → `EnemyAIConfig`. Name it `DA_MyAIConfig`. Set:
-
-- **Default Action Set** → `DA_MyEnemyActions`
-- **Default State Tree** → leave empty to run the native combat loop (build context, move, then pick and run the best action on the brain's evaluation cadence, default **0.1 s**). Set it to `Content/SoulslikeEnemyCombat/Showcase/AI/StateTree/StateTree_SEC_Core` to drive the AI with that StateTree instead.
-- **Default Reaction Set** → optional. Assign one if you built a `ReactionSet`. See the [Reaction System](/docs/soulslike-combat/reaction-system).
-
-<Collapsible title="Per-role overrides and config resolution" badge="Advanced">
-`EnemyAIConfig` resolves per combat role. `RoleActionSets`, `RoleReactionSets`, and `RoleMovementProfiles` override the defaults for a specific role (for example a heavier set for `SEC.Role.Attacker`); anything not listed falls back to `DefaultActionSet`, `DefaultReactionSet`, and `DefaultMovementProfile`.
-
-The controller reads the config on possession. When the pawn implements `IEnemyAIConfigProvider` (which `EnemyCharacterBase` does), it uses the pawn's config, so one controller class serves many enemy types. Without the interface, the controller falls back to its own config.
-</Collapsible>
-
-### Step 6: Connect the pieces
-
-Two links wire everything together:
-
-1. In `BP_MyEnemy` → **Class Defaults**, set **AI Controller Class** to `BP_MyEnemyController`.
-2. In `BP_MyEnemy` → **Class Defaults**, set **AIConfig** to `DA_MyAIConfig`.
-
-### Step 7: Register the target and play
-
-The AI needs to know who to fight. Register the player once, on spawn:
-
-1. In your player pawn's **BeginPlay**, get the **AICombatRoleSubsystem**.
-2. Call **RegisterCombatTarget** with `Self` as the target actor.
-
-`BP_Dummy` in `Content/SoulslikeEnemyCombat/Showcase/AI/Characters/Dummy` shows this exact wiring.
-
-Drop `BP_MyEnemy` into a level with a built NavMesh and press Play. The enemy should:
-
-- close to its scored distance (100–250 cm for the melee band above)
-- attack when in range and facing the target
-- wait out the cooldown, reposition, and repeat
+</QuickStart>
 
 <Callout type="warning">
-No NavMesh means no pathfinding. If the enemy will not move, add a **NavMeshBoundsVolume** and build navigation.
+**Set AI Controller Class to Enemy Controller Base in the pawn's Class Defaults.** Enemy Character Base ships without one. A pawn still carrying the project default gets a controller that holds none of the combat components, so nothing on the AI Config reaches the enemy and the log stays quiet about it.
 </Callout>
 
-<Collapsible title="Watch the decision-making" badge="Advanced">
-Turn on the component debug flags to watch the AI decide. On **`MovementEvaluatorComponent`**, enable **`bDebugDrawScoring`** (or `SEC.Debug.Movement.DrawScoring 1`) to draw scored movement directions. On **`ActionEvaluationComponent`**, enable **`bDebugLogDecisions`** (or `SEC.Debug.LogActionDecisions 1`) to print each action's score breakdown. Enable these in the editor only, never in a shipping build.
+---
+
+## Give it something to hit you with
+
+The enemy from the QuickStart chases and holds its range. Attacks are one more data asset.
+
+1. Create an **Action Set** and add an action to its canvas.
+2. Set the action's **Ability Class** to `GA_SEC_MontageAbility`, which ships with the plugin, then set the **Montage** on the payload underneath.
+3. Add a **Distance Scorer** so the action knows what range it works at.
+4. Set **Default Action Set** on the AI Config to that asset.
+
+The [Action System](/docs/soulslike-combat/action-system) walks it through with screens. For the swing to deal damage, the montage also needs a trace window: see [Melee Trace](/docs/soulslike-combat/melee-trace).
+
+---
+
+## What the pieces are
+
+| Piece | Made from | Holds |
+|-------|-----------|-------|
+| **Enemy pawn** | Blueprint from **Enemy Character Base** | The body: mesh, ability system, health, melee trace, defense, equipment, team and territory |
+| **AI controller** | Blueprint from **Enemy Controller Base** | The decisions: movement, action scoring, reactions, awareness, threat, and the brain that ticks them |
+| **Enemy AI Config** | Data asset under **SEC** | Which sets and profiles this enemy uses, how it picks targets, what it can sense |
+| **Action Set**, **Reaction Set**, **Movement Behavior Profile** | Data assets under **SEC** | The moveset, the defensive answers, and the footwork |
+
+Everything the AI decides runs on the server. The pawn replicates the results, so a client's UI can read an enemy's role, action and health without any of the decision-making crossing the wire. See [Multiplayer](/docs/soulslike-combat/multiplayer).
+
+### What goes on the config
+
+<EnemyAIConfigSetsDetails />
+
+Each **Default** covers every [combat role](/docs/soulslike-combat/combat-roles), so one entry per category is enough to start. The **Role** arrays override it per role: an aggressive moveset for Attacker, a patient one for Waiter. The three **Manage Automatically** switches are ticked out of the box; untick one to drive that category from Blueprint instead.
+
+The pawn's own health lives on its **Vitals** component, which ships one Health row at 100. See [Vitals](/docs/soulslike-combat/vitals).
+
+<Callout type="info">
+Leave **Default State Tree** empty on the config and the enemy runs the plugin's built-in brain: build context, move, then pick and run the best action on a 0.1 second cadence. Nothing needs authoring for that. Point it at a StateTree to take the sequencing over yourself.
+</Callout>
+
+---
+
+## Where to go next
+
+| You want | Read |
+|----------|------|
+| A moveset that picks the right attack | [Action System](/docs/soulslike-combat/action-system) |
+| To wire that moveset on a canvas | [Action Set Editor](/docs/soulslike-combat/action-set-editor) |
+| Circling, spacing and backing off | [Movement System](/docs/soulslike-combat/movement-system) |
+| Parries, flinches and counters | [Reaction System](/docs/soulslike-combat/reaction-system) |
+| Attacks that deal damage | [Melee Trace](/docs/soulslike-combat/melee-trace) |
+| Stealth, patrols and investigating a noise | [Awareness System](/docs/soulslike-combat/awareness-system) |
+| Several enemies taking turns instead of swarming | [Combat Roles](/docs/soulslike-combat/combat-roles) and [Combat Tokens](/docs/soulslike-combat/combat-tokens) |
+| Who each enemy fights | [Targeting System](/docs/soulslike-combat/targeting-system) |
+| A weapon that carries its own moveset | [Weapons](/docs/soulslike-combat/weapons) |
+| Guards that hold a post and give up the chase | [Territory](/docs/soulslike-combat/territory) |
+| A full armed enemy, start to finish | [Step-by-Step Enemy](/docs/soulslike-combat/step-by-step-enemy) |
+
+---
+
+## Debug it
+
+Every overlay draws above the enemy's head in Play In Editor.
+
+```
+SEC.Debug.All 1          // Every overlay at once; SEC.Debug.All 0 clears them
+SEC.Debug.Awareness 1    // What each enemy has noticed, and how sure it is
+SEC.Debug.Role 1         // Name and combat role, coloured by role
+SEC.Debug.Decision 1     // Distance, angle, line of sight, speed, threat
+SEC.Debug.Movement 1     // Movement layer, strafe side and heading
+SEC.Debug.Scoring 1      // What each action scored, highest first
+```
+
+`SEC.Debug.WatchPawn <name>` narrows every overlay to one enemy, part of a name being enough, and `SEC.Debug.WatchClear` puts them all back. `SEC.Debug.MaxDistance` sets how far from the camera a block still draws (4000 cm) and `SEC.Debug.TextScale` sizes the text.
+
+<Collapsible title="The enemy stands there and does nothing" badge="Advanced">
+In the order worth checking:
+
+- **AI Controller Class is unset** on the pawn Blueprint, so the pawn got the project's default controller and none of the combat components exist.
+- **Target Selector is empty** on the AI Config, and the project's **Default Target Selector** ships empty too. The fallback still hands the enemy the first target it may fight, so check this when the enemy engages the wrong one rather than when it engages nothing.
+- **Awareness Config is empty**, so the enemy senses nothing, stays at Unknown, and never enters its combat phase.
+- **No navmesh.** Past 800 cm the enemy asks for a path, and the request fails every tick. Add a **NavMesh Bounds Volume**, build navigation, and press **P** to check it covers the floor.
+- **The AI Config is on neither the pawn nor the controller**, so there is nothing to resolve at possession.
+
+`SEC.Debug.Role 1` reads `None` for an enemy that never took a target, which separates the first three from the rest. [Troubleshooting](/docs/soulslike-combat/troubleshooting) covers the longer list.
 </Collapsible>
 
-<DocNav next={{ title: "Core Architecture", href: "/docs/soulslike-combat/architecture" }} />
+<Collapsible title="Use a character Blueprint you already have" badge="Alternative">
+Reparent it rather than rebuilding it.
+
+1. Open your character Blueprint.
+2. **File > Reparent Blueprint**, then pick **Enemy Character Base**.
+3. Your existing components, variables and graphs stay. You inherit the ability system, the combat components, the damage interfaces and the dedicated-server socket fix.
+4. Delete any duplicate the Blueprint added itself, such as its own ability system component, so only the inherited ones remain.
+5. Set **AI Config** and **AI Controller Class** in Class Defaults, then carry on as normal.
+
+Reparenting also initialises the ability system for you, which is the part a Blueprint cannot do on its own. An ability whose ability system never got that call refuses to activate and says nothing about why.
+
+A character that has to inherit from a different C++ base can still work: it needs the same components, an initialised ability system, and the AI config interface implemented. The [API Reference](/docs/soulslike-combat/api-reference) lists what to reproduce.
+</Collapsible>
+
+<Collapsible title="Use an AI controller you already have" badge="Alternative">
+**File > Reparent Blueprint** to **Enemy Controller Base**, the same as the pawn.
+
+Adding the components to a bare AI controller is not equivalent. The base class holds the AI's facing during an attack and turns it toward a target's last-known location, and attack abilities rely on that. A plain controller keeps tracking the target mid-swing and loses that facing logic.
+</Collapsible>
+
+<Collapsible title="Start the fight the moment the level loads" badge="Alternative">
+Skip stealth for an arena or a boss room.
+
+Tick **Always Aware** on the Awareness Config. The enemy then knows about every hostile target from the start, without needing to see or hear one, and never forgets. Sight, hearing and the escalation meter are bypassed while it is on.
+
+A target still has to exist in the shared pool for that to bite. Register the player once, on the player pawn's **Event BeginPlay**: add **Get AICombat Role Subsystem**, then call **Register Combat Target** with **Target Actor** set to **Self** and **Auto Assign Unassigned** ticked. Branch on **Has Authority** first, since AI decisions run on the server.
+
+<RegisterCombatTargetBlueprint />
+
+With awareness doing the work instead, that node is optional: an enemy that reaches **Detected** on its own adds that target to the pool, so the rest of the pack can be assigned to it too. See [Targeting](/docs/soulslike-combat/targeting-system).
+</Collapsible>
+
+<Collapsible title="Run a StateTree instead of the built-in brain" badge="Alternative">
+Set **Default State Tree** on the AI Config to take over the sequencing: patrol, investigate, engage, retreat, phase transitions. `StateTree_SEC_Core` under `Showcase/AI/StateTree` is a working graph to start from or copy.
+
+The evaluation components stay the same either way. The graph decides when to poll and when to act; the components still do the scoring and the steering. See [StateTree Integration](/docs/soulslike-combat/statetree).
+</Collapsible>
+
+<Collapsible title="Which engine versions, and what ships in the box" badge="Advanced">
+Version 3.0.0 runs on Unreal Engine 5.6, 5.7 and 5.8, in single player and in multiplayer on a listen or dedicated server.
+
+The plugin ships three runtime modules and an editor module. Its content sits in two folders: **Core** holds the pieces a shipping game reaches for (the montage ability, the reaction ability, the damage types, the default impact surfaces), and **Showcase** holds the demo level, its player, its enemies and their data assets.
+</Collapsible>
+
+<DocNav next={{ title: "Step-by-Step Enemy", href: "/docs/soulslike-combat/step-by-step-enemy" }} />

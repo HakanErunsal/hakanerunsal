@@ -6,7 +6,7 @@ export default function SpeedModifierDetails() {
     <UeComponentDetailsPanel
       displayName="SEC Speed Modifier"
       sourceClass="SECSpeedModifierComponent"
-      attachTo="ACharacter"
+      attachTo="Character"
       note="Scales walk speed while a tag sits on the owner. Each entry pairs a tag with the multiplier it applies."
       categories={SPEED_MODIFIER_DETAILS}
     />

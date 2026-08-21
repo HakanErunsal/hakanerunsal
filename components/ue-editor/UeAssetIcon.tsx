@@ -1,5 +1,5 @@
 import type { UeAssetType } from "./ue-theme";
-import { UE } from "./ue-theme";
+import { UE, UE_KIT } from "./ue-theme";
 import {
   UeActorComponentIcon,
   UeBlueprintThumbnailIcon,
@@ -11,7 +11,7 @@ export const ASSET_ACCENTS: Record<UeAssetType, string> = {
   blueprint: UE.blueprint,
   component: UE.foreground,
   dataAsset: UE.dataAsset,
-  statetree: "#A139BF",
+  statetree: UE_KIT.stateTreeAsset,
   visualizer: UE.accentBlue,
   output: UE.hover2,
   ability: UE.success,
@@ -43,11 +43,11 @@ export function UeAssetIcon({ type, showLabel = true, className }: UeAssetIconPr
         <UeActorComponentIcon className="h-3.5 w-3.5" />
       ) : (
         <svg className="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" aria-hidden>
-          <rect x="1" y="1" width="14" height="14" rx="1" fill="#242424" stroke="#383838" />
+          <rect x="1" y="1" width="14" height="14" rx="1" fill={UE.panel} stroke={UE.secondary} />
           <rect x="1" y="14" width="14" height="1.5" fill={color} />
         </svg>
       )}
-      {showLabel && <span className="text-[12px] text-[#808080]">{label}</span>}
+      {showLabel && <span className="text-[13px] text-[color:var(--uekit-hover2)]">{label}</span>}
     </div>
   );
 }

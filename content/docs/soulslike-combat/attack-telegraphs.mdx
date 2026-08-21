@@ -1,11 +1,11 @@
 ---
 title: "Attack Telegraphs"
-description: "An attack announces itself at the wind-up, so a nearby enemy can parry, dodge, or stand its ground before the blow lands."
-date: 2026-08-04
+description: "Make an attack announce itself at the wind-up: one notify on the montage, and the enemies standing in front of it get a chance to parry, dodge or stand their ground."
+date: 2026-08-17
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Reactions", "Perception"]
 parent: "SoulslikeCombatDocs"
-order: 7.5
+order: 9
 ---
 
 <Breadcrumb items={[
@@ -14,160 +14,179 @@ order: 7.5
     { label: "Attack Telegraphs" }
 ]} />
 
-> A sword touches an enemy a few hundredths of a second before it hurts them, far too late to raise a guard. The attacker announces the swing at the start of the wind-up instead, and each pawn in the danger zone decides for itself what to do about it.
+> A blade touches an enemy hundredths of a second before it hurts them, far too late to raise a guard. One notify on the wind-up warns everything standing in front of it instead.
 
-## When to Use This
+<QuickStart time="30 seconds">
 
-- An enemy that parries the player's attack rather than eating it.
-- A crowd that reacts raggedly: some dodge, some are caught out.
-- A parry prompt over the head of an enemy that is winding up.
-- A stealth opener that lands because the enemy has not spotted you yet.
-- A projectile, a grab, or a spell warning whatever is in front of it.
+<QuickStep title="Add the notify to the attack montage">
 
----
+Open the attacker's montage, right-click the notify track where the wind-up starts, and pick **SEC Attack Telegraph**. Put it at the wind-up, not at the blow.
 
-## How It Works
+A fresh notify opens on a **Sphere** reaching 500 cm with **Team Filter** on **Enemies Only**, which is already a working warning.
 
-Five stages sit between a wind-up and an enemy answering it.
+</QuickStep>
+
+<QuickStep title="Aim it at where the blade goes">
+
+Switch **Shape** to **Cone** for a directional swing, then expand the shape and set **Radius** to the attack's reach and **Half Angle Degrees** to the wedge it threatens.
+
+<UeSetPropertiesScene
+  title="AM_Greatsword_Overhead"
+  section="Telegraph"
+  rows={[
+    { name: "Shape", value: "Cone", from: "Sphere", kind: "text" },
+    { name: "Radius", value: "600", from: "500", indent: true },
+    { name: "Half Angle Degrees", value: "45", from: "60", indent: true }
+  ]}
+  caption="Radius and Half Angle Degrees sit inside the shape and expand under it. Radius is the reach in centimetres, and Half Angle Degrees is measured to either side of where the attack is aimed."
+/>
+
+</QuickStep>
+
+<QuickStep title="Give the enemy something to answer with">
+
+Open the enemy's **Reaction Set**, add a trigger with **On Stimulus** set to `SEC.Stimulus.AttackTelegraphed`, and wire it to a parry reaction. That is the whole receiving end. See [Reaction System](/docs/soulslike-combat/reaction-system).
+
+</QuickStep>
+
+<QuickStep title="Play, and watch the warning go out">
+
+Press Play, swing, and run `SEC.Debug.Stimulus.Draw 1`. The covered ground is drawn at the origin, and every pawn the warning reached gets a coloured sphere: green means it answered.
+
+</QuickStep>
+
+</QuickStart>
+
+<Callout type="warning">
+An enemy whose Reaction Set carries no trigger rule for the warning's name hears it and does nothing. The announcement goes out, the debug draw marks that enemy yellow, and no error is logged. Fill in **Trigger Rules** on the set the enemy is running.
+</Callout>
+
+<Callout type="info">
+The notify works out how long is left by finding the next **SEC Melee Trace Window** further along the montage and dividing by the play rate in force, so retiming the animation keeps it right. With no trace window after the notify and no **Time To Impact Override**, the warning still goes out, reports 0 seconds left, and names itself once in the Output Log. See [Melee Trace](/docs/soulslike-combat/melee-trace).
+</Callout>
+
+Five stages sit between the wind-up and the answer. The debug draw colours a pawn by the stage it dropped out at, so the diagram below doubles as the map for reading it.
 
 <StimulusPipeline />
 
-Stages 1 to 3 decide who hears about the attack. Stages 4 and 5 hand what got through to the [Reaction System](/docs/soulslike-combat/reaction-system), which picks and runs the answer.
-
-<Callout type="warning">
-The telegraph is an **instant notify**. It fires once, and the pawns standing on the covered ground at that instant are the ones warned. An enemy that steps into it a moment later hears nothing about that swing.
-</Callout>
-
-Everything on this page runs on the server. Announcements, perception, and reaction decisions all happen on the authority, which single player and a listen server give you for free.
-
 ---
 
-## Setup
+## Aim the warning
 
-### 1. Put the announcement in the attack montage
+**Shape** is the ground the warning covers. Two ship, and each asks only for the values it uses, so a swing that warns all round shows no angle to fill in.
 
-Open the attacker's montage and add the **SEC Attack Telegraph** notify where the wind-up starts, not where the damage does.
+| Shape | Fields | Reach for it |
+|-------|--------|--------------|
+| **Sphere** | **Radius**, 500 cm to start | A shockwave, a roar, an attack wide enough that facing does not matter. |
+| **Cone** | **Radius**, plus **Half Angle Degrees** (60 to start) and **Yaw Offset Degrees** | A directional swing, a thrust, a breath weapon. |
+
+**Half Angle Degrees** is measured to either side of where the attack is aimed: 45 is a narrow cone straight ahead, 90 covers everything in front, 180 covers all round. **Yaw Offset Degrees** turns the wedge away from straight ahead, so set it to 90 for a swing coming in from the right and the warning covers where the blade goes.
+
+A broadcast left with no shape at all warns nobody and says so in the Output Log.
 
 <AttackTelegraphNotifyDetails />
 
 | Field | Sets |
 |-------|------|
-| **Shape** | The ground the warning covers. Pick **Sphere** to warn everything within reach, or **Cone** to warn a wedge pointing the way the attack is aimed. A new notify starts on Sphere, and a broadcast left with no shape warns nobody and says so in the Output Log. |
-| **Team Filter** | Who gets warned. Enemies Only is what an attack wants, so allies standing in the covered ground are not startled by their own side. Team ids come from the **SEC Team Interface**, and an actor without one counts as neutral. |
-| **Notice Chance** | How likely each pawn in range is to notice, from 0 to 1. Rolled once per pawn, so at 0.6 roughly three enemies in five spot the wind-up and the rest are caught out. Starts at 1, which warns everyone the shape covers. |
-| **Draw Debug** | Draw the covered ground in the world for a moment, to check the shape against the animation. |
-| **Origin Socket** | Socket the warning radiates from. Empty measures from the actor itself; name a blade socket on a long weapon so reach is measured from the tip rather than the body. |
-| **Time To Impact Override** | Seconds until the blow lands, for an attack whose montage has no trace window to measure against, such as a grab or a projectile launch. Leave it at 0 and the notify works the gap out itself by finding the next melee trace window, which keeps it right when anyone retimes the animation. |
-| **Telegraph Tag** | What to call this warning, which is what a trigger rule on a Reaction Set matches. Starts at `SEC.Stimulus.AttackTelegraphed`. Author a child tag for an attack that needs its own answer; a rule on the parent still catches it. |
-| **Context Tags** | Extra tags describing this attack, such as `SEC.Attack.Heavy` or `SEC.Attack.Unblockable`, so a trigger rule can require or refuse them. |
-| **Magnitude** | How big this attack is, in whatever units the project uses. Reaches the reaction's ability as the execution context's **Magnitude**. |
+| **Team Filter** | Who gets warned. **Enemies Only** covers anything not on the attacker's team, so allies are not startled by their own side. |
+| **Notice Chance** | How likely each pawn in range is to notice, 0 to 1. Starts at 1. |
+| **Draw Debug** | Draw this one announcement's covered ground in the world for a moment. |
+| **Origin Socket** | Socket the warning radiates from. Empty measures from the actor; name a blade socket on a long weapon so reach starts at the tip. |
+| **Time To Impact Override** | Seconds until the blow lands, for an attack with no trace window to measure against, such as a grab or a projectile launch. 0 lets the notify measure it. |
+| **Telegraph Tag** | What to call this warning, which is what a trigger rule matches. Starts at `SEC.Stimulus.AttackTelegraphed`. |
+| **Context Tags** | Extra tags describing this attack, such as `SEC.Attack.Heavy` or `SEC.Attack.Unblockable`, so a rule can require or refuse them. |
+| **Magnitude** | How big this attack is, in whatever units your project uses. Reaches the reaction's ability as its **Magnitude**. |
 
-Each shape asks for only the values it uses, so a swing that warns all round never shows an angle to fill in.
+<Callout type="info">
+Author a child tag under `SEC.Stimulus.AttackTelegraphed` for an attack that needs its own answer. A rule written on the parent still catches it, so adding `SEC.Stimulus.AttackTelegraphed.Heavy` costs the existing rules nothing.
+</Callout>
 
-| Shape | Fields |
-|-------|--------|
-| **Sphere** | **Radius**, in centimetres from where the warning starts. A pawn outside it never learns anything is coming. Starts at 500. Use it for a shockwave, a roar, or an attack wide enough that facing does not matter. |
-| **Cone** | **Radius** as above, plus **Half Angle Degrees**, the width of the wedge to either side of where it is aimed (45 covers a narrow cone straight ahead, 90 covers everything in front), and **Yaw Offset Degrees**, which turns the wedge away from straight ahead. Set the offset to 90 for a swing coming in from the right so the warning covers where the blade goes. |
+---
 
-<Collapsible title="Writing a shape of your own" badge="Advanced">
+## Make a crowd react raggedly
 
-Subclass **SEC Stimulus Shape** in Blueprint for ground the built-in shapes cannot describe, such as a corridor or a ring. Answer three events:
+**Notice Chance** rolls once for each pawn the shape covers. At 0.6, roughly three enemies in five spot the wind-up and the rest are caught out, which is what stops four enemies parrying the same swing in unison.
 
-- **Get Max Reach** returns how far the shape can possibly reach, in centimetres. Nothing beyond it is looked at, so return the distance to the farthest corner rather than an average. A shape returning 0 warns nobody.
-- **Covers Receiver** decides whether one pawn stands on the covered ground. Everything handed to it already sits inside Get Max Reach, so a shape filling its whole reach can leave this alone.
-- **Draw Shape** outlines the ground for the debug view. Feed its **World Context Object** input into the same pin on every Draw Debug node used inside, not a Self node; the shape can belong to no world, so wiring Self draws nothing. Leave the event alone and the base draws a sphere at full reach, which is the outer bound rather than what Covers Receiver accepts, so a shape narrower than its reach is worth drawing properly.
+A trigger rule's own **Chance** is a second, separate roll at the answering end, and the two multiply. Set both to 0.5 and roughly a quarter of the enemies in the arc react.
 
-One shape instance answers for every pawn a warning reaches, and a notify is shared by every montage carrying it, so keep a subclass free of stored state.
+Reach for **Notice Chance** when a group moves as one mind, and for **Chance** when a single enemy answers too often.
 
-</Collapsible>
+<Callout type="warning">
+A pawn with no team id counts as neutral, and **Enemies Only** lets neutrals through. Copy the shooter's team id onto a spawned projectile, or its warnings reach your own side along with the target.
+</Callout>
 
-The measured **Time To Impact** reads the next **SEC Melee Trace Window** on the same montage and divides by the play rate in force, so a slowed montage reports the longer gap. A montage offering neither a trace window nor an override warns once in the Output Log and reports 0. See [Melee Trace](/docs/soulslike-combat/melee-trace) for the window itself.
+---
 
-### 2. Say what the enemy is able to notice
+## Say what an enemy is able to notice
 
-On the enemy's **Enemy AI Config**, fill in **Stimulus Filters**. A warning has to clear every filter before the enemy considers answering it.
+**Stimulus Filters** on the enemy's **Enemy AI Config** are the reasons it might miss a wind-up. A warning has to clear all of them, and an empty list notices everything, including a swing behind the enemy's back.
 
 <StimulusFilterDetails />
 
 | Filter | Checks |
 |--------|--------|
-| **Facing Cone** | Is the source in front of the pawn, so an enemy with its back turned is not warned about a swing it could not see coming. **Half Angle Degrees** starts at 100, a wide human field of view; 180 turns the filter off. |
-| **Awareness** | Does the enemy already know about the source. This is the stealth case. **Minimum State** starts at Detected, so only an enemy watching the attacker answers its wind-up; Suspicious lets one that has heard something answer too. Needs an [Awareness](/docs/soulslike-combat/awareness-system) component on the controller; without one the filter passes and warns once. |
-| **Line of Sight** | Is there a clear line, so a warning does not travel through a wall. **Trace Channel** starts at Visibility and **Eye Height** at 0, which uses the pawn's own eye height. Costs one trace per warning, and warnings are rare. |
+| **Facing Cone** | Is the source somewhere in front. **Half Angle Degrees** starts at 100, a wide human field of view; 180 turns the filter off. |
+| **Awareness** | Does the enemy already know about the source. **Minimum State** starts at **Detected**, so only an enemy watching the attacker answers its wind-up; **Suspicious** lets one that has merely heard something answer too. This is the stealth opener. Needs an [Awareness](/docs/soulslike-combat/awareness-system) component on the controller; without one the filter passes and warns once. |
+| **Line of Sight** | Is there a clear line, so a warning does not travel through a wall. **Trace Channel** starts at Visibility, **Eye Height** at 0, which uses the pawn's own eye height. One trace per warning, and warnings are rare. |
 
-An empty list notices everything, including a swing behind the enemy's back.
-
-Each filter carries **Bypass On Context Tags**: skip this filter when the warning carries any of these tags, so something loud enough to notice regardless, a roar or a shockwave, gets through a filter that would otherwise refuse it. A parent tag matches its children.
-
-### 3. Say what the enemy does about it
-
-On the enemy's **Reaction Set**, fill in **Trigger Rules**. Each rule reads as: when this kind of thing happens, try this kind of answer.
-
-<ReactionTriggerRuleDetails />
-
-| Field | Sets |
-|-------|------|
-| **Enabled** | Turn this rule off without deleting it. |
-| **Rule ID** | Short name, shown in the row title and in the logs when the rule fires or is skipped. Keep it descriptive: `ParryFrontal`, `DodgeUnblockable`. |
-| **On Stimulus** | Which event this rule answers, matched against the name the warning carries. A rule on a parent tag catches every tag beneath it, so one authored on `SEC.Stimulus.AttackTelegraphed` also answers a project's own `SEC.Stimulus.AttackTelegraphed.Heavy`. |
-| **Require Context Tags** | The event must carry all of these for this rule to fit, which is how a rule answers only heavy attacks. Empty requires nothing. |
-| **Block Context Tags** | The rule is skipped when the event carries any of these, which is how a parry rule refuses an unblockable attack and lets the dodge rule below it answer instead. Empty refuses nothing. |
-| **Conditions** | Gates that all have to pass before this rule answers. Put an **Incoming Angle Gate** here and the rule cannot answer a blow arriving from behind, which leaves the rule below it to take that one. Empty lets the tags decide on their own, which covers most rules. |
-| **Reaction Category** | Which group of reactions answers, matching the **Reaction Category** on the reactions themselves. |
-| **Chance** | How often this rule fires when everything else fits, from 0 to 1. 0.3 fires roughly a third of the time and lets the rules below it answer the rest, which is how an enemy parries sometimes rather than each time. |
-| **Min Interval** | Shortest gap in seconds between two firings of this rule, so an enemy cannot parry every swing of a fast combo. Counted from the moment the rule started a reaction, not from each time it was considered. 0 sets no limit. |
-
-The enemy checks the rules from the top down and takes the first one that fits and yields a reaction, so put the specific ones above the general ones.
-
-A rule names a **category**, not a reaction. The usual reaction scoring picks the winner inside that category, which means one rule covers parry, dodge, and backstep together. Trigger rules live on the Reaction Set rather than the component, so an enemy that swaps to an Elite set picks up that set's triggers with it. A set with no rules authored answers nothing on its own, which leaves an enemy on reactions fired by hand from Blueprint.
-
-### 4. Make a reaction answer only what it can stop
-
-On the parry reaction spec, under **Scoring**, add the **Incoming Angle Gate** and set its **Half Angle Degrees**.
-
-| Field | Sets |
-|-------|------|
-| **Half Angle Degrees** | Half the width of the arc the blow must arrive inside, in degrees to either side of straight ahead. 60 accepts anything up to 60 degrees off the front; 180 accepts every direction, which turns the gate off. Starts at 60. |
-| **Pass Without Direction** | Let something through when there is no direction to measure. On by default, so a reaction fired by hand still works. Untick it to refuse anything the gate cannot judge. |
-
-A blow from the side fails the parry's gate and the dodge wins instead, with no second rule.
-
-The same gate goes in a rule's **Conditions** instead when the whole category is the wrong answer. The two placements read differently:
-
-| Placed in | Decides | A refusal means |
-|-----------|---------|-----------------|
-| A rule's **Conditions** | Whether this kind of answer is considered at all | The next rule down takes the stimulus |
-| A reaction's **Scoring** | Whether this reaction is the right one inside a category that already matched | Another reaction in the same category takes it |
-
-Reach for the rule when nothing in the category can help. A hit landing from behind reports itself like any other, and a guard raised against it stops nothing, because the Defense component measures its own arc when the damage lands and refuses the block. Gate the rule instead and write a second rule under it:
-
-| Order | Rule | Conditions | Answers with |
-|-------|------|------------|--------------|
-| 1 | GuardFrontal | Incoming Angle Gate, half angle 60 | Your defensive category |
-| 2 | FlinchAnything | none | Your stagger category |
-
-A frontal blow takes rule 1 and gets the guard. A blow from behind fails rule 1's condition, falls to rule 2, and gets a flinch. Match the gate's **Half Angle Degrees** to the arc on the matching Defense response so the decision and the damage agree.
-
-Four gates read the stimulus rather than the pawn, so each one belongs in a rule's **Conditions** or a reaction's **Scoring**:
-
-| Gate | Judges |
-|------|--------|
-| **Incoming Angle** | Which side the blow arrives from. |
-| **Time To Impact** | Whether there is time left to answer. **Min Seconds** set to the parry's own start-up stops it answering a swing already too close, and stops a parry rule answering a hit that already landed, which reports no time left. |
-| **Stimulus Magnitude** | How big it is, in whatever the producer measured: incoming damage for a hit, a 0 to 1 charge for a wind-up. A ceiling on one rule and a floor on the next splits a flinch from a stagger. |
-| **Source Distance** | How far off the attacker stands, measured to the source actor or to the stimulus origin when nothing named a source. |
-
-An action never carries a stimulus, so one of these added to an action has nothing to judge and passes.
+Each filter carries **Bypass On Context Tags**: skip this filter when the warning carries any of these. Put `SEC.Attack.Unblockable` there and a roar loud enough to notice regardless gets through a facing cone that would otherwise refuse it. A parent tag matches its children.
 
 ---
 
-## Two dice, at two different stages
+## Match the answer to the blow
 
-<Callout type="warning">
-**Notice Chance** on the announcement and **Chance** on a trigger rule are separate rolls, and they multiply. Notice Chance rolls once per pawn when the warning goes out and decides who hears about it. Chance rolls when the enemy reaches a matching rule and decides how often one that heard answers. Set both to 0.5 and roughly a quarter of the enemies in the arc react.
+Four gates read the warning itself rather than the pawn, so each one belongs in a trigger rule's **Conditions** or in a reaction's own **Scoring**.
+
+| Gate | Judges | Set it to |
+|------|--------|-----------|
+| **Incoming Angle Gate** | Which side the blow arrives from. **Half Angle Degrees** starts at 60. | The arc the guard covers, so a parry cannot answer a swing from behind. |
+| **Time To Impact Gate** | How long is left. **Min Seconds** and **Max Seconds**, 0 for no bound. | **Min Seconds** at the parry's own start-up, so the enemy stops trying to beat a swing already too close. |
+| **Stimulus Magnitude Gate** | How big it is, in whatever the producer measured. **Min Magnitude** and **Max Magnitude**. | A ceiling on the flinch rule and a floor on the stagger rule, so a light hit and a heavy one split. |
+| **Source Distance Gate** | How far off the attacker stands, in centimetres. **Min Distance** and **Max Distance**. | **Max Distance** at a counter's own range, so the enemy stops swinging back at an archer across the room. |
+
+The two placements read differently:
+
+| Placed in | Decides | A refusal means |
+|-----------|---------|-----------------|
+| A rule's **Conditions** | Whether this kind of answer is considered at all | The next rule down takes the warning |
+| A reaction's **Scoring** | Whether this reaction is the right one inside a category that already matched | Another reaction in the same category takes it |
+
+Reach for the rule when nothing in the category can help. A blow landing from behind is one of those: a guard raised against it stops nothing, because the Defense component measures its own arc when the damage lands and refuses the block. Gate the rule and write a second rule under it.
+
+| Rule Priority | Rule | Conditions | Answers with |
+|-------|------|------------|--------------|
+| 10 | GuardFrontal | Incoming Angle Gate, half angle 60 | Your defensive category |
+| 0 | FlinchAnything | none | Your stagger category |
+
+A frontal blow takes the first rule and gets the guard. A blow from behind fails its condition, falls through, and gets a flinch. Match the gate's **Half Angle Degrees** to the arc on the matching [Defense](/docs/soulslike-combat/defense-system) response so the decision and the damage agree.
+
+<Callout type="info">
+Nothing hands an action a warning, so one of these four gates added to an action has nothing to judge and passes. Saving the Action Set raises a data validation error naming the gate and telling you to move it. They belong on the reaction side.
 </Callout>
 
-Notice Chance is the crowd knob: it makes a group look like individuals rather than one mind. Chance is the per-enemy knob, and it makes a single enemy read as fallible. Reach for Notice Chance when four enemies all parry the same swing, and for Chance when one enemy parries too often.
+---
+
+## Announce without a montage
+
+**Report Area Stimulus** is the same call the notify makes, available from any event graph. Reach for it for a projectile, a grab, a spell going off, or a scripted moment.
+
+<ReportAreaStimulusGraph />
+
+Build the **Broadcast** pin with **Make Sphere Broadcast** or **Make Cone Broadcast**, which take the same reach, team filter and notice chance the notify carries. Fill the **Stimulus** pin with what happened:
+
+| Pin | Carries |
+|-----|---------|
+| **Stimulus Tag** | What happened, which is what a trigger rule matches. |
+| **Source** | Who produced it. The reaction that answers receives it as its target, so a counter swings at the right pawn. |
+| **Origin** | Where in the world it came from. Left at zero it falls back to the source actor's location. |
+| **Magnitude** | How big it is, in units of your choosing. |
+| **Time To Impact** | Seconds until the blow is expected to land. |
+| **Context Tags** | Extra tags a rule can require or refuse. |
+| **Payload** | Any object to hand along, such as the weapon or the projectile. Cast it in Blueprint. |
+
+A fireball warns what is in front of it on spawn: pass the projectile as **Source**, its velocity as **Facing**, and a narrow cone as the shape. **Facing** is an advanced pin, so expand the arrow at the bottom of the node to reach it. Left at zero it falls back to the source actor's forward vector.
+
+The node returns how many pawns were told, which is worth printing while tuning a radius. **Direction** is filled in per pawn as the warning goes out, so an Incoming Angle Gate reads it without any setup.
 
 ---
 
@@ -180,117 +199,95 @@ The player wants the warning without any of the AI machinery behind it.
 3. Read the payload. **Source** is who is attacking, **Time To Impact** is how long is left, and **Context Tags** says whether the attack is unblockable, so the prompt can show red rather than white.
 4. Show the widget above Source's head, and hide it when Time To Impact runs out.
 
-The player gets no perception filters by design. The player's eyes are the camera. The delegate fires for every announcement that reaches the pawn with nothing filtered out first, so branch on the stimulus when a prompt should stay hidden for an attack the player is facing away from.
+The player gets no perception filters by design, because the player's eyes are the camera. The delegate fires for each announcement that reaches the pawn with nothing filtered out first, so branch on the warning yourself when a prompt should stay hidden.
 
 <Callout type="info">
-Key the widget by **Source** and refresh it rather than spawning a new one. A moving attacker re-announces, and each announcement carries a fresher Time To Impact. Treat repeats as updates.
-</Callout>
-
-The listener decides nothing on its own: no filters, no trigger rules, no reactions. An AI pawn needs none of it, since its controller's Reaction Evaluation component already receives the same announcements.
-
----
-
-## Announcing without a montage
-
-**Report Area Stimulus** is the same call the notify makes, available from any event graph. Reach for it for a projectile, a grab, a spell going off, or a scripted moment.
-
-A fireball warns what is in front of it on spawn: pass the projectile as **Source**, its velocity as **Facing**, a radius and a narrow arc as the **Shape**, and a stimulus carrying `SEC.Stimulus.AttackTelegraphed` with the seconds until it arrives.
-
-<ReportAreaStimulusGraph />
-
-The node returns how many pawns were told, which is worth printing while tuning a radius. **Facing** falls back to the source actor's forward vector when left at zero, and the stimulus **Origin** falls back to the source actor's location.
-
-<Callout type="warning">
-A projectile with no team id reads as neutral, and an **Enemies Only** filter then lets it warn your own side along with the target. Copy the shooter's team id onto it when you spawn it.
+Key the widget by **Source** and refresh it rather than spawning a new one. One attacker announces again on the next notify in a combo, and each announcement carries its own Time To Impact. Treat repeats as updates.
 </Callout>
 
 ---
 
-## Debugging
+## Debug it
 
 ```
 SEC.Debug.Stimulus.Draw 1
 ```
 
-Draws the announced radius, arc, and facing at its origin, then one sphere at every pawn the announcement reached, coloured by what happened, with a line back to the origin and a label naming the outcome. Markers last two seconds, and the same lines go to the Output Log.
+Draws the ground the announcement covers at its origin, then one sphere at every pawn it reached, coloured by what happened and labelled with the outcome. A pawn that answered gets a thicker sphere and an arrow from the origin; every other pawn gets a plain line. A Cone draws its arc and an arrow along the aim, while a Sphere draws its reach and no facing. Markers last two seconds, and the same lines go to the Output Log.
 
 <StimulusDebugLegend />
 
-**Draw Debug** on one broadcast turns the same drawing on for that announcement alone. The console variable forces it on for all of them.
+Read the colours as a funnel. Grey, blue and magenta mean the announcement itself is mis-shaped: widen the radius or the arc, check the team ids, raise the notice chance. Red means the receiver's own perception refused it, and the label names the filter. Yellow means the enemy noticed and had no answer, which points at the trigger rules or at the gates on the reactions in that category.
 
-Read the colours as a funnel. Grey, blue, and magenta mean the announcement itself is mis-shaped: widen the radius or the arc, check the team ids, raise the notice chance. Red means the receiver's own perception refused it, and the label names the filter. Yellow means the enemy noticed and had no answer, which points at the trigger rules or at the gates on the reactions in that category.
+**Draw Debug** on one notify turns the same drawing on for that announcement alone. The console variable forces it on for all of them.
 
----
+<Collapsible title="Nothing is going out at all" badge="Advanced">
+- **The shape has no reach.** A broadcast with no shape, or one reaching 0 cm, warns nobody and logs a line naming the attack.
+- **The animation is playing in a preview window.** The notify returns early outside a game world, so scrubbing the montage in the editor announces nothing.
+- **The pawn is not the authority.** A montage playing on a client announces nothing, which is what stops one swing warning the same enemy twice.
+- **The receiver is attached to the attacker.** A pawn carried by or parented to the source is skipped, along with the source itself.
+</Collapsible>
 
-<Collapsible title="Answering a hit that already landed" badge="Advanced">
+<Collapsible title="It reaches the enemy and the enemy does nothing" badge="Advanced">
+Follow the label on the yellow marker.
 
+- **No trigger rule matched.** The rule's **On Stimulus** has to match the warning's name, or sit above it as a parent tag.
+- **Nothing in the category was available.** Every reaction in the named category was on cooldown, blocked by a tag, or refused by its own gates.
+- **A Time To Impact Gate refused it.** A warning that reports 0 seconds left fails any **Min Seconds** above 0. That is the gate doing its job on a hit that already landed, and a mistake on a notify sitting past the montage's last trace window, which reports 0 seconds left and reaches every gate that way.
+- **Min Interval has not elapsed.** The gap is counted from the moment the rule last started a reaction.
+</Collapsible>
+
+<Collapsible title="Answering a hit that already landed" badge="Alternative">
 **Report Damage Taken Stimulus** covers the other half of the story: a flinch or a counter after a blow connects. Call it from the pawn's Handle Incoming Damage once the damage is resolved, and it reads the direction the blow came from off the damage info.
 
 Leave **Stimulus Tag** empty for `SEC.Stimulus.DamageTaken`. A trigger rule on that tag answers it the way another rule answers a telegraph, so a flinch reaction and a parry reaction sit side by side in one Reaction Set.
 
-**Make Stimulus From Damage** packages the same thing without reporting it, for a graph that wants to change a field before handing it on.
-
+**Resolve Enemy Damage** does the whole job in one call: run the blow through the pawn's Defense component, take what got through off its vitals, then report the outcome to combat awareness and to AI perception. **Make Stimulus From Damage** packages the same thing without reporting it, for a graph that wants to change a field before handing it on.
 </Collapsible>
 
-<Collapsible title="The order of checks inside a trigger rule" badge="Advanced">
+<Collapsible title="Writing a shape of your own" badge="Advanced">
+Subclass **SEC Stimulus Shape** in Blueprint for ground the built-in shapes cannot describe, such as a corridor or a ring. Answer three events:
 
-For each rule, top down: the stimulus tag has to match, then **Require Context Tags**, then **Block Context Tags**, then **Min Interval**, then every gate in **Conditions**, then **Chance**, and finally the category has to yield a reaction that passes its own gates. The enemy drops a rule that gets all the way through and finds nothing available, and the next rule down takes its turn.
+- **Get Max Reach** returns how far the shape can possibly reach, in centimetres. Nothing beyond it is looked at, so return the distance to the farthest corner rather than an average. A shape returning 0 warns nobody.
+- **Covers Receiver** decides whether one pawn stands on the covered ground. Everything handed to it already sits inside Get Max Reach, so a shape filling its whole reach can leave this alone.
+- **Draw Shape** outlines the ground for the debug view. Feed its **World Context Object** input into the same pin on every Draw Debug node used inside, not a Self node; the shape can belong to no world, and wiring Self then draws nothing. Left alone, the base draws a sphere at full reach, which is the outer bound rather than what Covers Receiver accepts.
 
-One scoring context is built for the whole **Conditions** list, so several gates on one rule measure the same moment. An empty row in the list is skipped rather than treated as a refusal.
+One shape instance answers for every pawn a warning reaches, and a notify is shared by every montage carrying it, so keep a subclass free of stored state.
+</Collapsible>
 
-**Chance** rolls last among the rule's own checks, so a rule that cannot fire does not burn the roll. The component stamps **Min Interval** when the rule started a reaction, and skips the stamp when the reaction refused to start.
+<Collapsible title="Stamping the warning from the attack itself" badge="Advanced">
+**Build Stimulus** on the notify is overridable in Blueprint. Override it to work out a magnitude or extra context tags from the attack as it runs, such as a charge level held on the character, rather than authoring fixed values on the notify.
 
-**On Stimulus Received** on the Reaction Evaluation component fires before the rule walk. Call **Execute Reaction** from there and the rules sit out that announcement, since a rule only fires when nothing already answered.
-
+Time To Impact arrives already measured off the montage, so an override that wants the measured value passes it through unchanged, and one that knows better replaces it.
 </Collapsible>
 
 <Collapsible title="Replacing a whole stage" badge="Advanced">
-
-Two Blueprint-overridable events on the Reaction Evaluation component let a project take a stage over outright.
+Two overridable events on the **Reaction Evaluation** component let a project take a stage over outright.
 
 | Override | Replaces |
 |----------|----------|
 | **Can Sense Stimulus** | The whole perception step. The default runs every filter in force and requires all of them to pass. |
-| **Select Reaction Category** | The whole rule walk. Return a category tag to route an announcement a project's own way without authoring rules. |
+| **Select Reaction Category** | The whole rule walk. Return a category tag to route an announcement your own way without authoring rules. |
 
-**Fallback Stimulus Filters** on the component covers a pawn running without an AI Config. A config that lists any filters replaces that list outright rather than adding to it.
+**On Stimulus Received** fires before the rule walk. Call **Execute Reaction** from there and the rules sit that announcement out, because a rule fires only when nothing already answered.
 
-Writing a filter or a condition of your own is a Blueprint subclass either way: **SEC Stimulus Filter** answers **Can Sense**, and **SEC Gate** answers **Passes Gate** with the scoring context of the pawn, the target, and whatever set it off. A rule's **Conditions** take the same gate class an action or a reaction takes, so one gate you write serves all three. Keep both stateless, since every AI using the asset shares one instance.
+**Fallback Stimulus Filters** on the component covers a pawn running without an AI Config. A config listing any filters replaces that list outright rather than adding to it.
 
+Writing a filter or a condition of your own is a Blueprint subclass either way: **SEC Stimulus Filter** answers **Can Sense**, and **SEC Gate** answers **Passes Gate** with the pawn, the target and whatever set it off. A rule's **Conditions** take the same gate class an action or a reaction takes, so one gate you write serves all three. Keep both stateless, since every AI using the asset shares one instance.
 </Collapsible>
 
-<Collapsible title="The stimulus struct" badge="C++">
+<Collapsible title="Telling one pawn directly" badge="Alternative">
+**Report Stimulus To** hands a single pawn a single warning, skipping the area sweep. An AI runs its perception filters and then its trigger rules; a pawn carrying a Stimulus Listener gets the plain notification.
 
-`FSECCombatStimulus` is the package the whole pipeline passes around.
-
-| Field | Carries |
-|-------|---------|
-| `StimulusTag` | What happened, which is what a trigger rule matches on. |
-| `Source` | Who produced it, usually the attacker. The reaction that answers receives it as its target. Weak, so a source destroyed before the reaction runs reads as none. |
-| `Origin` | Where in the world it came from, for a spell landing across the room from whoever cast it. |
-| `Direction` | Pointing from the source toward the receiver, normalized. The Incoming Angle Gate reads it straight off. |
-| `Magnitude` | How big it is, in the producer's own units. Reaches the ability as the execution context's Magnitude. |
-| `TimeToImpact` | Seconds until the blow is expected to land. 0 for something that already happened. |
-| `ContextTags` | Extra tags describing it, read by trigger rules, filter bypasses, and the ability. |
-| `Payload` | Any object the producer wants to hand along, such as the weapon or the projectile. Weak. |
-
-```cpp
-UReactionEvaluationComponent* Reactions = USECStimulusLibrary::FindReactionComponent(Receiver);
-Reactions->ReceiveStimulus(Stimulus);
-```
-
-`FindReactionComponent` answers with the component on the pawn's controller, or one on the actor itself. `MakeExecutionContextFromStimulus` fills an `FSECExecutionContext` from a stimulus, so a reaction started by hand reaches its ability carrying what an automatic one would.
-
+**Make Execution Context From Stimulus** fills an execution context from a warning, so a reaction you start by hand reaches its ability carrying what an automatic one would: the source as the target, the warning's name as the event tag, the magnitude, the context tags, and the direction packed into target data.
 </Collapsible>
 
 <Collapsible title="Multiplayer" badge="Multiplayer">
-
 **Report Area Stimulus** reports nothing when the source is not the authority, and the notify returns early on any machine that is not the server. A montage playing on a client announces nothing, so one swing cannot warn the same enemy twice.
 
-**Receive Stimulus** and **Report Stimulus To** are server side for the same reason. The **On Stimulus Noticed** delegate on a listener therefore fires on the server; a true multiplayer parry prompt needs that replicated down to the owning client.
+**Report Stimulus To** and **Receive Stimulus** are server side for the same reason. The **On Stimulus Noticed** delegate on a listener therefore fires on the server, so a true multiplayer parry prompt needs that replicated down to the owning client.
 
 Clients see the outcome through the reaction ability and its animation, which replicate the way every other ability does. See [Multiplayer](/docs/soulslike-combat/multiplayer).
-
 </Collapsible>
 
 ---
@@ -299,8 +296,14 @@ Clients see the outcome through the reaction ability and its animation, which re
 
 | Page | Why |
 |------|-----|
-| [Reaction System](/docs/soulslike-combat/reaction-system) | Stages 4 and 5: the reaction set, the gates and scorers, and what happens once a reaction starts. |
+| [Reaction System](/docs/soulslike-combat/reaction-system) | The trigger rules and reactions that answer a warning. |
+| [Reaction Set Editor](/docs/soulslike-combat/reaction-set-editor) | The canvas the rules and reactions are wired on. |
 | [Defense System](/docs/soulslike-combat/defense-system) | What the raised guard is worth once the blow arrives. |
 | [Awareness System](/docs/soulslike-combat/awareness-system) | The perception memory the Awareness filter reads, and the stealth opener it makes possible. |
 | [Melee Trace](/docs/soulslike-combat/melee-trace) | The trace window the notify measures its time to impact against. |
 | [Animation Integration](/docs/soulslike-combat/animation-integration) | The rest of the montage surface, including the windows that hold a defensive state tag. |
+
+<DocNav
+  prev={{ title: "Reaction Set Editor", href: "/docs/soulslike-combat/reaction-set-editor" }}
+  next={{ title: "Combat Roles", href: "/docs/soulslike-combat/combat-roles" }}
+/>

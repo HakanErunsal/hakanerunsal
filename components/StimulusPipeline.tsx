@@ -38,7 +38,7 @@ const STAGES: Stage[] = [
   {
     index: "4",
     title: "What kind of answer",
-    decidedBy: "Trigger Rules on the receiver's Reaction Set, checked top down",
+    decidedBy: "Trigger Rules on the receiver's Reaction Set, asked in Rule Priority order, highest first",
     passes: "A reaction category: defensive, aggressive, whatever the rule names.",
     dropsOut: "No rule matched the tags, the rule's Chance failed, or its Min Interval has not run out.",
   },

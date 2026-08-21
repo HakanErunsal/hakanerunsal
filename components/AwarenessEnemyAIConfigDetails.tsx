@@ -8,7 +8,7 @@ export default function AwarenessEnemyAIConfigDetails() {
       sourceClass="EnemyAIConfig"
       sourceKind="asset"
       attachTo="DA_EnemyAIConfig"
-      note="Awareness category on the config asset assigned to the pawn via IEnemyAIConfigProvider."
+      note="Awareness category on the Enemy AI Config asset the enemy pawn points at."
       categories={AWARENESS_ENEMY_AI_CONFIG_DETAILS}
     />
   );

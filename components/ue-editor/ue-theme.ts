@@ -19,6 +19,18 @@ export const SEC_CARD = {
 } as const;
 
 /**
+ * The dot the Action Set canvas draws on a chain wire, from the FColor values in
+ * SEdNode_SECGraphLinkDot.cpp. Its glyph is always white.
+ */
+export const SEC_LINK_DOT = {
+  idle: "rgb(168, 124, 74)",
+  hovered: "rgb(236, 168, 66)",
+  selected: "rgb(255, 190, 90)",
+  disabled: "rgb(112, 106, 98)",
+  glyph: "rgb(255, 255, 255)",
+} as const;
+
+/**
  * Marker colors SEC.Debug.Stimulus.Draw paints in the world, from the FColor
  * values in SECStimulusDebug.cpp. Engine FColor constants resolved against
  * Engine/Source/Runtime/Core/Private/Math/Color.cpp, so a legend on the page
@@ -46,6 +58,32 @@ export const SEC_STIMULUS_DEBUG = {
 } as const;
 
 /**
+ * The Content Browser thumbnail for a SEC asset: a dark tile, a white wheel with
+ * a grey slice, and an underline whose color names the asset type. Sampled from
+ * the editor, so a mock of that menu matches a screenshot of it.
+ */
+export const SEC_ASSET_THUMBNAIL = {
+  tile: "#151515",
+  wheel: "#FFFFFF",
+  slice: "#898989",
+} as const;
+
+/** Underline color per SEC asset, keyed by the name the create menu lists. */
+export const SEC_ASSET_ACCENTS: Record<string, string> = {
+  "Action Set": "#7890B8",
+  "Awareness Config": "#C91D55",
+  "Damage Config": "#C91D55",
+  "Defense Rule Set": "#C91D55",
+  "Enemy AI Config": "#C91D55",
+  "Impact Surface Set": "#C91D55",
+  "Movement Behavior Profile": "#60A884",
+  "Reaction Set": "#966CB0",
+};
+
+/** Underline for an asset the map does not name. */
+export const SEC_ASSET_ACCENT_DEFAULT = "#C91D55";
+
+/**
  * UE 5.8 Starship StyleColors — from
  * Engine/Source/Runtime/SlateCore/Private/Styling/StyleColors.cpp
  */
@@ -63,6 +101,8 @@ export const UE = {
   hover2: "#808080",
   foreground: "#C0C0C0",
   foregroundHeader: "#C8C8C8",
+  /** StyleColors ForegroundHover. Text and glyphs at full brightness: selection text, checkbox check, exec pins. */
+  foregroundHover: "#FFFFFF",
   primary: "#0070E0",
   primaryHover: "#0E86FF",
   selectInactive: "#40576F",
@@ -77,6 +117,43 @@ export const UE = {
   dataAsset: "#C91D55",
   /** AssetDefinition_Blueprint.h — FColor(63, 126, 255) */
   blueprint: "#3F7EFF",
+  /** AssetDefinition_AnimMontage.h — FColor(100, 100, 255) */
+  animMontage: "#6464FF",
+  /** BehaviorTreeEditor's AssetDefinition_BehaviorTree.cpp — FColor(149, 70, 255) */
+  behaviorTree: "#9546FF",
+  /** AssetDefinition_Curve.h, inherited by UAssetDefinition_CurveFloat — FColor(78, 40, 165) */
+  curveFloat: "#4E28A5",
+} as const;
+
+/**
+ * Kit colors with no StyleColors entry. Each value names where it came from.
+ *
+ * Values consumed by styles/ue-editor.css appear verbatim in the :root block
+ * there; `npm run check:colors` reports any that disagree.
+ */
+export const UE_KIT = {
+  /** Tag name text in a gameplay tag container. Reading affordance with no engine counterpart. */
+  gameplayTagText: "#7EC8E3",
+  /** AssetDefinition_StateTree.cpp GetAssetColor() — FColor(201, 185, 29) */
+  stateTreeAsset: "#C9B91D",
+  /** Object pin color. Fallback when a graph leaves --pin-color or --pill-color unset. */
+  pinFallback: "#0066E8",
+  /** Selection outline glow on a graph node. */
+  bpSelectionGlow: "rgba(255, 170, 0, 0.6)",
+  /** Outer bloom on an active node, primary at low alpha. */
+  primaryGlow: "rgba(0, 112, 224, 0.3)",
+  /**
+   * Comment box on a graph: secondary at 60 percent and foreground at 90.
+   * Carried as full values because Tailwind drops an alpha modifier applied to
+   * a var() color, emitting no rule at all.
+   */
+  bpCommentBorder: "rgba(56, 56, 56, 0.6)",
+  bpCommentTitle: "rgba(192, 192, 192, 0.9)",
+  /** Content Browser folder icon gradient, shading either side of accentFolder. */
+  folderTop: "#A08860",
+  folderBottom: "#6B5A3E",
+  folderTabTop: "#B09870",
+  folderTabBottom: "#8B7155",
 } as const;
 
 export const UE_NODE_HEADERS = {
@@ -113,26 +190,26 @@ export type UeNodeCategory = keyof typeof UE_NODE_HEADERS;
 
 export function uePanel(className?: string) {
   return cn(
-    "my-8 overflow-hidden rounded-[4px] border border-[#0F0F0F] bg-[#151515] shadow-[0_2px_8px_rgba(0,0,0,0.5)]",
+    "my-8 overflow-hidden rounded-[4px] border border-[color:var(--uekit-window-border)] bg-[color:var(--uekit-background)] shadow-[0_2px_8px_rgba(0,0,0,0.5)]",
     className,
   );
 }
 
 export function uePanelBody(className?: string) {
-  return cn("bg-[#151515] p-2 sm:p-3", className);
+  return cn("bg-[color:var(--uekit-background)] p-2 sm:p-3", className);
 }
 
 export function ueSectionLabel(className?: string) {
-  return cn("text-[10px] font-normal uppercase tracking-wide text-[#808080]", className);
+  return cn("text-[10px] font-normal uppercase tracking-wide text-[color:var(--uekit-hover2)]", className);
 }
 
 export function ueCaption(className?: string) {
-  return cn("text-[10px] text-[#808080]", className);
+  return cn("text-[10px] text-[color:var(--uekit-hover2)]", className);
 }
 
 export function ueViewport(className?: string) {
   return cn(
-    "relative overflow-hidden rounded-[4px] border-2 border-[#383838] bg-[#1A1A1A]",
+    "relative overflow-hidden rounded-[4px] border-2 border-[color:var(--uekit-secondary)] bg-[color:var(--uekit-recessed)]",
     className,
   );
 }
@@ -141,8 +218,8 @@ export function ueStatusBar(active?: boolean, className?: string) {
   return cn(
     "flex items-center gap-2 border px-2 py-1 font-mono text-[11px]",
     active
-      ? "border-[#0070E0] bg-[#40576F] text-[#C0C0C0]"
-      : "border-[#383838] bg-[#1A1A1A] text-[#808080]",
+      ? "border-[color:var(--uekit-primary)] bg-[color:var(--uekit-select-inactive)] text-[color:var(--uekit-foreground)]"
+      : "border-[color:var(--uekit-secondary)] bg-[color:var(--uekit-recessed)] text-[color:var(--uekit-hover2)]",
     className,
   );
 }
@@ -150,7 +227,9 @@ export function ueStatusBar(active?: boolean, className?: string) {
 export function ueFlowNode(active: boolean, _headerColor: string, className?: string) {
   return cn(
     "overflow-hidden rounded-[2px] border transition-all duration-500",
-    active ? "border-[#0070E0] shadow-[0_0_0_1px_#0070E0]" : "border-[#383838] opacity-75",
+    active
+      ? "border-[color:var(--uekit-primary)] shadow-[0_0_0_1px_var(--uekit-primary)]"
+      : "border-[color:var(--uekit-secondary)] opacity-75",
     className,
   );
 }
@@ -163,29 +242,26 @@ export function ueFlowNodeHeader(active: boolean, headerColor: string) {
 }
 
 export function ueFlowNodeBody(active: boolean) {
-  return cn("bg-[#242424] px-2 py-1.5", active ? "text-[#C0C0C0]" : "text-[#808080]");
+  return cn("bg-[color:var(--uekit-panel)] px-2 py-1.5", active ? "text-[color:var(--uekit-foreground)]" : "text-[color:var(--uekit-hover2)]");
 }
 
 export function uePropertyRow(_even?: boolean, className?: string) {
-  return cn(
-    "ue-property-row flex min-h-[28px] items-stretch border-b border-[#0F0F0F] text-[11px] last:border-b-0",
-    className,
-  );
+  return cn("ue-dp-row flex min-h-[30px] items-center text-[11px]", className);
 }
 
 export function ueButton(active?: boolean, className?: string) {
   return cn(
     "inline-flex items-center gap-1 rounded-[2px] border px-2 py-0.5 text-[11px] transition-colors",
     active
-      ? "border-[#0070E0] bg-[#40576F] text-[#C0C0C0]"
-      : "border-[#383838] bg-[#242424] text-[#C0C0C0] hover:bg-[#383838]",
+      ? "border-[color:var(--uekit-primary)] bg-[color:var(--uekit-select-inactive)] text-[color:var(--uekit-foreground)]"
+      : "border-[color:var(--uekit-secondary)] bg-[color:var(--uekit-panel)] text-[color:var(--uekit-foreground)] hover:bg-[color:var(--uekit-secondary)]",
     className,
   );
 }
 
 export function ueSelect(className?: string) {
   return cn(
-    "rounded-full border border-[#383838] bg-[#0F0F0F] px-2.5 py-0.5 text-[11px] text-[#C0C0C0] outline-none focus:border-[#0070E0]",
+    "rounded-full border border-[color:var(--uekit-secondary)] bg-[color:var(--uekit-window-border)] px-2.5 py-0.5 text-[11px] text-[color:var(--uekit-foreground)] outline-none focus:border-[color:var(--uekit-primary)]",
     className,
   );
 }
@@ -206,21 +282,21 @@ export function ueListCard(shown: boolean, _accentBorder: string, dashed?: boole
 export function ueConnector(active: boolean) {
   return cn(
     "mx-auto h-5 w-px transition-all duration-500",
-    active ? "bg-[#0070E0]" : "bg-[#383838]",
+    active ? "bg-[color:var(--uekit-primary)]" : "bg-[color:var(--uekit-secondary)]",
   );
 }
 
 export function ueDetailsPanel(className?: string) {
-  return cn("overflow-hidden rounded-[2px] border border-[#0F0F0F] bg-[#151515]", className);
+  return cn("overflow-hidden rounded-[2px] border border-[color:var(--uekit-window-border)] bg-[color:var(--uekit-background)]", className);
 }
 
 export function ueConsole(className?: string) {
   return cn(
-    "overflow-x-auto border border-[#383838] bg-[#1A1A1A] p-2 font-mono text-[11px] text-[#C0C0C0]",
+    "overflow-x-auto border border-[color:var(--uekit-secondary)] bg-[color:var(--uekit-recessed)] p-2 font-mono text-[11px] text-[color:var(--uekit-foreground)]",
     className,
   );
 }
 
 export function uePanelHeader(className?: string) {
-  return cn("flex items-center justify-between gap-3 border-b border-[#0F0F0F] bg-[#1A1A1A] px-2 py-1", className);
+  return cn("flex items-center justify-between gap-3 border-b border-[color:var(--uekit-window-border)] bg-[color:var(--uekit-recessed)] px-2 py-1", className);
 }

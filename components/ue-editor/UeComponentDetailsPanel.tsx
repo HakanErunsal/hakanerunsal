@@ -11,8 +11,8 @@ export type UeDetailsSourceKind = "component" | "asset" | "blueprint" | "notify"
 export interface UeComponentDetailsPanelProps {
   /** Editor display name, e.g. "SEC Action Set Component" or "SEC Awareness Config". */
   displayName: string;
-  /** C++ type without prefix when possible, e.g. "SECActionSetComponent" or "SECAwarenessConfig". */
-  sourceClass: string;
+  /** Which type the panel mirrors, recorded for whoever maintains it. Not rendered: the pages keep class names out of visible text and api-reference carries the C++ surface. */
+  sourceClass?: string;
   /** Parent context shown in the breadcrumb (actor class, asset instance, montage, etc.). */
   attachTo?: string;
   /** Caption under the panel (replication note, setup context, etc.). */
@@ -46,7 +46,7 @@ function UeSourceRow({
   sourceKind,
 }: {
   displayName: string;
-  sourceClass: string;
+  sourceClass?: string;
   sourceKind: UeDetailsSourceKind;
 }) {
   if (sourceKind === "component") {
@@ -56,9 +56,8 @@ function UeSourceRow({
   return (
     <div className="ue-component-row ue-component-row-selected flex w-full items-center gap-1.5 px-1.5 py-0.5">
       <UeAssetIcon type={sourceKindToAssetType(sourceKind)} showLabel={false} className="shrink-0" />
-      <span className="min-w-0 truncate text-[13px] leading-none text-[#cccccc]">
+      <span className="min-w-0 truncate text-[15px] leading-none text-[color:var(--uekit-foreground-header)]">
         {displayName}
-        <span className="text-[#cccccc]"> ({sourceClass})</span>
       </span>
     </div>
   );
@@ -84,7 +83,7 @@ export function UeComponentDetailsPanel({
         bodyClassName="p-0"
         caption={note}
       >
-        <div className="border-b border-[#0F0F0F] bg-[#1A1A1A]">
+        <div className="border-b border-[color:var(--uekit-window-border)] bg-[color:var(--uekit-recessed)]">
           <UeSourceRow displayName={displayName} sourceClass={sourceClass} sourceKind={sourceKind} />
         </div>
         <div className="p-2">

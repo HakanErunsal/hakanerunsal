@@ -1,11 +1,11 @@
 ---
 title: "Animation Integration"
-description: "Wire gameplay tags to animation Blueprint bools with no event graph, hold loose tags for a montage window, send a one-off event from a frame, steer an in-place attack toward its target, and scale movement speed while a tag is held."
-date: 2026-08-04
+description: "Author combat timing on the animation itself: hold a gameplay tag for a montage window, mirror it into an animation Blueprint bool, and steer an attack toward its target."
+date: 2026-08-17
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Animation", "Combat"]
 parent: "SoulslikeCombatDocs"
-order: 15
+order: 16
 ---
 
 <Breadcrumb items={[
@@ -14,131 +14,200 @@ order: 15
     { label: "Animation Integration" }
 ]} />
 
-> Author timed combat state on the animation itself. **SEC State Tag Window** holds gameplay tags for the length of a montage segment, **SEC Gameplay Event** fires a one-off signal at a single frame, **SEC Approach Window** steers an attack toward its target across the wind-up, and **`USECAnimInstanceBase`** turns a tag into an animation Blueprint bool.
+> Timing that belongs to the animation, authored on the animation. A montage window holds a gameplay tag while it runs, and the rest of the game reads that tag.
 
-## When to Use This
+<QuickStart time="45 seconds">
 
-- An animation Blueprint that needs to know about a gameplay tag, with no event graph wiring to maintain.
-- Any state whose timing belongs to the animation, so retiming the montage moves the window with it.
-- Gating an action or reaction on a tag that exists during part of an animation.
-- Invulnerability frames, a parry window, a hyper-armor stretch.
-- A single moment inside an animation that should kick something off: a pose snapshot, a prop spawn, a camera shake.
-- An attack that whiffs when its target steps aside, whether it is animated on the spot or travels on its own root motion.
+<QuickStep title="Put a state tag window on the montage">
 
-Both work on AI and player pawns. The pawn needs an **`AbilitySystemComponent`**, which **`AEnemyCharacterBase`** creates for you.
+Open the dodge montage, right-click a notify track, **Add Notify State**, **SEC State Tag Window**. Drag it across the frames the state should cover and fill **Tags**.
 
----
+<UeSetPropertiesScene
+  title="AM_Dodge_Roll"
+  section="State Tags"
+  rows={[
+    { name: "Tags", value: "SEC.State.Intangible", kind: "text" }
+  ]}
+  caption="The track reads State Tag [SEC.State.Intangible], so the window says what it holds."
+/>
 
-## How It Works
+</QuickStep>
 
-A notify state marks a span of a montage. When that span starts, **SEC State Tag Window** adds its **`Tags`** to the owner's ability system component. When the span ends, it removes them.
+<QuickStep title="Reparent the animation Blueprint">
 
-The notify adds loose tags, so overlapping windows compose through reference counts. Two windows holding `SEC.State.Invulnerable` keep the tag until the second one closes.
+Open the pawn's animation Blueprint, **Class Settings**, and set **Parent Class** to **SEC Anim Instance Base**.
 
-An interrupted montage releases its tags too. Unreal calls the notify's end when a montage stops, blends out, gets replaced, or goes down with the actor, so a cancelled dodge drops its invulnerability tag instead of stranding it.
+</QuickStep>
 
-**`USECAnimInstanceBase`** reads the other direction. It binds a **Gameplay Tag Property Map** against the owner's ability system component, and each row keeps one bool variable in sync with one tag. Loose tags and GameplayEffect-granted tags both drive it.
+<QuickStep title="Map the tag to a bool">
 
----
+Add a bool variable, `IsDodging`. Then open **Class Defaults** and add a row to **Gameplay Tag Property Map**, naming the tag and picking that variable.
 
-## Setup
+<UeSetPropertiesScene
+  title="ABP_Enemy"
+  section="Gameplay Tags"
+  rows={[
+    { name: "Tag To Map", value: "SEC.State.Intangible", kind: "text" },
+    { name: "Property To Edit", value: "IsDodging", kind: "text" }
+  ]}
+  caption="The bool tracks the tag for as long as the window holds it, with no event graph nodes."
+/>
 
-### 1. Hold a tag for a montage window
+</QuickStep>
 
-Open the montage, add Notify State → **SEC State Tag Window** across the frames the state should cover, and fill **`Tags`**.
+<QuickStep title="Play, and watch it work">
 
-| Field | Meaning |
-|-------|---------|
-| **`Tags`** | Gameplay tags held on the owner while the window runs. Empty applies nothing. |
+Roll, and the bool flips on for the window and off at its end. An enemy sweep crossing those frames lands nothing and keeps travelling, because a melee trace carries `SEC.State.Intangible` in its **Pass Through Tags** by default.
 
-Give the window a positive duration. Leave **Trigger On Dedicated Server** on the placed notify enabled so the server keeps its own copy of the window, which is what server-side damage checks read.
+`AM_SEC_DodgeBack` in the showcase content ships with the window already on it.
 
-<Callout type="info">
-A handful of state tags ship as starting points: `SEC.State.Invulnerable` for i-frames, plus `SEC.State.Dodging`, `SEC.State.Blocking`, `SEC.State.Staggered` and `SEC.State.Sprinting` for windows that change how the character moves. The plugin never adds any of them; your montages and your damage code do. Author your own for parry and hyper-armor windows.
+</QuickStep>
+
+</QuickStart>
+
+<Callout type="warning">
+Tags live on the pawn's **Ability System Component**. A pawn without one has nowhere to put them, so the window holds nothing and the bool never flips. **Enemy Character Base** creates one; a custom pawn needs one added. Give the window a positive duration as well, since a zero-length window opens and closes on the same frame.
 </Callout>
 
-### 2. Mirror a tag into an animation Blueprint bool
+---
 
-Reparent the pawn's animation Blueprint to **`SECAnimInstanceBase`**, add a bool variable, then add a row to **Gameplay Tag Property Map** pointing the tag at that variable.
+## Hold a tag for part of an animation
 
-The bool now tracks the tag. Read it in the state machine or a blend to play a guard pose while `SEC.State.Blocking` sits on the ability system component, with no event graph nodes.
+**SEC State Tag Window** has one field. **Tags** names what the owner holds while the window runs, and empty applies nothing.
 
-Binding runs when the animation instance starts, and the map applies the current tag state at that moment, so a tag added before the mesh initialized still shows up.
+Because the timing lives on the montage, retiming the animation moves the window with it. An interrupted montage releases its tags too: a cancelled dodge drops its invulnerability rather than stranding it.
 
-### 3. Send a one-off signal from a montage
+Overlapping windows compose. Two windows holding the same tag keep it until the second one closes.
 
-Some moments need no window and no state of their own: taking a pose snapshot, spawning a prop, starting a camera shake. Add Notify → **SEC Gameplay Event** at the frame it should happen and fill **`Event Tag`**.
+These tags ship as starting points. The plugin adds none of them by itself; your montages do.
 
-| Field | Meaning |
-|-------|---------|
-| **`Event Tag`** | Event sent to the pawn when the montage reaches this notify. Whatever waits on this exact tag hears it once. Unset sends nothing. |
+| Tag | Author it on |
+|-----|--------------|
+| `SEC.State.Intangible` | The i-frames of a dodge or roll. The one tag combat code reads on its own, through **Pass Through Tags** on a melee trace. |
+| `SEC.State.Dodging` | The whole roll, for the movement slowdown below. |
+| `SEC.State.Blocking` | A raised guard, for the slow walk it costs. |
+| `SEC.State.Staggered` | The reaction montage after a hit lands. |
+| `SEC.State.Recovering` | The recovery section of an attack, to gate other actions through **Requires Tags** and **Block Tags**. |
+| `SEC.State.Sprinting` | A sprint, with a speed multiplier above 1. |
 
-Wait on the same tag from an ability, or from a Blueprint through **Wait Gameplay Event**. Nothing is added to the pawn and nothing is taken off it afterwards, so a listener bound after the frame has passed hears nothing.
+Author your own for a parry window, a hyper-armor stretch, or anything else your project needs. A tag is a name; what it means is up to the code that reads it.
 
-The pawn needs an Ability System Component to receive the event. One without it names itself once in the Output Log and nothing is sent.
+<Callout type="info">
+For the attack itself to deal damage, the montage also needs a **SEC Melee Trace Window** over the swing frames. See [Melee Trace](/docs/soulslike-combat/melee-trace).
+</Callout>
 
-<Protip>
-The montage track shows the tag's last segment, so `SEC.Anim.PoseSnapshot` reads as **PoseSnapshot**. Several of these stay readable side by side on one timeline.
-</Protip>
+---
+
+## Invulnerability frames
+
+A window holding `SEC.State.Intangible` is the whole setup. A sweep reaching a target that holds it drops the contact: no damage, no impact effect, and the swing is not spent, so it carries on to whatever stands behind and can land on the same target once the window closes.
+
+Nothing needs setting on the attacker. A melee trace component ships with that tag in **Pass Through Tags**.
+
+For a dodge that costs the attacker their swing, the way a parry does, resolve the hit in the pawn's own damage handling instead and leave the tag out of **Pass Through Tags**. [Melee Trace](/docs/soulslike-combat/melee-trace) covers the difference between a hit that passes through and one that resolves.
+
+---
+
+## Mirror a tag into an animation bool
+
+**SEC Anim Instance Base** keeps a Blueprint bool in step with a gameplay tag. One row in **Gameplay Tag Property Map** per pair, then read the bool in a state machine, a blend, or an animation layer.
+
+Loose tags and tags granted by a Gameplay Effect both drive it, so the same bool covers a montage window and a buff.
+
+Binding needs no setup. The animation instance looks for the owner's ability system each frame until it finds one, which covers a pawn that builds its ability system as a Blueprint component and a pawn that builds one later still. To point the map at an ability system the pawn does not carry, such as one living on a Player State, call **Initialize With Ability System** on the animation instance.
+
+---
+
+## Fire a one-off signal from a frame
+
+Some moments need no window and no state: a pose snapshot, a prop spawn, a camera shake. Add **Notify**, **SEC Gameplay Event** at the frame, and set **Event Tag**.
+
+Wait on that exact tag from an ability, or from a Blueprint through **Wait Gameplay Event**. Nothing is added to the pawn and nothing is taken off afterwards, so a listener bound after the frame has passed hears nothing. `AM_SEC_Unarmed_Combo` uses one.
+
+The pawn needs an ability system to receive it. A pawn without one names itself in the Output Log and nothing is sent.
+
+<Protip
+  title="Readable notify tracks"
+  description="The track shows the tag's last segment, so an event tag ending in PoseSnapshot reads as PoseSnapshot. Several stay legible side by side on one timeline."
+/>
 
 <Collapsible title="What the event carries" badge="Advanced">
-
 The pawn is named as both the event's instigator and its target, and the animation it came from arrives as **Optional Object**. A handler bound to one tag that several montages send reads that to tell which montage fired it.
-
 </Collapsible>
 
-<Collapsible title="Which machines raise it" badge="Multiplayer">
+---
 
-The event is raised on each machine playing the montage and is not replicated, so the handler runs wherever the animation runs. A cosmetic response plays on the clients that can see it, with nothing crossing the wire.
+## Ask the character for its own effect
 
-For a notify that should stay off a dedicated server, clear **Trigger On Dedicated Server** on the placed notify.
+A footstep sounds different under a barefoot rogue and a plated knight, and authoring that per character means authoring the animation twice. Two notifies ask the character instead, and the character answers.
 
+| Notify | Use it for |
+|--------|-----------|
+| **SEC Play Anim Effect** | A single frame: a footstep, a landing, gear rustling. |
+| **SEC Anim Effect Window** | A stretch: a weapon trail, a charge glow, a sustained whoosh. The window opens at the first frame and closes at the last. |
+
+Both carry **Effect Tags**, what the frame asks for, and **Socket Name**, where on the body it belongs. Leave the socket as None and the effect sits at the mesh's own position.
+
+To answer, add the **SEC Anim Effect Handler** interface to the pawn, or to any component it carries, and implement **Handle Anim Effect** (plus **Handle Anim Effect Begin** and **Handle Anim Effect End** for a window). Spawn the Niagara system, play the sound, whatever the effect is. A pawn that answers nowhere does nothing at all.
+
+These tags ship, and a handler asking for a parent tag catches every tag beneath it.
+
+| Tag | Frame it belongs on |
+|-----|---------------------|
+| `SEC.AnimEffect.Footstep.Left` / `.Right` | The foot-plant frames of a walk or run. |
+| `SEC.AnimEffect.Land` | The landing frame after a fall. |
+| `SEC.AnimEffect.WeaponTrail` | The swing frames a trail should cross. `AM_SEC_TwoHanded_SingleAttack` has one. |
+| `SEC.AnimEffect.Foley` | Wherever cloth, armour or gear should move. |
+
+<Callout type="info">
+A weapon trail is authored by the pawn passing the same call on to whatever it has equipped, which runs its own trail. Each handler on the actor is called once, so a handler does not pass a request to another handler on the same actor.
+</Callout>
+
+<Collapsible title="Which machines run an effect" badge="Multiplayer">
+Nothing replicates and nothing runs on a dedicated server. The notify fires on each machine playing the animation, which is where the effect is wanted.
+
+An animation cut short mid-window can leave the close uncalled, so stop anything expensive on the pawn's own teardown as well.
 </Collapsible>
 
-### 4. Steer an attack toward its target
+---
 
-Reach for the approach window when the animation has no root motion to steer: an attack animated on the spot, which whiffs the moment its target steps aside.
+## Steer an attack toward its target
 
-An attack whose animation already carries root motion is left to travel on its own, and the window makes up only the distance it falls short by, so one of those lands its hit too. Which tool to reach for there comes down to who controls the character: on an AI, either works and the window is the simpler wiring; on a character a player controls, use **Motion Warping**, because it bends the motion the animator authored instead of adding to it and it gets prediction from the ability playing the montage.
+An attack animated on the spot whiffs the moment its target steps aside. **SEC Approach Window** turns the character toward what it is fighting and glides it into range across the frames you mark, then stops a set distance short so the swing lands.
 
-Add Notify State → **SEC Approach Window** across the wind-up frames. The character turns toward what it is fighting and glides into range over that stretch, then stops a set distance short and swings.
+Add **Notify State**, **SEC Approach Window** over the wind-up frames. On an enemy attack that is the whole setup: the enemy character carries a **SEC Approach** component, and an SEC ability stores its target under the same name the window looks for. `AM_SEC_TwoHanded_SingleAttack` has one authored.
 
 <ApproachWindowDetails />
 
-**Mode** picks which half runs:
+**Mode** picks which half runs.
 
 | Mode | What it does |
 |------|--------------|
 | **Move and Face** | Glides toward the target and turns to face it. The gap-close for an in-place attack. |
-| **Face Only** | Turns to face without moving. For an attack that should aim at the target and stay put. |
-| **Move Only** | Glides without turning, leaving the facing to whatever else drives it. For a lunge that keeps the direction the animation gives it. |
+| **Face Only** | Turns to face without moving, for an attack that aims and stays put. |
+| **Move Only** | Glides without turning, for a lunge that keeps the direction the animation gives it. |
 
-**Move By Offset** replaces the target entirely. Tick it and the window steps the character a set distance along a direction of its own instead of steering at anything: `(-1, 0, 0)` and 50 cm is a step straight back, whatever way the character faces. Nothing needs storing on the component for it, and the target fields grey out. It suits a hit reaction or a block that should knock the character back over the animation's own frames.
+**Move By Offset** replaces the target entirely. Tick it and the window steps the character a set distance along a direction of its own: **Offset Direction** `(-1, 0, 0)` with **Offset Distance** 50 is a step straight back, whatever way the character faces. Nothing has to be stored for it, and the target fields grey out. It suits a hit reaction or a block that should knock the character back over the animation's own frames.
 
-What a steering window aims at comes out of a named slot on the character's **SEC Approach** component, the handover Motion Warping already uses for its warp targets. Something stores the target, and the animation decides when the steering happens.
-
-An SEC ability stores it on activation under the name in its **Motion Warping Target Name**, so an enemy attack closes the distance with nothing to wire up: **`AEnemyCharacterBase`** carries the component, and the window's **Approach Target Name** defaults to the same `Target` those abilities write.
-
-From a Blueprint graph, call **Set Approach Target To Actor** with the name the window carries. **Set Approach Target To Location** stores a spot instead, **Set Approach Target** takes the whole struct when you want per-target distances on it, and **Remove Approach Target** clears one. A window whose name holds nothing plays the attack where the character stands.
-
-Each distance and speed on a stored target can be left negative, which hands the choice back to the window on the montage. The order runs window override first, then the stored target, then the matching **Default** on the Approach component: **Default Stop Distance** at 150 cm, **Default Max Approach Distance** at 750 cm, **Default Facing Interp Speed** at 12. Those three sit on the component so a character can carry its own answer rather than repeating it on every montage.
+An attack whose animation already carries root motion travels on its own, and the window makes up only the distance it falls short by, so a window on one of those lands its hit too. On a character a player controls, reach for **Motion Warping** instead: it bends the motion the animator authored rather than adding to it, and it predicts through the ability playing the montage.
 
 <Callout type="info">
-The montage track names the window by what it does, so **Approach Target**, **Face Target**, **Move To Target** and **Move By Offset** read apart at a glance on the timeline.
+Motion Warping is the alternative to the approach window rather than a companion to it, so a character wants one or the other on a given attack. Taking that route means adding a **Motion Warping** component to the character yourself: the enemy character does not ship with one, and an ability looks the component up when it activates and gives up quietly when it finds none, so a montage with a warp notify plays on the spot and nothing says why. See [Motion warping](/docs/soulslike-combat/action-system#motion-warping-steering-an-attack-toward-the-target).
 </Callout>
 
-<Collapsible title="Seeing what steers an attack" badge="Advanced">
+### Pointing a window at a target
 
-One console variable draws everything moving a character, so an approach window and a motion warp on the same attack can be read against each other:
+What a window steers toward comes out of a named slot on the character's **SEC Approach** component, the same handover Motion Warping uses for its warp targets. Something stores the target; the animation decides when the steering happens.
 
-```
-SEC.Debug.Steering.Draw 1    // Orange is an approach window, green is a motion warp
-SEC.Debug.Approach 1         // What each approach window decides, in the Output Log
-```
+An SEC ability stores it on activation under the name in its **Motion Warping Target Name**, which defaults to `Target`, and so does the window's **Approach Target Name**. Matching those two names is what makes an attack steer at the right thing.
 
-Both systems draw the same arrangement, which is what makes the colour the answer to which one is moving the character. A line runs from the character to where the motion is taking it and a sphere marks that spot, a ring around the target shows how far short of it the motion stops, and a silver line joins the goal to the target. White is the way the character points now, magenta the way the motion wants it to point: the two arrows half a turn apart means the wrong facing is being asked for rather than the wrong goal being given. On a listen server the two machines draw at different heights, so both are readable at once.
+From a Blueprint graph, **Set Approach Target To Actor** stores an actor under a name, **Set Approach Target To Location** stores a spot, **Set Approach Target** takes the whole struct when you want per-target distances on it, and **Remove Approach Target** clears one. A window whose name holds nothing plays the attack where the character stands.
 
-</Collapsible>
+The distance and facing overrides on the window can be left at -1, which hands the choice to the stored target, then to the matching **Default** on the Approach component: **Default Stop Distance** 150 cm, **Default Max Approach Distance** 750 cm, **Default Facing Interp Speed** 12. Past the max approach distance the window turns the character toward its target without closing on it, so the attack plays where the character stands.
+
+<Callout type="warning">
+**Speed Limit** on the Approach component is **Unlimited**, so a window covers whatever distance separates the two in the span it was given, which can cross a room in a fraction of a second. Set it to **Character's Max Speed** for a gap-close that reads like running, or to **Fixed Speed** with a **Max Approach Speed** in cm/s.
+</Callout>
 
 ### Steering without a montage
 
@@ -148,107 +217,76 @@ The same steering runs from Blueprint with no montage or notify involved, for a 
 - **Approach Location**: turn it toward a spot and glide it there over a number of seconds. The spot is exact, so no stop distance comes off it.
 - **Approach Offset**: move it a set distance along a direction of its own, for a step back or a sidestep with nothing to aim at. The direction is in the character's own space, and it defaults to Move Only so a knockback does not turn the character.
 
-These start at once rather than waiting on an animation, so they need no stored target of their own. All three take the same modes and the same tuning, with the speeds and curves behind Advanced. Seconds at or below zero runs until **Stop Approach** stops it, so a chase can last as long as you want it to. Whatever else turns the character stands down for the duration, exactly as it does for a montage window.
+These start at once rather than waiting on an animation. Seconds is how long the glide takes as well as how long the call runs, so at or below zero the character turns without gliding and keeps turning until **Stop Approach** stops it.
+
+<Collapsible title="Chasing a target that keeps moving" badge="Advanced">
+**Moving Target** on the Approach component decides where a glide aims while the target moves, and a window can override it per attack.
+
+| Setting | Aims at |
+|---------|---------|
+| **Lead** | Where the target is heading. The default, and the smoothest against a target that keeps moving, since it covers a dodge without lurching. |
+| **Chase** | Where the target stands right now. Follows every step, which bunches up whenever the target changes direction. |
+| **Committed** | Where the target stood when the window opened. For an attack that commits, so a target that got out of the way is missed. |
+
+**Lead Strength** is how much of the target's own motion a leading glide steers ahead of, from 0 for none to 1 for all of it (the default). Lower it to aim nearer where the target stands, so a target sprinting away is followed rather than cut off.
+</Collapsible>
 
 <Collapsible title="When the glide stays home" badge="Advanced">
-
 The turn runs whenever the window does. The glide is the part with conditions on it, and each one leaves the attack playing in place rather than sliding it somewhere wrong.
 
 - The target sits past **Max Approach Distance Override**, so a swing thrown across the arena does not turn into a charge.
 - The character is already inside the stop distance, measured between the two capsules rather than the two origins, so a wide enemy stops with room for its own body.
-- A speed bound is in force and the target is further than it reaches in the window's span. The character approaches as far as it can and the attack lands short. The window's own **Override Speed Limit** decides that when it is set, and the component's **Speed Limit** otherwise, so one attack can close faster or slower than the rest of the character's.
-- The target is destroyed mid-window. The glide stops rather than travelling to where it used to be.
+- A speed bound is in force and the target is further than it reaches in the window's span. The character approaches as far as it can and the attack lands short.
+- The target is destroyed mid-window. The glide stops rather than travelling to the spot it left behind.
 - The montage stops, blends out or is replaced. The window ends with it and hands the facing back.
 
 **Time Mapping Curve Override** eases the travel: X is the window's time from 0 to 1, Y the fraction of the distance covered by then. Author an ease-out for a lunge that arrives soft. Unset takes the curve on the stored target, and glides at a constant rate when that has none either.
-
 </Collapsible>
 
 <Collapsible title="Who owns the character's facing" badge="Advanced">
-
 While the window runs, whatever else turns the character stands down, and gets its settings back when the window closes. Several things can hold the facing at once and release in any order, so a window inside a paired animation composes instead of fighting.
 
-For an enemy, that means the controller stops writing facing for the length of the window, then resumes tracking. An ability that also sets **Lock AI Rotation** on the same montage composes without error, though the two ask for opposite things: the lock stops the controller aiming, and the window turns the character itself. The window is what moves the character while it runs.
+For an enemy, the controller stops writing facing for the length of the window, then resumes tracking. An ability that also sets **Lock AI Rotation** on the same montage composes without error, though the two ask for opposite things: the lock stops the controller aiming, and the window turns the character itself.
 
-A second window opening on a character that is already being steered takes over, so the window that opened last is the one steering.
+A second window opening on a character that is already being steered takes over, so the window that opened last is the one steering. A move already told exactly where to land is the exception: it keeps the character until it gets there.
 
+**Acquire Facing Control** and **Release Facing Control** take the facing for anything else that needs it, and **On Facing Control Changed** fires on both. Bind it from code that writes the character's rotation settings, so it stands down for the window and re-resolves once the facing comes back.
 </Collapsible>
 
 <Collapsible title="Which machines steer" badge="Multiplayer">
+The turn runs on the server and on a player's own machine, and does nothing on a copy of someone else's character, which receives the motion already resolved.
 
-The turn runs on the server and on a player's own machine, and does nothing on a copy of someone else's character, which receives the motion already resolved. An AI's target lives on its controller, which no client has, so a client that tried to steer would resolve nothing and fight the replicated transform.
+**The travel has one rule: play the montage on every machine.** Each machine running the window works out its own glide toward the same target, and character movement settles the difference. An AI attack gets this for free, since its montage plays on the server anyway. A montage played on one machine alone is the failure case: that machine glides, the server does not, and the server hauls the character back every frame.
 
-**The travel has one rule: play the montage on every machine.** Each machine running the window works out its own glide toward the same target, and character movement settles the difference between them the way it settles any other disagreement. An AI attack gets this for free, since its montage plays on the server anyway. A montage played on one machine alone is the failure case: that machine glides, the server does not, and the server hauls the character back every frame.
+Against a stationary target both machines pick the same landing spot and the motion is smooth. The faster the target moves, the further apart the two spots land, and the difference shows up as a tug.
 
-How closely the two agree decides how it feels. Against a stationary target both machines pick the same landing spot and the motion is seamless. The faster the target moves, the further apart the two spots land, and the difference shows up as a tug rather than a smooth glide.
-
-**Prediction is what removes that**, and prediction means an ability. Four things have to line up:
+**Prediction removes that**, and prediction means an ability. Four things have to line up:
 
 1. The pawn carries an **Ability System Component**.
 2. The ability's **Net Execution Policy** is **Local Predicted**.
-3. The montage plays through the **Play Montage and Wait** ability task, not a Play Montage node inside the ability. The window borrows the ability the ability system recorded against the montage, and only that task registers one. A plain Play Montage leaves it unregistered.
-4. Section changes go through the ability system's **Montage Jump To Section**, so the server jumps to the same section.
+3. The montage plays through the **Play Montage and Wait** ability task. The window borrows the ability the ability system recorded against the montage, and only that task registers one.
+4. Section changes go through the ability's **Montage Jump To Section**, so the server jumps to the same section.
 
-With those, the glide runs as a root motion task: predicted on the owning client, applied on the server, and reconciled between them. Everyone else sees it simulate.
-
-A player character gliding without an ability names itself once in the Output Log, so the tug has an explanation rather than looking like a bug. The turn runs in every case, since rotation on a player's own machine is left alone.
+A player character gliding without an ability names itself once in the Output Log, so the tug has an explanation rather than looking like a bug.
 
 <Callout type="warning">
-A montage played from a Blueprint plays only on the machine that played it. On a client, that means the server never runs the window at all, so nothing turns or glides there and server-side hit checks read a character facing the wrong way.
+A montage played from a Blueprint plays only on the machine that played it. On a client, the server never runs the window at all, so nothing turns or glides there and server-side hit checks read a character facing the wrong way.
 </Callout>
 
-A target stored on the server is sent to the machine playing that character, so setting one server-side is enough for a player's own machine to steer at it without a multicast. A copy of someone else's character is sent nothing, since it never steers itself. The server's answer is the one that lasts, so a target stored on a client is replaced the next time the server sends its own.
+A target stored on the server reaches the machine playing that character when **Set Approach Target To Actor** is called with **Replicate** ticked, so a target set server-side steers a player's own machine without a multicast. The server's answer is the one that lasts.
 
-An animation carrying its own root motion is the one case that does not predict: root motion takes precedence over the glide, so the window closes the remaining distance directly instead. On an AI that costs nothing, because the server moves the enemy and every client receives the result. On a character a player controls it reads as a tug, and the Output Log names the character once.
-
-</Collapsible>
-
-<Collapsible title="Approach classes and functions" badge="C++">
-
-```cpp
-// Store what this character is swinging at, under the name a montage window asks for.
-UFUNCTION(BlueprintCallable, Category = "SEC|Approach")
-void SetApproachTargetToActor(FName ApproachTargetName, AActor* Actor);
-
-// What is stored under a name, or null.
-const FSECApproachTarget* FindApproachTarget(FName ApproachTargetName) const;
-```
-
-**`USECApproachComponent`:** the running window, the turn, and the glide, alongside the named targets they read. **`USECApproachComponent::Get`** finds it on an actor. **`AcquireFacingControl`** and **`ReleaseFacingControl`** take the facing for anything else that needs it. Bind **`OnFacingControlChanged`** from code that writes the character's rotation settings, so it stands down for the window and re-resolves once the facing comes back.
-
-**`USECApproachWindowNotifyState`:** the authored marker. Reads the mode and the overrides, looks up its **`ApproachTargetName`** on the component, and hands one resolved request back to it.
-
-**`UGameplayAbilityBase::SetupApproachTarget`:** stores the action context's target on activation and clears it on end, keyed on **`MotionWarpingTargetName`**. Storing a target starts nothing; the montage window is what moves the character.
-
-**`ApproachOffset`** moves the character a distance along a direction of its own, and **`GetMaxApproachSpeed`** reports what currently bounds a window's speed, negative when nothing does.
-
+An animation carrying its own root motion is the one case that does not predict: root motion takes precedence, so the window closes the remaining distance directly instead. On an AI that costs nothing. On a character a player controls it reads as a tug, and the Output Log names the character.
 </Collapsible>
 
 ---
 
-## Invulnerability Frames
-
-The plugin gives you the window and the recording behavior. Your pawn decides what a hit means, so armor and poise stay yours to define.
-
-1. Add **SEC State Tag Window** to the dodge montage over the frames that should ignore hits. Set **`Tags`** to `SEC.State.Invulnerable`.
-2. In the pawn's **Handle Incoming Damage**, check for that tag. While it is held, skip the health change and leave **`DamageApplied`** at zero, with `SEC.Defense.Dodge` in **`ResultTags`**.
-3. On the attacker's **`USECMeleeTraceComponent`**, add `SEC.Defense.Dodge` to **`SkipRecordTags`**.
-
-Step 3 decides whether the dodge costs the attacker their swing. With the tag in **`SkipRecordTags`**, the trace does not record the hit, so the same swing can connect on a later frame once the i-frames end. Leave it out and the dodge consumes the swing the way a parry does.
-
-<Callout type="warning">
-A pawn that does not implement `ISECDamageable` falls through to Unreal's `ApplyPointDamage` path, where the plugin has no result to inspect. Implement the interface on anything that needs i-frames.
-</Callout>
-
----
-
-## Movement Speed During a Window
+## Scale movement speed while a tag is held
 
 A character holding full walk speed through a dodge slides out of its own animation. **SEC Speed Modifier** scales walk speed while a tag is held, so the slowdown begins and ends with the animation.
 
 1. Add **SEC Speed Modifier** to the character.
 2. Add a row to **Speed Scale By Tag**: the tag, and the multiplier it applies. `SEC.State.Dodging` at `0.2` leaves a fifth of the normal speed, enough to steer a roll without walking out of it.
-3. Put **SEC State Tag Window** across the dodge frames with that same tag in **`Tags`**.
+3. Put a **SEC State Tag Window** across the dodge frames with that same tag in **Tags**.
 
 <SpeedModifierDetails />
 
@@ -257,106 +295,77 @@ Tags held at the same time multiply, so a 0.5 slow alongside a 0.2 dodge leaves 
 With no tag held, the character walks at the speed it started with. The component reads that speed when play begins, so set the character's own **Max Walk Speed** as usual and let the table scale it.
 
 <Collapsible title="Slows that no tag stands for" badge="Advanced">
-
 Some slows belong to a projectile or a pickup rather than to a montage. **Add Speed Modifier** applies one under an id you pick and holds it until **Remove Speed Modifier** drops that id. Calling it again with the same id replaces that id's multiplier. **Has Speed Modifier** reports what is held, and **Clear Speed Modifiers** drops every id while leaving the tag table alone.
 
 That path needs no ability system component, so it works on a character with no combat systems attached. Ids and tags land in the same pool and multiply together.
 
 **Set Base Max Walk Speed** changes the speed every multiplier works from, for a sprint or an upgrade that raises the character's own walk speed. Write it through that function rather than setting **Max Walk Speed** directly, or the next tag change overwrites the value.
 
-A negative or non-finite multiplier is refused wherever it enters, so one bad row cannot reach the movement component.
-
+**Set Speed Scale For Tag** and **Remove Speed Scale For Tag** edit the table while play runs, and the first starts watching a tag the table did not carry. A negative or non-finite multiplier is refused wherever it enters, so one bad row cannot reach the movement component.
 </Collapsible>
 
 <Collapsible title="Driving your own movement system" badge="Advanced">
-
 **On Speed Scale Changed** fires with the combined multiplier whenever it changes. A character with no **Character Movement Component** still tracks tags and still broadcasts, so a project with its own movement code can bind that event and ignore the walk speed side.
 
 Subclass the component in Blueprint to override **Combine Speed Scales**, which decides how several multipliers stack, or **Apply Speed Scale**, which decides what the multiplier drives. Override the second to scale acceleration and rotation rate alongside walk speed.
-
 </Collapsible>
 
 <Collapsible title="Keeping speed in step across the network" badge="Multiplayer">
-
-Walk speed is not a replicated property, so each machine works its own value out from the tags it can see. Add the driving tag through a GameplayEffect or **Add Replicated Loose Gameplay Tag** so every machine agrees. A tag added with **Add Loose Gameplay Tag** exists only where it was added, which leaves the server and the clients disagreeing about how fast the character moves.
+Walk speed is not a replicated property, so each machine works its own value out from the tags it can see. Add the driving tag through a Gameplay Effect or **Add Replicated Loose Gameplay Tag** so every machine agrees. A tag added with **Add Loose Gameplay Tag** exists only where it was added, which leaves the server and the clients disagreeing about how fast the character moves.
 
 A montage window adds loose tags per machine, and the montage plays on the server too, so a window-driven slow stays consistent without extra work.
-
 </Collapsible>
 
 ---
 
-## Integration
+## Debug it
 
-| System | Link |
-|--------|------|
-| [Melee Trace](/docs/soulslike-combat/melee-trace) | **`SkipRecordTags`** and the **`ISECDamageable`** result decide hit recording. |
-| [Reaction System](/docs/soulslike-combat/reaction-system) | **`ResultTags`** from a defended hit feed reaction selection. |
-| [Action System](/docs/soulslike-combat/action-system) | Action **`AddTags`** gate other actions; a window tag can gate them the same way. |
-| [Multiplayer](/docs/soulslike-combat/multiplayer) | Windows run per machine as loose tags; the server's copy drives damage decisions. |
+```
+SEC.Debug.Approach 1            // What each approach window decides, and a block above each character
+SEC.Debug.Steering.Draw 1       // Orange is an approach window, green is a motion warp
+SEC.Debug.Warp 1                // What an ability's motion warping reach check decides
+SEC.Debug.Melee.DrawTracing 1   // The sweeps a melee trace window runs
+```
 
----
+`ShowDebug AbilitySystem` lists the tags a pawn holds right now, which is how you check that a window opened and closed. The **SEC Approach** component also carries a **Debug Overlay Approach** checkbox that turns the approach view on for that one character and needs no console.
 
-<Collapsible title="Windows on a dedicated server" badge="Advanced">
+<Collapsible title="Reading the steering draw" badge="Advanced">
+Both steering systems draw the same arrangement, which is what makes the colour the answer to which one is moving the character. A line runs from the character to where the motion is taking it and a sphere marks that spot, a ring around the target shows how far short of it the motion stops, and a silver line joins the goal to the target. White is the way the character points, magenta the way the motion wants it to point: two arrows half a turn apart means the wrong facing is being asked for rather than the wrong goal being given. On a listen server the two machines draw at different heights, so both are readable at once.
+</Collapsible>
 
-The window runs wherever the montage plays, including the server, and adds loose tags to that machine's ability system component. Nothing replicates, because the server plays the montage too and its own window is what server-side damage checks read.
+<Collapsible title="Nothing happens" badge="Advanced">
+| Problem | Likely cause | Fix |
+|---------|--------------|-----|
+| Tag never appears | The pawn has no ability system component | Add one, or derive the pawn from **Enemy Character Base**. |
+| Tag never appears | **Tags** left empty on the notify | Fill **Tags**. |
+| Tag sticks after the montage | Animation Blueprint recompiled mid-window in Play In Editor | Restart Play In Editor. Unreal skips notify ends while reinstancing Blueprints. |
+| Bool never flips | The variable is not mapped, or the row names another tag | Check the row in **Gameplay Tag Property Map**. |
+| i-frames ignored on the server | **Trigger On Dedicated Server** cleared on the placed notify | Re-enable it. |
+| i-frames ignored on the server | The mesh pose is not ticking | Set **Visibility Based Anim Tick Option** to **Always Tick Pose And Refresh Bones**. |
+| Nothing answers an effect notify | No handler on the pawn or its components | Add the **SEC Anim Effect Handler** interface and implement it. |
+| Attack neither turns nor closes | Nothing stored under the window's **Approach Target Name**, or no **SEC Approach** component on the character | Add the component, and store the target with **Set Approach Target To Actor**. `SEC.Debug.Approach 1` names which one is missing. |
+| Attack steers at the wrong thing | The window's **Approach Target Name** and the name the ability or graph writes disagree | Match the two. An SEC ability writes its **Motion Warping Target Name**. |
+| Attack turns but stays put | The target is past **Max Approach Distance Override**, or already inside the stop distance | Raise the limit, or lower **Stop Distance Override**. |
+| Attack crosses a huge distance instantly | **Speed Limit** is **Unlimited** | Set **Character's Max Speed**, or **Fixed Speed** with a **Max Approach Speed**. |
+| The server sees the attack facing the wrong way | The montage plays from a Blueprint, so it never plays on the server | Play the attack through an ability, or play the montage on the server as well. |
+| Damage lands during i-frames | The window holds a tag the melee trace does not read | Use `SEC.State.Intangible`, or add your tag to **Pass Through Tags** on the attacker's trace component. |
+</Collapsible>
 
-The server runs the notify while the mesh ticks its pose, and skips it otherwise. **`AEnemyCharacterBase`** sets **`VisibilityBasedAnimTickOption`** to **`AlwaysTickPoseAndRefreshBones`** on a dedicated server to keep that tick alive. A custom pawn that skips that step leaves sockets and notify timing at the reference pose.
+<Collapsible title="Windows on a dedicated server" badge="Multiplayer">
+A window runs wherever the montage plays, the server included, and adds loose tags to that machine's ability system component. Nothing replicates, because the server plays the montage too and its own window is what server-side damage checks read.
 
-Clearing **Trigger On Dedicated Server** on the placed notify makes the window client-only, which drops server-side i-frames.
+The server runs the notify while the mesh ticks its pose, and skips it otherwise. **Enemy Character Base** sets **Visibility Based Anim Tick Option** to **Always Tick Pose And Refresh Bones** on a dedicated server to keep that tick alive. A custom pawn that skips that step leaves sockets and notify timing at the reference pose.
 
+Clearing **Trigger On Dedicated Server** on the placed notify makes a window client-only, which drops server-side i-frames.
 </Collapsible>
 
 <Collapsible title="Overlapping windows and restarts" badge="Advanced">
-
 Unreal treats one notify object on one mesh as a single window. Play a montage twice on the same mesh while the first copy blends out and you get one begin and one end, not a double count. A window that begins again with no end between, as a jump to an earlier section can do, releases the earlier record before re-adding.
 
-Ending a window twice removes its tags once, and a duplicate end leaves a tag held by another system untouched.
-
+Ending a window twice removes its tags once, and a duplicate end leaves a tag held by another system untouched. A window also survives a mid-window change to the owner's resolved ability system, since the tags come off whichever one they went onto.
 </Collapsible>
 
-<Collapsible title="State tag classes and functions" badge="C++">
-
-```cpp
-// Held for the montage window, released at its end.
-UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "State Tags")
-FGameplayTagContainer Tags;
-
-// Bind the tag-to-bool map against an ability system and apply the current tag state.
-void InitializeWithAbilitySystem(UAbilitySystemComponent* AbilitySystem);
-```
-
-**`USECStateTagNotifyState`:** the montage window. Reads **`Tags`**, resolves the ability system from the mesh's owner.
-
-**`USECAnimInstanceBase`:** abstract animation instance holding **`GameplayTagPropertyMap`**. **`NativeInitializeAnimation`** binds against the owner's ability system component. Call **`InitializeWithAbilitySystem`** by hand for a pawn that resolves its ability system later than its mesh, such as one reading a **`PlayerState`** on a client. Passing an ability system that is already bound changes nothing.
-
-**`USECStateTagWindowSubsystem`:** records which ability system each window's tags went onto, so the end removes them from that one. It covers a montage restart and a mid-window change to the owner's resolved ability system. Nothing outside the notify calls it.
-
-**`USECGameplayEventNotify`:** the one-shot event. Reads **`EventTag`**, resolves the ability system through **`UAbilitySystemGlobals::GetAbilitySystemComponentFromActor`**, and sends the event with the pawn as instigator and target and the animation as **`OptionalObject`**.
-
-</Collapsible>
-
-<Collapsible title="Common issues" badge="Advanced">
-
-| Problem | Likely cause | Fix |
-|---------|--------------|-----|
-| Tag never appears | Owner has no ability system component | Add one, or use a pawn deriving from **`AEnemyCharacterBase`**. |
-| Tag never appears | **`Tags`** left empty on the notify | Fill **`Tags`**. |
-| Tag sticks after the montage | Animation Blueprint recompiled mid-window in PIE | Restart PIE. Unreal skips notify ends while reinstancing Blueprints. |
-| i-frames ignored on the server | **Trigger On Dedicated Server** cleared | Re-enable it on the placed notify. |
-| i-frames ignored on the server | Mesh pose not ticking | Set **`VisibilityBasedAnimTickOption`** to **`AlwaysTickPoseAndRefreshBones`**. The melee trace reports the same cause for its own sweeps, naming the mesh in the log; tag windows have no equivalent message. |
-| Dodge eats the swing | `SEC.Defense.Dodge` missing from **`SkipRecordTags`** | Add it on the attacker's trace component. |
-| Bool never flips | Variable not mapped, or the map row names another tag | Check the row in **Gameplay Tag Property Map**. |
-| Attack neither turns nor closes | Nothing stored under the window's **Approach Target Name**, or the character carries no **SEC Approach** component | Add the component, and store the target under the name the window carries with **Set Approach Target To Actor**. `SEC.Debug.Approach 1` names which one is missing. |
-| Attack steers at the wrong thing, or at nothing on one enemy | The window's **Approach Target Name** and the name the ability or graph writes disagree | Match the two. An SEC ability writes its **Motion Warping Target Name**. |
-| Attack turns but stays put | Target past **Max Approach Distance Override**, or already inside the stop distance | Raise the limit, or lower **Stop Distance Override**. |
-| Attack crosses a huge distance almost instantly | **Speed Limit** on the Approach component is **Unlimited**, so the window covers whatever distance separates the two in its own span | Set it to **Fixed Speed** with a **Max Approach Speed** in cm/s, or to **Character's Max Speed** to borrow the character's own. |
-| The server sees the attack facing the wrong way, so hits miss | Montage played from a Blueprint, so it never plays on the server and the window never runs there | Play the attack through an ability, or play the montage on the server as well. |
-| Player character is pulled back where it started, repeatedly | Montage played on one machine only, so the server never glides and corrects the one that did | Play the montage on every machine, through an ability or a multicast. |
-| Player character tugs during the glide instead of moving smoothly | No ability behind the montage, so the two machines pick slightly different landing spots | Play the attack through an ability with **Play Montage and Wait** to predict it. The Output Log names the character. |
-| Damage lands during i-frames | **Handle Incoming Damage** does not check the tag | Leave **`DamageApplied`** at zero while the tag is held. |
-
-</Collapsible>
+---
 
 <DocNav
   prev={{ title: "Vitals", href: "/docs/soulslike-combat/vitals" }}

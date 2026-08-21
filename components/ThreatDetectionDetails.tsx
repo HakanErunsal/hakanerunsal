@@ -6,8 +6,8 @@ export default function ThreatDetectionDetails() {
     <UeComponentDetailsPanel
       displayName="Threat Detection Component"
       sourceClass="ThreatDetectionComponent"
-      attachTo="AEnemyControllerBase"
-      note="AI controller component. Evaluation starts disabled in EnemyControllerBase; SECCombatControllerComponent calls SetThreatDetectionEnabled(true) on BeginPlay when Enable Threat Detection is on."
+      attachTo="Enemy Controller Base"
+      note="Sits on the AI controller. Evaluation starts off on a controller made from Enemy Controller Base, and the SEC Combat Controller turns it on at BeginPlay when Enable Threat Detection is ticked."
       categories={THREAT_DETECTION_DETAILS}
     />
   );

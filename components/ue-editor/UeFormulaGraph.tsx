@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { UePanel } from "./UePanel";
 import { UeBlueprintGraph } from "./UeBlueprintGraph";
 import { UeBlueprintNode } from "./UeBlueprintNode";
-import { UE_BP_PIN_SRGB } from "./ue-blueprint-theme";
+import { UE_BP_NODE, UE_BP_PIN_SRGB } from "./ue-blueprint-theme";
 
 /**
  * One factor in a product / quotient formula.
@@ -28,21 +28,21 @@ export interface UeFormulaGraphProps {
 /** Float pin accent for getter pills only — keep wires/hub neutral so the graph is not all green. */
 const FLOAT = UE_BP_PIN_SRGB.float;
 const WIRE = "rgba(180, 180, 188, 0.45)";
-const HUB_FILL = "#242428";
-const HUB_STROKE = "#9a9aa0";
+const HUB_FILL = UE_BP_NODE.gridMajor;
+const HUB_STROKE = UE_BP_NODE.subtitle;
 
 /** Larger × / ÷ chip — dark chrome, high-contrast glyph (not the tiny green operator node). */
 function FormulaOpChip({ op }: { op: "×" | "÷" }) {
   return (
     <div
-      className="flex h-9 w-9 items-center justify-center rounded-md border border-[#4a4a50] shadow-[0_2px_8px_rgba(0,0,0,0.55)]"
+      className="flex h-9 w-9 items-center justify-center rounded-md border border-[color:var(--uekit-secondary)] shadow-[0_2px_8px_rgba(0,0,0,0.55)]"
       style={{
         background:
           "linear-gradient(180deg, rgba(48,48,54,0.98) 0%, rgba(22,22,26,0.98) 100%)",
       }}
       aria-hidden
     >
-      <span className="font-mono text-[20px] font-bold leading-none text-[#f0f0f2]">{op}</span>
+      <span className="font-mono text-[22px] font-bold leading-none text-[color:var(--uekit-bp-text)]">{op}</span>
     </div>
   );
 }
@@ -129,7 +129,7 @@ export function UeFormulaGraph({
           </svg>
 
           <div className="pointer-events-none absolute left-1/2 top-1/2 z-[2] flex w-[84px] -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center text-center">
-            <span className="text-[14px] font-semibold leading-tight text-[#f0f0f2]">
+            <span className="text-[16px] font-semibold leading-tight text-[color:var(--uekit-bp-text)]">
               {resultLabel}
             </span>
           </div>
@@ -156,10 +156,10 @@ export function UeFormulaGraph({
                 kind="variable-get"
                 title={s.factor.label}
                 headerColor={FLOAT}
-                className="[&_span.relative]:text-[14px] [&_span.relative]:font-medium [&_span.relative]:text-[#f2f2f2]"
+                className="[&_span.relative]:text-[16px] [&_span.relative]:font-medium [&_span.relative]:text-[color:var(--uekit-bp-text)]"
               />
               {s.factor.note && (
-                <span className="max-w-[130px] text-center text-[12px] leading-tight text-[#9a9aa0]">
+                <span className="max-w-[130px] text-center text-[13px] leading-tight text-[color:var(--uekit-bp-subtitle)]">
                   {s.factor.note}
                 </span>
               )}

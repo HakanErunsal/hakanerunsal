@@ -7,8 +7,8 @@ export default function AwarenessConfigSensesDetails() {
       displayName="SEC Awareness Config"
       sourceClass="SECAwarenessConfig"
       sourceKind="asset"
-      attachTo="DA_AwarenessConfig"
-      note="Perception tuning on the awareness config asset referenced by EnemyAIConfig."
+      attachTo="DA_Awareness_Guard"
+      note="Perception tuning on the awareness config asset the Enemy AI Config points at."
       categories={AWARENESS_CONFIG_SENSES_DETAILS}
     />
   );

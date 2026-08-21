@@ -1,39 +1,27 @@
 ---
 title: "Soulslike Enemy Combat: Full Documentation"
-image: "./../images/SECThumbnail_flipped.png"
+image: "./../images/SECThumbnail_v3.jpg"
 description: "Complete technical reference for the SoulslikeEnemyCombat Unreal Engine plugin: tutorials, API reference, and examples."
 date: 2025-12-10
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Tutorial"]
 ---
 
-## Overview
+Enemy combat AI for Unreal Engine 5.6 and newer: tactical movement, scored attacks, reactions, and coordination across a group. Each system stands on its own, so you can take the movement evaluator without the action scoring, or the melee traces without either. Runs on single player, listen server and dedicated server.
 
-**SoulslikeEnemyCombat** is a production-ready AI combat plugin for Unreal Engine 5.6+. It provides intelligent, tactical enemy behavior for souls-like and action RPG games through a modular component system. Supports single-player, listen server, and dedicated server configurations.
+New here? Start with [Getting Started](/docs/soulslike-combat/getting-started) for a working enemy, then [Step-by-Step Enemy](/docs/soulslike-combat/step-by-step-enemy) to build one properly. Already have a Character and an AI Controller you cannot reparent? [Minimal Enemy](/docs/soulslike-combat/minimal-enemy) is the six components that make one fight, with nothing inherited.
 
-The plugin consists of **8 systems** that work together: Movement, Actions, Reactions, Combat Roles, Threat Detection, Awareness, Melee Trace, and Vitals. Each system can also be used independently if you only need specific functionality.
+## How the pieces connect
 
-### How the Components Connect
-
-Config drives the controller; the controller decides; the pawn holds movelists and runs abilities. Use the step guide below, then switch to **Full wiring** to see every component and click for resolution chains.
+Config drives the controller, the controller decides, the pawn holds the movesets and runs the abilities. Switch to **Full wiring** to see every component, and click one for its resolution chain.
 
 <SystemArchitectureVisualizer />
 
-### What's Included
-
-- ✅ Complete C++ source code
-- ✅ Data-driven Role Integration (AI Config)
-- ✅ Blueprint-compatible components and tasks
-- ✅ Demo level with fully functional enemy
-- ✅ Example weapons, abilities, and action configurations
-- ✅ StateTree and Behavior Tree integration
-- ✅ Comprehensive documentation
-
 ---
 
-## Getting Started
+## Start here
 
-<div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8 p-6 not-prose">
+<div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-8 p-6 not-prose">
 
 <a href="/docs/soulslike-combat/getting-started" className="doc-card rounded-lg border border-border hover:border-primary/50 transition-all duration-300 bg-card block overflow-hidden">
   <div style={{height: "144px", position: "relative", overflow: "hidden", display: "flex", alignItems: "center"}}>
@@ -43,17 +31,6 @@ Config drives the controller; the controller decides; the pawn holds movelists a
   <div className="p-6">
     <h3 className="text-lg font-semibold mb-3">Getting Started</h3>
     <p className="text-sm text-muted-foreground">Installation, quick start, and your first enemy in 10 minutes.</p>
-  </div>
-</a>
-
-<a href="/docs/soulslike-combat/architecture" className="doc-card rounded-lg border border-border hover:border-primary/50 transition-all duration-300 bg-card block overflow-hidden">
-  <div style={{height: "144px", position: "relative", overflow: "hidden", display: "flex", alignItems: "center"}}>
-    <img src="./../images/docs_architecture_1765393798412.png" alt="Architecture" className="doc-card-img" style={{width: "100%", height: "auto", objectFit: "cover", objectPosition: "center", minHeight: "100%"}} />
-    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-  </div>
-  <div className="p-6">
-    <h3 className="text-lg font-semibold mb-3">Core Architecture</h3>
-    <p className="text-sm text-muted-foreground">Understanding the StateTree + Behavior Tree hybrid architecture.</p>
   </div>
 </a>
 
@@ -68,13 +45,22 @@ Config drives the controller; the controller decides; the pawn holds movelists a
   </div>
 </a>
 
+<a href="/docs/soulslike-combat/minimal-enemy" className="doc-card rounded-lg border border-border hover:border-primary/50 transition-all duration-300 bg-card block overflow-hidden">
+  <div style={{height: "144px", position: "relative", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(135deg, #1b1b1b 0%, #2f2f2f 55%, #0f4c81 100%)"}}>
+    <span style={{fontSize: "2.5rem"}}>🧱</span>
+    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+  </div>
+  <div className="p-6">
+    <h3 className="text-lg font-semibold mb-3">Minimal Enemy</h3>
+    <p className="text-sm text-muted-foreground">The six components that make an enemy fight, on a pawn and controller of your own.</p>
+  </div>
+</a>
+
 </div>
 
 ---
 
-## Systems Deep Dive
-
-Each system is independent and can be used standalone. Click to learn how each works.
+## The systems
 
 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8 p-6 not-prose">
 
@@ -115,7 +101,7 @@ Each system is independent and can be used standalone. Click to learn how each w
 
 <a href="/docs/soulslike-combat/targeting-system" className="doc-card rounded-lg border border-border hover:border-primary/50 transition-all duration-300 bg-card block p-6">
   <h3 className="text-lg font-semibold mb-2">🎯 Targeting System</h3>
-  <p className="text-sm text-muted-foreground">Multi-target support, intelligent selectors, orphan handling for co-op.</p>
+  <p className="text-sm text-muted-foreground">Which target an enemy picks, and who takes over when one dies in co-op.</p>
 </a>
 
 <a href="/docs/soulslike-combat/threat-detection" className="doc-card rounded-lg border border-border hover:border-primary/50 transition-all duration-300 bg-card block p-6">
@@ -167,30 +153,33 @@ Each system is independent and can be used standalone. Click to learn how each w
 
 ---
 
-## Reference & Examples
+## Reference
 
-<div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8 p-6 not-prose">
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8 p-6 not-prose">
 
-<a href="/docs/soulslike-combat/statetree" className="doc-card rounded-lg border border-border hover:border-primary/50 transition-all duration-300 bg-card block overflow-hidden">
-  <div style={{height: "144px", position: "relative", overflow: "hidden", display: "flex", alignItems: "center"}}>
-    <img src="./../images/docs_statetree_1765393863467.png" alt="StateTree" className="doc-card-img" style={{width: "100%", height: "auto", objectFit: "cover", objectPosition: "center", minHeight: "100%"}} />
-    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-  </div>
-  <div className="p-6">
-    <h3 className="text-lg font-semibold mb-3">StateTree Tasks</h3>
-    <p className="text-sm text-muted-foreground">Available StateTree tasks and structure guide.</p>
-  </div>
+<a href="/docs/soulslike-combat/statetree" className="doc-card rounded-lg border border-border hover:border-primary/50 transition-all duration-300 bg-card block p-6">
+  <h3 className="text-lg font-semibold mb-2">🌳 StateTree</h3>
+  <p className="text-sm text-muted-foreground">The tasks and conditions the plugin ships, and the graph they run in.</p>
 </a>
 
-<a href="/docs/soulslike-combat/patterns" className="doc-card rounded-lg border border-border hover:border-primary/50 transition-all duration-300 bg-card block overflow-hidden">
-  <div style={{height: "144px", position: "relative", overflow: "hidden", display: "flex", alignItems: "center"}}>
-    <img src="./../images/docs_patterns_1765393893722.png" alt="Patterns" className="doc-card-img" style={{width: "100%", height: "auto", objectFit: "cover", objectPosition: "center", minHeight: "100%"}} />
-    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-  </div>
-  <div className="p-6">
-    <h3 className="text-lg font-semibold mb-3">Patterns & Examples</h3>
-    <p className="text-sm text-muted-foreground">Ready-to-use patterns for melee, defensive, and aggressive enemies.</p>
-  </div>
+<a href="/docs/soulslike-combat/architecture" className="doc-card rounded-lg border border-border hover:border-primary/50 transition-all duration-300 bg-card block p-6">
+  <h3 className="text-lg font-semibold mb-2">🏛️ Core Architecture</h3>
+  <p className="text-sm text-muted-foreground">The StateTree + Behavior Tree hybrid, and the map of every system.</p>
+</a>
+
+<a href="/docs/soulslike-combat/patterns" className="doc-card rounded-lg border border-border hover:border-primary/50 transition-all duration-300 bg-card block p-6">
+  <h3 className="text-lg font-semibold mb-2">🧩 Patterns</h3>
+  <p className="text-sm text-muted-foreground">Recipes for a grunt, a duellist, an archer and a boss.</p>
+</a>
+
+<a href="/docs/soulslike-combat/troubleshooting" className="doc-card rounded-lg border border-border hover:border-primary/50 transition-all duration-300 bg-card block p-6">
+  <h3 className="text-lg font-semibold mb-2">🔧 Troubleshooting</h3>
+  <p className="text-sm text-muted-foreground">The symptom you are looking at, its cause, and the fix. Plus every debug switch.</p>
+</a>
+
+<a href="/docs/soulslike-combat/performance" className="doc-card rounded-lg border border-border hover:border-primary/50 transition-all duration-300 bg-card block p-6">
+  <h3 className="text-lg font-semibold mb-2">📊 Performance</h3>
+  <p className="text-sm text-muted-foreground">What each system costs per enemy, and which knobs bring it down.</p>
 </a>
 
 <a href="/docs/soulslike-combat/api-reference" className="doc-card rounded-lg border border-border hover:border-primary/50 transition-all duration-300 bg-card block p-6">
@@ -198,42 +187,11 @@ Each system is independent and can be used standalone. Click to learn how each w
   <p className="text-sm text-muted-foreground">Classes, components and Blueprint nodes the plugin exposes.</p>
 </a>
 
-<a href="/docs/soulslike-combat/troubleshooting" className="doc-card rounded-lg border border-border hover:border-primary/50 transition-all duration-300 bg-card block overflow-hidden">
-  <div style={{height: "144px", position: "relative", overflow: "hidden", display: "flex", alignItems: "center"}}>
-    <img src="./../images/docs_troubleshooting_1765393923362.png" alt="Troubleshooting" className="doc-card-img" style={{width: "100%", height: "auto", objectFit: "cover", objectPosition: "center", minHeight: "100%"}} />
-    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-  </div>
-  <div className="p-6">
-    <h3 className="text-lg font-semibold mb-3">Troubleshooting</h3>
-    <p className="text-sm text-muted-foreground">Debug logging, common issues, FAQ, and support.</p>
-  </div>
-</a>
-
-<a href="/docs/soulslike-combat/performance" className="doc-card rounded-lg border border-border hover:border-primary/50 transition-all duration-300 bg-card block overflow-hidden">
-  <div style={{height: "144px", position: "relative", overflow: "hidden", display: "flex", alignItems: "center"}}>
-    <img src="./../images/docs_performance.png" alt="Performance" className="doc-card-img" style={{width: "100%", height: "auto", objectFit: "cover", objectPosition: "center", minHeight: "100%"}} />
-    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-  </div>
-  <div className="p-6">
-    <h3 className="text-lg font-semibold mb-3">Performance</h3>
-    <p className="text-sm text-muted-foreground">Benchmarks, profiling tools, and optimization guidance.</p>
-  </div>
-</a>
-
 </div>
 
 ---
 
-## Roadmap
-
-Check out the [public Trello roadmap](https://trello.com/b/gN7Fxryx/soulslike-enemy-combat-plugin-roadmap) to see what's coming next.
-
-### Shipped
-- ✅ **Multiplayer Support**: Server-authoritative AI with replicated state for listen and dedicated servers
-
----
-
-## Support and Resources
+## Support
 
 <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '16px', marginBottom: '24px' }}>
   <a href="https://www.fab.com/listings/7087cec0-6975-4de5-82e0-0de0b9b3e9a7" target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px', backgroundColor: 'rgba(250, 92, 92, 0.1)', color: '#fa5c5c', textDecoration: 'none', borderRadius: '8px', fontWeight: '500', border: '1px solid rgba(250, 92, 92, 0.3)', fontSize: '14px' }}>
@@ -249,7 +207,3 @@ Check out the [public Trello roadmap](https://trello.com/b/gN7Fxryx/soulslike-en
     💬 Discord Support
   </a>
 </div>
-
----
-
-**SoulslikeEnemyCombat**. Built by **Hakan Erunsal** to save developers time and provide a professional foundation for action combat AI.

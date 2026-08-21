@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import "@/styles/mdx.css";
 import { Metadata } from "next";
 import { siteConfig } from "@/config/site";
+import { docHost } from "@/lib/docs-ownership";
 import { Tag } from "@/components/tag";
 import { DocsPageTOC } from "@/components/docs-page-toc";
 import { Breadcrumb } from "@/components/breadcrumb";
@@ -30,15 +31,22 @@ export async function generateMetadata({
         return {};
     }
 
+    // Both builds render every doc, so each page names the host that owns it
+    // and a search engine ranks one address instead of two.
+    const canonical = `${docHost(doc.slugAsParams)}/${doc.slug}`;
+
     return {
         title: doc.title,
         description: doc.description,
         authors: { name: siteConfig.author },
+        alternates: {
+            canonical,
+        },
         openGraph: {
             title: doc.title,
             description: doc.description,
             type: "article",
-            url: doc.slug,
+            url: canonical,
         },
         twitter: {
             card: "summary",

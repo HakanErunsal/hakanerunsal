@@ -19,7 +19,7 @@ const MARKERS: Marker[] = [
     name: "Orange",
     label: "the announcement",
     meaning:
-      "Drawn at the origin: a sphere for the reach, the covered wedge, and an arrow for the facing, labelled with the tag, the radius, the arc and the notice chance.",
+      "The ground the announcement covers, drawn at its origin and labelled with the tag, the shape and the notice chance. A Sphere draws a wireframe sphere at full reach; a Cone draws its arc, its two edges and an arrow along the aim.",
   },
   {
     color: SEC_STIMULUS_DEBUG.teamFiltered,

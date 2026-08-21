@@ -26,7 +26,7 @@ export default function DefenseResolveGraph() {
               title="Resolve Defense and Apply Damage"
               subtitle="Target is SEC Defense Statics"
               pins={[
-                { name: "Guard", type: "object", direction: "input", defaultValue: "SEC Defense" },
+                { name: "Defense", type: "object", direction: "input", defaultValue: "SEC Defense" },
                 { name: "Damage Info", type: "struct", direction: "input", connected: true },
                 { name: "Health Vital Tag", type: "struct", direction: "input", defaultValue: "SEC.Vital.Health" },
                 { name: "Return Value", type: "struct", direction: "output", connected: true },

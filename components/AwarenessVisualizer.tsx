@@ -183,7 +183,7 @@ export default function AwarenessVisualizer() {
             title="Viewport"
             breadcrumb={["LVL_SEC_Showcase", "Awareness"]}
             assetType="visualizer"
-            caption="Seen = Detected. Lose sight = Lost (grace), then Suspicious if still heard, then Unknown."
+            caption="Seen = Detected. Lose sight = Lost (grace), then Forgotten, then Unknown."
         >
             <UeViewport
                 ref={containerRef}

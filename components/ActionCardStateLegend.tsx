@@ -2,8 +2,9 @@ import { UE, SEC_CARD } from "@/components/ue-editor/ue-theme";
 
 /**
  * Legend for the five looks an action card takes while the game runs, drawn with
- * the same border and body colors the graph editor uses. Listed in the order the
- * editor resolves them, so the topmost entry wins when several apply.
+ * the same border and body colors the graph editor uses. Listed in the order
+ * FSECActionSetLiveView::Poll tests them, so the topmost entry wins when several
+ * apply.
  */
 
 type CardState = {
@@ -23,11 +24,11 @@ const STATES: CardState[] = [
     detail: "One card at a time. Outranks every other look, so a running action still reads as running.",
   },
   {
-    badge: "TOP PICK",
-    border: SEC_CARD.winnerBorder,
-    body: SEC_CARD.winnerBody,
-    meaning: "Scored highest this round",
-    detail: "What the AI would pick next if it picked at this moment.",
+    badge: "OFF",
+    border: SEC_CARD.disabledBorder,
+    body: SEC_CARD.disabledBody,
+    meaning: "Switched off in the asset",
+    detail: "Enabled is unticked, so nothing considers it. A switched-off action sitting on a cooldown still reads OFF.",
   },
   {
     badge: "COOLDOWN",
@@ -44,11 +45,11 @@ const STATES: CardState[] = [
     detail: "The card names the gate that said no: a missing tag, no line of sight, not enough stamina.",
   },
   {
-    badge: "OFF",
-    border: SEC_CARD.disabledBorder,
-    body: SEC_CARD.disabledBody,
-    meaning: "Switched off in the asset",
-    detail: "Enabled is unticked, so nothing considers it.",
+    badge: "TOP PICK",
+    border: SEC_CARD.winnerBorder,
+    body: SEC_CARD.winnerBody,
+    meaning: "Scored highest this round",
+    detail: "What the AI would pick next if it picked at this moment. Tested last, so a card only reads TOP PICK when nothing above applies.",
   },
 ];
 

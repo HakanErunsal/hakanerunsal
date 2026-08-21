@@ -1,11 +1,11 @@
 ---
 title: "Melee Trace"
-description: "Frame-rate independent swept weapon traces with per-window damage configs and ISECDamageable integration."
-date: 2026-08-04
+description: "Make a swing connect: swept weapon traces on the attack montage, damage per window, and impact effects when it lands."
+date: 2026-08-17
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Melee", "Combat"]
 parent: "SoulslikeCombatDocs"
-order: 12
+order: 16
 ---
 
 <Breadcrumb items={[
@@ -14,49 +14,140 @@ order: 12
     { label: "Melee Trace" }
 ]} />
 
-> Each active frame, `USECMeleeTraceComponent` sweeps from the last socket positions to the current ones. Fast swings still register hits at 30 or 144 FPS.
+> A weapon that lands its hits. The sweep fills the gap between frames, so a fast swing connects at 30 FPS and at 144, and each montage window carries its own damage.
 
-<MeleeTraceVisualizer />
+<QuickStart time="60 seconds">
 
-## When to Use This
+<QuickStep title="Put the trace component on the wielder">
 
-- Melee on AI or player pawns.
-- Swings that outrun per-frame overlap checks.
-- Several hit zones on one weapon (blade, pommel).
-- Different damage per montage window through **`SECDamageConfig`**.
+An enemy built on the plugin's enemy character already carries **SEC Melee Trace**. On any other pawn, add the component in the Blueprint's component list.
 
-`AEnemyCharacterBase` ships with **`USECMeleeTraceComponent`**. Add **SEC Melee Trace** to any other pawn you want in the pipeline.
+</QuickStep>
+
+<QuickStep title="Give the weapon its trace sockets">
+
+Open the weapon Blueprint and add one entry to **Trace Sockets**. Point it at the sockets you placed on the weapon mesh.
+
+<UeSetPropertiesScene
+  title="BP_Sword"
+  section="Trace Sockets"
+  rows={[
+    { name: "ID", value: "Blade", from: "None", kind: "text" },
+    { name: "Shape", value: "Capsule Two Point", from: "Sphere", kind: "text" },
+    { name: "Socket Or Bone Name", value: "blade_start", from: "TraceStart", kind: "text" },
+    { name: "End Socket Or Bone Name", value: "blade_end", from: "TraceEnd", kind: "text" }
+  ]}
+  caption="One entry per contact point. Equipping the weapon registers it on the wielder."
+/>
+
+[Weapons](/docs/soulslike-combat/weapons) covers building the weapon and getting it into the enemy's hand. A pawn that fights with fists, claws or a horn skips this step and registers its own sockets from Blueprint, under **Fists, claws and anything without a weapon** further down.
+
+</QuickStep>
+
+<QuickStep title="Create a damage config">
+
+Right-click in the Content Browser, **SEC**, **Damage Config**.
+
+<UeCreateAssetScene
+  create="Damage Config"
+  assetName="DA_Damage_Sword"
+  caption="Right-click in the Content Browser, SEC, Damage Config."
+/>
+
+Set **Damage** to what the attack is worth and **Damage Type** to `SEC.Damage.Physical.Slashing`. Six configs ship under `Core/Damage`, one per type; pick one of those to skip this step.
+
+</QuickStep>
+
+<QuickStep title="Open a trace window on the montage">
+
+Open the attack montage, add a Notify State, and pick **SEC Melee Trace Window**. Drag it across the strike frames.
+
+<UeSetPropertiesScene
+  title="AM_Attack_Light"
+  section="Melee Trace"
+  rows={[
+    { name: "Socket IDs", value: "Blade", from: "0 Array elements", kind: "text" },
+    { name: "Damage Config", value: "DA_Damage_Sword", kind: "asset" }
+  ]}
+  caption="Socket IDs names which sockets sweep. Leave it empty to sweep every registered socket."
+/>
+
+</QuickStep>
+
+<QuickStep title="Play, and watch the sweep">
+
+Press Play and run `SEC.Debug.Melee.DrawTracing 1` in the console. The swept shape draws every frame the window is open, and turns on a hit.
+
+</QuickStep>
+
+</QuickStart>
+
+<Callout type="warning">
+Sockets have to be registered before the window opens, and the weapon registers its own the moment the enemy equips it. An enemy that spawns unarmed swings through everything. Check **Starting Loadout** on the pawn's **SEC Equipment Component**, then read the Output Log: the trace names any socket ID a window asked for that nothing registered.
+</Callout>
+
+<Callout type="info">
+The target decides what a hit costs it. A pawn implementing **SEC Damageable** answers the hit and can block, parry or shrug it off; anything else takes Unreal's point damage instead. See [Defense System](/docs/soulslike-combat/defense-system).
+</Callout>
 
 ---
 
-## How It Works
+## Shape the sweep
 
-Register **trace sockets** on the wielder (usually when the weapon equips). **`StartTracing`** captures socket positions and enables tick. Each tick sub-steps between previous and current transforms and sweeps sphere, capsule, or two-point capsule shapes (**`SubStepDistance`**, **`MaxSubSteps`**).
+<MeleeTraceVisualizer />
 
-| Shape | Use |
-|-------|-----|
-| **Sphere** | Fists, small contact points. |
-| **Capsule** | Widens one contact point's swept path. Lies along the sweep, not along the bone. |
-| **CapsuleTwoPoint** | Span between two mesh sockets (typical sword blade). |
+Each socket entry is one contact point on the weapon. Its **Shape** decides what the sweep covers between two frames.
 
-The first tick after **`StartTracing`** records positions only; the trace sweeps from the tick after that, once it holds a previous sample.
+| Shape | Pick it for |
+|-------|-------------|
+| **Sphere** | Fists, pommels, a small contact point. **Radius** (15) is the whole setup. |
+| **Capsule** | Widening one contact point's swept path. It lies along the direction the socket travelled, so **Capsule Half Height** lengthens the sweep rather than the weapon. |
+| **Capsule Two Point** | A blade from hilt to tip. It spans **Socket Or Bone Name** to **End Socket Or Bone Name** and sizes itself. |
 
-Hit order:
+Add an entry per contact point and give each its own **ID**. A blade and a pommel can then trace in different windows of the same montage.
 
-1. **`TeamFilter`** and the owner check drop the contacts this swing has no business with.
-2. **Classify Contact** reads what the contact is: a body to damage, a sensor to report, or something to drop.
-3. Duplicate checks (**`CanHitActor`**). One frame lands one hit per target, however many sub-steps the sweep took.
-4. The trace sorts the hit into a target, a downed combatant, or the level.
-5. **`OnMeleeHit`** with **`FSECMeleeHitData`**, carrying that sorting (contact VFX/SFX hook).
-6. On a target: **`BuildDamageInfo`** → damage → **Hit Effects** → **`HandleDamageResult`** → **`OnMeleeHitResponse`**. A downed combatant or the level takes no damage and reports an empty result.
+The first frame after a window opens records positions only. The sweep starts on the frame after that, once it holds a previous sample to sweep from.
 
-**Damage Application** picks how step 6 sends damage. **Damageable Interface** is the default: it asks the target through **`ISECDamageable`** and falls back to Unreal's point damage for a target without it. **Point Damage** skips the interface. **None** reports the hit and applies nothing, for a project that drives damage itself from **On Melee Hit**.
+---
 
-On a machine that is not detecting hits, **`StartTracing`** and the tick return early. The authority detects hits unless a subclass overrides **`ShouldDetectHits`**. **`StopTracing`** clears active sockets, hit records, and disables tick.
+## The montage window
 
-### What a hit landed on
+<MeleeTraceNotifyDetails />
 
-Each kind decides what the hit costs the swing, and each hit effect picks which kinds it plays on.
+Leave **Socket IDs** empty and the window sweeps every socket the wielder has registered. Fill it in and the names have to match a socket **ID** exactly.
+
+<ZoomableImage
+  src="../images/sec_animmontagenotifiers.jpg"
+  alt="Animation montage with SEC Melee Trace Window notify state"
+/>
+
+One component traces one window at a time. Two windows overlapping on the same montage close the first and log that the earlier one ended, naming the actor it was open on, so space them apart or fold them into one.
+
+---
+
+## Damage per attack
+
+<SECDamageConfigDetails />
+
+Three places can answer for a window's damage, and the first one filled in wins: the notify's **Damage Config**, then **Default Damage Config** on the component, then **Base Damage** (10).
+
+**Damage Type** names the kind of damage so a target can resist or react by type. The shipped vocabulary splits by what the damage is rather than how it arrived:
+
+| Physical | Elemental |
+|----------|-----------|
+| `SEC.Damage.Physical.Slashing` | `SEC.Damage.Elemental.Fire` |
+| `SEC.Damage.Physical.Piercing` | `SEC.Damage.Elemental.Ice` |
+| `SEC.Damage.Physical.Bludgeoning` | `SEC.Damage.Elemental.Lightning` |
+
+Tags match down the tree, so armour can check `SEC.Damage.Physical` and a ward `SEC.Damage.Elemental` without naming each type.
+
+**Additional Vital Damage** drains channels beyond health, one row per vital: 10 off stance while **Damage** takes 50 off health. A target carrying no matching row ignores that channel, so one attack works against a boss with stance and a basic enemy without.
+
+---
+
+## What a swing lands on
+
+Each contact is sorted into one of three kinds, and that decides what the hit costs the swing.
 
 | Kind | What it is | Damage | The swing |
 |------|-----------|--------|-----------|
@@ -64,177 +155,211 @@ Each kind decides what the hit costs the swing, and each hit effect picks which 
 | **Inert** | A combatant taking nothing right now: a corpse, or a target inside an invulnerability window. | None. | Spent, and reachable again the moment the target starts taking hits. |
 | **Scenery** | The level: a wall, a floor, a prop out of combat. | None. | Held for the whole window, so a wall costs one clang. |
 
-Two switches decide the sorting. **Respect Can Be Damaged** is on by default: an actor with that engine flag switched off takes nothing, so switching it off on death is all a corpse needs to go quiet. **Require Damageable Target** puts anything without **`ISECDamageable`** out of combat, for a project whose weapons should land nothing on props. Leave it off and a breakable crate wired through Any Damage keeps taking hits.
+Two switches on the component decide the sorting. **Respect Can Be Damaged** is on by default, so switching Unreal's Can Be Damaged flag off on death is all a corpse needs to go quiet. **Require Damageable Target** puts anything without **SEC Damageable** out of combat, for a project whose weapons should land nothing on props. Leave it off and a breakable crate wired through Any Damage keeps taking hits.
 
-A hit effect carries **Run On Damageable Hits**, **Run On Inert Hits** and **Run On Scenery Hits**. The first is on by default and the other two off, so a corpse and a wall stay silent until you give them an effect of their own. Give that effect a **Surface Set** and stone, wood and flesh each sound like themselves.
+---
 
-### Colliders the swing reports instead of hitting
+## What a landed hit does
 
-A collider can sit in front of a character without taking the swings that cross it: a parry box, a volume that wakes something up, a hitbox your own code counts. Tag that collider's component, then list the tag under **Sense Component Tags** on the trace component. A swing crossing it fires **On Melee Sensed** carrying the struck component, spends nothing, and reaches the body behind it in the same frame, so the volume costs the character none of its hits. Each sensor reports once per trace window however many frames the swing spends inside it.
+**Hit Effects** on the damage config are everything beyond the number. Add one row per thing the attack should do.
 
-<Callout type="warning">
-Set a sensor collider's response to the trace channel to **Overlap**. On **Block** the sweep stops at the sensor and never reaches the body behind it. The Output Log warns and names the component when that happens.
+| Effect | Does |
+|--------|------|
+| **SEC Play Gameplay Cues** | Fires cues on the attacker and on the target: sparks, blood, impact sounds, decals. |
+| **SEC Apply Physics Impulse** | Shoves the struck body along the blow. Set **Hit Bone Force** for the limb, **Hit Overall Force** for the whole body, **Hit Rotational Force** to send it tumbling. |
+
+Each effect picks which kinds of hit it runs on. **Run On Damageable Hits** is on, **Run On Inert Hits** and **Run On Scenery Hits** are off, so a corpse and a wall stay silent until you give them an effect of their own.
+
+Give a cue effect a **Surface Set** and the struck material picks the variant, so a blade on stone plays something other than a blade on flesh. Map each physical material or surface type to a name, and that name goes on the end of the authored cue tag: `GameplayCue.Impact` becomes `GameplayCue.Impact.Stone` when a notify exists for it.
+
+An effect can also sit a hit out. **Suppress On Result Tags** skips it for what the target reported, **Require Any Result Tags** gives a parry its own sparks, **Require Any Target Tags** and **Suppress On Target Tags** read the target's current state, and **Require Damage Applied** holds the effect back unless health came off.
+
+<Callout type="info">
+A cue fired this way receives the impact point, the impact normal, the struck surface, the damage that landed, a fatal flag, and whatever the target reported. One notify can read those and branch a parried or blocked hit instead of needing a cue per outcome.
 </Callout>
 
-Leave **Sense Component Tags** empty and every contact counts as a body.
+---
+
+## How often a swing lands
+
+**Hit Reset Interval** (0) is the wait before the same target can be hit again inside one window. At 0 a swing lands once per target, which is what a single slash wants. Set 0.15 for a spin or a drill that keeps hitting.
+
+**Max Targets Per Swing** (0) is how many targets one swing cuts through. 0 cuts through everything, 1 makes every swing single-target so a stab cannot clip the enemy standing behind.
+
+Both have a per-attack override on the damage config, for an attack whose rate or reach differs from the rest of the weapon's: **Multi Hit Interval** and **Max Targets Per Swing Override**. Leave them at `-1` to use the component's values.
+
+Two tag lists on the component decide what a target can do about it.
+
+| List | Effect on the swing |
+|------|---------------------|
+| **Pass Through Tags** | The sweep drops the contact entirely: no damage, no impact effect, and the swing carries on to whatever stands behind. Holds `SEC.State.Intangible` by default, which a **SEC State Tag Window** on a dodge montage grants. |
+| **Skip Record Tags** | The hit resolves, the target reports back, and the swing is left unspent so it can connect again on a later frame. Empty records every resolved hit, so a parry or a block costs the attacker that swing. |
 
 ---
 
-## Setup
+## Who a swing can hit
 
-### 1. Component on the wielder
-
-<MeleeTraceComponentDetails />
-
-Set **`Default Damage Config`** or **`Base Damage`** when a notify omits damage.
-
-### 2. Weapon mesh sockets
-
-Add sockets on the weapon mesh (example: **`blade_start`**, **`blade_end`**).
-
-### 3. Sockets on the weapon
-
-A weapon carries its own socket list and registers it on the wielder when equipped, so the trace component sweeps from the blade of whatever the enemy is holding. Releasing the weapon takes those sockets away again.
-
-[Weapons](/docs/soulslike-combat/weapons) covers building the weapon Blueprint and getting it into the enemy's hand. Come back here for the sweep itself.
-
-An unarmed pawn skips the weapon and registers its sockets directly, through **`RegisterSphereSocket`** on hand bones.
-
-Per-attack damage comes from the montage notify or component default, not the weapon actor.
-
-### 4. Damage config
-
-Create **`SECDamageConfig`**, assign on the notify or **`Default Damage Config`**:
-
-<SECDamageConfigDetails />
-
-Six configs ship under `Core/Damage`, one per damage type, each carrying its type tag and a starting damage value. Assign one to get a weapon swinging, then tune the number or branch off your own.
-
-**`Damage Type`** names the kind of damage so a target can resist or react by type. The shipped vocabulary splits by what the damage is rather than how it arrived: `SEC.Damage.Physical.Slashing`, `.Piercing` and `.Bludgeoning`, then `SEC.Damage.Elemental.Fire`, `.Ice` and `.Lightning`. Because tags match down the tree, armor can check `SEC.Damage.Physical` and a ward `SEC.Damage.Elemental` without naming each type.
-
-Per window: notify **`Damage Config`** → **`Default Damage Config`** → **`Base Damage`**. **`StartTracingSimple`** accepts a numeric override; values below zero fall back to **`Base Damage`**.
-
-**Hit Effects** on the config are what a landed hit does beyond the number. **SEC Play Gameplay Cues** fires impact and target cues, **SEC Apply Physics Impulse** shoves the struck body along the blow, and subclassing **SEC Hit Effect** in Blueprint covers anything else. Each effect can sit out a hit through **Suppress On Result Tags**, **Require Damage Applied**, or the kind of hit it landed on, so a blocked hit need not shake the screen.
-
-**SEC Damage Statics** opens the same pipeline to a projectile, an explosion or a hazard: **Deal Damage** asks the target and falls back to point damage, **Deal Point Damage** skips the interface, **Classify Damage Target** sorts a hit the way the sweep does, and **Run Hit Effects** runs a config's whole effect list once you know the outcome.
-
-A cue fired this way receives the impact point, the impact normal, the struck surface, the damage that landed, a fatal flag, and whatever the target reported in its result tags. One notify can read those tags and branch a parried or blocked hit, which saves authoring a separate cue for each outcome. The plugin registers its own cue folder, so you add no path of your own, and your cues under `/Game` keep working alongside the shipped ones.
-
-### 5. Montage window
-
-Add Notify State → **SEC Melee Trace Window** on strike frames:
-
-<MeleeTraceNotifyDetails />
-
-Empty **`Socket IDs`** activates every registered socket. Names must match each trace socket **`ID`**.
-
-<ZoomableImage
-  src="../images/sec_animmontagenotifiers.jpg"
-  alt="Animation montage with SEC Melee Trace Window notify state"
-/>
-
-Equip, play the montage: register on equip, **`StartTracing`** at notify begin, **`StopTracing`** at notify end.
-
----
-
-## Integration
-
-| System | Link |
-|--------|------|
-| [Weapons](/docs/soulslike-combat/weapons) | Building the weapon, its socket list, and arming the enemy so those sockets register. |
-| [Reaction System](/docs/soulslike-combat/reaction-system) | **Handle Incoming Damage** returns **`ResultTags`** for reaction selection. |
-| [Animation Integration](/docs/soulslike-combat/animation-integration) | Montage windows hold defense tags; **`SkipRecordTags`** decides whether a dodge costs the swing. |
-| [Multiplayer](/docs/soulslike-combat/multiplayer) | Trace and damage on the detecting machine, the authority by default; clients follow replicated state. |
-| [Configuration Reference](/docs/soulslike-combat/configuration) | Shared project tuning (reconcile damage fields with this page). |
-
-**`TeamFilter`** on the trace component (damage gating, not combat target selection):
+**Team Filter** decides which actors a sweep is allowed to damage, separately from combat target selection.
 
 <MeleeTraceTeamFilterDetails />
 
+**No Filter** hits anyone. **Enemies Only** hits hostiles and neutrals, so a pack does not carve itself up. **Friendlies Only** suits a healing or buffing weapon, and **Neutral Only** hits actors with no team. Team state comes from the pawn's **SEC Team** component; see [Targeting](/docs/soulslike-combat/targeting-system).
+
+**Trace Filter** decides what the sweep reaches at all. **Channel** mode sweeps the Pawn channel and lets each target's collision response answer, so a blocking wall shields whatever stands behind it. **Object Types** mode names categories outright and nothing stops the sweep, which is how an attack reaches a ragdoll whose physics asset ignores the Pawn channel.
+
+<Callout type="warning">
+**Object Types** mode reports every listed target along the whole span, including one standing behind a wall. Use **Channel** mode whenever the level should shield anything.
+</Callout>
+
+The wielder and everything attached to it are already out of the sweep. **Add Trace Ignored Actor** takes out one more, for a mount or a summoned companion the swing should pass through.
+
 ---
 
-<Collapsible title="Delegates and manual control" badge="Advanced">
+## Tune the component
 
-```cpp
-void StartTracing(const TArray<FName>& SocketIDs, USECDamageConfig* DamageConfig = nullptr, bool bDebugOverride = false);
-void StartTracingSimple(const TArray<FName>& SocketIDs, float DamageOverride);
-void StopTracing();
+<MeleeTraceComponentDetails />
 
-void RegisterTraceSocket_Struct(const FSECTraceSocket& TraceSocket);
-void UnregisterTraceSocket(FName ID);
-void UnregisterAllSockets();  // clears every socket, whatever registered it
+**Sub Step Distance** (10) is how finely the sweep is chopped between two frames, and **Max Sub Steps** (20) caps the count. Lower the distance for a very fast weapon that still slips past thin targets.
 
-TArray<FName> GetRegisteredSocketIDs() const;
-void AddTraceIgnoredActor(AActor* Actor);     // a mount or companion this weapon should pass through
-void RemoveTraceIgnoredActor(AActor* Actor);
-TArray<AActor*> GetTraceIgnoredActors() const;
-```
+---
 
-**`OnMeleeHit`:** **`FSECMeleeHitData`** (`HitResult`, `FromSocketID`, `DamageConfig`, `Classification`).
-
-**`OnMeleeHitResponse`:** **`FSECMeleeHitData`** + **`FSECDamageResult`**.
-
-**`OnMeleeSensed`:** **`FSECMeleeHitData`** for a sensor the swing crossed, its **`HitResult`** naming which collider it was. **`TeamFilter`** runs ahead of the sorting, so a sensor on an actor the filter dropped reports nothing.
-
-Override **`BuildDamageInfo`**, **`HandleDamageResult`**, **`ClassifyHit`** or **`ClassifyContact`** in a Blueprint or C++ subclass, for crit scaling, pierce, or a sorting rule of your own. **`BuildDamageInfo`** receives the socket that struck, so an override can vary damage by contact point. **`ClassifyContact`** answers **Damage** to send the contact through the pipeline, **Sense** to report it through **`OnMeleeSensed`** and leave the swing live, or **Ignore** to drop it; the default matches the struck component's tags against **Sense Component Tags**, and an override can read the actor instead.
-
-Blueprint helpers: **`RegisterSphereSocket`**, **`RegisterCapsuleSocket`**, **`RegisterTwoPointCapsule`**.
-
-</Collapsible>
-
-<Collapsible title="ISECDamageable pipeline" badge="Advanced">
-
-**`FSECDamageInfo`:** **`Instigator`**, **`DamageCauser`** (the weapon when the socket sits on one, the wielder otherwise), **`HitResult`**, **`HitDirection`**, **`DamageDefinition`** (**`ToDamageDefinition()`** when a config is active), **`DamageTags`**, and **`DamageConfig`**, the config the window opened with. Subclass **`SECDamageConfig`**, add a stagger tier or anything else the attack should carry, then cast **`DamageConfig`** inside **`HandleIncomingDamage`** to read it. A pool an attack drains, such as poise, belongs in the config's **`AdditionalVitalDamage`** rows instead, and **`GetConfigVitalDamage`** reads one row back out by tag.
-
-**`HitDirection`** is the bearing from attacker to target. **`IsHitDirectionWithinArc`** and **`GetHitDirectionQuadrant`** measure a guard or a directional reaction against it. The weapon's own path stays on the hit result. Tick **Use Authored Hit Direction** on the config to send a fixed direction instead, so an uppercut launches upward whatever the geometry said; the physics impulse follows the same value.
-
-**`FSECDamageResult`:** **`DamageApplied`** (the amount that landed), **`bWasFatal`**, **`ResultTags`**. A target reached through point damage reports what its **Take Damage** returned, with no fatal flag and no result tags, since Unreal's path carries neither back.
-
-**`HandleDamageResult` recording:**
-
-| Result | Recording |
-|--------|-----------|
-| Tags match **`SkipRecordTags`** | No record. The trace did not spend the swing, so it lands again on a later frame, which is what a dodge wants. |
-| Anything else, including an empty result | **`RecordHit`**. A parry or a block costs the attacker that swing. |
-
-A record carries what the swing landed on, and that decides when the target comes back. The level does not. A combatant that took nothing returns as soon as it starts taking hits, so a boss dropping its invulnerability partway through a swing is reachable by that same swing.
-
-Overriding **`HandleDamageResult`** replaces that rule outright, so call **`RecordHit`** yourself for the hits you mean to keep; both it and **`CanHitActor`** are Blueprint-callable. **`GetTargetsHitThisWindow`** counts the targets a swing has spent itself on, for damage falloff across a cleave.
-
-**`HitResetInterval`:** **`0`** allows one recorded hit per target per window. Above **`0`**, the same target can register again after that many seconds; expired records purge each tick. An attack needing its own rate sets **`Multi Hit Interval`** on its damage config, which takes over for that window and ends with it.
-
-</Collapsible>
-
-<Collapsible title="Debug" badge="Advanced">
+## Debug it
 
 ```
 SEC.Debug.Melee.DrawTracing 1
 ```
 
-Component **`Draw Debug`**, or notify **`Enable Debug Draw`** for one window (**`bSessionDebugOverride`**).
+The swept shape draws in the socket's **Debug Color** and changes on a hit. For one enemy alone, tick **Draw Debug** on its component; **Debug Draw Duration** (0.1 seconds) is how long each shape lingers. For one window alone, tick **Enable Debug Draw** on that notify.
 
-</Collapsible>
+The component reports its own faults, so read the Output Log before hunting. It names a socket a window asked for that nothing registered, a window that opened while another was still open, a socket sweeping from a mesh that is not refreshing its bones, an **Object Types** filter with an empty list, and a sensor collider blocking the trace channel.
 
-<Collapsible title="Common issues" badge="Advanced">
-
+<Collapsible title="Nothing lands" badge="Advanced">
 | Problem | Likely cause | Fix |
 |---------|--------------|-----|
-| No hits | **`SocketIDs`** ≠ socket **`ID`** | Match **`FName`** strings. |
-| No hits | Sockets missing | Equip the weapon so its sockets register; the wielder needs a trace component. |
-| Miss first active frame | Warm-up tick | Normal: sweep needs a prior position sample. |
-| Through walls | **Trace Filter** | **Object Types** mode reports every listed target along the whole span and nothing stops it, so the level shields nothing. Use **Channel** mode for occlusion. |
-| Wall plays the flesh cue | Wall reads as a target | A wall with Can Be Damaged on and no interface sorts as **Damageable**. Switch the flag off on level geometry, or tick **Require Damageable Target**. |
-| Volume in front of a character eats its hits | Sensor collider set to **Block** | Set that collider's response to the trace channel to **Overlap**, and list its component tag under **Sense Component Tags**. The log names the component. |
-| Corpse keeps ringing | Effect runs on inert hits | Untick **Run On Inert Hits** on that effect, or switch Can Be Damaged off on death so the body sorts as inert in the first place. |
-| Two hits one swing | **`Hit Reset Interval`** above zero, or two windows overlapping on the montage | One target takes one hit per window at zero. Check the interval, the config's **`Multi Hit Interval`**, and the Output Log for an overlap warning. |
-| No damage on SEC pawn | No interface | Implement **`ISECDamageable`**. |
-| Client swing, no damage | No authority | Detection runs on the authority. Override **`ShouldDetectHits`** to sweep on the owning client instead. |
-
-The component reports several of these itself. Check the Output Log before hunting: it names a socket a window asked for that nothing registered, a window that opened while another was still open, a socket sweeping from a mesh that is not refreshing its bones, an **Object Types** filter with an empty list, and a sensor collider blocking the trace channel.
-
+| No hits at all | **Socket IDs** on the notify name nothing registered | Match the names to a socket **ID**, or clear the list to sweep everything. |
+| No hits at all | The weapon never equipped | Fill **Starting Loadout** on the pawn's **SEC Equipment Component**, so the sockets register on spawn. |
+| Misses the first active frame | Warm-up | Expected. The sweep needs a previous position sample. |
+| Hits through walls | **Trace Filter** on **Object Types** | Nothing stops that sweep. Switch to **Channel** mode for occlusion. |
+| A wall plays the flesh cue | The wall sorts as a live target | A wall with Can Be Damaged on and no interface reads as **Damageable**. Switch the flag off on level geometry, or tick **Require Damageable Target**. |
+| A corpse keeps ringing | An effect runs on inert hits | Untick **Run On Inert Hits** on that effect, or switch Can Be Damaged off on death so the body sorts as inert. |
+| Two hits from one swing | **Hit Reset Interval** above zero, or two windows overlapping | One target takes one hit per window at zero. Check the interval, the config's **Multi Hit Interval**, and the log for an overlap warning. |
+| The hit is detected but nothing takes damage | The target answers nothing | Implement **SEC Damageable** on it, or leave **Damage Application** on **Damageable Interface** so the point damage fallback runs. |
 </Collapsible>
+
+<Collapsible title="Colliders the swing reports instead of hitting" badge="Advanced">
+A collider can sit in front of a character without taking the swings that cross it: a parry box, a volume that wakes something up, a hitbox your own code counts.
+
+1. Tag that collider's component.
+2. List the tag under **Sense Component Tags** on the trace component.
+3. Set the collider's response to the trace channel to **Overlap**.
+
+A swing crossing it fires **On Melee Sensed** carrying the struck component, spends nothing, and reaches the body behind it in the same frame. Each sensor reports once per window however many frames the swing spends inside it.
+
+On **Block** the sweep stops at the sensor and never reaches the body. The Output Log warns and names the component when that happens.
+
+Leave **Sense Component Tags** empty and every contact counts as a body.
+</Collapsible>
+
+<Collapsible title="Where the blow came from" badge="Advanced">
+Every hit carries the bearing from attacker to target, which is what a directional guard or a reaction reads. **Is Hit Direction Within Arc** answers whether it arrived inside a front arc of a given half angle, and **Get Hit Direction Quadrant** buckets it into Front, Back, Left or Right.
+
+Tick **Use Authored Hit Direction** on the damage config to send a fixed direction instead, so an uppercut launches upward whatever the geometry said. **Authored Hit Direction Local** is that direction in the attacker's local space, and `(0,0,1)` throws the target up. The physics impulse follows the same value.
+</Collapsible>
+
+<Collapsible title="A socket with its own reach" badge="Advanced">
+Sockets take the component's **Trace Filter** by default. Tick **Override Trace Filter** on one entry and fill in **Trace Filter Override** to give that contact point its own rule, for a pickaxe head that also breaks rocks while the haft keeps the ordinary filter.
+</Collapsible>
+
+<Collapsible title="Changing one phase of the pipeline" badge="Advanced">
+Make a Blueprint child of the **SEC Melee Trace** component, put that child on the character in place of the base, and override the event for the phase you want to change. Every other phase carries on as it is.
+
+| Event | Controls |
+|-------|----------|
+| **Build Damage Info** | The damage before it is sent, for crit scaling or an elemental pass. It receives the socket that struck, so damage can vary by contact point. |
+| **Handle Damage Result** | Whether the hit is recorded. The default records everything except a result matching **Skip Record Tags**. An override replaces that rule outright, so call **Record Hit** for the hits you mean to keep. |
+| **Classify Hit** | The Damageable, Inert or Scenery sorting. |
+| **Classify Contact** | Whether a contact is a body to damage, a sensor to report, or something to drop. The default drops a target holding one of **Pass Through Tags**, reports a component carrying one of **Sense Component Tags**, and damages everything else. Call **Is Pass Through Target** from an override to keep the pass-through half of that rule. |
+| **Should Detect Hits** | Which machine sweeps. Answers the authority. |
+
+Three nodes support those overrides. **Can Hit Actor** answers whether the swing may still land on a target, **Record Hit** spends the swing on one, and **Get Targets Hit This Window** counts what it has already struck, which is what damage falloff across a cleave reads.
+
+**Build Damage Info** hands the target the damage config the attack was authored on. Make a child of **SEC Damage Config** to carry whatever else an attack needs, poise damage or a stagger tier, and cast it in the target's **Handle Incoming Damage**.
+</Collapsible>
+
+<Collapsible title="Fists, claws and anything without a weapon" badge="Alternative">
+A pawn with no weapon registers its own sockets from Blueprint, usually on Begin Play. Three nodes on the trace component cover it:
+
+| Node | Registers |
+|------|-----------|
+| **Register Sphere Socket** | One point on a bone. Hands, feet, a horn. |
+| **Register Capsule Socket** | One point with a widened swept path. |
+| **Register Two-Point Capsule** | A span between two bones or sockets. |
+
+Give each an **ID** and name it on the montage window exactly as a weapon's socket would be named. **Unregister Trace Socket** and **Unregister All Sockets** take them away again.
+</Collapsible>
+
+<Collapsible title="Driving damage yourself" badge="Alternative">
+**Damage Application** on the component picks what a landed hit does.
+
+| Setting | Sends |
+|---------|-------|
+| **Damageable Interface** | Asks the target through **SEC Damageable**, and falls back to Unreal's point damage for a target without it. |
+| **Point Damage** | Unreal's point damage, for a project that handles everything in Event Any Damage. |
+| **None** | Nothing. The hit is still detected, recorded and broadcast. |
+
+On **None**, bind **On Melee Hit** and do the whole thing yourself. The event carries the hit result, the socket that struck, the damage config the window opened with, and how the trace sorted the contact.
+</Collapsible>
+
+<Collapsible title="The same pipeline for a projectile or an explosion" badge="Alternative">
+**SEC Damage Statics** opens the melee path to any other source, so an arrow and a sword resolve the same way.
+
+| Node | Does |
+|------|------|
+| **SEC Deal Damage** | Asks the target through **SEC Damageable**, falling back to point damage. |
+| **SEC Deal Point Damage** | Skips the interface and sends Unreal's point damage. |
+| **Classify Damage Target** | Sorts a hit into Damageable, Inert or Scenery, the way the sweep does. |
+| **Run Hit Effects** | Runs a damage config's whole effect list once the outcome is known. |
+
+The first two apply damage on the server and report an empty result anywhere else.
+</Collapsible>
+
+<Collapsible title="Opening a trace window without a montage notify" badge="Alternative">
+Three nodes on the trace component drive a window by hand, for an attack whose timing comes from somewhere other than a montage.
+
+| Node | Does |
+|------|------|
+| **Start Tracing** | Opens a window on the socket IDs given, or on every registered socket when the list is empty. Takes the damage config for that window, and a debug draw override for it alone. |
+| **Start Tracing Simple** | The same, taking a loose damage figure in place of a config. A figure below zero falls back to **Base Damage** on the component. With no config the window runs no hit effects and sends the component's **Damage Type Class**. |
+| **Stop Tracing** | Closes the window and clears its hit records. |
+
+**Get Registered Socket IDs** lists what is there to name, and **Is Tracing** answers whether a window is open.
+</Collapsible>
+
+<Collapsible title="Traces in multiplayer" badge="Multiplayer">
+The authority sweeps for hits and every other machine stays out of it, which is what keeps one swing from landing twice. **On Melee Hit**, **On Melee Hit Response** and **On Melee Sensed** therefore fire on the server alone.
+
+A cue effect fired there multicasts through the ability system and reaches every client, so impact feedback still plays for everyone.
+
+Two things bite a project that moves detection to the owning client. A team id held on a controller reads as no team on a client, since a controller replicates only to its own player, so put the id on the pawn or its PlayerState. And a cue fired off the authority outside a prediction window plays nothing, so a client-detected hit needs its cues driven locally.
+
+See [Multiplayer](/docs/soulslike-combat/multiplayer).
+</Collapsible>
+
+---
+
+## Related
+
+| System | Link |
+|--------|------|
+| [Weapons](/docs/soulslike-combat/weapons) | Building the weapon, its socket list, and arming the enemy so those sockets register. |
+| [Action System](/docs/soulslike-combat/action-system) | The attack that plays the montage the window sits on. |
+| [Defense System](/docs/soulslike-combat/defense-system) | What the target does with the hit, and the result tags it reports back. |
+| [Attack Telegraphs](/docs/soulslike-combat/attack-telegraphs) | Warning a target before the window opens. |
+| [Multiplayer](/docs/soulslike-combat/multiplayer) | Which machine sweeps and what reaches the others. |
+| [API Reference](/docs/soulslike-combat/api-reference#usecmeleetracecomponent) | The override points and the hit payloads in C++. |
 
 <DocNav
   prev={{ title: "Territory & Patrols", href: "/docs/soulslike-combat/territory" }}
   next={{ title: "Weapons", href: "/docs/soulslike-combat/weapons" }}
 />
+

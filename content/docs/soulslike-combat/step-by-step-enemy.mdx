@@ -1,11 +1,11 @@
 ---
 title: "Step-by-Step Enemy Creation"
-description: "Build a complete, armed enemy: a multi-action moveset with combos, a weapon, and testing. Builds on Getting Started."
-date: 2026-07-31
+description: "Build one enemy end to end: pawn, controller, a moveset with a combo, a weapon that lands its hits, and something to fight."
+date: 2026-08-17
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Tutorial"]
 parent: "SoulslikeCombatDocs"
-order: 3
+order: 2
 ---
 
 
@@ -15,80 +15,214 @@ order: 3
     { label: "Step-by-Step Enemy" }
 ]} />
 
-[Getting Started](/docs/soulslike-combat/getting-started) built a one-attack enemy. This guide arms it into a real fight: a moveset that scores different ranges, a light-into-heavy combo, a retreat, a weapon that lands hits, and a way to watch the AI decide. Each part links to the system page behind it.
+> One enemy, from an empty project to a real fight: it holds its range, circles, opens with a light attack, chains into a heavy, and gives ground when you crowd it.
 
-## Before you start
+<QuickStart time="5 minutes">
 
-- Finish [Getting Started](/docs/soulslike-combat/getting-started). You reuse that pawn, controller, and config here.
-- Have two or three attack montages ready, and know which frames carry the hit.
+<QuickStep title="Make the pawn and the controller">
+
+Right-click in the Content Browser, **Blueprint Class**, **All Classes**, and pick **Enemy Character Base**. Name it `BP_Grunt`, assign your skeletal mesh, and size the capsule.
+
+Do it again from **Enemy Controller Base** and name that one `BP_GruntController`.
+
+Both arrive carrying every component the AI needs.
+
+</QuickStep>
+
+<QuickStep title="Create the moveset">
+
+Right-click in the Content Browser, **SEC**, **Action Set**, and name it `DA_ActionSet_Grunt`. It opens on its own card canvas.
+
+<UeCreateAssetScene
+  create="Action Set"
+  assetName="DA_ActionSet_Grunt"
+  caption="Right-click in the Content Browser, SEC, Action Set."
+/>
+
+Right-click the canvas, choose **Add Action**, and name the **Action ID** `LightAttack`. Set **Ability Class** to **GA_SEC_MontageAbility**, which ships with the plugin, and point the **Montage** underneath it at your attack animation. Add a **Distance Scorer** to the card's **Scoring > Scorers** list.
+
+</QuickStep>
+
+<QuickStep title="Create the AI Config">
+
+Right-click in the Content Browser, **SEC**, **Enemy AI Config**, and name it `EnemyConfig_Grunt`.
+
+<UeCreateAssetScene
+  create="Enemy AI Config"
+  assetName="EnemyConfig_Grunt"
+  caption="Right-click in the Content Browser, SEC, Enemy AI Config."
+/>
+
+Set **Default Action Set** to the moveset and **Target Selector** to **Closest Target Selector**.
+
+The enemy also needs senses. Create an **Awareness Config** from the same **SEC** menu, name it `DA_Awareness_Grunt`, leave its defaults alone, and point the AI Config's **Awareness Config** field at it. Those defaults are a working guard: 1500 cm of sight across a 180 degree cone, 1200 cm of hearing, and a damage sense that reveals whoever hits it from behind.
+
+<UeSetPropertiesScene
+  title="EnemyConfig_Grunt"
+  rows={[
+    { name: "Target Selector", value: "Closest Target Selector", from: "None", kind: "class" },
+    { name: "Awareness Config", value: "DA_Awareness_Grunt", from: "None", kind: "asset" },
+    { name: "Manage Action Sets Automatically", value: "true", from: "true", kind: "bool" },
+    { name: "Default Action Set", value: "DA_ActionSet_Grunt", kind: "asset" }
+  ]}
+  caption="Target Selector and Awareness Config both ship empty, and an enemy missing either one stands still with nothing in the log. The rest of the config has working defaults."
+/>
+
+</QuickStep>
+
+<QuickStep title="Wire the pawn to both">
+
+Open `BP_Grunt`, go to **Class Defaults**, and set **AI Controller Class** to `BP_GruntController` and **AI Config** to `EnemyConfig_Grunt`.
+
+<UeSetPropertiesScene
+  title="BP_Grunt"
+  section="Class Defaults"
+  rows={[
+    { name: "AI Controller Class", value: "BP_GruntController", kind: "class" },
+    { name: "AI Config", value: "EnemyConfig_Grunt", kind: "asset" }
+  ]}
+  caption="The controller reads the pawn's config on possession, so one controller class serves many enemy types."
+/>
+
+</QuickStep>
+
+<QuickStep title="Register the player, and play">
+
+On the player pawn's **Event BeginPlay**, add the **AICombat Role Subsystem** node and call **Register Combat Target** with **Target Actor** set to **Self** and **Auto Assign Unassigned** ticked.
+
+<RegisterCombatTargetBlueprint />
+
+Drop `BP_Grunt` into a level with a built NavMesh and press Play. Walk into its sight cone: it closes to about 400 cm, circles you, and swings when you come into range.
+
+</QuickStep>
+
+</QuickStart>
+
+<Callout type="warning">
+An enemy with no registered combat target does nothing at all: no movement, no attacks, no reactions. Fill in every field above and the enemy still stands there, and that last step is what is missing. See [Targeting](/docs/soulslike-combat/targeting-system).
+</Callout>
+
+The rest of this page turns that one attack into a fight.
 
 ---
 
-## 1. Reuse the pawn, controller, and config
+## Build the pawn and the controller
 
-You already made these in Getting Started: a Blueprint from `EnemyCharacterBase`, a controller from `EnemyControllerBase`, and an `EnemyAIConfig`. Keep them. To swap in your own classes, use the reparent steps in [Getting Started](/docs/soulslike-combat/getting-started). The rest of this guide extends the ActionSet those pieces already point to.
+`BP_Grunt` arrives with an ability system, melee traces, vitals, defenses, equipment, and the action, reaction and role components. `BP_GruntController` arrives with the parts that decide: movement, action scoring, reactions, awareness, threat, and the brain that ticks them.
+
+Set the pawn up like any character. Assign the skeletal mesh, size the capsule to it, and set **Max Walk Speed** on its Character Movement component to around 400.
+
+Nothing else on either Blueprint needs touching to get a fight running.
+
+<Collapsible title="Use a character you already have" badge="Alternative">
+Reparent it instead of rebuilding it.
+
+1. Open your character Blueprint.
+2. **File > Reparent Blueprint**, and pick **Enemy Character Base**.
+3. Your existing components, variables and graphs stay, and you inherit the ability system, the combat components and the combat interfaces.
+4. Delete any duplicate the Blueprint already added itself, so only the inherited copies remain.
+5. Set **AI Config** on Class Defaults, then assign the mesh and the controller as usual.
+
+Reparenting also starts the ability system up, which a Blueprint cannot do on its own. An ability whose ability system never got that call refuses to activate and says nothing about why.
+
+A character that has to inherit from some other C++ class cannot reparent. [API Reference](/docs/soulslike-combat/api-reference) covers rebuilding the pawn from a different base.
+</Collapsible>
+
+<Collapsible title="Use an AI controller you already have" badge="Alternative">
+Reparent it to **Enemy Controller Base** the same way, and you inherit the evaluators, the behavior-tree helper, the committed-attack rotation lock, smooth focus, and awareness-based facing.
+
+Adding the components to a bare AI Controller is not the same thing. The base holds the pawn's facing during an attack and turns it toward a target's last-known location, and attack abilities read the controller for that lock. A plain controller keeps tracking the player mid-swing and carries none of that facing work.
+
+The base puts that on Blueprint nodes: **Lock Rotation By** and **Unlock Rotation By** freeze and release facing around a committed attack, and **Is Rotation Locked** reads the current state. Override **Get Desired Facing Location** to redirect where the pawn looks each frame.
+</Collapsible>
 
 ---
 
-## 2. Build a moveset
+## Build the moveset
 
-One action is enough to see the AI attack; a fight needs several that win at different ranges and moments. Open your ActionSet and add these to the **Actions** array. For the full field reference, see the [Action System](/docs/soulslike-combat/action-system).
+One action is enough to see an enemy attack. A fight needs several that win at different ranges and moments. Open `DA_ActionSet_Grunt` and add the three below.
 
-A new action ships with an empty **Scorers** list, so it scores the same at every distance and angle until you add scorers to it. This is the flow for adding one:
+A new card ships with an empty **Scorers** list, so it scores the same at every distance and angle until you add one.
 
 <ScorerStackVisualizer />
 
-### Light attack, close range
+### The light attack
 
 <WalkthroughLightAttackDetails />
 
-Distance ranges are centimetres and angle ranges degrees. **Initial Cooldown** keeps the enemy from opening the fight with this attack. The chaining rows are what feed the heavy attack below.
+Distance ranges are in centimetres and angle ranges in degrees. Each one scores 1 between **Optimal Min** and **Optimal Max** and falls to 0 at **Min Value** and **Max Value**, so this attack peaks between 100 and 250 cm, fades out by 500, and wants the enemy facing you. **Initial Cooldown** keeps it from being the opening move. The **Chain Links** row is what feeds the heavy attack below.
 
-### Heavy attack, the combo finisher
+### The heavy attack, as the combo finisher
 
 <WalkthroughHeavyAttackDetails />
 
-A lower **Selection Weight** and a **Risk Penalty** above one both bias against picking this on its own, which is what leaves room for the chain: the light attack's **Preferred Follow-Up Action** and **Chain Bonus Multiplier** score the heavy 50% higher for one pick after a light lands.
+A **Selection Weight** under 1 and a **Risk Penalty** over 1 both bias against this coming up on its own, which is what leaves room for the combo. The light attack's chain link names `HeavyAttack` with a **Bonus Multiplier** of 1.5, so the heavy scores 50% higher for a short window once the light completes.
 
-### Retreat, when crowded
+An interrupt or a cancel clears that window, so a parried enemy cannot combo out of the hit it took.
+
+### The retreat, for when you crowd it
 
 <WalkthroughRetreatDetails />
 
-This one runs a Behavior Tree rather than an ability, and its distance range peaks close in, so it scores highest exactly when the player has crowded the enemy.
+This one runs a behavior tree rather than an ability. Build `BT_QuickBackstep` as a one-node tree around the **Make Distance** task, which backs the pawn away from its target until it reaches a distance you set.
+
+Its **Distance Scorer** peaks close in, from 0 to 100 cm, so it wins exactly when you have crowded the enemy. **Tag Score Multipliers** doubles it again while the target carries `State.PlayerAttacking`, a tag your game applies during a player swing.
 
 <Callout type="info">
-**Tag Score Multipliers** map a `FGameplayTag` to a multiplier. When the tag is on the AI, the target, or the world, it scales the score. Use `State.Stunned → 2.0` on the target for a punish, or `World.Phase.BossPhase2 → 1.3` for late-fight aggression. The [Action System](/docs/soulslike-combat/action-system) covers the full scoring model.
+**Tag Score Multipliers** takes any gameplay tag and scales the score while the AI, the target or the world holds it. `State.Stunned` at 2.0 on the target makes a punish, `World.Phase.BossPhase2` at 1.3 makes an enemy meaner late in a fight. The [Action System](/docs/soulslike-combat/action-system) covers scoring in full.
 </Callout>
 
 ---
 
-## 3. One ability per Gameplay Ability action
+## Make the swings land
 
-Each action using the Gameplay Ability method needs an ability Blueprint. Inherit from `GA_SEC_Attack`, assign the montage, and you are done: it plays the montage, forwards the notify events, and sends the end tag the action system waits on. [Getting Started, Step 3](/docs/soulslike-combat/getting-started) covers this and the from-scratch route.
+The montages play, but nothing takes damage until a swept trace runs over the strike frames.
+
+1. Build the weapon on **SEC Weapon Base**, and place sockets at the hilt and the tip of its mesh.
+2. Add one **Trace Sockets** entry and set its **Shape** to **Capsule Two Point**, which reveals **End Socket Or Bone Name**. Name the hilt socket in **Socket Or Bone Name** and the tip in **End Socket Or Bone Name**, so the capsule spans the blade. The default **Sphere** sweeps a single point.
+3. Select the pawn's **SEC Equipment Component** and add the weapon class to **Starting Loadout**, with **Use As Weapon** ticked.
+4. Open each attack montage, add a **SEC Melee Trace Window** notify state, and drag it across the frames that connect.
+5. Set the window's **Damage Config**. Six ship under `Core/Damage`, one per damage type.
+
+[Weapons](/docs/soulslike-combat/weapons) covers the weapon Blueprint, and [Melee Trace](/docs/soulslike-combat/melee-trace) covers the sweep shapes, damage and impact effects.
+
+A weapon can also carry its own moveset in **Weapon Action Set**, which wins over the AI Config while the enemy holds it. Hand the same skeleton a bow and it fights like an archer.
+
+<Callout type="warning">
+A trace window sweeps sockets that were registered before it opened, and a weapon registers its own the moment the enemy equips it. An enemy that spawns unarmed swings through everything. The Output Log names any socket ID a window asked for that nothing registered.
+</Callout>
 
 ---
 
-## 4. Arm the enemy
+## Give it ground to hold
 
-The attacks play, but nothing lands until the weapon runs melee traces. The full weapon build lives on the [Weapons](/docs/soulslike-combat/weapons) page: inherit `ASECWeaponBase`, define the trace sockets, and add the weapon to the enemy's **`Starting Loadout`** so it arrives in hand on spawn. [Melee Trace](/docs/soulslike-combat/melee-trace) covers the **SEC Melee Trace Window** notify state and the damage config. Set that up, then come back to test.
+The Movement Evaluator on the controller ships with a working default, so the enemy already closes to 400 cm and circles. Author a **Movement Behavior Profile** when you want that range to be part of the enemy's design: 250 cm for a brawler, 600 for something that hangs back.
 
----
-
-## 5. StateTree, if you want authored structure
-
-Leave the config's `Default State Tree` empty and the native loop runs the combat you built. Set it to `StateTree_SEC_Core`, or author your own, when you need patrol, investigation, or boss phases on top. The [StateTree Tasks](/docs/soulslike-combat/statetree) page covers the graph nodes.
+Create one under **SEC**, **Movement Behavior Profile**, set **Desired Distance**, then set **Default Movement Profile** on the AI Config. See [Movement System](/docs/soulslike-combat/movement-system).
 
 ---
 
-## 6. Test and debug
+## Let it answer a hit
 
-Drop `BP_MyEnemy` into a level with a built NavMesh, and confirm its **AI Controller Class** points to your controller.
+An enemy that only attacks reads as a punching bag. Author a **Reaction Set** with a flinch, a parry or a dodge, wire a trigger to each on its canvas, and set **Default Reaction Set** on the AI Config. See [Reaction System](/docs/soulslike-combat/reaction-system).
 
-Turn on the decision logs while tuning:
-- `ActionEvaluationComponent → bDebugLogDecisions`: logs each action's score and why it won or lost.
-- `MovementEvaluatorComponent → bDebugDrawScoring`: draws the scored movement directions in the world.
+---
 
-The decision log reads something like:
+## Debug it
+
+Press Play and turn the overlays on:
+
+```
+SEC.Debug.Scoring 1              // Score list above each enemy, highest first
+SEC.Debug.Actions 1              // Cooldown list above each enemy
+SEC.Debug.Movement 1             // Movement layer, strafe side and heading
+SEC.Debug.Role 1                 // Name and combat role, coloured by role
+SEC.Debug.Melee.DrawTracing 1    // The swept shape, every frame a window is open
+```
+
+`SEC.Debug.All 1` turns every overlay on at once, and `SEC.Debug.WatchPawn <name>` narrows them to one enemy.
+
+For a record you can scroll back through, `SEC.Debug.LogActionDecisions 1` prints why each action scored what it did:
 
 ```
 LogEvaluation: [EvalComp] LightAttack: Ctx=0.95 Nov=1.00 Chain=1.00 Risk=1.00 Runtime=1.00 Custom=0.95 -> 0.90
@@ -96,21 +230,67 @@ LogEvaluation: [EvalComp] HeavyAttack: Ctx=0.40 Nov=1.00 Chain=1.00 Risk=0.67 Ru
 LogEvaluation: [EvalComp] Committed to: LightAttack (score 0.90)
 ```
 
-Expect the enemy to close to its scored range, strafe, open with a light attack, sometimes chain into the heavy, and retreat when you crowd it or press an attack.
+Every scorer on a card folds into the single **Custom** figure rather than getting a column of its own. To read one scorer at a time, open the Action Set while the game runs: the [Action Set Editor](/docs/soulslike-combat/action-set-editor#watching-the-ai-decide) lights each card up with its live score, its cooldown, and the gate that refused it.
 
-<Callout type="warning">
-Per-scorer values live in `FScoreBreakdown.CustomScores`, keyed by each scorer's `GetDisplayName()`, and fold into the `Custom` factor. There is no separate `Dist` or `Angle` line in the log anymore.
-</Callout>
+Expect the enemy to close to its range, circle, open with a light attack, sometimes chain into the heavy, and back off when you crowd it.
 
-### Common issues
+---
 
-| Problem | Cause | Fix |
-|---------|-------|-----|
-| AI does not attack | No ability on the action | Set the Execution Method's Ability Class, and confirm the ability activates |
-| AI repeats one action | Only one scores well, or the others have no scorers | Add a Distance Scorer and an Angle Scorer per action, with different ranges |
-| AI does not move | No NavMesh | Add a `NavMeshBoundsVolume` and build navigation |
-| Weapon does not hit | Socket ID mismatch | Match the notify's Socket IDs to the weapon's `TraceSockets` ID (see [Melee Trace](/docs/soulslike-combat/melee-trace)) |
-| AI stuck after an attack | The ability never ends | Confirm it reaches **End Ability** on every exit path. The Execution Method's **Ability Timeout** catches one that does not, and logs the action that hung. |
+<Collapsible title="It stands there and does nothing" badge="Advanced">
+In the order worth checking:
 
+- **No registered combat target.** Nothing selects a target on its own, and this failure is silent. It is the common one.
+- **Awareness Config is empty** on the AI Config. The controller carries an awareness component whatever you set there, so an enemy with that field empty senses nothing, holds each target at Unknown, and never reaches its combat phase. Run `SEC.Debug.Awareness 1` to read the state above its head.
+- **No NavMesh.** Add a **NavMeshBoundsVolume** and build navigation.
+- **Target Selector is empty** on the AI Config and in project settings. An enemy possessed before the player registers never picks a target up.
+- **AI Controller Class** on the pawn still points at the engine default rather than `BP_GruntController`.
+- **AI Config** is empty on both the pawn and the controller, so no set resolves.
+</Collapsible>
 
-<DocNav prev={{ title: "Core Architecture", href: "/docs/soulslike-combat/architecture" }} next={{ title: "Movement System", href: "/docs/soulslike-combat/movement-system" }} />
+<Collapsible title="It picks a move, and nothing happens" badge="Advanced">
+- **The ability has no activation graph.** An ability implementing neither **Activate Ability** nor **Activate Ability From Event** starts and never ends, and the enemy locks up behind it. **Ability Timeout** on the execution method cuts a hung ability off and names it in the log.
+- **The Montage Payload has no montage.** Saving the Action Set reports this into the **Asset Check** message log.
+- **The Action ID is empty.** An action with no ID cannot be found again, so the execution that follows the poll drops it. Nothing prints unless `SEC.Debug.LogActionExecution 1` is on. Name it on the canvas.
+- **Enabled is unticked**, which also stops the ability being granted.
+- **Manage Action Sets Automatically is unticked** on the AI Config, which applies no set at all.
+</Collapsible>
+
+<Collapsible title="It repeats one move, or swings from across the room" badge="Advanced">
+Both come from missing scorers. A card with an empty **Scorers** list scores the same everywhere, so it wins at every range and the others never get a look in.
+
+Give each action its own **Distance Scorer** with a different band, and an **Angle Scorer** where facing matters. Then set **Cooldown Duration**, which defaults to 0, and **Max Consecutive Uses** to force a switch after a set number of repeats.
+
+**Recovery** on the AI Config puts a gap between any two attacks rather than between two uses of one attack. It defaults to 0, so it stays off until you set **Action Recovery Time**.
+</Collapsible>
+
+<Collapsible title="The weapon swings through the player" badge="Advanced">
+- **The Socket IDs on the montage notify do not match the weapon's Trace Sockets ID.** They are matched by name.
+- **Use As Weapon is unticked** on the loadout entry, so the weapon spawns and attaches while none of it reaches the enemy.
+- **The window sits on the wrong frames.** `SEC.Debug.Melee.DrawTracing 1` draws the swept shape so you can see where it opened.
+- **The target refuses the hit.** A pawn answering as **SEC Damageable** can block, parry or shrug a hit off. See [Defense System](/docs/soulslike-combat/defense-system).
+</Collapsible>
+
+<Collapsible title="Structure the fight with a StateTree" badge="Alternative">
+Leave **Default State Tree** empty on the AI Config and a native loop runs the combat you built: gather context, move, then score and run the best action.
+
+Set it to `StateTree_SEC_Core`, which ships in the showcase content, or author your own, when the enemy needs structure the loop has no opinion about: patrol, investigate, return home, boss phases. The graph nodes are on [StateTree Tasks](/docs/soulslike-combat/statetree).
+
+Both routes use the same Action Sets, Reaction Sets and movement profiles, so swapping between them changes no data.
+</Collapsible>
+
+<Collapsible title="Give each combat role its own moveset" badge="Alternative">
+**Role Action Sets** on the AI Config hands each [combat role](/docs/soulslike-combat/combat-roles) a different set, so a Flanker opens differently from an Attacker, and the swap happens on its own when the role changes. **Role Reaction Sets** and **Role Movement Profiles** do the same for reactions and positioning.
+
+Fill in **Default Action Set** alongside them. A role you did not list falls back to it, and an enemy that has not been assigned a role gets nothing without it.
+</Collapsible>
+
+<Collapsible title="Editing while the game runs" badge="Advanced">
+Tuning values on an existing action during Play In Editor is safe, and the running enemy picks the change up on its next decision. Adding, deleting or renaming an action goes through, but a running enemy holds positions in the list and the entries move underneath it. The editor warns you once per session in the message log when you do it. Restart Play In Editor after those.
+</Collapsible>
+
+---
+
+<DocNav
+  prev={{ title: "Getting Started", href: "/docs/soulslike-combat/getting-started" }}
+  next={{ title: "Movement System", href: "/docs/soulslike-combat/movement-system" }}
+/>

@@ -69,7 +69,7 @@ function VariableTreeItem({
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
-            className="ue-mybp-chevron flex h-[18px] w-[14px] shrink-0 items-center justify-center text-[#808080] hover:text-[#C0C0C0]"
+            className="ue-mybp-chevron flex h-[18px] w-[14px] shrink-0 items-center justify-center text-[color:var(--uekit-hover2)] hover:text-[color:var(--uekit-foreground)]"
             aria-expanded={open}
             aria-label={open ? "Collapse" : "Expand"}
           >
@@ -81,18 +81,18 @@ function VariableTreeItem({
           <span className="inline-block w-[14px] shrink-0" aria-hidden />
         )}
 
-        <span className="min-w-0 flex-1 truncate text-[13px] text-[#BBBBBB]">{item.name}</span>
+        <span className="min-w-0 flex-1 truncate text-[15px] text-[color:var(--uekit-foreground)]">{item.name}</span>
 
         {item.type && (
           <span className="ml-2 flex shrink-0 items-center gap-1.5">
             <UeVariableTypePill type={item.type} />
             {typeLabel && (
-              <span className="max-w-[120px] truncate text-[13px] text-[#888888]">{typeLabel}</span>
+              <span className="max-w-[120px] truncate text-[15px] text-[color:var(--uekit-hover2)]">{typeLabel}</span>
             )}
-            <span className="ue-mybp-row-icons ml-1 flex items-center gap-1 text-[#6a6a6a]">
-              <Bell className={cn("h-3 w-3", item.fieldNotify && "text-[#c0c0c0]")} />
+            <span className="ue-mybp-row-icons ml-1 flex items-center gap-1 text-[color:var(--uekit-hover2)]">
+              <Bell className={cn("h-3 w-3", item.fieldNotify && "text-[color:var(--uekit-foreground)]")} />
               {item.instanceEditable ? (
-                <Eye className="h-3 w-3 text-[#c0c0c0]" />
+                <Eye className="h-3 w-3 text-[color:var(--uekit-foreground)]" />
               ) : (
                 <EyeOff className="h-3 w-3" />
               )}
@@ -152,11 +152,11 @@ export function UeMyBlueprintPanel({
   hideComponentLabels,
 }: UeMyBlueprintPanelProps) {
   return (
-    <div className={cn("ue-mybp-panel overflow-hidden rounded-[2px] border border-[#0F0F0F]", className)}>
-      <div className="border-b border-[#0F0F0F] bg-[#1A1A1A] px-2 py-1">
-        <span className="text-[13px] font-normal text-[#C8C8C8]">{title}</span>
+    <div className={cn("ue-mybp-panel overflow-hidden rounded-[2px] border border-[color:var(--uekit-window-border)]", className)}>
+      <div className="border-b border-[color:var(--uekit-window-border)] bg-[color:var(--uekit-recessed)] px-2 py-1">
+        <span className="text-[15px] font-normal text-[color:var(--uekit-foreground-header)]">{title}</span>
       </div>
-      <div className="bg-[#121212] py-1">
+      <div className="bg-[color:var(--uekit-background)] py-1">
         <UeBlueprintVariables items={items} hideComponentLabels={hideComponentLabels} />
       </div>
     </div>

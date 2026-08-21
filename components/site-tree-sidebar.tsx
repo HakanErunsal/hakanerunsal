@@ -7,6 +7,10 @@ import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { docs, articles, projects } from "#site/content";
 import { SecDocSearch } from "@/components/sec-doc-search";
+import { isRigbak } from "@/lib/site-mode";
+import { listedDocs, docHref, isOffsiteDoc } from "@/lib/docs-ownership";
+import { brandConfig } from "@/config/site";
+import { rigbakLinks } from "@/config/rigbak";
 
 // ──────────────────────────────────────
 //  Types
@@ -20,29 +24,38 @@ interface TreeNode {
     children: TreeNode[];
     date?: string;
     image?: string;
+    /** Set when the page lives on another host, so the link leaves this site. */
+    href?: string;
 }
 
 // ──────────────────────────────────────
 //  Build trees for each section
 // ──────────────────────────────────────
 function buildDocTree(): TreeNode[] {
-    const publishedDocs = docs.filter(d => d.published);
+    const publishedDocs = listedDocs(docs).filter(d => d.published);
     const rootDocs = publishedDocs.filter(d => !d.parent);
 
     return rootDocs.map(rootDoc => {
-        const children = publishedDocs
-            .filter(d => d.parent === rootDoc.slugAsParams)
-            .sort((a, b) => {
-                const ao = a.order ?? Number.MAX_SAFE_INTEGER;
-                const bo = b.order ?? Number.MAX_SAFE_INTEGER;
-                if (ao !== bo) return ao - bo;
-                return a.title.localeCompare(b.title);
-            });
+        const offsite = isOffsiteDoc(rootDoc.slugAsParams);
+
+        // An off-site product shows as a leaf. Its pages are rendered by the
+        // host that owns them, so there is nothing here to expand.
+        const children = offsite
+            ? []
+            : publishedDocs
+                .filter(d => d.parent === rootDoc.slugAsParams)
+                .sort((a, b) => {
+                    const ao = a.order ?? Number.MAX_SAFE_INTEGER;
+                    const bo = b.order ?? Number.MAX_SAFE_INTEGER;
+                    if (ao !== bo) return ao - bo;
+                    return a.title.localeCompare(b.title);
+                });
 
         return {
             title: rootDoc.title,
             slug: rootDoc.slug,
             slugAsParams: rootDoc.slugAsParams,
+            href: offsite ? docHref(rootDoc.slug, rootDoc.slugAsParams) : undefined,
             children: children.map(child => ({
                 title: child.title,
                 slug: child.slug,
@@ -150,7 +163,7 @@ function TreeSection({ node, pathname }: { node: TreeNode; pathname: string }) {
                 )}
                 {!hasChildren && <span className="w-6 flex-shrink-0" />}
                 <Link
-                    href={`/${node.slug}`}
+                    href={node.href ?? `/${node.slug}`}
                     className={cn(
                         "block py-1.5 px-2 text-sm rounded transition-colors duration-150 truncate flex-1",
                         isActive
@@ -197,7 +210,7 @@ function ListItem({ node, pathname }: { node: TreeNode; pathname: string }) {
     return (
         <li>
             <Link
-                href={`/${node.slug}`}
+                href={node.href ?? `/${node.slug}`}
                 className={cn(
                     "block py-1.5 px-3 text-sm rounded transition-colors duration-150 truncate",
                     isActive
@@ -215,7 +228,7 @@ function ListItem({ node, pathname }: { node: TreeNode; pathname: string }) {
 //  Sidebar section label
 // ──────────────────────────────────────
 const sectionLabels: Record<Section, string> = {
-    home: "Welcome",
+    home: isRigbak ? "Plugins & Games" : "Welcome",
     articles: "Articles",
     projects: "Projects",
     docs: "Documentation",
@@ -233,12 +246,20 @@ export function SiteTreeSidebar() {
     const articleList = useMemo(() => buildArticleList(), []);
     const projectList = useMemo(() => buildProjectList(), []);
 
-    const navLinks: { href: string; label: string; section: Section }[] = [
-        { href: "/articles", label: "Articles", section: "articles" },
-        { href: "/projects", label: "Projects", section: "projects" },
-        { href: "/docs", label: "Docs", section: "docs" },
-        { href: "/about", label: "About", section: "about" },
-    ];
+    // The rigbak build carries only what rigbak.com serves. Linking the
+    // portfolio sections here would send every click through a cross-host
+    // redirect.
+    const navLinks: { href: string; label: string; section: Section }[] = isRigbak
+        ? [
+            { href: "/", label: "Catalogue", section: "home" },
+            { href: "/docs", label: "Docs", section: "docs" },
+        ]
+        : [
+            { href: "/articles", label: "Articles", section: "articles" },
+            { href: "/projects", label: "Projects", section: "projects" },
+            { href: "/docs", label: "Docs", section: "docs" },
+            { href: "/about", label: "About", section: "about" },
+        ];
 
     return (
         <aside className="hidden lg:flex flex-col fixed left-0 top-0 w-72 h-screen bg-ue-sidebar border-r border-border/50 z-30">
@@ -258,7 +279,7 @@ export function SiteTreeSidebar() {
                         <span className="text-sm font-heading font-semibold text-foreground">
                             {sectionLabels[section]}
                         </span>
-                        <span className="text-xs text-muted-foreground">Hakan Erunsal</span>
+                        <span className="text-xs text-muted-foreground">{brandConfig.name}</span>
                     </div>
                 </Link>
             </div>
@@ -314,46 +335,50 @@ export function SiteTreeSidebar() {
                 {(section === "home" || section === "about") && (
                     <div className="space-y-6">
                         {/* Quick links to each section */}
-                        <div>
-                            <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 px-2">
-                                Projects
-                            </h3>
-                            <ul className="space-y-0.5">
-                                {projectList.slice(0, 5).map(node => (
-                                    <ListItem key={node.slug} node={node} pathname={pathname} />
-                                ))}
-                                {projectList.length > 5 && (
-                                    <li>
-                                        <Link
-                                            href="/projects"
-                                            className="block py-1.5 px-3 text-xs text-muted-foreground hover:text-primary transition-colors"
-                                        >
-                                            View all {projectList.length} projects →
-                                        </Link>
-                                    </li>
-                                )}
-                            </ul>
-                        </div>
-                        <div>
-                            <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 px-2">
-                                Articles
-                            </h3>
-                            <ul className="space-y-0.5">
-                                {articleList.slice(0, 5).map(node => (
-                                    <ListItem key={node.slug} node={node} pathname={pathname} />
-                                ))}
-                                {articleList.length > 5 && (
-                                    <li>
-                                        <Link
-                                            href="/articles"
-                                            className="block py-1.5 px-3 text-xs text-muted-foreground hover:text-primary transition-colors"
-                                        >
-                                            View all {articleList.length} articles →
-                                        </Link>
-                                    </li>
-                                )}
-                            </ul>
-                        </div>
+                        {!isRigbak && (
+                            <>
+                                <div>
+                                    <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 px-2">
+                                        Projects
+                                    </h3>
+                                    <ul className="space-y-0.5">
+                                        {projectList.slice(0, 5).map(node => (
+                                            <ListItem key={node.slug} node={node} pathname={pathname} />
+                                        ))}
+                                        {projectList.length > 5 && (
+                                            <li>
+                                                <Link
+                                                    href="/projects"
+                                                    className="block py-1.5 px-3 text-xs text-muted-foreground hover:text-primary transition-colors"
+                                                >
+                                                    View all {projectList.length} projects →
+                                                </Link>
+                                            </li>
+                                        )}
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 px-2">
+                                        Articles
+                                    </h3>
+                                    <ul className="space-y-0.5">
+                                        {articleList.slice(0, 5).map(node => (
+                                            <ListItem key={node.slug} node={node} pathname={pathname} />
+                                        ))}
+                                        {articleList.length > 5 && (
+                                            <li>
+                                                <Link
+                                                    href="/articles"
+                                                    className="block py-1.5 px-3 text-xs text-muted-foreground hover:text-primary transition-colors"
+                                                >
+                                                    View all {articleList.length} articles →
+                                                </Link>
+                                            </li>
+                                        )}
+                                    </ul>
+                                </div>
+                            </>
+                        )}
                         <div>
                             <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 px-2">
                                 Documentation
@@ -369,17 +394,34 @@ export function SiteTreeSidebar() {
             </nav>
 
             {/* Bottom link - context-aware */}
-            <div className="px-4 py-3 border-t border-border/50">
+            <div className="px-4 py-3 border-t border-border/50 space-y-2">
                 {section === "docs" ? (
-                    <Link
-                        href="/docs"
-                        className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="m15 18-6-6 6-6" />
-                        </svg>
-                        All Documentation
-                    </Link>
+                    <>
+                        <Link
+                            href="/docs"
+                            className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="m15 18-6-6 6-6" />
+                            </svg>
+                            All Documentation
+                        </Link>
+                        {isRigbak && (
+                            <a
+                                href={rigbakLinks.discord}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M15 3h6v6" />
+                                    <path d="M10 14 21 3" />
+                                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                                </svg>
+                                Ask for help on Discord
+                            </a>
+                        )}
+                    </>
                 ) : section === "articles" ? (
                     <Link
                         href="/articles"

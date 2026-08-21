@@ -7,7 +7,7 @@ export default function AwarenessConfigMemoryDetails() {
       displayName="SEC Awareness Config"
       sourceClass="SECAwarenessConfig"
       sourceKind="asset"
-      attachTo="DA_AwarenessConfig"
+      attachTo="DA_Awareness_Guard"
       note="Memory category on the awareness config asset."
       categories={AWARENESS_CONFIG_MEMORY_DETAILS}
     />

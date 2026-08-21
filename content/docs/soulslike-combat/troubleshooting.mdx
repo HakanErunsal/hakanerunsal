@@ -1,11 +1,11 @@
 ---
 title: "Debugging & Troubleshooting"
-description: "Debug flags, console variables, common failures, and FAQ."
-date: 2026-08-09
+description: "The symptom you are looking at, the one thing that causes it, and the fix."
+date: 2026-08-21
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "FAQ"]
 parent: "SoulslikeCombatDocs"
-order: 20
+order: 26
 ---
 
 <Breadcrumb items={[
@@ -14,259 +14,343 @@ order: 20
     { label: "Troubleshooting" }
 ]} />
 
-> Flip **Debug** flags on the combat components or run **`SEC.Debug.*`** console variables when an enemy misbehaves. Match log output to the sections below.
+> Find what you are seeing in the list below, read the cause, apply the fix.
+
+<Callout type="warning">
+Most reports of "nothing happens" come down to one thing: the enemy has no combat target. Movement, action scoring and the combat phase all read the controller's focus actor, and nothing sets that until a target is registered and the enemy is aware of it. Start with [The enemy stands there and does nothing](#the-enemy-stands-there-and-does-nothing).
+</Callout>
 
 ---
 
-## Component Debug Flags
+## Debug it
 
-Toggle these on the AI controller, which is where the evaluation components sit.
+Press Play and turn the overlays on. Each writes a block above the pawn it belongs to.
+
+```
+SEC.Debug.Role 1        // Name and combat role, coloured by role
+SEC.Debug.Decision 1    // Distance, angle, line of sight, speed, threat
+SEC.Debug.Scoring 1     // What each action scored, highest first
+SEC.Debug.Movement 1    // Movement layer, strafe side, heading
+SEC.Debug.Awareness 1   // Awareness state, meter, age of the last known location
+```
+
+`SEC.Debug.All 1` turns every block on at once. `SEC.Debug.WatchPawn <name>` narrows them to one enemy (part of a name is enough, and the console names which pawn it picked), and `SEC.Debug.WatchClear` puts them all back.
+
+Twelve sections exist: **Role**, **Decision**, **Movement**, **Awareness**, **Territory**, **Actions**, **Reactions**, **Scoring**, **Tokens**, **Vitals**, **Teams** and **Approach**. Each takes `1` or `0`.
+
+For a record you can scroll back through, switch the logs on instead.
+
+| Console variable | Prints |
+|------------------|--------|
+| `SEC.Debug.LogActionDecisions` | Why each action scored what it did, and what refused the rest |
+| `SEC.Debug.LogActionExecution` | Action starts, ends and cooldowns |
+| `SEC.Debug.LogReactions` | Which trigger rule answered an event, and with what |
+| `SEC.Debug.LogRoleAssignments` | Role assignment (`2` for verbose) |
+| `SEC.Debug.Movement.LogMovement` | Layer switches, pathfinding, stuck, detour |
+| `SEC.Debug.Threat.Log` | Threat events |
+
+The world drawings cover what you need to see in the level rather than read.
+
+| Console variable | Draws |
+|------------------|-------|
+| `SEC.Debug.Movement.DrawScoring` | The sampled directions, red low to green high |
+| `SEC.Debug.Movement.DrawNav` | Navmesh validity and the ledge guard |
+| `SEC.Debug.Movement.DrawAvoidance` | Avoidance radii and the pawns being avoided |
+| `SEC.Debug.Melee.DrawTracing` | The swept shapes of a weapon trace |
+| `SEC.Debug.Stimulus.Draw` | Attack telegraphs going out |
+| `SEC.Debug.Steering.Draw` | Motion warps and approach windows |
+| `SEC.Debug.Threat.Draw` | Threat cone, progress arc, colour grading |
+
+<Callout type="info">
+**Decision**, **Movement**, **Scoring**, **Awareness**, **Territory**, **Tokens** and **Approach** are worked out on the server and draw only there. **Role**, **Actions**, **Reactions**, **Vitals** and **Teams** replicate, so they read on a client too.
+</Callout>
+
+<Collapsible title="Debug one enemy from the Details panel" badge="Advanced">
+Each of the twelve overlay sections has a **Debug Overlay** checkbox on the component it reads from, and ticking one there affects that enemy alone. The movement, action, threat and reaction logs and world drawings sit beside them as checkboxes too. The remaining console switches are global only.
 
 <ActionEvaluationDebugDetails />
 
 <MovementEvaluatorDebugDetails />
 
-**Threat:** **`bDebugLogThreat`** / **`bDebugDrawThreat`** on **`UThreatDetectionComponent`**. See [Threat Detection](/docs/soulslike-combat/threat-detection).
+They are readable and writable from Blueprint, so a debug menu can drive them at runtime.
 
-**Reactions:** **`bDebugLogReactions`** on **`UReactionEvaluationComponent`**, or **`SEC.Debug.LogReactions 1`**.
+`SEC.Debug.ScoringRows` sets how many rows the score list keeps, 5 by default and 0 for all of them. `SEC.Debug.MaxDistance` (4000 cm) sets how far from the camera a block still draws, and `SEC.Debug.TextScale` sizes the text.
 
-**Melee traces:** **`bDrawDebug`** on **`USECMeleeTraceComponent`**, or **`SEC.Debug.Melee.DrawTracing 1`**.
-
-With **`bDebugLogDecisions`** or **`SEC.Debug.LogActionDecisions 1`**, the Output Log prints lines like:
+The per-tick movement stream writes to its own log category, so you can mute it while one enemy floods the console:
 
 ```
-[EvalComp] LightAttack: Ctx=1.00 Nov=1.00 Chain=1.00 Risk=1.00 Runtime=1.00 Custom=0.95 -> 0.95
-[EvalComp] HeavyAttack BLOCKED: On cooldown (1.2s remaining)
-[EvalComp] Committed to: LightAttack (score 0.95)
+Log LogMovementEvaluatorTick off
 ```
-
-An action stopped by a hard gate never reaches a score line; it prints `BLOCKED` with the reason instead. **`Custom`** folds every scorer on the action (Distance, Angle, Health, Speed, plus any you add). Per-scorer values sit in the score breakdown under each scorer's display name.
-
-Component flags and their matching CVars stack: either one turns the output on.
+</Collapsible>
 
 ---
 
-## Console Commands
+## Nothing happens
 
-All commands are cheat CVars. Pass **`0`** or **`1`** unless noted.
+### The enemy stands there and does nothing
 
-| Console variable | Output |
-|------------------|--------|
-| **`SEC.Debug.LogActionDecisions`** | Action scoring and selection |
-| **`SEC.Debug.LogActionExecution`** | Start, end, cooldowns |
-| **`SEC.Debug.LogReactions`** | Reaction evaluation and execution |
-| **`SEC.Debug.LogRoleAssignments`** | Role assignment (**`2`** = verbose) |
-| **`SEC.Debug.Threat.Log`** | Threat events |
-| **`SEC.Debug.Threat.Draw`** | Threat cone, progress arc, AI color grading |
-| **`SEC.Debug.Movement.DrawScoring`** | Direction sample lines (red low, green high) |
-| **`SEC.Debug.Movement.DrawAvoidance`** | Avoidance radius and blocked pawns |
-| **`SEC.Debug.Movement.DrawNav`** | Nav sample validity (blue blocked, white walkable) |
-| **`SEC.Debug.Movement.LogMovement`** | Layer changes, pathfinding, stuck, detour |
-| **`SEC.Debug.Movement.LogTick`** | Per-tick state dump (high frequency) |
-| **`SEC.Debug.Movement.LogScoring`** | Direction scoring |
-| **`SEC.Debug.Movement.LogAvoidance`** | Avoidance detection |
-| **`SEC.Debug.Movement.LogStrafeSwap`** | Strafe swap decisions |
-| **`SEC.Debug.Movement.LogStrafeState`** | Strafe state and timers |
-| **`SEC.Debug.Melee.DrawTracing`** | Weapon sweep shapes |
+No combat target, or the enemy never reached its combat phase. Check these five in order.
+
+1. **AI Controller Class is unset** on the pawn Blueprint. The pawn gets the project's default controller and none of the combat components exist. Set it in Class Defaults.
+2. **Target Selector is empty** on the Enemy AI Config. An empty one still takes the first target the enemy may fight, so this rarely leaves a single enemy idle, but it gives you no say in which target it takes. Set it to **Awareness Filtered Target Selector** and leave its **Inner Selector** empty, so it offers the nearest target this enemy has perceived. **Closest Target Selector** works too, though it engages anything registered whether the enemy sensed it or not.
+3. **Awareness Config is empty** on the Enemy AI Config. The enemy senses nothing, holds at Unknown, and never enters its combat phase. Point it at an Awareness Config asset and leave that asset's defaults alone. This config does the perceiving; the filtered selector in step 2 is what turns perception into aggro, so fill in both.
+4. **The player was never registered as a combat target.** On the player pawn's **Event BeginPlay**, branch on **Has Authority**, then call **Register Combat Target** on the **AICombat Role Subsystem** with **Target Actor** set to **Self**. See [Getting Started](/docs/soulslike-combat/getting-started).
+5. **The AI Config is on neither the pawn nor the controller**, so there is nothing to resolve at possession.
+
+`SEC.Debug.Role 1` reads `None` for an enemy that never took a target. No block above the pawn at all means it carries no SEC components, which points at the first cause.
+
+### It moves but never attacks
+
+Something refuses every action before it scores.
+
+Run `SEC.Debug.Scoring 1`. An action a hard gate refused prints the reason in place of a score. The usual reasons:
+
+| Reason | Fix |
+|--------|-----|
+| **Enabled** unticked on the action | Tick it. Unticking it also stops the ability being granted. |
+| **Manual Only** ticked | That action waits for a direct **Execute Action** call. Untick it for a scored move. |
+| **Chain Only** ticked | Nothing chains into it, or the chain window has closed. Wire a chain into it from another action, or untick it. |
+| On cooldown, or **Max Consecutive Uses** spent | Expected. Give the enemy a second action to switch to. |
+| **Recovery** | The gap after any action. The three **Recovery** fields on the AI Config ship at 0, so this holds nothing back until one of them carries a value. |
+| A gate said no | A **Combat Token Gate** on a full pool, or a **Stamina Gate** under its minimum. |
+| **Requires Tags** or **Block Tags** | The enemy, the target or the world does not hold the right tags. |
+| **Require Line Of Sight** ticked | The view to the target is blocked. |
+| `SEC.Action.BlockActions` | That tag sits on the enemy's ability system component. Something added it and never removed it. |
+
+### It scores and wins, but nothing happens
+
+The action starts something that does nothing.
+
+- **The ability has no activation graph.** An ability implementing neither **Activate Ability** nor **Activate Ability From Event** starts and never ends.
+- **The Montage Payload has no montage.** Saving the Action Set reports this in the **Asset Check** message log.
+- **The Action ID is empty.** An action added through the Details panel array instead of the canvas has no ID, wins the poll, then gets discarded silently. Opening the asset on its canvas repairs it.
+- **Manage Action Sets Automatically is unticked** on the AI Config, which applies nothing at all.
+
+### A revived or pooled enemy never acts again
+
+Death holds a block on action evaluation, and only a revive releases it.
+
+Call **Handle Revive** on the **SEC Combat Controller** component when the enemy comes back. It releases the block, restarts the brain, and turns threat detection, perception and role registration back on. Re-equip the weapon yourself, since death released it.
 
 ---
 
-## Common Issues
+## Attacks
 
-<Collapsible badge="" title="AI doesn't attack">
+### It swings from across the room
 
-**Check first:**
-- The ASC on the pawn holds the ability with a tag that matches the **`ActionSet`** entry.
-- The action is off cooldown and **`FinalScore > 0`** after scorers run.
-- **`ActiveActionSet`** on **`ActionEvaluationComponent`** points at the set you expect.
+The action has no **Distance Scorer**, so it has no opinion about distance.
 
-**Ability not granted:** The action system grants the execution method's **Ability Class** to the ability system itself, once a valid one exists. Two log lines explain a failure: `Cannot grant ability for <action> - ASC is invalid!` means the ability system was not ready when actions initialised, and `<action> doesn't have any ability or behavior tree set` means the execution method carries no class. **`BTTask_ActivateAbility`** exposes **`bGrantAbilityIfMissing`** for a standalone Behavior Tree setup that bypasses the action system.
+Open the Action Set, and on the card's **Scoring > Scorers** list add a **Distance Scorer**. Its **Range** defaults to a melee band peaking between 100 and 250 cm. A brand new action ships with no scorers at all, which is what lets it fire at any range. See [Action System](/docs/soulslike-combat/action-system).
 
-**Tag mismatch:** **`TryActivateAbilitiesByTag`** matches tags on the ability CDO's **`AbilityTags`**. If the ability has no tags there, switch the execution method to **ByEvent** or add the tag in class defaults.
+### It attacks once and then freezes
 
-**ByEvent path:** The ability class needs a **Trigger** entry with **Trigger Source = Gameplay Event** for the event tag.
+The ability the action started never ends, so the action waits on it.
 
-**No ASC found:** Custom pawns must implement **`IAbilitySystemInterface`** and return a valid ASC. The no-C++ path is reparenting to **`EnemyCharacterBase`**. See [Getting Started](/docs/soulslike-combat/getting-started).
+- Give the ability a path that reaches **End Ability** on completion, on cancel and on interrupt. An ability playing a montage through **Play Montage and Wait** ends when the montage does.
+- Set **Ability Timeout** on the action's execution method, behind the advanced arrow, to bound the wait.
+- For an ability meant to keep running, pick the **Gameplay Ability (Fire And Forget)** execution method so the action finishes in the same frame.
 
-**Range:** Add a **Distance Scorer** to the action and tune its **`Range`**. An action with no Distance Scorer ignores distance.
+A 30 second safety limit forces completion either way and names the action that hit it.
 
-**Debug:** Enable **`bDebugLogDecisions`** and read why each action failed or lost selection.
+### It pauses too long between attacks
 
-</Collapsible>
+Recovery holds offensive actions back after any one of them ends, while movement and reactions keep running.
 
-<Collapsible badge="" title="Enemy pauses between attacks">
+Tune it on the Enemy AI Config under **Recovery**.
 
-Recovery time blocks offensive action selection while movement and reactions keep running. Cooldown is separate.
+| Field | Sets |
+|-------|------|
+| **Action Recovery Time** | Seconds held off after an action completes. |
+| **Interrupt Recovery Time** | Seconds held off after an action is interrupted or cancelled. Keep it shorter than the above. |
+| **Action Recovery Time Randomization** | Jitter on the completion window. |
 
-**Tune on `UEnemyAIConfig`, Recovery section:**
-- **`ActionRecoveryTime`**: gap between attacks. All zeros disable recovery.
-- **`InterruptRecoveryTime`**: lockout after parry or stagger. Keep it below **`ActionRecoveryTime`**.
-- Per-action **`RecoveryTime`** when **`bOverrideRecoveryTime`** is on replaces the global for that action only.
+All three at 0 turns recovery off. To override it for one move, tick **Override Recovery Time** on that action and set **Recovery Time**, which replaces the global value rather than adding to it. `SEC.Debug.LogActionDecisions 1` prints `Recovering (X.Xs remaining)` while the gate holds.
 
-**Confirm:** **`SEC.Debug.LogActionDecisions 1`** prints **`Recovering (X.Xs remaining)`**. **`IsActionRecovering()`** exposes the same timer to a debug widget.
+### The whole pack swings at once
 
-</Collapsible>
+The attacks carry no **Combat Token Gate**, so nothing caps how many enemies act on one target.
 
-<Collapsible badge="" title="A behavior tree action starts nothing">
+Add a **Combat Token Gate** to each attack, then set the pool size under **Combat Tokens** in Project Settings. Two token tags ship with a **Budget** of 2 each. See [Combat Tokens](/docs/soulslike-combat/combat-tokens).
 
-**Cause:** The blackboard has no key for the action's payload, so the tree receives nothing to act on. A blackboard write to a missing key is dropped by the engine, and the log names the key once per blackboard: `could not hand its payload to the behavior tree`.
+Two things quietly defeat it. A token tag with no row in Project Settings hands out unlimited slots, and an enemy with no focus target claims nothing and runs uncapped. `SEC.Debug.Tokens 1` writes the pool above the head of the target the slots belong to, rather than above an attacker, and prints `unlimited` in place of a count for the first case.
 
-**Fix:** Add these keys to the blackboard asset:
+### An attack lands but deals no damage
 
-| Key | Type | Base Class |
-|-----|------|-----------|
-| **`SEC_Payload`** | Object | **`SECBehaviorTreePayload`** |
-| **`SEC_ActionId`** | Name | |
-| **`SEC_TargetActor`** | Object | |
-| **`SEC_SelfActor`** | Object | |
-| **`SEC_Distance`** | Float | |
+Read the Output Log first. The trace component names most of these itself.
 
-Then point the **Payload Key** on the Activate Blackboard Ability node at `SEC_Payload`.
-
-</Collapsible>
-
-<Collapsible badge="" title="AI stuck after attacking">
-
-**Cause:** The ability the action started never ends, so the action keeps waiting on it.
-
-**Fix:**
-- Give the ability a path that reaches **End Ability** on completion, on cancel, and on interrupt. An ability that plays a montage through **Play Montage and Wait** ends when the montage does.
-- Set **Ability Timeout** on the action to bound the wait. A 30 second safety limit catches it either way, and logs the action and ability that hit it.
-- For an ability that is meant to keep running, use the **Gameplay Ability (Fire And Forget)** method so the action finishes immediately without waiting.
-
-</Collapsible>
-
-<Collapsible badge="" title="A revived or pooled enemy never acts again">
-
-**Cause:** Death blocks action evaluation on that controller, and only a revive releases it. An enemy brought back, or a controller reused from a pool, is still holding the block.
-
-**Fix:** Call **`HandleRevive()`** on the **SEC Combat Controller** component when the enemy comes back. It releases the block, restarts the brain, and turns threat detection, perception and role registration back on. Re-equip the weapon yourself; death dropped it.
-
-</Collapsible>
-
-<Collapsible badge="" title="Weapon doesn't deal damage">
-
-**Read the Output Log first.** The trace component names most of these itself: a socket a window asked for that nothing registered, a window opening while another was still open, a socket sweeping from a mesh that is not refreshing its bones, an **Object Types** filter with an empty list, and a socket ID another component already holds.
-
-**Check:**
-- Socket IDs on the anim notify match **`TraceSockets`** on the weapon exactly.
-- The **Trace Filter** reaches the target: in **Channel** mode the channel the target blocks, in **Object Types** mode the type it belongs to (use **`SEC.Debug.Melee.DrawTracing 1`**).
-- The pawn has **`USECMeleeTraceComponent`** (**`EnemyCharacterBase`** adds it by default).
-- **`Default Damage Config`** on the trace component or **`Damage Config`** on the melee notify state supplies a **`USECDamageConfig`**. Damage does not come from the weapon actor class alone.
+| Check | What to look for |
+|-------|------------------|
+| **Socket IDs** | The IDs on the melee trace notify match **Trace Sockets** on the weapon exactly. A window naming a socket nothing registered says so in the log. |
+| **Trace Filter** | In **Channel** mode, the channel the target blocks. In **Object Types** mode, the type the target belongs to. Turn on `SEC.Debug.Melee.DrawTracing 1` and watch the sweep. |
+| **Damage Config** | **Default Damage Config** on the trace component, or **Damage Config** on the notify. Damage does not come from the weapon actor class. |
+| **The target answers damage** | It implements the SEC Damageable interface (reparenting to **Enemy Character Base** covers this), or handles **Event Any Damage**, which the sweep falls back to. |
+| **A sensor in the way** | A component that blocks the trace channel stops the sweep before it reaches the body behind it. Set that component's response to the trace channel to **Overlap**. |
 
 See [Melee Trace](/docs/soulslike-combat/melee-trace).
 
-</Collapsible>
+---
 
-<Collapsible badge="" title="AI doesn't move">
+## Movement
 
-**Check:**
-- A **NavMeshBoundsVolume** covers the play area. Press **P** in the viewport to visualize it.
-- In a StateTree graph, **AI Movement** stays in a running state during combat so **`STTask_AIMovement`** can tick. See [StateTree Integration](/docs/soulslike-combat/statetree).
-- **`HybridSwitchDistance`** on **`MovementEvaluatorComponent`** (default **800** cm) sets where tactical sampling hands off to strategic pathfinding. Lower it if the enemy never switches to pathfinding at range; raise it if it pathfinds too close.
+### It does not move at all
 
-Enable **`bDebugLogMovement`** or **`SEC.Debug.Movement.LogMovement 1`** for layer and pathfinding events.
+Six causes, in the order worth checking.
 
-</Collapsible>
+- **No focus actor.** Nothing registered a combat target, so there is nothing to move relative to. This is the common one and it logs nothing.
+- **The Movement Evaluator sits on the pawn.** It belongs on the AI controller. On a pawn it warns once at BeginPlay and then does nothing.
+- **No navmesh.** Past 800 cm the enemy asks for a path, the request fails every tick, and it never closes the gap. Add a **NavMesh Bounds Volume**, build navigation, and press **P** in the viewport to check it covers the floor. On a large or open world map, see [the navmesh is empty on a large map](#the-navmesh-is-empty-on-a-large-map) below.
+- **A leftover `SEC.State.IsMovementBlocked` tag** on the enemy's ability system component freezes it outright. It ships in a new action's **Add Tags** and is meant to clear when the action ends.
+- **Apply Movement Input is off** on the Movement Evaluator, which is evaluate-only mode.
+- **The AI Movement task is not running.** In a StateTree graph it has to stay in a running state through combat. See [StateTree Integration](/docs/soulslike-combat/statetree).
 
-<Collapsible badge="" title="Enemy jogs instead of running while closing distance">
+<Callout type="warning">
+The first Play In Editor after opening a project can start before navigation finishes building, and a game world never fills a tile the editor world had not reached. An enemy that pathfinds on the second Play and not the first has hit this. **Build > Build Paths** and save the map.
+</Callout>
 
-**Cause:** sideways movement costs speed, and direction scoring angles the approach a few degrees while the AI holds a strafe side or steps around another enemy.
+### The navmesh is empty on a large map
 
-**Fix:** raise **`StrafeFreeAngle`** on **`MovementEvaluatorComponent`** (default **15** degrees), the band around straight ahead that costs no speed. **`StrafeSpeedPenalty`** (**0.75**) softens the cost everywhere including real circling, and **0** turns it off. Also check the run window in your locomotion graph, since a 30 degree approach keeps 65% of its speed by design.
+An open world, or any level using **Dynamic** navmesh generation, builds navigation around invokers rather than everywhere at once. With no invoker in the level nothing asks for a tile, so the navmesh stays empty and every enemy past 800 cm fails its path request. Pressing **P** shows bare ground.
 
-See [Sideways speed penalty](/docs/soulslike-combat/movement-system#sideways-speed-penalty).
+Add a **Navigation Invoker** component to the actors navigation should follow, the player pawn first. Each one asks for tiles within its generation radius and lets them go past its removal radius.
 
-</Collapsible>
+Add it to the enemies as well when they wander far from the player, since an enemy outside every invoker's radius stands on unbuilt ground. Set **Runtime Generation** to **Dynamic** in **Project Settings > Navigation Mesh** for invokers to have anything to drive.
 
-<Collapsible badge="" title="AI walks off ledges or into hazards">
+### It grinds against a wall
 
-**Check:**
-- NavMesh ends before the visual drop (press **P**).
-- **`bEnableNavAwareSampling`** is on and **`NavScoreWeight`** is above **0**.
-- A hazard painted only as high nav cost still reads as walkable at close range. Add the **NavArea** subclass to **Hazard Area Avoidance** on the movement component with a strength around **0.75**; the value is the avoidance weight, where **0** ignores the area and **1** scores it like a wall.
+The target sits behind cover. The straight-line distance stays short while the walking route is long, so tactical steering pushes into the geometry.
 
-**Debug:** **`SEC.Debug.Movement.DrawNav 1`** marks blocked directions with blue spheres.
+Detour escalation catches this and hands off to pathfinding to round the corner. Check on the Movement Evaluator, under **Hybrid Movement > Detour**:
 
-Tune **`NavProbeDistance`** (default **120**): lower in tight spaces, higher for fast movers. See [Movement System](/docs/soulslike-combat/movement-system#staying-on-the-navmesh).
+- **Enable Detour Escalation** is on (it ships on).
+- The navmesh offers a route around the obstacle.
+- Lower **Detour Enter Ratio** (default 1.6, try 1.4) or **Detour Min Excess** (default 200 cm) when a real detour still reads as minor.
+- **Detour Escalate On Stall** is on for tight corners. Raise **Detour Stall Speed** if a slow grind does not register.
 
-</Collapsible>
+`SEC.Debug.Movement.LogMovement 1` prints each recheck as `ENGAGE`, `HOLD` or `release`. See [Movement System](/docs/soulslike-combat/movement-system#two-layers-and-rounding-corners).
 
-<Collapsible badge="" title="AI grinds against a wall">
+### A Waiter or Flanker freezes after the player jumps a gap
 
-The target sits behind cover. Straight-line distance stays short while the nav path is long, so the AI strafes into geometry.
+The player is close in a straight line while the walkable route wraps around the pit, and a Waiter or Flanker can already be inside its band, so steering idles at the rim with sight clear across the gap.
 
-**Check on `MovementEvaluatorComponent`, Hybrid Movement > Detour:**
-- **`bEnableDetourEscalation`** is on.
-- NavMesh routes around the obstacle.
-- **`bDetourEscalateOnStall`** catches tight corners; raise **`DetourStallSpeed`** if a slow grind does not register.
-- Lower **`DetourEnterRatio`** (try **1.4**) or **`DetourMinExcess`** when a longer detour still reads as minor.
+- Leave **Detour Use Line Of Sight Pre Gate** on. It reads the navmesh along the straight line, so a gap engages the detour even with sight clear.
+- Check both sides of the gap sit on connected navmesh. A route that stops at the rim means no walkable way across, and staying tactical is the right answer.
+- Lower **Detour Release Ratio** (default 1.35) only if the enemy gives up the route too early on a short way around.
 
-**Debug:** **`SEC.Debug.Movement.LogMovement 1`** logs detour recheck lines (`ENGAGE`, `HOLD`, `release`).
+`SEC.Debug.Movement.LogMovement 1` prints `Detour eval: skip (no reachable route)` when the far side is not connected.
 
-See [Detour tuning knobs](/docs/soulslike-combat/movement-system#rounding-corners-detour-escalation).
+### It jogs instead of running while closing in
 
-</Collapsible>
+Sideways movement costs speed, and direction scoring angles the approach a few degrees while the enemy holds a strafe side or steps around a neighbour.
 
-<Collapsible badge="" title="Waiter or Flanker freezes after the player jumps a gap">
+Raise **Strafe Free Angle** on the Movement Evaluator (15 degrees), the band around straight ahead that costs nothing. **Strafe Speed Penalty** (0.75) softens the cost everywhere including real circling, and 0 turns it off. Check the run window in your locomotion graph too, since a 30 degree approach keeps most of its speed by design. See [Movement System](/docs/soulslike-combat/movement-system#strafe-animations-at-full-speed).
 
-The player sits close in a straight line but the walkable route still wraps around the pit. Waiter and Flanker can already be inside their desired-distance band, so tactical steering idles at the rim while sight stays clear across the gap.
+### It walks off a ledge or into a hazard
 
-**Check on `MovementEvaluatorComponent`, Hybrid Movement > Detour:**
-- **`bEnableDetourEscalation`** is on.
-- Both sides of the gap sit on connected navmesh. A route that stops at the rim means there is no walkable way across, and the AI correctly stays tactical rather than walking into a dead end.
-- Leave **`bDetourUseLineOfSightPreGate`** on. It reads the navmesh along the straight line, so a gap engages the detour with sight clear.
-- Lower **`DetourReleaseRatio`** only if the AI gives up the route too early on a short way around.
+The navmesh ends past the visual drop, or the hazard is painted as cost rather than as an area to avoid.
 
-**Debug:** **`SEC.Debug.Movement.LogMovement 1`** prints `Detour eval: active, HOLD` while the route still detours, and `Detour eval: skip (no reachable route)` when the far side is not connected.
+- Press **P** and check where the navmesh stops.
+- **Enable Nav Aware Sampling** is on and **Nav Score Weight** is above 0.
+- For a patch the enemy can walk on but should not, add the nav area to **Hazard Area Avoidance** on the Movement Evaluator with a strength around 0.75, where 0 ignores it and 1 scores it like a wall. High nav cost alone still reads as walkable at close range.
+- Tune **Nav Probe Distance** (120 cm): lower in tight spaces, higher for fast movers.
 
-See [Detour tuning knobs](/docs/soulslike-combat/movement-system#rounding-corners-detour-escalation).
+`SEC.Debug.Movement.DrawNav 1` marks blocked directions with blue spheres. See [Movement System](/docs/soulslike-combat/movement-system#staying-off-ledges-and-avoiding-hazards).
 
-</Collapsible>
+### It walks home in the middle of a fight
+
+Its territory leash broke, or it refuses a target standing outside the leash.
+
+On the pawn's **SEC Territory** component, under **Leash**:
+
+- **Leash Enabled** ships off. Something turned it on.
+- **Leash Radius** (2000 cm) is measured straight from the anchor, so a radius tighter than the wander area reads as broken while the enemy drifts.
+- **Only Fight Inside Leash** is on by default, so a target beyond the ring is ignored outright. Untick it for an enemy that charges anything it notices and gets dragged home instead.
+- **Leash Break Grace Time** (2 s) is how long it may stay out before it gives up. 0 turns for home the moment the line is crossed.
+
+`SEC.Debug.Territory 1` draws the boundary and prints how far the leash is from breaking. See [Territory](/docs/soulslike-combat/territory).
+
+---
+
+## Reactions and animation
+
+### It never parries or dodges
+
+Nothing announced the attack, so no trigger rule ever ran.
+
+1. Put a **SEC Attack Telegraph** notify over the windup in the attacker's montage. Without it no stimulus goes out and the enemy stands there taking hits.
+2. Give the Reaction Set a **Trigger Rule** whose **On Stimulus** matches the event, wired to at least one reaction.
+3. Check the enemy has a Reaction Set at all, through **Default Reaction Set** on the AI Config.
+
+`SEC.Debug.Stimulus.Draw 1` shows whether anything is going out. `SEC.Debug.LogReactions 1` names the rule that answered, or prints `answered by nothing` with the rule count it walked. See [Reaction System](/docs/soulslike-combat/reaction-system).
+
+### A behavior tree action starts nothing
+
+The blackboard has no key for the action's payload, so the tree receives nothing to act on. A write to a missing key is dropped by the engine, and the log names the key once per blackboard.
+
+Add these keys to the blackboard asset:
+
+| Key | Type | Base Class |
+|-----|------|-----------|
+| `SEC_Payload` | Object | **Execution Payload** |
+| `SEC_ActionId` | Name | |
+| `SEC_TargetActor` | Object | |
+| `SEC_SelfActor` | Object | |
+| `SEC_Distance` | Float | |
+
+Then point **Payload Key Name** on the action's execution method at `SEC_Payload`. `BB_SEC_Basic` in the showcase content declares `SEC_Payload`, `SEC_ActionId`, `SEC_TargetActor` and `SEC_Distance` already, so build on it or copy it.
+
+### Hits pass through on a dedicated server
+
+The character's mesh is not refreshing its bones on that machine, so the sweep reads a stale pose.
+
+Set the mesh's **Visibility Based Anim Tick Option** to **Always Tick Pose And Refresh Bones**. The trace component reports this once per character in the Output Log. **Enemy Character Base** handles it for you.
+
+---
+
+## Packaging
+
+### A packaged build fails with "Missing Dependency GameplayAbilities"
+
+Unreal does not stage an engine plugin your project depends on only through another plugin.
+
+Open your `.uproject` and add `"SupportedTargetPlatforms": ["Win64"]` to each engine plugin entry it lists, matching the platforms you ship. The alternative is a `DirectoriesToAlwaysStageAsNonUFS` entry per plugin in `DefaultGame.ini`.
 
 ---
 
 ## FAQ
 
-<Collapsible badge="" title="Can I use this with my existing character?">
+<Collapsible badge="" title="Can I use this with a character I already have?">
 
-Add **`SECCombatControllerComponent`** to your AI controller and the pawn components from [Getting Started](/docs/soulslike-combat/getting-started). Assign an **`EnemyAIConfig`** and **`ActionSet`**. Leave **`Default State Tree`** empty for the native combat loop, or assign a StateTree asset. You do not need to inherit **`EnemyControllerBase`** or **`EnemyCharacterBase`**.
+Reparent it rather than rebuilding it. **File > Reparent Blueprint**, then pick **Enemy Character Base** for the pawn and **Enemy Controller Base** for the controller. Your existing components, variables and graphs stay, and you inherit the ability system, the combat components and the damage interfaces. Delete any duplicate the Blueprint added itself, such as its own ability system component.
 
-</Collapsible>
-
-<Collapsible badge="" title="Does this work with multiplayer?">
-
-Yes. AI logic runs on the server. Health, action execution, combat roles, and the active **`ActionSet`** replicate to clients. See [Multiplayer](/docs/soulslike-combat/multiplayer).
+Adding the components to a bare AI controller is not equivalent. The base controller holds the AI's facing during an attack and turns it toward a target's last-known location, and attack abilities rely on that.
 
 </Collapsible>
 
-<Collapsible badge="" title="Can I use this without GAS?">
+<Collapsible badge="" title="Does this work in multiplayer?">
 
-Melee trace works without GAS. Action execution through abilities needs GAS for blocking tags, cooldown integration, and **`GameplayAbilityBase`** end-tag wiring. Behavior Tree-only execution methods skip ability activation when you wire them that way.
-
-</Collapsible>
-
-<Collapsible badge="" title="What engine versions are supported?">
-
-UE **5.6**, **5.7**, and **5.8**. Plugin version **3.0.0**.
+Yes, on a listen server and on a dedicated server. AI decisions run on the server. Vitals, action and reaction execution state, combat roles and the active sets replicate to clients. See [Multiplayer](/docs/soulslike-combat/multiplayer).
 
 </Collapsible>
 
-<Collapsible badge="" title="How do I handle death (ragdoll, weapon drop, dissolve)?">
+<Collapsible badge="" title="How much of this needs GAS?">
 
-Call **`HandleDeath()`** on **`SECCombatControllerComponent`**. It shuts down SEC systems in order and fires **`OnDeath`**.
-
-**Weapon drop:** **`HandleDeath`** unequips with **`bSimulatePhysics = true`**. Override **`K2_OnUnequipped`** on the weapon Blueprint for mesh physics and impulse. Set **`bDropWeaponOnDeath`** to **`false`** on the combat controller to handle the drop yourself (for example from a death montage notify).
-
-**Ragdoll:** Enable it from **`OnDeath`** or **`K2_OnDeath`**. Combat systems are already off.
-
-**Dissolve / destroy:** Use **`SetLifeSpan`** or a timer in **`K2_OnDeath`** before destroying the actor.
+Melee traces and the damage path resolve without an ability system on either actor: a target that implements the damage interface answers directly, and anything else falls back to engine point damage. Running actions and reactions through the Gameplay Ability execution methods needs one, since that is where blocking tags, cooldowns and the end-of-ability signal come from. The plugin lists **GameplayAbilities** as a dependency either way.
 
 </Collapsible>
 
-<Collapsible badge="" title="Is source code included?">
+<Collapsible badge="" title="How do I handle death: ragdoll, weapon drop, dissolve?">
 
-Yes. Full C++ source ships with the plugin.
+Call **Handle Death** on the **SEC Combat Controller** component. It stops the brain, cancels the running action and reaction, stops melee tracing, disables threat detection, unregisters the enemy from the role system, clears focus, and fires **On Death**. The pawn is then safe for ragdoll, dissolve or destroy; none of that happens on its own.
+
+**Drop Weapon On Death** is on by default and releases everything the pawn holds with **Drop**, which asks each item to drop itself. Untick it to release with **Leave In World** instead, which detaches each item and leaves it standing where it was.
+
+**Auto Handle Death On Health Depleted** is on by default, so an emptied health vital runs the shutdown without a call from you.
+
+</Collapsible>
+
+<Collapsible badge="" title="Which engine versions, and does source ship?">
+
+Version 3.0.0 runs on Unreal Engine 5.6, 5.7 and 5.8. Full C++ source ships with the plugin.
 
 </Collapsible>
 
@@ -274,10 +358,13 @@ Yes. Full C++ source ships with the plugin.
 
 ## Support
 
-**Purchase and updates:** [Fab Marketplace](https://www.fab.com/)
+**Purchase and updates:** [Fab](https://www.fab.com/listings/7087cec0-6975-4de5-82e0-0de0b9b3e9a7)
 
-**Support and feature requests:** Discord, Fab Marketplace, or email (contact details on the product page).
+**Questions, bugs and feature requests:** [Discord](https://discord.com/invite/CbRcTsYQcz), or the Fab product page.
 
 ---
 
-<DocNav prev={{ title: "Patterns & Examples", href: "/docs/soulslike-combat/patterns" }} next={{ title: "Performance", href: "/docs/soulslike-combat/performance" }} />
+<DocNav
+  prev={{ title: "Patterns & Examples", href: "/docs/soulslike-combat/patterns" }}
+  next={{ title: "Performance", href: "/docs/soulslike-combat/performance" }}
+/>

@@ -1,23 +1,49 @@
 "use client"
 
 import { useEffect, useState } from 'react';
-import { Check, Layers } from 'lucide-react';
+import { Check } from 'lucide-react';
 import {
-  UePanel,
-  UeContentBrowserTile,
-  UeDetailsSection,
-  UePropertyRow,
-  UeAssetPicker,
-  UeAssetThumbnail,
-  getAssetAccent,
+    UE,
+    UePanel,
+    UeDetailsSection,
+    UePropertyRow,
 } from '@/components/ue-editor';
 import { cn } from '@/lib/utils';
 
+/**
+ * An action's Scoring group filling up, live.
+ *
+ * Scorers and Gates are Instanced object arrays on FSECCustomScoring, so an entry
+ * arrives by adding an array element and picking a class in that element's combo.
+ * The list on the right is that class picker: the built-in classes, plus a
+ * Blueprint subclass of SEC Scorer once one exists in the project.
+ */
+
 type Stage = 0 | 1 | 2 | 3 | 4 | 5;
+
+const SCORER_CLASSES = ["Angle Scorer", "Attribute Scorer", "Distance Scorer", "Health Scorer", "Speed Scorer", "Vital Scorer"];
+const GATE_CLASSES = ["Attribute Gate", "Combat Token Gate", "Stamina Gate", "Vital Gate"];
+const CUSTOM_CLASS = "BP_AllyCountScorer";
+
+/** Details panel value cell for an array element's class combo. */
+function ClassCombo({ value }: { value: string }) {
+    return (
+        <div className="ue-dp-combo flex items-center justify-between gap-1 pl-1.5 pr-1">
+            <span className="truncate text-[13px] leading-[21px]" style={{ color: UE.foregroundHeader }}>{value}</span>
+            <svg className="h-2.5 w-2.5 shrink-0" style={{ color: UE.hover2 }} viewBox="0 0 10 10" fill="currentColor" aria-hidden>
+                <path d="M1 3 L9 3 L5 8 Z" />
+            </svg>
+        </div>
+    );
+}
+
+/** Details panel value cell for a plain number or count. */
+function TextValue({ children }: { children: React.ReactNode }) {
+    return <span className="text-[13px]" style={{ color: UE.foregroundHeader }}>{children}</span>;
+}
 
 export default function ScorerStackVisualizer() {
     const [stage, setStage] = useState<Stage>(0);
-    const [customNamed, setCustomNamed] = useState(false);
 
     useEffect(() => {
         let mounted = true;
@@ -25,13 +51,10 @@ export default function ScorerStackVisualizer() {
 
         const run = async () => {
             while (mounted) {
-                setCustomNamed(false);
                 setStage(0); await wait(1700);
-                setStage(1); await wait(1500);
-                setStage(2); await wait(1500);
-                setStage(3); await wait(700);
-                if (!mounted) break;
-                setCustomNamed(true); await wait(1300);
+                setStage(1); await wait(1700);
+                setStage(2); await wait(1700);
+                setStage(3); await wait(1500);
                 setStage(4); await wait(1800);
                 setStage(5); await wait(1700);
             }
@@ -43,123 +66,112 @@ export default function ScorerStackVisualizer() {
 
     const distanceShown = stage >= 1;
     const gateShown = stage >= 2;
-    const customInList = stage >= 4;
-    const customOnRight = stage === 3 || stage === 4;
+    const customShown = stage >= 4;
+
+    const pickingGate = stage === 2;
+    const pickerOptions = pickingGate
+        ? GATE_CLASSES
+        : stage >= 3
+            ? [...SCORER_CLASSES, CUSTOM_CLASS]
+            : SCORER_CLASSES;
+    const picked = pickingGate ? "Stamina Gate" : stage === 1 ? "Distance Scorer" : stage >= 3 ? CUSTOM_CLASS : null;
 
     return (
         <UePanel
-            title="Content Browser"
-            breadcrumb={["Content", "Plugins", "SoulslikeEnemyCombat", "ActionSets"]}
-            assetType="dataAsset"
-            caption={<>Each scorer multiplies in; each gate can veto. Mix built-ins with custom subclasses.</>}
+            title="Details"
+            showTitleIcon={false}
+            caption={<>Each scorer multiplies in; each gate can veto. Mix built-ins with Blueprint subclasses of your own.</>}
         >
             <div className="flex flex-col gap-3 lg:flex-row lg:gap-4">
-                {/* Details panel — scoring list as property rows */}
-                <div className="min-w-0 flex-1 overflow-hidden rounded-[2px] border border-[#111111]">
-                    <div className="flex items-center gap-1.5 border-b border-[#111111] bg-[#1a1a1a] px-2 py-1 text-[11px] text-[#cccccc]">
-                        <Layers className="h-3 w-3 text-[#888888]" />
-                        Scoring list
-                    </div>
-
-                    <UeDetailsSection className="relative" title="Action Scorers">
-                        <UePropertyRow label="SelectionWeight">
-                            <UeAssetPicker value="Always present · × base" />
+                <div
+                    className="min-w-0 flex-1 overflow-hidden rounded-[2px] border"
+                    style={{ borderColor: UE.windowBorder, background: UE.background }}
+                >
+                    <UeDetailsSection className="relative" title="Scoring">
+                        <UePropertyRow label="Selection Weight">
+                            <TextValue>1.0</TextValue>
                         </UePropertyRow>
 
-                        <div className={cn(
-                            "transition-all duration-700",
-                            distanceShown ? "opacity-100" : "invisible opacity-0",
-                        )}>
-                            <UePropertyRow label="Distance Scorer">
-                                <div className="flex min-w-0 flex-1 items-center gap-1.5">
-                                    <UeAssetThumbnail accent={getAssetAccent("dataAsset")} />
-                                    <UeAssetPicker value="Distance Scorer · × range" />
-                                </div>
+                        <UePropertyRow label="Scorers">
+                            <TextValue>{(distanceShown ? 1 : 0) + (customShown ? 1 : 0)} Array elements</TextValue>
+                        </UePropertyRow>
+
+                        <div className={cn("transition-all duration-700", distanceShown ? "opacity-100" : "invisible opacity-0")}>
+                            <UePropertyRow label="Index [ 0 ]">
+                                <ClassCombo value="Distance Scorer" />
                             </UePropertyRow>
                         </div>
 
-                        <div className={cn(
-                            "transition-all duration-700",
-                            gateShown ? "opacity-100" : "invisible opacity-0",
-                        )}>
-                            <UePropertyRow label="Stamina Gate">
-                                <div className="flex min-w-0 flex-1 items-center gap-1.5">
-                                    <UeAssetThumbnail accent="#FFB800" />
-                                    <UeAssetPicker value="Stamina Gate · pass / fail" />
-                                </div>
+                        <div className={cn("transition-all duration-700", customShown ? "opacity-100" : "invisible opacity-0")}>
+                            <UePropertyRow label="Index [ 1 ]">
+                                <ClassCombo value={CUSTOM_CLASS} />
                             </UePropertyRow>
                         </div>
 
-                        <div className={cn(
-                            "transition-all duration-700",
-                            customInList ? "opacity-100" : "invisible opacity-0",
-                        )}>
-                            <UePropertyRow label="Ally-Count Scorer">
-                                <div className="flex min-w-0 flex-1 items-center gap-1.5">
-                                    <UeAssetThumbnail accent="#A070FF" />
-                                    <UeAssetPicker value="Ally-Count Scorer · × your rule" />
-                                </div>
+                        <UePropertyRow label="Gates">
+                            <TextValue>{gateShown ? 1 : 0} Array elements</TextValue>
+                        </UePropertyRow>
+
+                        <div className={cn("transition-all duration-700", gateShown ? "opacity-100" : "invisible opacity-0")}>
+                            <UePropertyRow label="Index [ 0 ]">
+                                <ClassCombo value="Stamina Gate" />
                             </UePropertyRow>
                         </div>
 
-                        <div className={cn(
-                            "pointer-events-none absolute inset-x-0 bottom-0 top-8 flex items-center justify-center px-2 text-center text-[10px] italic text-[#666666] transition-opacity duration-700",
-                            stage === 0 ? "opacity-100" : "opacity-0",
-                        )}>
-                            No scorers or gates, so the action scores on weight alone.
+                        <div
+                            className={cn(
+                                "pointer-events-none absolute inset-x-0 bottom-0 top-8 flex items-center justify-center px-2 text-center text-[10px] italic transition-opacity duration-700",
+                                stage === 0 ? "opacity-100" : "opacity-0",
+                            )}
+                            style={{ color: UE.hover }}
+                        >
+                            Both lists empty, so the action scores on weight alone.
                         </div>
                     </UeDetailsSection>
 
-                    {/* Live formula bar */}
-                    <div className="border-t border-[#111111] bg-[#151515] px-2 py-2 font-mono text-[10px] text-[#888888]">
-                        score = <span className="text-[#cccccc]">Weight</span>
-                        <span className={cn("transition-opacity", distanceShown ? "text-[#34a8ff] opacity-100" : "opacity-25")}> × Distance</span>
-                        <span className={cn("transition-opacity", gateShown ? "text-[#FFB800] opacity-100" : "opacity-25")}> · (Stamina pass)</span>
-                        <span className={cn("transition-opacity", customInList ? "text-[#C71585] opacity-100" : "opacity-25")}> × Yours</span>
+                    <div
+                        className="border-t px-2 py-2 font-mono text-[10px]"
+                        style={{ borderColor: UE.windowBorder, background: UE.background, color: UE.hover2 }}
+                    >
+                        score = <span style={{ color: UE.foregroundHeader }}>Weight</span>
+                        <span className={cn("transition-opacity", distanceShown ? "opacity-100" : "opacity-25")} style={{ color: distanceShown ? UE.accentBlue : undefined }}> × Distance</span>
+                        <span className={cn("transition-opacity", gateShown ? "opacity-100" : "opacity-25")} style={{ color: gateShown ? UE.warning : undefined }}> · (Stamina pass)</span>
+                        <span className={cn("transition-opacity", customShown ? "opacity-100" : "opacity-25")} style={{ color: customShown ? UE.dataAsset : undefined }}> × Yours</span>
                     </div>
                 </div>
 
-                {/* Content Browser grid — library tiles */}
-                <div className="shrink-0 lg:w-[240px]">
-                    <div className="mb-2 text-[10px] text-[#666666]">Add from library</div>
-                    <div className="flex flex-wrap gap-2">
-                        <UeContentBrowserTile
-                            name="Distance Scorer"
-                            assetType="dataAsset"
-                            typeLabel="Data Asset (Scorer)"
-                            active={stage === 1}
-                            faded={stage > 1}
-                        />
-                        <UeContentBrowserTile
-                            name="Stamina Gate"
-                            assetType="dataAsset"
-                            typeLabel="Data Asset (Gate)"
-                            active={stage === 2}
-                            faded={stage > 2}
-                        />
-                        <UeContentBrowserTile
-                            name={customOnRight ? (customNamed ? "Ally-Count Scorer" : "New Scorer") : "Create custom"}
-                            assetType="blueprint"
-                            typeLabel="Blueprint (USECScorer)"
-                            active={customOnRight}
-                            faded={stage === 4}
-                        />
+                <div className="shrink-0 lg:w-[220px]">
+                    <div className="mb-1.5 text-[10px]" style={{ color: UE.hover2 }}>
+                        {pickingGate ? "Gates, class picker" : "Scorers, class picker"}
+                    </div>
+
+                    <div className="ue-dp-picker overflow-hidden py-1">
+                        {pickerOptions.map((option) => (
+                            <div
+                                key={option}
+                                data-selected={option === picked}
+                                className="ue-dp-picker-item flex w-full items-center px-2 py-[3px] text-left text-[13px] leading-[18px]"
+                                style={{ color: option === picked ? UE.foregroundHover : UE.foregroundHeader }}
+                            >
+                                <span className="truncate">{option}</span>
+                            </div>
+                        ))}
                     </div>
 
                     <div className="mt-3 flex min-h-[54px] flex-col gap-1">
-                        {stage > 1 && (
-                            <div className="flex items-center gap-1 text-[10px] text-[#666666]">
-                                <Check className="h-3 w-3 text-[#6CC644]" /> Distance Scorer added
+                        {distanceShown && (
+                            <div className="flex items-center gap-1 text-[10px]" style={{ color: UE.hover2 }}>
+                                <Check className="h-3 w-3" style={{ color: UE.success }} /> Distance Scorer added
                             </div>
                         )}
-                        {stage > 2 && (
-                            <div className="flex items-center gap-1 text-[10px] text-[#666666]">
-                                <Check className="h-3 w-3 text-[#6CC644]" /> Stamina Gate added
+                        {gateShown && (
+                            <div className="flex items-center gap-1 text-[10px]" style={{ color: UE.hover2 }}>
+                                <Check className="h-3 w-3" style={{ color: UE.success }} /> Stamina Gate added
                             </div>
                         )}
-                        {customInList && (
-                            <div className="flex items-center gap-1 text-[10px] text-[#666666]">
-                                <Check className="h-3 w-3 text-[#6CC644]" /> Custom scorer added
+                        {customShown && (
+                            <div className="flex items-center gap-1 text-[10px]" style={{ color: UE.hover2 }}>
+                                <Check className="h-3 w-3" style={{ color: UE.success }} /> Blueprint scorer added
                             </div>
                         )}
                     </div>

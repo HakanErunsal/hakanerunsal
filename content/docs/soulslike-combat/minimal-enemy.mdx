@@ -1,0 +1,201 @@
+---
+title: "Minimal Enemy"
+description: "The smallest enemy the plugin can drive: a plain Character, a plain AI Controller, six components, one action, no StateTree."
+date: 2026-08-19
+published: true
+tags: ["Documentation", "Unreal Engine", "AI", "Tutorial"]
+parent: "SoulslikeCombatDocs"
+order: 3
+---
+
+
+<Breadcrumb items={[
+    { label: "Docs", href: "/docs" },
+    { label: "SoulslikeCombat", href: "/docs/SoulslikeCombatDocs" },
+    { label: "Minimal Enemy" }
+]} />
+
+> Six components on two actors you already own. It walks toward its target and swings. No base class to inherit from, no StateTree to author, no perception to configure.
+
+<QuickStart time="3 minutes">
+
+<QuickStep title="Add four components to your AI Controller">
+
+Open your existing AI Controller Blueprint and add these four. Nothing here is replicated; they run on the server and decide.
+
+<UeComponentsPanel
+  actor="BP_MyEnemyController"
+  components={[
+    { displayName: "SEC Combat Controller", componentClass: "SECCombatControllerComponent" },
+    { displayName: "Action Evaluation", componentClass: "ActionEvaluationComponent" },
+    { displayName: "Movement Evaluator", componentClass: "MovementEvaluatorComponent" },
+    { displayName: "SEC Brain", componentClass: "SECBrainComponent" },
+  ]}
+/>
+
+</QuickStep>
+
+<QuickStep title="Add two components to your pawn">
+
+Open your Character Blueprint and add these two. The Capsule and Mesh are already there.
+
+<UeComponentsPanel
+  actor="BP_MyEnemy"
+  components={[
+    { displayName: "Capsule Component", componentClass: "CollisionCylinder", inherited: true },
+    { displayName: "Mesh", componentClass: "CharacterMesh0", inherited: true, depth: 1 },
+    { displayName: "SEC Action Set Component", componentClass: "SECActionSetComponent" },
+    { displayName: "Ability System Component", componentClass: "AbilitySystemComponent" },
+  ]}
+/>
+
+</QuickStep>
+
+<QuickStep title="Make an Enemy AI Config">
+
+Right-click in the Content Browser, **SEC**, **Enemy AI Config**.
+
+<UeCreateAssetScene
+  create="Enemy AI Config"
+  assetName="DA_AIConfig_Grunt"
+  caption="Right-click in the Content Browser, SEC, Enemy AI Config."
+/>
+
+Give it an Action Set holding one action and a Movement Behavior Profile. Leave **Default State Tree** empty: that empty field is what runs the native brain instead.
+
+<UeSetPropertiesScene
+  title="DA_AIConfig_Grunt"
+  section="Behavior"
+  rows={[
+    { name: "Default Action Set", value: "DA_ActionSet_Grunt", kind: "asset" },
+    { name: "Default Movement Profile", value: "DA_Movement_Grunt", kind: "asset" }
+  ]}
+  caption="Two assets in. Default State Tree stays empty."
+/>
+
+</QuickStep>
+
+<QuickStep title="Have the pawn use that controller">
+
+On the Character's Class Defaults, point it at your controller and let it possess itself. Without both, nothing possesses the pawn and none of the components above ever run.
+
+<UeSetPropertiesScene
+  title="BP_MyEnemy"
+  section="Pawn"
+  rows={[
+    { name: "AI Controller Class", value: "BP_MyEnemyController", kind: "class" },
+    { name: "Auto Possess AI", value: "Placed in World or Spawned" }
+  ]}
+  caption="The pawn names its controller and asks to be possessed."
+/>
+
+</QuickStep>
+
+<QuickStep title="Point the controller at the config">
+
+Select the **SEC Combat Controller** component on the controller and hand it the asset you made.
+
+<UeSetPropertiesScene
+  title="SEC Combat Controller"
+  section="AI"
+  rows={[
+    { name: "Default AI Config", value: "DA_AIConfig_Grunt", kind: "asset" }
+  ]}
+  caption="A plain Character provides no config of its own, so this field is the one that answers."
+/>
+
+</QuickStep>
+
+<QuickStep title="Give it something to fight">
+
+From your player Blueprint on Begin Play, get the **AI Combat Role Subsystem** and call **Register Combat Target** with the player pawn, **Auto Assign Unassigned** ticked.
+
+</QuickStep>
+
+</QuickStart>
+
+## When to Use This
+
+You have a Character and an AI Controller of your own that you cannot reparent, because they already inherit from something in your project. Nothing here asks you to.
+
+You want to know what the plugin requires, separated from what the demo content happens to ship with.
+
+Something stopped working and you want to find out what. Strip an enemy to this list, confirm it fights, then add your pieces back one at a time until it stops.
+
+## The components
+
+Four on the controller, two on the pawn. Everything else in the plugin is an addition to this.
+
+- **SEC Combat Controller** resolves the config and hands the settings out.
+- **SEC Brain** decides what the enemy is doing at any moment.
+- **Movement Evaluator** works out which way to walk and walks it.
+- **Action Evaluation** scores the actions and runs the winner.
+- **SEC Action Set Component** holds which Action Set is live, so clients can read it.
+- **Ability System Component** runs the ability the winning action names. Adding it is the whole step; no initialization call, no C++.
+
+<Collapsible title="What each component would do without the others" badge="Advanced">
+
+The components are tools, so each one answers on its own and none of them drives another.
+
+Drop **SEC Brain** and nothing calls the other two. The enemy sits still with a perfectly good Action Set and a perfectly good Movement Evaluator, because neither acts unless something asks it to. That is the shape of the whole plugin: a decider calls, components answer.
+
+Drop **Movement Evaluator** and the enemy attacks whatever wanders into range without ever closing distance. Drop **Action Evaluation** and it walks to its preferred range and stands there.
+
+Drop **SEC Combat Controller** and the config never resolves, so the other three run on their own defaults and the Action Set stays empty.
+
+</Collapsible>
+
+## The config
+
+One Data Asset carries the enemy's whole setup, and three of its fields matter here by staying empty.
+
+**Default State Tree** empty is what selects the native brain, and the native brain is what makes this list short.
+
+**Target Selector** empty falls back to a built-in one that takes the first target the enemy may fight, even for a target registered long after the enemy started running. Name a real selector once several enemies share a fight or several players are registered. See [Targeting](/docs/soulslike-combat/targeting-system).
+
+Leave **Awareness Config** empty. Without perception settings the brain reads the controller's focus actor, and a focus actor is enough to fight.
+
+<Callout type="info">
+Setting **Default AI Config** on the controller works here because a plain Character does not provide a config of its own. A pawn that provides one wins, and the controller's field is then unreachable.
+</Callout>
+
+## Give it a target
+
+**Register Combat Target**, from the last QuickStart step, sets the focus actor the brain reads. Until it happens the enemy stands still, which is correct rather than broken. **Auto Assign Unassigned** ticked makes an idle enemy pick from the pool on the spot instead of waiting for the reassignment timer.
+
+For the call to reach the enemy it has to be registered with the subsystem, which **Auto Register For Combat Roles** on the config does by default. Leave it on.
+
+## What this enemy does not do
+
+It lands no damage, because it has no melee trace. It answers no hits, because it has no Reaction Set. It knows nothing it cannot see through its focus actor, because it has no perception. It fights anything registered, including other enemies, because nothing has told it who its friends are.
+
+The next four things to add:
+
+- **SEC Melee Trace Component** on the pawn, to land hits. See [Melee Trace](/docs/soulslike-combat/melee-trace).
+- **SEC Reaction Set Component** on the pawn, to answer them. See [Reaction System](/docs/soulslike-combat/reaction-system).
+- **SEC Team Component** on both, so enemies leave each other alone. See [Targeting](/docs/soulslike-combat/targeting-system).
+- **SEC Awareness Component** on the controller, for sight, hearing and memory. See [Awareness](/docs/soulslike-combat/awareness-system).
+
+<Collapsible title="Combat roles, and why they are absent here" badge="Advanced">
+
+Roles let several enemies share a fight: one presses while others circle and wait. They are worth adding the moment you have a second enemy.
+
+A single enemy does not need them. Without **SEC Combat Role Component** the pawn's role reads as none, the config's **Default Action Set** and **Default Movement Profile** apply for every role, and both the Action Set resolution and the action scoring run as normal.
+
+Add the component and per-role overrides on the config start working. See [Combat Roles](/docs/soulslike-combat/combat-roles).
+
+</Collapsible>
+
+<Collapsible title="Class names and the test that pins this list" badge="C++">
+
+The six are `USECCombatControllerComponent`, `UActionEvaluationComponent`, `UMovementEvaluatorComponent` and `USECBrainComponent` on the controller, plus `USECActionSetComponent` and `UAbilitySystemComponent` on the pawn. The pawn is a plain `ACharacter` and the controller a plain `AAIController`; neither inherits from `AEnemyCharacterBase` or `AEnemyControllerBase`.
+
+`USECCombatControllerComponent::ResolveAIConfig` branches on whether the pawn implements `IEnemyAIConfigProvider`. A plain `ACharacter` does not, which is what leaves the controller's `DefaultAIConfig` live.
+
+`USECBrainComponent::ReconcileBrain` selects a StateTree when the config names one and the native loop when it does not. `ResolveDesiredPhase` falls back to the focus actor when there is no awareness component, or when the one present has neither settings nor recorded data.
+
+`UAbilitySystemComponent::InitAbilityActorInfo` carries no `UFUNCTION`, so the handover reaches Blueprint through no node. `AEnemyCharacterBase` makes the call at `EnemyCharacterBase.cpp:142`, and every ability lookup in the plugin runs through `UAbilitySystemGlobals::GetAbilitySystemComponentFromActor`, which finds a plain component without an interface.
+
+`SoulslikeEnemyCombat.Recipes.MinimalEnemy` builds this exact setup and asserts it fights, so an added requirement fails the test suite rather than a project. It also pins the boundary cases: no ability system means no action starts, and an ability system that never received its actor info still starts one. It possesses the pawn directly rather than through **Auto Possess AI**, so the possession wiring above is a prerequisite it does not cover.
+
+</Collapsible>

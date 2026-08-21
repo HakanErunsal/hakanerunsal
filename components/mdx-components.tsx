@@ -30,6 +30,7 @@ import DistanceBandVisualizer from '@/components/DistanceBandVisualizer';
 import ActionCooldownDetails from '@/components/ActionCooldownDetails';
 import ActionChainLinkDetails from '@/components/ActionChainLinkDetails';
 import ActionCardStateLegend from '@/components/ActionCardStateLegend';
+import ChainLinkDotLegend from '@/components/ChainLinkDotLegend';
 import ExecutionMethodExplorer from '@/components/ExecutionMethodExplorer';
 import RangeEvalDetails from '@/components/RangeEvalDetails';
 import CombatControllerDetails from '@/components/CombatControllerDetails';
@@ -97,6 +98,15 @@ import StimulusFilterDetails from '@/components/StimulusFilterDetails';
 import ReportAreaStimulusGraph from '@/components/ReportAreaStimulusGraph';
 import StimulusDebugLegend from '@/components/StimulusDebugLegend';
 import Reviews from '@/components/Reviews';
+import UeClip from '@/components/UeClip';
+import { QuickStart, QuickStep } from '@/components/QuickStart';
+import UeCreateAssetScene from '@/components/ue-editor/UeCreateAssetScene';
+import UeSetPropertiesScene from '@/components/ue-editor/UeSetPropertiesScene';
+import UeDoubleClickHint from '@/components/ue-editor/UeDoubleClickHint';
+import { UeComponentsPanel } from '@/components/ue-editor/UeComponentsPanel';
+import ReactionSetGraphScene from '@/components/ReactionSetGraphScene';
+import ActionSetGraphScene from '@/components/ActionSetGraphScene';
+import ComboWireScene from '@/components/ComboWireScene';
 
 const useMDXComponent = (code: string) => {
   const fn = new Function(code);
@@ -110,6 +120,16 @@ const components = {
   Protip,
   ZoomableImage,
   VideoLoop,
+  UeClip,
+  QuickStart,
+  QuickStep,
+  UeCreateAssetScene,
+  UeSetPropertiesScene,
+  UeDoubleClickHint,
+  UeComponentsPanel,
+  ReactionSetGraphScene,
+  ActionSetGraphScene,
+  ComboWireScene,
   GameStatusBadge,
   Breadcrumb,
   DocNav,
@@ -135,6 +155,7 @@ const components = {
   ActionCooldownDetails,
   ActionChainLinkDetails,
   ActionCardStateLegend,
+  ChainLinkDotLegend,
   ExecutionMethodExplorer,
   RangeEvalDetails,
   CombatControllerDetails,

@@ -7,6 +7,10 @@ interface MediaCardProps {
   slug: string;
   image: string;
   title: string;
+  /** Overrides the path built from slug. Takes an absolute URL when the page lives on another host. */
+  href?: string;
+  /** Host name shown beside the title, for a card that leaves this site. */
+  offsiteLabel?: string;
   onClick?: () => void;
   className?: string;
   style?: React.CSSProperties;
@@ -14,14 +18,14 @@ interface MediaCardProps {
 }
 
 // MediaCard functional component
-function MediaCard({ slug, image, title, onClick, className, style, imagePosition }: MediaCardProps) {
+function MediaCard({ slug, image, title, href, offsiteLabel, onClick, className, style, imagePosition }: MediaCardProps) {
   return (
     <div
       className={`group relative mt-2 w-full cursor-pointer overflow-hidden border border-border/50 rounded-sm hover:border-primary/30 transition-all duration-200 ${className}`}
       onClick={onClick}
       style={{ maxWidth: "1024px", minWidth: "256px", ...style }}
     >
-      <Link href={"/" + slug}>
+      <Link href={href ?? "/" + slug}>
         {/* Fixed aspect ratio wrapper */}
         <div className="w-full aspect-[16/9] relative">
           <Image
@@ -36,7 +40,14 @@ function MediaCard({ slug, image, title, onClick, className, style, imagePositio
       </Link>
 
       <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent text-white px-4 py-3 pt-8">
-        <div className="text-sm font-heading font-medium truncate">{title}</div>
+        <div className="flex items-center gap-2">
+          <div className="text-sm font-heading font-medium truncate">{title}</div>
+          {offsiteLabel && (
+            <span className="flex-shrink-0 rounded-sm border border-white/25 px-1.5 py-0.5 text-[10px] font-normal text-white/80">
+              {offsiteLabel}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );
