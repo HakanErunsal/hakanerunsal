@@ -1,10 +1,8 @@
 import { UE, SEC_LINK_DOT } from "@/components/ue-editor/ue-theme";
 
 /**
- * The two labels a chain wire's dot takes, drawn with the colors
- * SEdNode_SECGraphLinkDot.cpp paints it. Which label appears follows
- * GetLinkGlyphText() in SECActionSetBinding.cpp: a double arrow for an
- * Immediate link, the bonus multiplier for anything else.
+ * The two labels a chain wire's dot takes. Labels follow GetLinkGlyphText()
+ * in SECActionSetBinding.cpp, colors SEdNode_SECGraphLinkDot.cpp.
  */
 
 type DotForm = {
@@ -19,7 +17,7 @@ const FORMS: DotForm[] = [
     glyph: "x1.5",
     pacing: "Score Only",
     meaning: "Bonus only",
-    detail: "The follow-up's score is multiplied while the window is open, and it waits out the recovery breather like any other action.",
+    detail: "Bonus Multiplier raises the follow-up's score while the window is open. The follow-up still waits out the recovery breather like any other action.",
   },
   {
     glyph: "»",

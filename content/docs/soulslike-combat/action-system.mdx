@@ -252,7 +252,7 @@ An action's **Chain Links** name the follow-ups it prefers. After it completes, 
 |---------|----------|------|
 | **Bonus Multiplier** | the link | Multiplies the follow-up's score while the window is open. 1.5 by default. |
 | **Pacing** | the link | **Score Only** gives the bonus and nothing else, so the follow-up waits out the recovery breather. **Immediate** starts it as soon as the first action ends. |
-| **Chain Only** | the follow-up | Makes the link a requirement rather than a preference: automatic selection reaches that action only inside the window. Good for a finisher that should never open a fight. |
+| **Chain Only** | the follow-up | Makes the link a requirement rather than a preference: automatic selection reaches that action only inside the chain window. Good for a finisher that should never open a fight. |
 
 A follow-up answers to its cooldown, its **Max Consecutive Uses**, a cooldown its ability applies to itself, its gates and its scorers whichever Pacing carries it, and a direct **Execute Action** call reaches a Chain Only action at any time.
 
@@ -352,7 +352,7 @@ Saving the asset also runs validation, which reports into the **Asset Check** me
 |-------|----------------------|
 | **Enabled** | It is toggled off in the set. |
 | **Manual Only** | It is reserved for a direct Execute Action call. |
-| **Chain Only** | Nothing that chains into it has just finished, so the window is shut. |
+| **Chain Only** | The chain window is shut, so no link can reach it. |
 | **`SEC.Action.BlockActions`** | That tag sits on the enemy's ability system component. |
 | **No usable execution method** | The method is missing something it needs to run. |
 | **Cooldown or repeat limit** | It is still cooling down, or **Max Consecutive Uses** is spent. |

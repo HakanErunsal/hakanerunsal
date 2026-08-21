@@ -204,7 +204,7 @@ Subclasses must be stateless: one instance is shared across every AI using the a
 
 `FSECScoringContext` carries `Controller`, `Target`, `ASC`, `SpecId`, `EventTag`, `Surface`, `Seed`, `WindowId`, the snapshot fields `Distance`, `AngleDegAbs`, `Speed`, `HealthPercentage`, `Stamina`, the `Vitals` component, and the `Stimulus` that set a reaction off. It carries no threat figure, so a scorer wanting camera attention reads `UThreatDetectionComponent::GetCurrentThreatLevel()` off `Context.Controller`.
 
-`Surface` says which list is being scored (`Actions`, `Reactions`, `TriggerRules`). One class serves all three, and branches on this where the difference matters.
+`Surface` names the list the scorer is running in (`Actions`, `Reactions`, `TriggerRules`). One class serves all three, and branches on this where the difference matters.
 
 ---
 
