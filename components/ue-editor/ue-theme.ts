@@ -20,7 +20,7 @@ export const SEC_CARD = {
 
 /**
  * The dot the Action Set canvas draws on a chain wire, from the FColor values in
- * SEdNode_SECGraphLinkDot.cpp. Its glyph is always white.
+ * SEdNode_SECGraphLinkDot.cpp.
  */
 export const SEC_LINK_DOT = {
   idle: "rgb(168, 124, 74)",
