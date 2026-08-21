@@ -1,7 +1,7 @@
 ---
 title: "Common Patterns & Examples"
 description: "Seven enemy archetypes as recipes: the numbers to type, and the field each one goes in."
-date: 2026-08-17
+date: 2026-08-21
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Patterns"]
 parent: "SoulslikeCombatDocs"
@@ -238,7 +238,7 @@ One enemy the rest of the pack works around, with a second moveset for the back 
 
 Elite slots are unlimited out of the box, so the boss keeps its role whatever else joins. **Priority** 200 gives it first pick, and **Ignore Target Redistribution** pins it to the player it started on while the adds shuffle around.
 
-**Phase one Action Set**: whatever the fight opens with, plus one action with **Manual Only** ticked, `PhaseSlam` for instance. A manual-only action never wins a poll and waits for a Blueprint to call **Execute Action** with its **Action ID**, so a scripted beat lands on your cue rather than the scorer's.
+**Phase one Action Set**: whatever the fight opens with, plus one action with **Selection** set to **Manual Only**, `PhaseSlam` for instance. A manual-only action never wins a poll and waits for a Blueprint to call **Execute Action** with its **Action ID**, so a scripted beat lands on your cue rather than the scorer's.
 
 **The phase swap**, in the boss Blueprint at the health threshold you pick:
 

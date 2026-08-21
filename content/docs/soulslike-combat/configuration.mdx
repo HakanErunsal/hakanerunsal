@@ -186,8 +186,7 @@ The asset holds an **Actions** array. Each action carries these numbers; see the
 | Field | Default | Sets |
 |-------|---------|------|
 | **Enabled** | on | Unticking also stops the action's ability being granted. |
-| **Manual Only** | off | Keep it out of automatic selection, so only a direct call by Action ID runs it. |
-| **Chain Only** | off | Let automatic selection reach it only as a combo follow-up, inside the chain window an action that names it opens. |
+| **Selection** | Scored | How automatic selection reaches it. **Scored** puts it in the normal poll, **Chain Only** limits it to an open chain window, **Manual Only** leaves a direct call by Action ID as the only route in. |
 | **Action ID** | empty | The name chain links and logs use. Required. |
 | **Execution Method** | Gameplay Ability | How the action runs. An action added on the canvas arrives with this one already on it. |
 | **Selection Weight** | 1.0 | Multiplies the score. 2.0 doubles this action against a weight 1 action. |
