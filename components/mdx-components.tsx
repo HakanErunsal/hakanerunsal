@@ -30,6 +30,7 @@ import DistanceBandVisualizer from '@/components/DistanceBandVisualizer';
 import ActionCooldownDetails from '@/components/ActionCooldownDetails';
 import ActionChainLinkDetails from '@/components/ActionChainLinkDetails';
 import ActionCardStateLegend from '@/components/ActionCardStateLegend';
+import ChainLinkDotLegend from '@/components/ChainLinkDotLegend';
 import ExecutionMethodExplorer from '@/components/ExecutionMethodExplorer';
 import RangeEvalDetails from '@/components/RangeEvalDetails';
 import CombatControllerDetails from '@/components/CombatControllerDetails';
@@ -154,6 +155,7 @@ const components = {
   ActionCooldownDetails,
   ActionChainLinkDetails,
   ActionCardStateLegend,
+  ChainLinkDotLegend,
   ExecutionMethodExplorer,
   RangeEvalDetails,
   CombatControllerDetails,

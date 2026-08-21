@@ -1,7 +1,7 @@
 ---
 title: "Action Set Editor"
 description: "Lay a moveset out as cards, wire the combos between them, and watch a live enemy score every card while the fight runs."
-date: 2026-08-17
+date: 2026-08-21
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Actions", "Debugging"]
 parent: "SoulslikeCombatDocs"
@@ -98,6 +98,10 @@ A card greys out when **Enabled** is unticked. A warning triangle appears when s
 - No execution method, or one missing a field it needs to run.
 - A chain link naming an action this set does not define.
 - **Manual Only** set on a card that something wires into, since a chain into it changes nothing.
+- **Chain Only** set on a card nothing wires into, which leaves automatic selection no way to reach it.
+- **Manual Only** and **Chain Only** both set, where Manual Only wins and Chain Only adds nothing.
+
+A card set to **Chain Only** says so on the wire that feeds it: select that link and the details panel adds a note naming the chain as the only route automatic selection has into that action.
 
 <Collapsible title="Zoom, layout, and where card positions live" badge="Advanced">
 The fine rows drop away as you zoom out, leaving the chip and the title, so a large moveset stays readable at a distance.
@@ -147,7 +151,11 @@ An action can prefer several follow-ups, each with its own bonus, and it can wir
 
 **Target Action ID** names the follow-up. **Bonus Multiplier** is what that follow-up's score is multiplied by while the window is open: 1.5 makes it half again as likely, 2.0 doubles it, 3.0 gives a strong pull, and 1.0 keeps the link without changing the score.
 
-Wiring a card writes the link with the default bonus. Change the number in the details panel and the wire redraws to match.
+Every wire carries a dot showing what that link does. Click it to edit that one link, and the wire redraws as you type.
+
+<ChainLinkDotLegend />
+
+Wiring a card writes the link with the default bonus and Score Only pacing. Deleting a card takes its dots with it.
 
 <Protip
   title="A combo the player can break"
@@ -157,7 +165,7 @@ Wiring a card writes the link with the default bonus. Change the number in the d
 <Collapsible title="Window length, and why a bonus is not a guarantee" badge="Advanced">
 The window comes from **Chain Followup Window Seconds** on the Action Evaluation component, measured from the moment the first action ends. Default is 0.6 seconds. Set it to 0 to switch chaining off for that AI.
 
-Inside the window, a chain target also bypasses the post-action recovery gate, which is how a combo continues while other offence stays held back. Everything else about the follow-up still applies: its cooldown, its gates, its own scorers. A bonus multiplies a score that has already survived all of them.
+Inside the window, a link set to **Immediate** bypasses the post-action recovery gate, which is how a combo continues while other offence stays held back. A **Score Only** link waits for recovery like anything else. Everything else about the follow-up applies either way: its cooldown, its **Max Consecutive Uses**, a cooldown its ability applies to itself, its gates, its own scorers. A bonus multiplies a score that has already survived all of them.
 
 The window arms on a clean completion. An interrupt or a cancel disarms it, so a parried enemy cannot combo through its own recovery.
 </Collapsible>

@@ -1,10 +1,14 @@
+import { SEC_LINK_DOT } from "@/components/ue-editor/ue-theme";
+
 /**
  * The Action Set editor's actual canvas, redrawn from SEdNode_SECActionNode.cpp
  * and SECActionNodeStyle.cpp (Source/SECEditor/Private/Ed). Same border and
  * body color for an authored card, same per-execution-method chip tint (Tree,
  * Ability), the same disabled-card graying when an action's Enabled box is
- * off, and the same labeled stat rows (Weight, Cooldown, Best range, Scorers,
- * Gates) MakeStatRows() builds. The System doc page explains what each field
+ * off, the same labeled stat rows (Weight, Cooldown, Best range, Scorers,
+ * Gates) MakeStatRows() builds, and the link dot each wire carries, whose
+ * label follows GetLinkGlyphText(): a double arrow for an Immediate link, the
+ * bonus multiplier otherwise. The System doc page explains what each field
  * does; this page shows the canvas they land on, chain link included.
  */
 const COLOR = {
@@ -81,7 +85,7 @@ const CARDS: CardSpec[] = [
       { label: "Scorers", value: "1" },
       { label: "Gates", value: "1" },
     ],
-    left: 20,
+    left: 320,
     top: 200,
   },
   {
@@ -95,7 +99,7 @@ const CARDS: CardSpec[] = [
       { label: "Best range", value: "250 to 500 cm" },
       { label: "Scorers", value: "2" },
     ],
-    left: 320,
+    left: 20,
     top: 200,
     disabled: true,
   },
@@ -129,12 +133,34 @@ function Card({ card }: { card: CardSpec }) {
   );
 }
 
+function wireEnds(from: CardSpec, to: CardSpec) {
+  return { x1: from.left + WIDTH, y1: from.top + HEIGHT / 2, x2: to.left, y2: to.top + HEIGHT / 2 };
+}
+
 function wirePath(from: CardSpec, to: CardSpec) {
-  const x1 = from.left + WIDTH;
-  const y1 = from.top + HEIGHT / 2;
-  const x2 = to.left;
-  const y2 = to.top + HEIGHT / 2;
+  const { x1, y1, x2, y2 } = wireEnds(from, to);
   return `M ${x1} ${y1} L ${x2} ${y2}`;
+}
+
+/** The dot sits a third of the way along, downstream of the split, so two wires out of one card stay apart. */
+function LinkDot({ from, to, label }: { from: CardSpec; to: CardSpec; label: string }) {
+  const { x1, y1, x2, y2 } = wireEnds(from, to);
+  return (
+    <span
+      className="absolute flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-[3px] px-1.5 font-bold leading-none"
+      style={{
+        left: x1 + (x2 - x1) / 3,
+        top: y1 + (y2 - y1) / 3,
+        minWidth: 37,
+        height: 22,
+        fontSize: 13.2,
+        background: SEC_LINK_DOT.idle,
+        color: SEC_LINK_DOT.glyph,
+      }}
+    >
+      {label}
+    </span>
+  );
 }
 
 export default function ActionSetGraphScene() {
@@ -149,14 +175,17 @@ export default function ActionSetGraphScene() {
               </marker>
             </defs>
             <path d={wirePath(CARDS[0], CARDS[1])} fill="none" stroke={COLOR.wire} strokeWidth={2} markerEnd="url(#actionChainArrow)" />
+            <path d={wirePath(CARDS[0], CARDS[2])} fill="none" stroke={COLOR.wire} strokeWidth={2} markerEnd="url(#actionChainArrow)" />
           </svg>
           {CARDS.map((card) => (
             <Card key={card.title} card={card} />
           ))}
+          <LinkDot from={CARDS[0]} to={CARDS[1]} label="x1.5" />
+          <LinkDot from={CARDS[0]} to={CARDS[2]} label="»" />
         </div>
       </div>
       <figcaption className="mt-2 text-[12px] text-muted-foreground">
-        The Action Set editor&apos;s own canvas. SingleAttack chains into Dash: land the hit, then dash away. DoubleAttack scores independently, and an unchecked Enabled box grays a card out without deleting it.
+        The Action Set editor&apos;s own canvas. SingleAttack chains into Dash with an x1.5 bonus, and into DoubleAttack on an Immediate link, which the double arrow marks. Each dot opens that one link for editing. An unchecked Enabled box grays a card out without deleting it.
       </figcaption>
     </figure>
   );

@@ -1,7 +1,7 @@
 ---
 title: "Configuration Reference"
 description: "Every SEC setting and the one place you set it: project settings, the Enemy AI Config, the data assets, the components."
-date: 2026-08-19
+date: 2026-08-21
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Configuration", "Reference"]
 parent: "SoulslikeCombatDocs"
@@ -187,6 +187,7 @@ The asset holds an **Actions** array. Each action carries these numbers; see the
 |-------|---------|------|
 | **Enabled** | on | Unticking also stops the action's ability being granted. |
 | **Manual Only** | off | Keep it out of automatic selection, so only a direct call by Action ID runs it. |
+| **Chain Only** | off | Let automatic selection reach it only as a combo follow-up, while an action that chains into it has just finished. |
 | **Action ID** | empty | The name chain links and logs use. Required. |
 | **Execution Method** | Gameplay Ability | How the action runs. An action added on the canvas arrives with this one already on it. |
 | **Selection Weight** | 1.0 | Multiplies the score. 2.0 doubles this action against a weight 1 action. |

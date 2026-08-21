@@ -19,6 +19,18 @@ export const SEC_CARD = {
 } as const;
 
 /**
+ * The dot the Action Set canvas draws on a chain wire, from the FColor values in
+ * SEdNode_SECGraphLinkDot.cpp. Its glyph is always white.
+ */
+export const SEC_LINK_DOT = {
+  idle: "rgb(168, 124, 74)",
+  hovered: "rgb(236, 168, 66)",
+  selected: "rgb(255, 190, 90)",
+  disabled: "rgb(112, 106, 98)",
+  glyph: "rgb(255, 255, 255)",
+} as const;
+
+/**
  * Marker colors SEC.Debug.Stimulus.Draw paints in the world, from the FColor
  * values in SECStimulusDebug.cpp. Engine FColor constants resolved against
  * Engine/Source/Runtime/Core/Private/Math/Color.cpp, so a legend on the page

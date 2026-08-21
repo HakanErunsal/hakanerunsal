@@ -559,6 +559,7 @@ export const ACTION_CHAIN_LINK_DETAILS: UeDetailCategory[] = [
       { label: "Target Action ID", value: { kind: "text", value: "HeavyFinisher" } },
       // ClampMin 1.0, no ClampMax -> no fill bar.
       { label: "Bonus Multiplier", value: n(1.5, 1) },
+      { label: "Pacing", value: { kind: "enum", value: "Score Only" } },
     ],
   },
 ];

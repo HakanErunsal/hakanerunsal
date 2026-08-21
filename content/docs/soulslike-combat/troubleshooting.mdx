@@ -1,7 +1,7 @@
 ---
 title: "Debugging & Troubleshooting"
 description: "The symptom you are looking at, the one thing that causes it, and the fix."
-date: 2026-08-19
+date: 2026-08-21
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "FAQ"]
 parent: "SoulslikeCombatDocs"
@@ -109,6 +109,7 @@ Run `SEC.Debug.Scoring 1`. An action a hard gate refused prints the reason in pl
 |--------|-----|
 | **Enabled** unticked on the action | Tick it. Unticking it also stops the ability being granted. |
 | **Manual Only** ticked | That action waits for a direct **Execute Action** call. Untick it for a scored move. |
+| **Chain Only** ticked | Nothing chains into it, or the chain window has closed. Wire a chain into it from another action, or untick it. |
 | On cooldown, or **Max Consecutive Uses** spent | Expected. Give the enemy a second action to switch to. |
 | **Recovery** | The gap after any action. The three **Recovery** fields on the AI Config ship at 0, so this holds nothing back until one of them carries a value. |
 | A gate said no | A **Combat Token Gate** on a full pool, or a **Stamina Gate** under its minimum. |

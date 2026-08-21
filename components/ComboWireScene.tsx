@@ -17,7 +17,7 @@ const COLOR = {
   chip: "#B85E30",
   wire: "#C6863A",
   cursor: "#FFFFFF",
-  bonus: "#7ED06C",
+  dotBody: "#3A2A1B",
 } as const;
 
 const CARD_WIDTH = 170;
@@ -101,20 +101,22 @@ export default function ComboWireScene() {
           </div>
 
           <span
-            className="absolute text-[12px] font-semibold transition-opacity duration-300"
+            className="absolute rounded-[3px] px-1.5 py-0.5 text-[12px] font-bold transition-opacity duration-300"
             style={{
-              left: (START_X + END_X) / 2 - 24,
-              top: PIN_Y - 26,
-              color: COLOR.bonus,
+              left: (START_X + END_X) / 2 - 16,
+              top: PIN_Y - 11,
+              background: COLOR.dotBody,
+              border: `1px solid ${COLOR.border}`,
+              color: COLOR.title,
               opacity: bonusVisible ? 1 : 0,
             }}
           >
-            x1.5 bonus
+            x1.5
           </span>
         </div>
       </div>
       <figcaption className="mt-2 text-[12px] text-muted-foreground">
-        Dragging from Fake Attack&apos;s right pin to Quick Attack&apos;s left pin: the feint opens the guard, and Quick Attack gets a score bonus for a short window after.
+        Dragging from Fake Attack&apos;s right pin to Quick Attack&apos;s left pin: the feint opens the guard, and Quick Attack gets a score bonus for a short window after. The dot on the wire reads the bonus, and clicking it edits that link on its own.
       </figcaption>
     </figure>
   );

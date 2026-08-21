@@ -1,7 +1,7 @@
 ---
 title: "API Reference"
 description: "The C++ and Blueprint surface: the controller components, the combat token subsystem, the melee trace pipeline, territory lookups, and the scorer and gate bases."
-date: 2026-08-17
+date: 2026-08-21
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Reference"]
 parent: "SoulslikeCombatDocs"
@@ -202,9 +202,9 @@ virtual FString GetDisplayName_Implementation() const;                          
 
 Subclasses must be stateless: one instance is shared across every AI using the asset. Derive randomness from `SeededRandom(Context)` rather than raw RNG.
 
-`FSECScoringContext` carries `Controller`, `Target`, `ASC`, `SpecId`, `EventTag`, `bIsReaction`, `Seed`, `WindowId`, the snapshot fields `Distance`, `AngleDegAbs`, `Speed`, `HealthPercentage`, `Stamina`, the `Vitals` component, and the `Stimulus` that set a reaction off. It carries no threat figure, so a scorer wanting camera attention reads `UThreatDetectionComponent::GetCurrentThreatLevel()` off `Context.Controller`.
+`FSECScoringContext` carries `Controller`, `Target`, `ASC`, `SpecId`, `EventTag`, `Surface`, `Seed`, `WindowId`, the snapshot fields `Distance`, `AngleDegAbs`, `Speed`, `HealthPercentage`, `Stamina`, the `Vitals` component, and the `Stimulus` that set a reaction off. It carries no threat figure, so a scorer wanting camera attention reads `UThreatDetectionComponent::GetCurrentThreatLevel()` off `Context.Controller`.
 
-`SupportedSurfaces` names the lists a class belongs in (`Actions`, `Reactions`, `TriggerRules`), and asset validation reports one authored where it does not belong.
+`Surface` says which list is being scored (`Actions`, `Reactions`, `TriggerRules`). One class serves all three, and branches on this where the difference matters.
 
 ---
 

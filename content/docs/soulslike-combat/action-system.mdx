@@ -1,7 +1,7 @@
 ---
 title: "Action System"
 description: "Give an enemy a moveset: create an Action Set, point an action at a montage, and let scoring pick the right move."
-date: 2026-08-15
+date: 2026-08-21
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Actions"]
 parent: "SoulslikeCombatDocs"
@@ -246,16 +246,22 @@ To override it for one move, tick **Override Recovery Time** on that action and 
 
 ## Build a combo
 
-Add an entry to an action's **Chain Links** naming the follow-up it prefers and the **Bonus Multiplier** that follow-up gets, 1.5 by default. After the first move completes, the named follow-up scores higher for a short window. One action can prefer several follow-ups, each with its own bonus.
+An action's **Chain Links** name the follow-ups it prefers. After it completes, each named follow-up scores higher for **Chain Followup Window Seconds** (0.6 by default, on the Action Evaluation component). An interrupt or a cancel clears the window, so a parried enemy cannot combo through its own recovery.
 
-Follow-ups can fire during the recovery window, for **Chain Followup Window Seconds** after the action ends (0.6 by default, on the Action Evaluation component). Only the actions its chain links name get that pass. An interrupt or a cancel clears it, so a parried enemy cannot combo through its own recovery.
+| Setting | Lives on | Does |
+|---------|----------|------|
+| **Bonus Multiplier** | the link | Multiplies the follow-up's score while the window is open. 1.5 by default. |
+| **Pacing** | the link | **Score Only** gives the bonus and nothing else, so the follow-up waits out the recovery breather. **Immediate** starts it as soon as the first action ends. |
+| **Chain Only** | the follow-up | Makes the link a requirement rather than a preference: automatic selection reaches that action only inside the window. Good for a finisher that should never open a fight. |
+
+A follow-up answers to its cooldown, its **Max Consecutive Uses**, a cooldown its ability applies to itself, its gates and its scorers whichever Pacing carries it, and a direct **Execute Action** call reaches a Chain Only action at any time.
 
 <Protip
   title="Combos that read as decisions"
   description="Raise Smash's score after Hit. If the player rolls out of range, the Distance Scorer drops Smash and the enemy picks something else. It does not swing at air."
 />
 
-Wiring this on a canvas and watching it fire is what the [Action Set Editor](/docs/soulslike-combat/action-set-editor#building-a-combo) is for.
+Drawing these as wires, with each link's setting on the wire that carries it, is what the [Action Set Editor](/docs/soulslike-combat/action-set-editor#building-a-combo) is for.
 
 ---
 
@@ -346,10 +352,11 @@ Saving the asset also runs validation, which reports into the **Asset Check** me
 |-------|----------------------|
 | **Enabled** | It is toggled off in the set. |
 | **Manual Only** | It is reserved for a direct Execute Action call. |
+| **Chain Only** | Nothing that chains into it has just finished, so the window is shut. |
 | **`SEC.Action.BlockActions`** | That tag sits on the enemy's ability system component. |
 | **No usable execution method** | The method is missing something it needs to run. |
 | **Cooldown or repeat limit** | It is still cooling down, or **Max Consecutive Uses** is spent. |
-| **Recovery** | The enemy is in a recovery window, chain follow-ups excepted. |
+| **Recovery** | The enemy is in a recovery window, and no Immediate chain link is carrying this action through it. |
 | **Requires Tags / Block Tags** | The enemy, the target or the world does not hold the right tags. |
 | **Require Line Of Sight** | The box is ticked and the view to the target is blocked. |
 | **A gate** | Any gate on the action answered no. |
