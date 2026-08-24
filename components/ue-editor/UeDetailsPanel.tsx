@@ -1169,7 +1169,7 @@ export const WALKTHROUGH_RETREAT_DETAILS: UeDetailCategory[] = [
     properties: [
       { label: "Selection Weight", value: n(1.5, 0.01) },
       { label: "Scorers", value: { kind: "text", value: "1 Array element" } },
-      { label: "Tag Score Multipliers", value: { kind: "text", value: "State.PlayerAttacking = 2.0" } },
+      { label: "Tag Score Multipliers", value: { kind: "text", value: "YourGame.State.PlayerAttacking = 2.0" } },
     ],
     children: [rangeScorer(0, "Distance Scorer", [0, 0, 100, 200])],
   },

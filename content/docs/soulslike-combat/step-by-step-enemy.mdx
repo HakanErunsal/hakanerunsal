@@ -1,7 +1,7 @@
 ---
 title: "Step-by-Step Enemy Creation"
 description: "Build one enemy end to end: pawn, controller, a moveset with a combo, a weapon that lands its hits, and something to fight."
-date: 2026-08-17
+date: 2026-08-24
 published: true
 tags: ["Documentation", "Unreal Engine", "AI", "Tutorial"]
 parent: "SoulslikeCombatDocs"
@@ -166,10 +166,10 @@ An interrupt or a cancel clears that window, so a parried enemy cannot combo out
 
 This one runs a behavior tree rather than an ability. Build `BT_QuickBackstep` as a one-node tree around the **Make Distance** task, which backs the pawn away from its target until it reaches a distance you set.
 
-Its **Distance Scorer** peaks close in, from 0 to 100 cm, so it wins exactly when you have crowded the enemy. **Tag Score Multipliers** doubles it again while the target carries `State.PlayerAttacking`, a tag your game applies during a player swing.
+Its **Distance Scorer** peaks close in, from 0 to 100 cm, so it wins exactly when you have crowded the enemy. The **Tag Score Multipliers** row is optional, and the tag in it comes from your project rather than the plugin. `YourGame.State.PlayerAttacking` stands in for a tag you define yourself and apply for the length of a player swing, which doubles the retreat score while the player is committed to an attack. Leave the row empty and the retreat still picks itself on distance alone.
 
 <Callout type="info">
-**Tag Score Multipliers** takes any gameplay tag and scales the score while the AI, the target or the world holds it. `State.Stunned` at 2.0 on the target makes a punish, `World.Phase.BossPhase2` at 1.3 makes an enemy meaner late in a fight. The [Action System](/docs/soulslike-combat/action-system) covers scoring in full.
+**Tag Score Multipliers** takes any gameplay tag and scales the score while the AI, the target or the world holds it. The plugin declares `SEC.State.Staggered` for a reaction montage to hold, so 2.0 on that tag makes a punish. A tag of your own works the same way: `YourGame.Phase.BossPhase2` at 1.3 makes an enemy meaner late in a fight. The [Action System](/docs/soulslike-combat/action-system) covers scoring in full.
 </Callout>
 
 ---
