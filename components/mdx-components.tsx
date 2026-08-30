@@ -107,6 +107,12 @@ import { UeComponentsPanel } from '@/components/ue-editor/UeComponentsPanel';
 import ReactionSetGraphScene from '@/components/ReactionSetGraphScene';
 import ActionSetGraphScene from '@/components/ActionSetGraphScene';
 import ComboWireScene from '@/components/ComboWireScene';
+import {
+  MoundShiftDiagram,
+  LatticeIndexDiagram,
+  ShotSlate,
+} from '@/components/HayMoundDiagrams';
+import { CollapsibleSection } from '@/components/CollapsibleSection';
 
 const useMDXComponent = (code: string) => {
   const fn = new Function(code);
@@ -115,6 +121,10 @@ const useMDXComponent = (code: string) => {
 
 const components = {
   Image,
+  CollapsibleSection,
+  MoundShiftDiagram,
+  LatticeIndexDiagram,
+  ShotSlate,
   Callout,
   Collapsible,
   Protip,
