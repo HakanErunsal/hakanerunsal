@@ -1,0 +1,519 @@
+---
+title: "Faking a Haystack: A Blanket of Straws"
+description: "How Haystack Together draws a barn-sized pile of pickable hay at 60 fps: an analytic surface, a low-poly shell hiding under the straws, and a lattice of integers instead of stored geometry."
+date: 2026-08-27
+developer: "Hakan Erünsal"
+published: true
+tags:
+  - "Unreal Engine"
+  - "Optimization"
+  - "Rendering"
+  - "Multiplayer"
+---
+
+## The problem
+
+Real hay runs about 40,000 straws per cubic metre. My mound is 4.5 m from the centre
+to the rim and 3.3 m tall, so the honest number is in the millions. The player has to
+reach into that, aim at one blade, and pull it out.
+
+You can't draw millions of blades, and a sculpted mesh won't do either, because the
+pile loses one straw at a time and sags as it empties. So I draw the skin, and I
+hide something behind the skin.
+
+<VideoLoop
+  src="../images/haymound_result.mp4"
+  className="w-full h-auto rounded-none shadow-lg"
+  title="Haystack Together | The finished hay mound"
+/>
+
+## Three pieces
+
+<ZoomableImage
+  src="../images/haymound_threepieces.jpg"
+  alt="A cut through the hay mound: the analytic surface traced in green, the straw blanket in the band below it, and the low-poly inner shell in orange."
+/>
+
+1. The surface is a formula. Ask how high the hay sits at a point, get a number
+   back. No mesh, no voxel grid.
+2. A blanket of straws, one band deep. Only the top 15 cm gets drawn.
+3. A dark low-poly dome under the blanket. Real hay has holes in it, and without
+   something behind those holes you see through the mound.
+
+The dome makes the rest affordable. My blanket has to hide a dome 5 cm below it,
+and one band of straws covers that. Hiding an empty interior would take hay all the
+way down.
+
+<Callout type="info">
+The code calls the dome the inner shell: about 1,300 triangles and one draw call,
+standing in for a hundred thousand instances.
+</Callout>
+
+<CollapsibleSection
+  title="Part one: visuals"
+  summary="Where the shape comes from, how straws land on it, and why the dome never shows."
+  defaultOpen={false}
+>
+
+### The surface is a formula
+
+One integer takes the pile down as the player empties it.
+
+```text
+Dome(x, y):
+    t = distance from centre / radius        # 0 at the peak, 1 at the rim
+    if t >= 1: return 0
+    return Peak * (1 - t^Sharpness)^Shoulder + LowFrequencyLumps(x, y)
+
+CappedDome(x, y):
+    return max(0, min(Dome(x, y), Peak - DisplayedShiftCm))   # a ceiling, not a subtraction
+
+SurfaceZ(x, y):
+    return max(CappedDome(x, y) * DigFloorFraction,
+               CappedDome(x, y) - DugDepthAt(x, y))
+```
+
+The straws, the dome, the hay test and the audio all call this one function, so
+none of them can drift out of agreement. `DisplayedShiftCm` is the height being drawn
+at this instant, sliding toward the replicated step count instead of snapping to it.
+Part three covers why.
+
+The ceiling took a rewrite to arrive at. Subtracting the shift takes the same
+centimetres off every column, and the rim has the fewest to give, so the rim hits zero
+first and the skirt creeps inward. Nobody standing next to a haystack watches its
+footprint shrink. Cut against a ceiling and a column already below it never moves
+again, which covers the whole skirt for the life of the pile. The crown flattens into
+a widening table that sinks, and that's what a pile worked from the top looks like.
+
+A crater takes a fraction of what's standing, not a fixed depth, and that only bites
+in the last stretch. Subtract the dimple outright and the dig and the descent add up,
+so the pile can reach the floor before the budget does. At a 5,000-straw budget mine
+went flat after 4,621 picks with the shift only 22 steps of 24 down, and the counter
+still owed 379 picks over bare boards.
+
+<MoundShiftDiagram />
+
+<VideoLoop
+  src="../images/haymound_descent.mp4"
+  className="w-full h-auto rounded-none shadow-lg"
+  title="Haystack Together | The shell descending through the shift steps"
+/>
+
+The same thing in the editor, with the straws culled away so the shell is all that's
+left. The orange ring is the actor's footprint, and it holds while the crown goes flat
+and the flat top sinks. What's there at the end is bare boards inside a circle exactly
+as wide as the one the pile started in.
+
+The `Shoulder` exponent gets underrated. Below 1 the mound meets the floor at a
+cliff and reads as a cone. At 1.55 the foot eases out and reads as hay somebody threw
+into a heap.
+
+### Straws are integers
+
+No array of straws exists anywhere. They sit on a jittered lattice, and each site
+carries an integer id.
+
+<LatticeIndexDiagram />
+
+```text
+SiteId(ix, iy, iz):
+    return (iz * LatticeY + iy) * LatticeX + ix
+
+SiteTransform(ix, iy, iz):
+    rng = deterministic_hash(ix, iy, iz)     # same seed everywhere, always
+    return transform(
+        lattice_position + jitter(rng),
+        heading in the surface tangent plane, tilt clamped to MaxTilt,
+        rng.pick(BladeVariants))
+```
+
+Feed the same integer in on any machine and you get the same blade, in the same
+spot, at the same angle. A hundred thousand straws cost zero bytes of memory and
+zero bytes of network. They're a pure function of their index.
+
+<Protip
+  title="Comb your straws and it reads as fur"
+  description="Lay every blade flat along the surface tangent and the pile looks like a shaved animal. Tilting them out of the tangent plane turns it into a tangle. Give a quarter of them a random orientation and the last of the grain disappears."
+/>
+
+### Which straws get drawn
+
+A column is one (x, y) on the lattice. For each one, work out which `iz` values land
+in the band under the surface.
+
+```text
+RefreshColumn(ix, iy):
+    newRange = [ z sites within BandDepth below SurfaceZ(x, y), plus Fuzz above ]
+    oldRange = ColumnRange[ix, iy]
+
+    AddStraw    for each site in newRange but not oldRange
+    RemoveStraw for each site in oldRange but not newRange
+```
+
+Both ranges are a `[lo, hi]` pair, so a shift diffs two intervals instead of
+rebuilding the world. Drop the surface one step and most columns gain a straw at the
+bottom and lose one off the top.
+
+`Fuzz` draws a few sites above the surface so straw ends poke out. Without it the
+mound ends on a clean analytic curve and reads as a shape rather than a pile.
+
+### The dome, and how it morphs
+
+I generate the dome from the same surface function, as rings and sectors, so it
+can't disagree with the straws and it tracks every shift for free.
+
+<ZoomableImage
+  src="../images/haymound_shell_only.jpg"
+  alt="The inner shell alone in the barn with the straws culled away: a dark, smooth, low-poly dome whose crown has been cut off flat by the shift ceiling."
+/>
+
+That's the whole of it with the straws culled away, and it's meant to look that bad.
+Nobody ever sees this surface. The flat crown is the ceiling doing its work: the skirt
+is still sitting where it was pitched and the top has been cut off level.
+
+```text
+RebuildInnerShell():
+    for each (ring, sector):
+        x, y   = polar(ring / Rings * Radius, 2*PI * sector / Sectors)
+        z      = CappedDome(x, y) - DeepestDigWithin(x, y, ErodeCm)
+        vertex = (x, y, z) - SurfaceNormal(x, y) * InsetCm    # push it UNDER
+        uv     = (arc around, arc down the flank) / TileCm
+
+    if vertexCount == lastVertexCount: UpdateMeshSectionInPlace(...)   # the morph
+    else:                              RecreateMeshSection(...)
+```
+
+The inset runs along the surface normal. Drop the dome 5 cm in Z instead and the flat
+top keeps its clearance while a steep flank loses most of it, so the dome pokes through
+the straws on the sides.
+
+Each vertex min-filters the dug depth over 26 cm, and only the dug depth. The dome
+is smooth enough for 16 rings and 40 sectors to follow anywhere; craters are not.
+A quad spans tens of centimetres and a crater is 14 cm across, so the shell can't
+represent one, and a crater it can't follow is one it surfaces inside of. Taking the
+deepest dig nearby makes the dip wider than the hole, which the player can't see,
+where sampling the surface directly would push the shell through the crater floor.
+
+It reads the cap through the same function the straws do, and that's a fix, not a
+precaution. The shell and the straws each derived the descent for themselves once.
+When the subtraction became a ceiling only the straws got changed, so the shell went
+on sitting at `Dome - Shift` while the straws stood at `min(Dome, Cap)`. It hung a
+full shift below the blanket on the flanks, and dropped to the floor outright wherever
+the dome was shorter than the shift. That's daylight down the sides of the pile, and
+it took one shared function to close it.
+
+The topology holds while the mound settles, since only the heights change. Comparing
+the vertex count first turns the morph into a vertex buffer write, where recreating
+the mesh section rebuilds the render resources several times a second.
+
+<Callout type="warning">
+Keep the inset well under the band depth. 5 cm under a 15 cm blanket holds. 13 cm
+under 15 cm shows the dome the first time somebody digs.
+</Callout>
+
+</CollapsibleSection>
+
+<CollapsibleSection
+  title="Part two: behaviour"
+  summary={'Digging, slumping, and answering "is this point inside the hay?" without a single collision primitive.'}
+  defaultOpen={false}
+>
+
+<VideoLoop
+  src="../images/haymound_gameplay.mp4"
+  className="w-full h-auto rounded-none shadow-lg"
+  title="Haystack Together | Working the pile: picking, the barrow, and standing on top"
+/>
+
+Twenty seconds of the pile being worked. Straws come out one at a time and go into the
+barrow, the highlight follows whatever the crosshair rests on, and the player walks
+around on a mound whose straws carry no collision at all.
+
+### Digging and the hole that refills
+
+A pick removes the instance and presses a dimple into the surface. Skip the dimple
+and hammering one spot empties that column's whole band down to the dome. Lower the
+surface instead and fresh straws rise into the band from below.
+
+<VideoLoop
+  src="../images/haymound_slump.mp4"
+  className="w-full h-auto rounded-none shadow-lg"
+  title="Haystack Together | Picking one spot flat out, and the hay closing over it"
+/>
+
+Picking as fast as the hands go, in one spot, and no hole opens up. Each straw taken
+lowers the surface a little, the band re-derives that column underneath it, and more
+straws stand up where the last ones were.
+
+The dimple is narrow and deep. A wide spread lowers every column inside it by a
+hair, and a hair tips whichever of them sits on a lattice threshold: one pluck popped
+a dozen straws scattered across a metre, none near the player's hand.
+
+Then the hay slides in:
+
+```text
+SlumpPass(columns):
+    for each neighbour pair:
+        overhang = column.dug - neighbour.dug
+        if overhang > MaxStep + Epsilon:
+            move = (overhang - MaxStep) * SlumpRate
+            column.dug -= move;  neighbour.dug += move   # MOVED, never created
+```
+
+Depth moves and never appears, so slumping can't add or remove hay. The `Epsilon`
+deadband earns its place: each pass moves a fraction of the excess, so the overhang
+decays toward the threshold and never arrives. Without it the pile keeps nudging
+itself forever.
+
+### Collision
+
+The straws have no collision at all, and there are far too many of them to ever
+give it to. The dome carries the only collision on the mound, because a player climbs
+the pile and a barrow has to bump into it instead of driving through it. That puts the
+walkable surface 5 cm under the straw tips, which is where it belongs anyway: you sink
+into hay when you stand on it.
+
+What the dome does not answer is whether a given point is in the hay. That question
+goes to the surface function:
+
+```text
+IsPointInHay(point, tolerance, minSurface):
+    surface = SurfaceZ(point.x, point.y)
+    if surface < minSurface: return false      # reject the feathered rim
+    return point.z <= surface + tolerance
+```
+
+That's a `pow()` instead of a scene query, and it beats a trace on correctness. The
+dome sits 5 cm under the blanket and rebuilds on a cooldown, so tracing it runs late
+and comes up small: it eats straws that missed and misses straws that landed.
+
+The `minSurface` guard matters more than it looks. Near the rim the dome eases into
+the floor, so without it a straw lying on the barn boards reads as below the surface
+and gets swallowed.
+
+### Throwing a straw back
+
+A thrown straw remembers the site it came from, so putting it back inverts the pick:
+
+```text
+OnThrownStrawLands(straw):
+    if in a wheelbarrow:            add to barrow load, stay picked
+    else if IsPointInHay(straw):    ReturnStrawToSite(straw.site)
+    else:                           lie on the floor, despawn later
+
+ReturnStrawToSite(site):
+    PickedSites.remove(site);  PicksTaken -= 1
+    ApplyUndig(sitePosition, DepthPerStraw)    # same falloff, subtracted
+```
+
+Put a straw back at an arbitrary spot and you have to invent one from somewhere. Put
+it back at its own site and nothing drifts: same slot, same dimple, undone. The
+descent is the one thing it can't undo, so a straw returned to a site the surface has
+already dropped past stays gone. That's the right answer anyway.
+
+</CollapsibleSection>
+
+<CollapsibleSection
+  title="Part three: replication"
+  summary="The entire shared authority of a haystack is one int32. Everything else stays local."
+  defaultOpen={false}
+>
+
+### One integer on the wire
+
+```cpp
+void AHayMound::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out) const
+{
+    Super::GetLifetimeReplicatedProps(Out);
+    DOREPLIFETIME(AHayMound, ShiftSteps);   // the whole thing
+}
+```
+
+That is the complete network footprint. The straw array, the dig grid, the mesh and
+the individual picks all stay off the wire, because one 3 cm blade among a hundred
+thousand isn't worth a packet. `ShiftSteps` is a step count read off how much hay the
+players have taken between them, and the server owns it.
+
+Pacing it by hay instead of by height is the part I got wrong first. Map depletion
+straight onto the step count and the pile spends nearly all its hay in the first half
+of its picks, then deadlocks: the shift only moves when picks are taken, and past a
+point there's nothing standing left to pick. So a table holds the fraction of hay still
+standing above each step, and the target is the deepest step that leaves as much as the
+budget says should be there.
+
+The count only ever goes up. Throwing straw back raises the shared tally again, and a
+surface that rose with it would un-bury what the players had already dug out.
+
+The straws stay off the wire because they're a pure function of their index. Two
+clients running the same `SiteTransform` on the same integer land the same blade in
+the same spot, so there's nothing to agree about.
+
+### What each client keeps to itself
+
+| State | Where it lives |
+| --- | --- |
+| `ShiftSteps`, the surface height | replicated |
+| Picked sites, dug depth per column | local to each client |
+| `PicksTaken`, the HUD tally | local to each client |
+| A wheelbarrow's load | server authoritative |
+
+Two players see slightly different craters and different individual blades missing,
+while both see the same mound at the same height. The shape is shared and the
+scratches are local, which is the trade I took deliberately: a crater 14 cm wide
+reads as texture, and texture is not worth a packet.
+
+The barrow is the exception. Hay in a barrow is hay that left the pile and turns into
+money, so the client destroys the straw and sends the count to the server.
+
+### Letting the client fall behind on purpose
+
+`OnRep_ShiftSteps` has no body. A client learns the new height, then walks down to it
+at its own pace:
+
+```text
+TickShiftQueue():
+    if AppliedShiftSteps >= ShiftSteps:                   return   # already there
+    if DisplayedShiftCm hasn't reached AppliedShiftSteps: return   # last release still travelling
+
+    AppliedShiftSteps = ShiftSteps      # the whole backlog, in one release
+```
+
+`ShiftSteps` is the authority and can jump as far ahead as it likes.
+`AppliedShiftSteps` is what the client has drawn, and it only moves once the drawn
+surface has finished travelling to where the last release put it.
+
+Without that gate the surface descends on a timer while the straws descend on a scan,
+at different speeds: columns re-derived early get straws for a surface centimetres
+higher than columns re-derived at the end. A single stacked shift hides the error, but
+a dozen leaves the dome standing in open air with the straws arching over it.
+
+That one condition is the whole of it, and the two I added alongside it were both
+mistakes. Waiting on dirty columns and fading straws sounds careful, but both are
+consequences of picking, so while anybody was working the pile the gate never
+opened. The mound began collapsing only once the player stopped touching it, which is
+the opposite of what digging into a haystack should do.
+
+The second was releasing one step per cycle, which is right only while the surface
+keeps up with the picks. A cycle costs about `SettleSeconds`, so a hundred-step backlog
+leaves a pile standing there for ten minutes with no straw in it. Take the whole
+backlog and `DisplayedShiftCm` gets one target to slide to, which the settle covers in
+`SettleSeconds` however far it has to go.
+
+<Callout type="info">
+A burst of picks from four players at once arrives as one longer drop instead of a
+queue of little ones, and it still costs one replicated int.
+</Callout>
+
+</CollapsibleSection>
+
+<CollapsibleSection
+  title="Part four: performance"
+  summary="Five things that decided the frame budget. The expensive ones never showed up in a draw call count."
+  defaultOpen={false}
+>
+
+### Split the instances spatially
+
+The obvious layout gives one instanced-static-mesh component to each blade variant,
+and it's the wrong one. Editing an instance costs in proportion to how many instances
+live in the component you dirtied, not how many you changed.
+
+| Layout | Game thread, per picking frame |
+| --- | --- |
+| 1 component, 137k instances | 26 ms |
+| 3 components, 46k each | 12 ms |
+| Spatial tiles, ~1k each | negligible |
+
+I split the pool into tiles of lattice columns, one component per blade variant per
+tile, so a pick re-uploads about a thousand instances. The trade is more draw calls,
+so tiles want to be cheap to dirty and few enough to keep the renderer fed.
+
+### Budget straw operations, not columns
+
+My first version capped columns re-evaluated per frame, which looked generous because
+an unmoved column costs nothing. Then a shift moves almost every column by one straw,
+and two thousand columns turn into two thousand instance edits in one frame.
+
+```text
+Tick():
+    budget = StrawOpsPerTick
+    while budget > 0 and columns remain:
+        if TilesSettling >= MaxSettlingTiles and next column starts a new tile:
+            break                           # hold at the tile boundary
+        budget -= RefreshColumn(next column)
+```
+
+The tile gate bounds the frame cost. Straws in flight get rewritten every frame until
+they land, so what matters is how many separate components those writes touch. Each
+one pays a fixed upload whether one straw changed or a hundred.
+
+### Take the straws out of ray tracing, and put their shadows on a switch
+
+At 140k movable instances the straws make a punishing shadow caster. Every one is
+submitted to every shadow view, and the field rebuilds on every shift, so the virtual
+shadow map pages covering the mound keep getting invalidated instead of staying
+cached. One straw's shadow is a few pixels of noise.
+
+So the straws' shadows are a switch, and three things throw it, in descending
+authority: a cheat cvar for ruling the mound out in PIE, the player's graphics menu,
+which is where the frame rate gets bought back on a big pile, and the actor's own
+property. The mound shadows the barn either way, because the dome casts for it.
+
+Ray tracing cost more and hid better. With Lumen on hardware ray tracing, each straw
+becomes its own instance in the acceleration structure: 138,000 instances of an
+8-triangle card, rebuilt every frame, traversed by every GI and reflection ray.
+
+A draw call count won't show you that, which is why the mound measured **8 ms from
+one side of the barn and 64 ms from the other**, with the same 470 draw calls and a
+flat 6 ms game thread. Traversal costs according to where the rays go.
+
+The straws stay out of that scene outright, and the dome stands in for them there the
+same way it does for shadows. Lumen sees a haystack-shaped solid instead of 138,000
+needles.
+
+<Protip
+  title="Get the depth darkening back for free"
+  description="Losing per-straw shadows costs most of the mound's depth, and the blanket flattens into fuzz. You already know how deep each straw sits when you place it, so write that depth into per-instance custom data and let the material multiply it in. Fake occlusion that costs nothing and can't flicker."
+/>
+
+### Cull the straws, keep the dome
+
+Past 15 m a straw is thinner than a pixel, and by 22 m they're gone. Sub-pixel
+geometry adds noise rather than detail: upscaling can't resolve it frame to frame, and
+it speckles a shadow map. The dome already stands there, so across that fade it takes
+over the silhouette at one draw call against several hundred.
+
+### Highlight with one overlaid mesh
+
+Marking the aimed straw through per-instance custom data pushes a change set through
+the whole component every time the crosshair moves, which is why aiming stuttered
+while I browsed straws and went quiet when I rested on one. One small static mesh
+component over the blade costs nothing.
+
+</CollapsibleSection>
+
+## What it adds up to
+
+| | |
+| --- | --- |
+| Drawn straws | ~250,000, pickable one at a time |
+| Stored per-straw data | none, every straw is a function of its index |
+| Replicated state | one `int32` |
+| Collision primitives | one, the dome, so the pile is climbable |
+| Straws in the ray tracing scene | zero |
+| Stand-in for shadows, GI and distance | one ~1,300 triangle dome |
+
+The shape of this generalises past hay. Reach for it when you need a huge mass of
+small identical things that the player touches one at a time:
+
+- Make the shape a function rather than data, and replicate the function's inputs.
+- Derive the instances from integer indices, so they cost nothing to store or send.
+- Draw a shell of instances, and put something cheap behind it so the gaps read as
+  shadow.
+- Hand that cheap thing the expensive work: shadows, GI, distance.
+- Budget the writes and batch them spatially. The upload is the cost.
+
+---
+
+*Haystack Together is built in Unreal Engine 5.8. The mound lives in `AHayMound`;
+picking and throwing live in `UHayMoundPickerComponent`.*

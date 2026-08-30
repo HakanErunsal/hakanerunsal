@@ -106,3 +106,13 @@ article.prose figure figcaption {
   text-align: center;
   margin-top: 0.5rem;
 }
+/* Collapsible article parts. Tailwind's group-open variant covers this, but
+   article pages load only mdx.css, so the rules live here too rather than
+   depending on a variant surviving a future config change. */
+.ue-collapsible-section[open] > summary .ue-collapsible-arrow {
+  transform: rotate(90deg);
+}
+
+.ue-collapsible-section[open] > summary .ue-collapsible-lead {
+  display: none;
+}
